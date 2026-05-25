@@ -75,12 +75,11 @@ export default function NewMission() {
       } else if (step === 3) {
         const c = await submitCaliper(project.id, parseFloat(edgeThickness));
         setCaliper(c);
-        toast.success(`Caliper reading: ${c.layers_detected} layer(s) detected`);
-        setStep(4);
-      } else if (step === 4) {
         const pr = await computePricing(project.id);
         setPricing(pr);
-        toast.success("Quant™ engine reconciled");
+        toast.success(`Caliper: ${c.layers_detected} layer(s) • Quant™ reconciled`);
+        setStep(4);
+      } else if (step === 4) {
         setStep(5);
       } else if (step === 5) {
         const result = await launchMission(project.id, preflight);
