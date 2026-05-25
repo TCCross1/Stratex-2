@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
+import useIsMobile from "@/hooks/use-is-mobile";
 import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
 
 const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
@@ -17,26 +18,27 @@ const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
 );
 
 export default function Landing() {
+  const isMobile = useIsMobile(900);
   return (
     <div data-testid="landing-page">
       {/* HERO */}
-      <section className="relative px-6 md:px-12 pt-16 pb-24 overflow-hidden">
+      <section className="relative px-4 md:px-12 pt-10 md:pt-16 pb-16 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 grid-floor opacity-30 pointer-events-none" />
-        <div className="max-w-[1500px] mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center relative">
+        <div className="max-w-[1500px] mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-8 md:gap-12 items-center relative">
           <div>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4 md:mb-6">
               <span className="led led-teal" />
-              <span className="font-mono text-[11px] tracking-[0.32em] text-teal uppercase">SYSTEM ONLINE • RECON GRID v1.0.0</span>
+              <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">SYSTEM ONLINE • RECON GRID v1.2.0</span>
             </div>
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.06em] leading-[0.95] text-silver">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.06em] leading-[0.95] text-silver">
               <span className="block">STRATEGIC</span>
               <span className="block">THERMAL</span>
               <span className="block text-teal glow-teal">RECONNAISSANCE</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base md:text-lg text-muted-hud font-body leading-relaxed">
+            <p className="mt-5 md:mt-6 max-w-xl text-sm md:text-lg text-muted-hud font-body leading-relaxed">
               STRATEX™ is the world's first autonomous, solar-powered roofing recon platform — pairing radiometric thermal mapping with a multi-agent actuarial engine to deliver insurance-grade estimates without a human ever climbing a ladder.
             </p>
-            <div className="mt-10 flex flex-wrap gap-4">
+            <div className="mt-8 md:mt-10 flex flex-wrap gap-3 md:gap-4">
               <Link to="/mission/new" data-testid="hero-launch-cta" className="btn-hud pulse-glow">
                 <Radar size={16} /> Launch Fleet Command
               </Link>
@@ -44,7 +46,7 @@ export default function Landing() {
                 <Box size={16} /> Project Ledger
               </Link>
             </div>
-            <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl">
+            <div className="mt-10 md:mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 max-w-2xl">
               <DataReadout label="Trailer Rigs" value="24/7" testid="stat-trailers" />
               <DataReadout label="Uplink" value="STARLINK" accent="volt" testid="stat-uplink" />
               <DataReadout label="O&P Lock" value="20 / 25" accent="orange" testid="stat-op" />
@@ -141,8 +143,8 @@ export default function Landing() {
                 {id:"AD-KY041-001", diagnosis:"Trapped Moisture", facet_id:"A1", severity:"CRITICAL", thermal_delta:"+7.2°F", confidence:0.92, area_affected_sf:96, lat:38.0406, lon:-84.5037},
                 {id:"AD-KY041-002", diagnosis:"CDX Deck Rot", facet_id:"A3", severity:"HIGH", thermal_delta:"+9.6°F", confidence:0.94, area_affected_sf:140, lat:38.0406, lon:-84.5037},
               ]}
-              height={560}
-              showLabels
+              height={isMobile ? 360 : 560}
+              showLabels={!isMobile}
             />
           </HudCard>
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">

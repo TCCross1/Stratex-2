@@ -18,11 +18,11 @@ export default function Projects() {
   useEffect(()=>{ listProjects().then(setItems).catch(()=>setItems([])); },[]);
 
   return (
-    <div data-testid="projects-page" className="px-6 md:px-12 py-10 max-w-[1500px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div data-testid="projects-page" className="px-4 md:px-12 py-6 md:py-10 max-w-[1500px] mx-auto">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
-          <div className="font-mono text-[11px] tracking-[0.32em] text-teal uppercase">// MISSION LEDGER</div>
-          <h1 className="font-display text-3xl md:text-4xl uppercase tracking-[0.14em] text-silver">Project Archive</h1>
+          <div className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">// MISSION LEDGER</div>
+          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.14em] text-silver">Project Archive</h1>
         </div>
         <Link to="/mission/new" className="btn-hud pulse-glow" data-testid="projects-new-btn">
           <Plus size={14}/> New Mission
@@ -41,21 +41,23 @@ export default function Projects() {
 
       {items && items.length > 0 && (
         <HudCard className="p-0 overflow-hidden">
-          <table className="hud-table">
-            <thead><tr><th>Customer</th><th>Address</th><th>Type</th><th>Status</th><th>Final Total</th><th></th></tr></thead>
-            <tbody data-testid="projects-table">
-              {items.map((p)=>(
-                <tr key={p.id}>
-                  <td className="text-silver">{p.intake?.customer_name}</td>
-                  <td className="text-muted-hud">{p.intake?.property_address}</td>
-                  <td><span className="tag-pill">{p.intake?.project_type}</span></td>
-                  <td><span className={`font-mono uppercase tracking-widest ${STATUS_COLOR[p.status] || "text-muted-hud"}`}>{p.status}</span></td>
-                  <td className="text-teal">{p.pricing?.final_total ? `$${p.pricing.final_total.toLocaleString(undefined,{minimumFractionDigits:2})}` : "—"}</td>
-                  <td><Link to={`/mission/${p.id}`} data-testid={`project-open-${p.id.slice(0,8)}`} className="text-teal hover:underline flex items-center gap-1">Open <ArrowRight size={12}/></Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="hud-table">
+              <thead><tr><th>Customer</th><th>Address</th><th>Type</th><th>Status</th><th>Final Total</th><th></th></tr></thead>
+              <tbody data-testid="projects-table">
+                {items.map((p)=>(
+                  <tr key={p.id}>
+                    <td className="text-silver whitespace-nowrap">{p.intake?.customer_name}</td>
+                    <td className="text-muted-hud whitespace-nowrap">{p.intake?.property_address}</td>
+                    <td><span className="tag-pill">{p.intake?.project_type}</span></td>
+                    <td><span className={`font-mono uppercase tracking-widest ${STATUS_COLOR[p.status] || "text-muted-hud"}`}>{p.status}</span></td>
+                    <td className="text-teal whitespace-nowrap">{p.pricing?.final_total ? `$${p.pricing.final_total.toLocaleString(undefined,{minimumFractionDigits:2})}` : "—"}</td>
+                    <td><Link to={`/mission/${p.id}`} data-testid={`project-open-${p.id.slice(0,8)}`} className="text-teal hover:underline flex items-center gap-1 whitespace-nowrap">Open <ArrowRight size={12}/></Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </HudCard>
       )}
     </div>

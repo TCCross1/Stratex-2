@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
+import useIsMobile from "@/hooks/use-is-mobile";
 import { ASSETS, UNDERLAYMENT_OPTIONS, DRIP_EDGE_COLORS, DISPOSAL_STRATEGIES, FASTENER_TYPES, PROJECT_TYPES, INSURANCE_CARRIERS, ROOF_STYLES } from "@/lib/constants";
 import { createProject, submitCaliper, runScan, launchMission } from "@/lib/api";
 import { ArrowRight, ArrowLeft, Crosshair, FileText, Layers, Box, Rocket, AlertTriangle, CheckCircle2, ScanLine } from "lucide-react";
@@ -110,13 +111,13 @@ export default function NewMission() {
   const back = () => { if (step > 1 && !busy) setStep(step - 1); };
 
   return (
-    <div data-testid="new-mission-page" className="px-6 md:px-12 py-10 max-w-[1500px] mx-auto">
+    <div data-testid="new-mission-page" className="px-4 md:px-12 py-6 md:py-10 max-w-[1500px] mx-auto pb-28 md:pb-10">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <div className="font-mono text-[11px] tracking-[0.32em] text-teal uppercase">// PRE-FLIGHT PIPELINE</div>
-          <h1 className="font-display text-3xl md:text-4xl uppercase tracking-[0.14em] text-silver">Initiate New Mission</h1>
+          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.14em] text-silver">Initiate New Mission</h1>
         </div>
-        <div className="font-mono text-[11px] tracking-widest text-muted-hud uppercase">
+        <div className="font-mono text-[10px] md:text-[11px] tracking-widest text-muted-hud uppercase">
           Step <span className="text-teal">{step}</span> / 5 — <span className="text-silver">{STEPS[step-1].label}</span>
         </div>
       </div>
@@ -262,7 +263,8 @@ export default function NewMission() {
                   telemetry={project.roof_telemetry}
                   anomalies={scan?.anomalies || []}
                   scanning={scanning}
-                  height={520}
+                  height={isMobile ? 360 : 520}
+                  showLabels={!isMobile}
                 />
               )}
             </div>
@@ -374,19 +376,19 @@ export default function NewMission() {
         </HudCard>
       )}
 
-      {/* footer nav */}
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+      {/* footer nav — sticky on mobile, inline on desktop */}
+      <div className="md:mt-8 mt-4 md:static fixed bottom-0 left-0 right-0 md:bg-transparent bg-[#06080B]/95 backdrop-blur-md border-t md:border-0 border-[#00F0FF]/20 md:p-0 p-3 z-40 safe-bottom flex flex-wrap items-center justify-between gap-3">
         <button onClick={back} disabled={step===1 || busy} className="btn-hud btn-hud-ghost" data-testid="wizard-back-btn">
           <ArrowLeft size={14}/> Back
         </button>
         <div className="flex gap-3">
           {step === 5 ? (
             <button onClick={next} disabled={busy} className="btn-hud btn-hud-alert pulse-alert" data-testid="authorize-launch-btn">
-              <Rocket size={16}/> {busy ? "TRANSMITTING…" : "AUTHORIZE AERIAL RECONNAISSANCE"}
+              <Rocket size={16}/> {busy ? "TRANSMITTING…" : isMobile ? "AUTHORIZE" : "AUTHORIZE AERIAL RECONNAISSANCE"}
             </button>
           ) : (
             <button onClick={next} disabled={busy || (step===4 && scanning)} className="btn-hud" data-testid="wizard-next-btn">
-              {busy ? "PROCESSING…" : step===4 ? "Lock Mesh & Continue" : "Continue"} <ArrowRight size={14}/>
+              {busy ? "PROCESSING…" : step===4 ? (isMobile ? "Lock & Continue" : "Lock Mesh & Continue") : "Continue"} <ArrowRight size={14}/>
             </button>
           )}
         </div>

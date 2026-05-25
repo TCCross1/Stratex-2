@@ -1,0 +1,64 @@
+{
+  "summary": "Iteration 5 mobile-only Playwright pass at iPhone 13 Pro viewport (390x844). Tested Landing, Nav, NewMission wizard (5 steps), Mission Dashboard (4 mobile tabs), Projects, Fleet, Reports. RESULT: 1 CRITICAL runtime bug + 1 HIGH visual bug found. All other mobile responsiveness requirements pass.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "NewMission.jsx (Step 4 — Vision Mesh)",
+        "issue": "CRITICAL ReferenceError: 'isMobile is not defined' is thrown when the wizard advances to Step 4. The component references `isMobile` at lines 266, 267, 387, 391 but never declares it. `useIsMobile` is imported at line 5 but the hook is never invoked inside the NewMission function. Mobile users CANNOT proceed past Step 3. The full-screen red CRA error overlay is shown.",
+        "selector": "/app/frontend/src/pages/NewMission.jsx line ~34 (inside `export default function NewMission()`). Add: `const isMobile = useIsMobile(900);`",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Landing.jsx (hero section)",
+        "issue": "Horizontal page scroll on mobile: document.body.scrollWidth=407 > window.innerWidth=390 (17px overflow). Root cause: the H1 word 'RECONNAISSANCE' at `text-4xl` (~36px) with `tracking-[0.06em]` is wider than 390px on iPhone. This also makes the CTA flex row not wrap — 'PROJECT LEDGER' button overflows right edge instead of stacking under 'LAUNCH FLEET COMMAND'. Requirement: CTAs stacked vertically on mobile.",
+        "selector": "/app/frontend/src/pages/Landing.jsx lines 33-37 (H1) and line 41 (CTA wrapper). Suggest: change `text-4xl sm:text-5xl` to `text-[2rem] sm:text-5xl` AND change CTA wrapper from `flex flex-wrap gap-3` to `flex flex-col sm:flex-row gap-3 sm:gap-4`",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Landing hero (iPhone 390px)",
+        "issues": [
+          "Hero H1 'RECONNAISSANCE' visually clipped at right edge; consider `break-words` or smaller mobile font-size.",
+          "CTA buttons (LAUNCH FLEET COMMAND + PROJECT LEDGER) sit side-by-side instead of stacked vertically — only the first is fully tappable; the second is partially off-screen."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_5.json",
+    "/app/test_reports/landing_mobile.png",
+    "/app/test_reports/md_mobile.png",
+    "/app/test_reports/nm_step2_mobile.png"
+  ],
+  "action_items": [
+    "[CRITICAL] Add `const isMobile = useIsMobile(900);` inside the NewMission() component (around line 34) of /app/frontend/src/pages/NewMission.jsx. Without it the wizard runtime-crashes when entering Step 4 because lines 266/267/387/391 reference an undefined identifier.",
+    "[HIGH] Fix Landing hero overflow at 390px: reduce H1 mobile size and/or stack CTAs vertically with `flex-col sm:flex-row` so document.body.scrollWidth stays <= 390 (currently 407)."
+  ],
+  "critical_code_review_comments": [
+    "NewMission.jsx imports `useIsMobile` but never calls it — basic JS reference error that any quick local mobile smoke test would have caught. Add a unit smoke test that mounts each wizard step at 390px width.",
+    "Landing.jsx CTA row uses `flex flex-wrap` (line 41), which can't help if a single sibling element (the H1 in this case) already inflates the parent past viewport width. The fix is at the H1 level (mobile font-size) plus explicit `flex-col` on the CTAs.",
+    "Suggestion: add a CI E2E gate that fails if document.body.scrollWidth > window.innerWidth + 2 on any route at 390px."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (not retested)", "frontend": "82% (9/11 mobile checks pass; Landing hero overflow + NewMission Step 4 crash fail)" },
+  "test_credentials": "n/a (no auth)",
+  "seed_data_creation": "Used existing project id 9527c7cb-b5e5-4ae4-b517-26d489dd4bb8 (already had mission + 5 anomalies + agent_reports).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Mobile-only iteration. All Mission Dashboard mobile tabs work (mtab-model/forensic/anomalies/quant) with anomaly pick→forensic auto-jump confirmed. Nav hamburger drawer works perfectly. Projects/Fleet/Reports have zero horizontal scroll at 390px. ONLY remaining mobile failures: (1) NewMission.jsx missing `isMobile` declaration causes Step 4 runtime crash; (2) Landing hero text overflows viewport. After main agent fixes those two, re-run the same Playwright iPhone 13 Pro test (use project id 9527c7cb-b5e5-4ae4-b517-26d489dd4bb8 for mission dashboard).",
+  "rca of the issue": {
+    "newmission_isMobile_crash": {
+      "reproduction": "1) Open /mission/new on a 390x844 viewport. 2) Fill intake fields and click Continue. 3) On Step 2 click Continue. 4) On Step 3 click Continue. 5) Page crashes with full-screen 'Uncaught runtime errors: isMobile is not defined' overlay.",
+      "rca": "NewMission.jsx imports useIsMobile (line 5) but never invokes it inside the component body. Lines 266, 267, 387, 391 reference `isMobile` directly, which is undefined in scope. The Step 1-3 panels happen to not reference `isMobile` in their JSX so the crash only manifests when React tries to render Step 4 (Vision Mesh, line 266-267) or the sticky bottom bar's mobile-aware labels.",
+      "fix": "Insert `const isMobile = useIsMobile(900);` inside `export default function NewMission()` (e.g. after `const navigate = useNavigate();` at line 34)."
+    },
+    "landing_horizontal_scroll": {
+      "reproduction": "1) Open / on a 390x844 viewport. 2) document.body.scrollWidth === 407, window.innerWidth === 390 → user can scroll the page horizontally by 17px.",
+      "rca": "The hero H1 contains 'RECONNAISSANCE' (15 chars) rendered at text-4xl (~36px) with tracking-[0.06em]; the rendered single word measures ~407px which forces the entire grid container past the viewport. Because the grid expands, `flex flex-wrap` on the CTA row also fails to wrap, leaving 'PROJECT LEDGER' clipped off-screen.",
+      "fix": "Reduce hero H1 mobile font-size (e.g. `text-[2rem] sm:text-5xl md:text-6xl lg:text-7xl`) AND/OR allow break-words. Additionally change CTA wrapper to `flex flex-col sm:flex-row gap-3` so the two CTAs are stacked on mobile per requirement."
+    }
+  }
+}
