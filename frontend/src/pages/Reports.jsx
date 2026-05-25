@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { HudCard, SectionTitle } from "@/components/HudCard";
-import { listProjects } from "@/lib/api";
-import { FileText } from "lucide-react";
+import { listProjects, pdfUrl } from "@/lib/api";
+import { FileText, Download } from "lucide-react";
 
 export default function Reports() {
   const [items, setItems] = useState([]);
@@ -27,7 +27,10 @@ export default function Reports() {
             <p className="text-sm text-silver leading-relaxed">{(p.agent_reports?.forensic || "").slice(0, 240)}…</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="tag-pill">{p.intake?.project_type}</span>
-              <span className="font-mono text-teal">${(p.pricing?.final_total||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-teal">${(p.pricing?.final_total||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                <a href={pdfUrl(p.id)} target="_blank" rel="noreferrer" data-testid={`report-pdf-${p.id.slice(0,8)}`} className="btn-hud btn-hud-ghost text-[10px] py-1 px-2"><Download size={12}/> PDF</a>
+              </div>
             </div>
           </HudCard>
         ))}

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
-import { getProject } from "@/lib/api";
-import { ASSETS } from "@/lib/constants";
-import { Activity, Cpu, Crosshair, Gavel, Radar, AlertTriangle, MapPin, Box, ArrowLeft } from "lucide-react";
+import RoofModel3D from "@/components/RoofModel3D";
+import { getProject, pdfUrl, computePricing } from "@/lib/api";
+import { Activity, Cpu, Crosshair, Gavel, Radar, AlertTriangle, MapPin, ArrowLeft, Download, Box, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 const sev_color = (s) => s === "CRITICAL" ? "text-plasma glow-orange" : s === "HIGH" ? "text-plasma" : s === "MED" ? "text-teal" : "text-volt";
 const sev_led   = (s) => s === "CRITICAL" || s === "HIGH" ? "led-alert pulse-alert" : s === "MED" ? "led-teal" : "led-ok";
@@ -12,10 +13,23 @@ export default function MissionDashboard() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [err, setErr] = useState(null);
+  const [pricingRevealed, setPricingRevealed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    getProject(id).then((p)=>{ if (mounted) setProject(p); }).catch((e)=>setErr(e.message));
+    getProject(id).then(async (p)=>{
+      if (!mounted) return;
+      // If pricing missing, compute it lazily so calculations always exist after a mesh scan.
+      if (!p.pricing) {
+        try {
+          const pr = await computePricing(id);
+          p = { ...p, pricing: pr };
+        } catch (_) { /* ignore */ }
+      }
+      setProject(p);
+      // dramatic pricing reveal after scan
+      setTimeout(()=>setPricingRevealed(true), 1400);
+    }).catch((e)=>setErr(e.message));
     return ()=>{ mounted = false; };
   }, [id]);
 
@@ -25,11 +39,16 @@ export default function MissionDashboard() {
   const tele = project.roof_telemetry || {};
   const pricing = project.pricing || {};
   const mission = project.mission || {};
-  const anomalies = mission.anomalies || [];
+  const anomalies = mission.anomalies || project.scan?.anomalies || [];
   const agents = project.agent_reports || {};
 
+  const handlePDF = () => {
+    window.open(pdfUrl(project.id), "_blank");
+    toast.success("Supplement packet generated");
+  };
+
   return (
-    <div data-testid="mission-dashboard" className="px-6 md:px-12 py-10 max-w-[1600px] mx-auto">
+    <div data-testid="mission-dashboard" className="px-6 md:px-12 py-10 max-w-[1700px] mx-auto">
       {/* HEADER */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
@@ -40,45 +59,70 @@ export default function MissionDashboard() {
           <h1 className="font-display text-3xl md:text-4xl uppercase tracking-[0.14em] text-silver">{project.intake?.customer_name}</h1>
           <div className="font-mono text-sm text-muted-hud flex items-center gap-2 mt-1"><MapPin size={12}/> {project.intake?.property_address}</div>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <span className="led led-ok pulse-glow"/>
-          <span className="font-mono text-[11px] uppercase tracking-widest text-volt">RECON COMPLETE</span>
+          <span className="font-mono text-[11px] uppercase tracking-widest text-volt mr-3">RECON COMPLETE</span>
+          <button onClick={handlePDF} className="btn-hud" data-testid="download-pdf-btn">
+            <Download size={14}/> Adjuster Supplement (PDF)
+          </button>
         </div>
       </div>
 
-      {/* TOP GRID */}
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
-        {/* 3D WIREFRAME PLACEHOLDER */}
-        <HudCard scanline className="p-4 min-h-[420px] relative">
-          <div className="font-mono text-[11px] tracking-widest uppercase text-muted-hud mb-3 flex items-center gap-2"><Box size={14}/> STRATEX Vision™ — Photogrammetry Mesh</div>
-          <div className="relative">
-            <img src={ASSETS.dashboard_montage} alt="3D wireframe" className="w-full h-auto opacity-90"/>
-            <div className="absolute inset-0 grid-floor opacity-10 pointer-events-none"/>
+      {/* 3D VISION HERO */}
+      <HudCard scanline className="p-4 mb-6">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase">
+            <Box size={14}/> STRATEX Vision™ — Spatial Photogrammetry Mesh
           </div>
-          <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4 bg-[#06080B]/85 border border-[#00F0FF]/30 p-3">
-            <DataReadout label="Total SF" value={tele.total_sf} testid="tele-sf"/>
-            <DataReadout label="Squares" value={tele.squares} testid="tele-sq"/>
-            <DataReadout label="Pitch" value={tele.pitch} testid="tele-pitch"/>
-            <DataReadout label="Ridge LF" value={tele.ridge_lf} testid="tele-ridge"/>
-            <DataReadout label="Eaves LF" value={tele.eaves_lf} testid="tele-eaves"/>
-            <DataReadout label="Valleys LF" value={tele.valleys_lf} accent="orange" testid="tele-valleys"/>
+          <div className="font-mono text-[11px] text-muted-hud uppercase tracking-widest">
+            {anomalies.length} anomalies • {anomalies.filter(a=>a.severity==="CRITICAL").length} critical
           </div>
-        </HudCard>
+        </div>
+        <div className="grid lg:grid-cols-[2fr_1fr] gap-4">
+          <div className="hud-card overflow-hidden">
+            <span className="corner-bl"/><span className="corner-br"/>
+            <RoofModel3D telemetry={tele} anomalies={anomalies} height={520}/>
+          </div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <DataReadout label="Total SF" value={tele.total_sf} testid="tele-sf"/>
+              <DataReadout label="Squares" value={tele.squares} testid="tele-sq"/>
+              <DataReadout label="Pitch" value={tele.pitch} testid="tele-pitch"/>
+              <DataReadout label="Ridge LF" value={tele.ridge_lf} testid="tele-ridge"/>
+              <DataReadout label="Eaves LF" value={tele.eaves_lf} testid="tele-eaves"/>
+              <DataReadout label="Valleys LF" value={tele.valleys_lf} accent="orange" testid="tele-valleys"/>
+            </div>
+            <HudCard className="p-4">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-muted-hud mb-2 flex items-center gap-2"><FileText size={12}/> Caliper Result</div>
+              <div className="font-heading text-silver">
+                Layers: <span className="text-teal font-mono">{project.caliper?.layers_detected || 1}</span>
+              </div>
+              <div className={`font-display text-sm uppercase tracking-widest mt-1 ${project.caliper?.scope_determined === "Complete Tear-Off Required" ? "text-plasma glow-orange" : "text-volt glow-volt"}`}>
+                {project.caliper?.scope_determined || "Overlay Permitted"}
+              </div>
+            </HudCard>
+          </div>
+        </div>
+      </HudCard>
 
-        {/* AGENTS */}
-        <div className="space-y-4">
+      {/* AGENT NARRATIVES */}
+      <HudCard scanline className="p-6 mb-6">
+        <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase mb-4">
+          <Cpu size={14}/> Multi-Agent Forensic Core
+        </div>
+        <div className="grid md:grid-cols-2 gap-5">
           <AgentPanel icon={Crosshair} title="Forensic Diagnostic Agent" body={agents.forensic} testid="agent-forensic"/>
           <AgentPanel icon={Activity} title="Evidentiary Validation Agent" body={agents.validation} testid="agent-validation"/>
           <AgentPanel icon={Cpu} title="Reconciliation Engine" body={agents.reconciliation} testid="agent-reconciliation"/>
           <AgentPanel icon={Gavel} title="Jurisprudential Code Agent" body={agents.jurisprudential} testid="agent-jurisprudential"/>
         </div>
-      </div>
+      </HudCard>
 
       {/* ANOMALY GRID */}
       <HudCard scanline className="p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase"><AlertTriangle size={14}/> Thermal Anomaly Field</div>
-          <div className="font-mono text-[11px] text-muted-hud uppercase tracking-widest">{anomalies.length} detected • {mission.critical_count} critical</div>
+          <div className="font-mono text-[11px] text-muted-hud uppercase tracking-widest">{anomalies.length} detected</div>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="anomalies-grid">
           {anomalies.map((a)=>(
@@ -100,16 +144,16 @@ export default function MissionDashboard() {
         </div>
       </HudCard>
 
-      {/* PRICING SUMMARY */}
-      <HudCard scanline className="p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase"><Radar size={14}/> STRATEX Quant™ — Locked Estimate</div>
+      {/* PRICING — derived from the mesh */}
+      <HudCard scanline className={`p-6 mb-6 transition-opacity duration-700 ${pricingRevealed ? "opacity-100" : "opacity-30"}`}>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase"><Radar size={14}/> STRATEX Quant™ — Estimate Locked to Mesh</div>
           <div data-testid="mission-pricing-lock" className="font-mono text-[11px] text-plasma uppercase tracking-widest">{pricing.lock_mode}</div>
         </div>
         <div className="overflow-x-auto">
           <table className="hud-table">
             <thead><tr><th>Line Item</th><th>Qty</th><th>Unit</th><th>Unit $</th><th>Total</th><th>Xactimate</th></tr></thead>
-            <tbody>
+            <tbody data-testid="mission-pricing-table">
               {(pricing.line_items||[]).map((li, i)=>(
                 <tr key={i}>
                   <td className="text-silver">{li.description}</td>
@@ -126,8 +170,8 @@ export default function MissionDashboard() {
         <div className="hud-divider my-4"/>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <DataReadout label="Subtotal" value={`$${(pricing.subtotal||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-subtotal"/>
-          <DataReadout label={`Overhead ${(pricing.overhead_rate*100).toFixed(0)}%`} value={`$${(pricing.overhead||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-overhead"/>
-          <DataReadout label={`Profit ${(pricing.profit_rate*100).toFixed(0)}%`} value={`$${(pricing.profit||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-profit"/>
+          <DataReadout label={`Overhead ${((pricing.overhead_rate||0)*100).toFixed(0)}%`} value={`$${(pricing.overhead||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-overhead"/>
+          <DataReadout label={`Profit ${((pricing.profit_rate||0)*100).toFixed(0)}%`} value={`$${(pricing.profit||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-profit"/>
           <DataReadout label="Final Total" accent="orange" value={`$${(pricing.final_total||0).toLocaleString(undefined,{minimumFractionDigits:2})}`} testid="sum-final"/>
         </div>
       </HudCard>

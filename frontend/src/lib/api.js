@@ -13,3 +13,5 @@ export const submitCaliper = (id, edge_thickness_in) =>
 export const computePricing = (id) => api.post(`/projects/${id}/pricing`).then(r => r.data);
 export const launchMission = (id, preflight) =>
   api.post(`/projects/${id}/launch`, preflight).then(r => r.data);
+export const runScan = (id) => api.post(`/projects/${id}/scan`).then(r => r.data);
+export const pdfUrl = (id) => `${API}/projects/${id}/report.pdf`;

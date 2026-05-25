@@ -460,7 +460,7 @@ async def launch_mission(project_id: str, preflight: PreflightStatus):
 
     all_clear = (
         preflight.trailer_hatch_secured
-        and preflight.drone_battery_percentage >= 100
+        and preflight.drone_battery_percentage >= 90
         and preflight.rtk_gps_signal == "Centimeter-Level Locked"
         and preflight.communication_uplink.startswith("Strong")
         and preflight.local_weather_clear
@@ -507,6 +507,234 @@ async def launch_mission(project_id: str, preflight: PreflightStatus):
 
     out = await db.projects.find_one({"id": project_id}, {"_id": 0})
     return out
+
+
+@api_router.post("/projects/{project_id}/scan")
+async def run_vision_scan(project_id: str):
+    """Simulate the autonomous drone scan: build the 3D mesh + detect anomalies."""
+    p = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(404, "Project not found")
+    telemetry = p.get("roof_telemetry") or simulate_roof_telemetry(project_id)
+    anomalies = detect_anomalies(project_id, telemetry)
+    scan = {
+        "telemetry": telemetry,
+        "anomalies": anomalies,
+        "anomalies_count": len(anomalies),
+        "critical_count": sum(1 for a in anomalies if a["severity"] == "CRITICAL"),
+        "mesh_status": "STITCHED",
+        "scanned_at": now_iso(),
+    }
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"roof_telemetry": telemetry, "scan": scan, "status": "scanned"}},
+    )
+    return scan
+
+
+@api_router.get("/projects/{project_id}/report.pdf")
+async def download_supplement_pdf(project_id: str):
+    """Generate a forensic-supplement PDF for insurance adjusters."""
+    from fastapi.responses import Response
+    p = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(404, "Project not found")
+    pdf_bytes = _build_supplement_pdf(p)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=STRATEX_Supplement_{project_id[:8]}.pdf"
+        },
+    )
+
+
+def _build_supplement_pdf(project: Dict[str, Any]) -> bytes:
+    """Render an adjuster-ready supplement packet using reportlab."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    )
+    from reportlab.lib.units import inch
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=LETTER,
+        leftMargin=0.55 * inch, rightMargin=0.55 * inch,
+        topMargin=0.6 * inch, bottomMargin=0.55 * inch,
+    )
+    OBS = colors.HexColor("#06080B")
+    TEAL = colors.HexColor("#00F0FF")
+    ORANGE = colors.HexColor("#FF5500")
+    SILVER = colors.HexColor("#E2E8F0")
+    MUTED = colors.HexColor("#94A3B8")
+
+    base = getSampleStyleSheet()
+    style_h1 = ParagraphStyle("h1", parent=base["Heading1"], textColor=TEAL,
+                              fontName="Helvetica-Bold", fontSize=22, leading=26, spaceAfter=8)
+    style_eyebrow = ParagraphStyle("eye", parent=base["Normal"], textColor=MUTED,
+                                   fontName="Helvetica", fontSize=8, leading=10, spaceAfter=4)
+    style_h2 = ParagraphStyle("h2", parent=base["Heading2"], textColor=ORANGE,
+                              fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=12, spaceAfter=6)
+    style_p = ParagraphStyle("p", parent=base["BodyText"], textColor=SILVER,
+                             fontName="Helvetica", fontSize=10, leading=14, spaceAfter=6)
+    style_mono = ParagraphStyle("m", parent=base["BodyText"], textColor=MUTED,
+                                fontName="Courier", fontSize=8, leading=10, spaceAfter=2)
+
+    elements = []
+    intake = project.get("intake", {})
+    tele = project.get("roof_telemetry", {}) or {}
+    pricing = project.get("pricing", {}) or {}
+    mission = project.get("mission", {}) or {}
+    agents = project.get("agent_reports", {}) or {}
+    anomalies = mission.get("anomalies", []) or (project.get("scan", {}) or {}).get("anomalies", [])
+
+    elements.append(Paragraph("STRATEX™ FORENSIC SUPPLEMENT PACKET", style_h1))
+    elements.append(Paragraph(
+        f"// Project {project.get('id', '')[:8]} • Generated {now_iso()}", style_eyebrow))
+
+    # Project header card
+    hdr = [
+        ["CUSTOMER", intake.get("customer_name", ""), "CARRIER", intake.get("insurance_carrier", "") or "—"],
+        ["PROPERTY", intake.get("property_address", ""), "TYPE", intake.get("project_type", "")],
+        ["TOTAL SF", str(tele.get("total_sf", "—")), "SQUARES", str(tele.get("squares", "—"))],
+        ["PITCH", str(tele.get("pitch", "—")), "RIDGE LF", str(tele.get("ridge_lf", "—"))],
+        ["LAYERS", str((project.get("caliper") or {}).get("layers_detected", "—")),
+         "SCOPE", str((project.get("caliper") or {}).get("scope_determined", "—"))],
+    ]
+    t = Table(hdr, colWidths=[1.0 * inch, 2.2 * inch, 1.0 * inch, 2.6 * inch])
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, -1), "Helvetica", 9),
+        ("FONT", (0, 0), (0, -1), "Helvetica-Bold", 8),
+        ("FONT", (2, 0), (2, -1), "Helvetica-Bold", 8),
+        ("TEXTCOLOR", (0, 0), (0, -1), TEAL),
+        ("TEXTCOLOR", (2, 0), (2, -1), TEAL),
+        ("TEXTCOLOR", (1, 0), (1, -1), SILVER),
+        ("TEXTCOLOR", (3, 0), (3, -1), SILVER),
+        ("BACKGROUND", (0, 0), (-1, -1), OBS),
+        ("BOX", (0, 0), (-1, -1), 0.7, TEAL),
+        ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#10141D")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 12))
+
+    # Agent narratives
+    for key, label in [
+        ("forensic", "FORENSIC DIAGNOSTIC AGENT"),
+        ("validation", "EVIDENTIARY VALIDATION AGENT"),
+        ("reconciliation", "RECONCILIATION ENGINE"),
+        ("jurisprudential", "JURISPRUDENTIAL CODE AGENT"),
+    ]:
+        elements.append(Paragraph(label, style_h2))
+        elements.append(Paragraph(agents.get(key, "—"), style_p))
+
+    # Anomalies
+    if anomalies:
+        elements.append(Paragraph("THERMAL ANOMALY FIELD", style_h2))
+        rows = [["ID", "TYPE", "SEVERITY", "Δ°F", "LAT", "LON", "CONF"]]
+        for a in anomalies:
+            rows.append([
+                a["id"], a["type"], a["severity"], a["thermal_delta"],
+                f"{a['lat']:.4f}", f"{a['lon']:.4f}", f"{a['confidence']*100:.1f}%"
+            ])
+        at = Table(rows, colWidths=[0.8*inch, 1.7*inch, 0.7*inch, 0.6*inch, 0.7*inch, 0.7*inch, 0.6*inch])
+        at.setStyle(TableStyle([
+            ("FONT", (0, 0), (-1, -1), "Courier", 8),
+            ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8),
+            ("TEXTCOLOR", (0, 0), (-1, 0), TEAL),
+            ("TEXTCOLOR", (0, 1), (-1, -1), SILVER),
+            ("TEXTCOLOR", (2, 1), (2, -1), ORANGE),
+            ("BACKGROUND", (0, 0), (-1, -1), OBS),
+            ("BOX", (0, 0), (-1, -1), 0.5, TEAL),
+            ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#10141D")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(at)
+
+    elements.append(PageBreak())
+
+    # Pricing line items
+    elements.append(Paragraph("STRATEX QUANT™ — LOCKED LINE-ITEM ESTIMATE", style_h1))
+    elements.append(Paragraph(
+        f"Margin Lock: {pricing.get('lock_mode', '—')}  •  Pitch ×{pricing.get('pitch_multiplier', '—')}  •  "
+        f"Labor Hrs {pricing.get('labor_hours', '—')}  •  Disposal {pricing.get('disposal_tons', '—')} TON",
+        style_mono))
+    elements.append(Spacer(1, 8))
+
+    if pricing.get("line_items"):
+        prows = [["DESCRIPTION", "QTY", "UNIT", "$ / UNIT", "TOTAL", "XACTIMATE"]]
+        for li in pricing["line_items"]:
+            prows.append([
+                li["description"], str(li["qty"]), li["unit"],
+                f"${li['unit_price']:.2f}",
+                f"${li['total']:,.2f}",
+                li["xactimate_tag"],
+            ])
+        pt = Table(prows, colWidths=[2.6*inch, 0.55*inch, 0.5*inch, 0.7*inch, 0.85*inch, 0.95*inch])
+        pt.setStyle(TableStyle([
+            ("FONT", (0, 0), (-1, -1), "Helvetica", 8),
+            ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8),
+            ("TEXTCOLOR", (0, 0), (-1, 0), TEAL),
+            ("TEXTCOLOR", (0, 1), (-1, -1), SILVER),
+            ("TEXTCOLOR", (4, 1), (4, -1), TEAL),
+            ("TEXTCOLOR", (5, 1), (5, -1), ORANGE),
+            ("BACKGROUND", (0, 0), (-1, -1), OBS),
+            ("BOX", (0, 0), (-1, -1), 0.7, TEAL),
+            ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#10141D")),
+            ("ALIGN", (1, 1), (4, -1), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(pt)
+
+    # Summary
+    elements.append(Spacer(1, 10))
+    sub = pricing.get("subtotal", 0) or 0
+    oh = pricing.get("overhead", 0) or 0
+    pf = pricing.get("profit", 0) or 0
+    ft = pricing.get("final_total", 0) or 0
+    srows = [
+        ["SUBTOTAL", f"${sub:,.2f}"],
+        [f"OVERHEAD ({int((pricing.get('overhead_rate') or 0)*100)}%)", f"${oh:,.2f}"],
+        [f"PROFIT ({int((pricing.get('profit_rate') or 0)*100)}%)", f"${pf:,.2f}"],
+        ["FINAL TOTAL", f"${ft:,.2f}"],
+    ]
+    st = Table(srows, colWidths=[3.5 * inch, 2.5 * inch], hAlign="RIGHT")
+    st.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, -1), "Helvetica-Bold", 10),
+        ("TEXTCOLOR", (0, 0), (0, -1), MUTED),
+        ("TEXTCOLOR", (1, 0), (1, -2), SILVER),
+        ("TEXTCOLOR", (0, -1), (-1, -1), TEAL),
+        ("FONT", (0, -1), (-1, -1), "Helvetica-Bold", 13),
+        ("BACKGROUND", (0, 0), (-1, -1), OBS),
+        ("BOX", (0, 0), (-1, -1), 0.7, TEAL),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#10141D")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(st)
+
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph(
+        "// Generated autonomously by the STRATEX™ multi-agent core. Supplement-ready for direct submission "
+        "to the named insurance carrier. Xactimate codes are mapped per the carrier's billing convention.",
+        style_mono))
+
+    doc.build(elements)
+    return buf.getvalue()
 
 
 app.include_router(api_router)

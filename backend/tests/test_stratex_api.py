@@ -184,7 +184,7 @@ def test_launch_rejects_bad_preflight(session, insurance_project):
 def test_launch_rejects_low_battery(session, insurance_project):
     bad = {
         "trailer_hatch_secured": True,
-        "drone_battery_percentage": 80,
+        "drone_battery_percentage": 78,
         "rtk_gps_signal": "Centimeter-Level Locked",
         "communication_uplink": "Strong / Starlink Verified",
         "local_weather_clear": True,
@@ -225,3 +225,63 @@ def test_launch_persists_complete(session, insurance_project):
     assert p["status"] == "complete"
     assert p.get("mission") is not None
     assert p.get("agent_reports") is not None
+
+
+
+# --- NEW: vision scan endpoint ---
+def test_scan_endpoint(session, retail_project):
+    r = session.post(f"{API}/projects/{retail_project['id']}/scan")
+    assert r.status_code == 200, r.text
+    scan = r.json()
+    assert scan["mesh_status"] == "STITCHED"
+    assert "telemetry" in scan and "anomalies" in scan
+    assert scan["anomalies_count"] == len(scan["anomalies"])
+    assert scan["anomalies_count"] >= 4
+    tele = scan["telemetry"]
+    for k in ["total_sf", "squares", "pitch_num"]:
+        assert k in tele
+    # verify persistence
+    g = session.get(f"{API}/projects/{retail_project['id']}").json()
+    assert g.get("scan", {}).get("mesh_status") == "STITCHED"
+
+
+def test_scan_not_found(session):
+    r = session.post(f"{API}/projects/no-such-id/scan")
+    assert r.status_code == 404
+
+
+# --- NEW: relaxed preflight (>=90) ---
+def test_launch_accepts_battery_90(session):
+    # Fresh project to launch
+    pp = session.post(f"{API}/projects", json={
+        "intake": {"customer_name": "TEST_Bat90", "property_address": "x", "project_type": "Private Cash Pay"},
+        "scope": {"underlayment_brand": "Synthetic Felt", "drip_edge_color": "White",
+                  "disposal_strategy": "Commercial Roll-off Dumpster", "fastener_type": "Electro-Galvanized"},
+    }).json()
+    good = {
+        "trailer_hatch_secured": True,
+        "drone_battery_percentage": 90,
+        "rtk_gps_signal": "Centimeter-Level Locked",
+        "communication_uplink": "Strong / Starlink Verified",
+        "local_weather_clear": True,
+    }
+    r = session.post(f"{API}/projects/{pp['id']}/launch", json=good, timeout=180)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["status"] == "complete"
+    assert out["mission"]["status"] == "COMPLETE"
+
+
+# --- NEW: PDF supplement endpoint ---
+def test_report_pdf(session, insurance_project):
+    r = session.get(f"{API}/projects/{insurance_project['id']}/report.pdf")
+    assert r.status_code == 200, r.text
+    assert r.headers.get("content-type", "").startswith("application/pdf")
+    body = r.content
+    assert len(body) > 2048, f"pdf too small: {len(body)} bytes"
+    assert body[:4] == b"%PDF", f"not a PDF header: {body[:8]!r}"
+
+
+def test_report_pdf_not_found(session):
+    r = session.get(f"{API}/projects/no-such-id/report.pdf")
+    assert r.status_code == 404

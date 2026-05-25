@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
+import RoofModel3D from "@/components/RoofModel3D";
 import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
 
 const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
@@ -112,10 +113,21 @@ export default function Landing() {
       {/* DASHBOARD MONTAGE */}
       <section className="px-6 md:px-12 py-16">
         <div className="max-w-[1500px] mx-auto">
-          <SectionTitle eyebrow="// INVESTOR-READY HUD" title="Mission-Class Dashboards" />
-          <HudCard className="p-3">
-            <img src={ASSETS.dashboard_montage} alt="STRATEX Dashboard" className="w-full h-auto rounded-sm" data-testid="dashboard-montage" />
+          <SectionTitle eyebrow="// SPATIAL MODEL LIVE" title="STRATEX Vision™ — Photogrammetry Mesh"/>
+          <HudCard scanline className="p-2">
+            <RoofModel3D
+              telemetry={{ total_sf: 2800, squares: 28, ridge_lf: 84, eaves_lf: 124, valleys_lf: 28, pitch_num: 8, pitch: "8/12" }}
+              anomalies={[
+                {id:"ANOM-01", type:"Wet Substrate", severity:"CRITICAL", thermal_delta:"+7.2°F", confidence:0.97, lat:38.04, lon:-84.50},
+                {id:"ANOM-02", type:"Hail Bruising", severity:"HIGH", thermal_delta:"+2.4°F", confidence:0.91, lat:38.04, lon:-84.50},
+                {id:"ANOM-03", type:"Compromised Decking", severity:"HIGH", thermal_delta:"+9.6°F", confidence:0.94, lat:38.04, lon:-84.50},
+              ]}
+              height={520}
+            />
           </HudCard>
+          <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">
+            Every Quant™ calculation is locked to the geometry of this mesh. Drag to orbit, scroll to zoom — anomalies pulse plasma orange on the exact roof facet where the drone detected them.
+          </p>
           <div className="grid md:grid-cols-4 gap-4 mt-8">
             <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Cloud size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Cloud Rendering</span></div><p className="text-silver font-heading">Real-time photogrammetry stitch</p></HudCard>
             <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Activity size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Thermal Map</span></div><p className="text-silver font-heading">Radiometric anomaly overlay</p></HudCard>
