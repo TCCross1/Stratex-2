@@ -23,6 +23,15 @@ STRATEX™ (Strategic Thermal Reconnaissance & Automated Topology Estimator) —
 - **Routes**: `/`, `/mission/new`, `/mission/:id`, `/projects`, `/fleet`, `/reports`
 - **API**: `/api/projects` (CRUD), `/api/projects/{id}/caliper`, `/api/projects/{id}/pricing`, `/api/projects/{id}/launch`
 
+## What's Been Implemented (2026-02 — v1.2.0)
+- ✅ **Roof Topology Engine** (`/app/backend/roof_topology.py`) — full multi-facet geometric engine. Presets: cross-hip, hip, front-gable, L-shape, dutch-gable. Each facet has 3D polygon vertices, normal vector, planar area, true area (sec(θ) corrected), pitch and color tag. Edges classified as ridge / valley / hip / eave / rake by adjacent-facet geometry. Architectural docstring documents the full SfM → MVS/NeRF/3D Gaussian Splatting → mesh extract → RANSAC facet segmentation → dihedral edge classification → RTK calibration → thermal fusion pipeline.
+- ✅ **Roof Style Selector** added to NewMission Step 2 — 5 topology presets, drives the 3D model + pricing math.
+- ✅ **Advanced Diagnostics dashboard** (3-column layout matching the reference image):
+  - LEFT rail: Project meta + STRATEX Quant™ Estimation card (Total Squares / Ridges / Valleys / Hips / Eaves / Rakes-Gables / Primary Pitch / RTK Precision / Topology) + Caliper Result
+  - CENTER: Interactive 3D multi-facet wireframe model with anomaly-on-facet polygons + floating callout labels ("Anomaly ID: AD-KY041-001") + click-to-isolate raycaster + edge legend (ridge/valley/hip/eave)
+  - RIGHT rail: Forensic Overlay panel (Diagnosis / Facet Location / Area Affected sq.ft. / Confidence % / Thermal Δ + procedural FLIR Iron palette thermal heatmap canvas) + Anomaly Field selector with severity LEDs
+- ✅ **Facet-localised anomalies** — every anomaly is now attached to a specific facet (F1, F2, ... or A1, B1, etc.), with area_affected_sf computed from the facet area, AD-KY041-XXX id format, lat/lon, centroid, confidence.
+
 ## What's Been Implemented (2026-02 — v1.1.0)
 - ✅ **Interactive 3D Spatial Model (vanilla three.js)** — cyber-teal wireframe gable-hip roof generated procedurally from drone telemetry (ridge_lf, eaves_lf, pitch_num). Glowing plasma-orange anomaly polygons placed on the actual roof facets. Auto-rotating orbit camera with mouse drag/zoom. Lives at `/app/frontend/src/components/RoofModel3D.jsx`.
 - ✅ **Wizard restructured to 5 steps** — Intake → Scope → Caliper → **STRATEX Vision™ Mesh Capture** (NEW step 4 with auto-scan + 3D model + anomaly list) → Launch Portal. Calculations DO NOT appear until after the mesh is locked (per user feedback).
