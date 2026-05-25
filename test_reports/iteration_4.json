@@ -1,0 +1,33 @@
+{
+  "summary": "STRATEX iteration 4 (multi-facet topology engine + Advanced Diagnostics dashboard). FULL PASS on backend (10/10 new topology tests + 18/18 regression = 28/28) and frontend (all critical flows on public preview URL). Backend verified: POST /api/projects with each preset (cross_hip, hip, gable, l_shape, dutch_gable) returns roof_telemetry with facets[] (>=4 for cross_hip; each has id/vertices/normal/area_planar_sf/area_true_sf/pitch/color_tag), edges[] (each with a/b/length_ft/classification in {ridge,valley,hip,eave,rake}), totals (total_sf, squares, ridges_lf, valleys_lf, hips_lf, eaves_lf, rakes_lf), rtk_precision_cm, style. Math validated: cross_hip has hips_lf>0 and eaves_lf>0; squares == round(total_sf/100, 2); sum(facet.area_true_sf) == totals.total_sf; sec(theta) correction visible (area_true_sf > area_planar_sf on sloped facets). POST /scan returns >=4 facet-localised anomalies; every anomaly has facet_id (referencing a real facet), area_affected_sf>0, diagnosis, severity in {CRITICAL,HIGH,MED,LOW}, confidence in [0,1], thermal_delta, lat/lon, centroid[3], id matching ^AD-KY041-\\d{3}$. Existing /pricing and /report.pdf still produce valid output with new telemetry shape. Frontend verified end-to-end: Landing page renders RoofModel3D canvas with zero console errors; /mission/new Step 2 renders all 5 roof-style options (scope-roof-style-{cross_hip,hip,gable,l_shape,dutch_gable}), cross_hip default-active, click on gable switches active state; Mission Dashboard at /mission/eeb8191f-... renders 3-column Advanced Diagnostics layout: Quant rail (qe-squares=28.95, qe-valleys=28.77 LF, qe-hips=191.53 LF, qe-eaves=280.54 LF, qe-rtk=1.66 cm, qe-style=cross_hip), centre 3D model with multi-facet wireframe + colored facets + anomaly polygons + AD-KY041-XXX callout labels, right rail Forensic Overlay (diagnosis/location/area affected/confidence%/thermal Δ + thermal-heatmap canvas) + AnomalySelector with 6 entries and severity LEDs. Clicking 2nd anomaly updates Forensic Overlay AND highlights the corresponding polygon in gold (visible in screenshot). PDF download button present. Zero console errors on landing, /mission/new, /mission/{id}.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_topology_engine.py",
+    "/app/backend/tests/test_stratex_api.py",
+    "/app/test_reports/pytest/iter4_topology.xml",
+    "/app/test_reports/pytest/iter4_regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 775 lines — still close to the 700-line guideline. Recommend extracting pricing engine + PDF builder + AI narratives into separate modules (e.g. pricing.py, pdf_builder.py, agents.py).",
+    "roof_topology.preset_dutch_gable currently returns the same shape as a hip box (no actual gablet at the eave-end). Functional but the 'dutch_gable' label is somewhat aspirational — consider adding a true gablet sub-facet at one or both ridge ends so the topology visually differs from preset_hip.",
+    "RoofModel3D.jsx anomaly polygon highlight uses gold (#FFD700) for the SELECTED anomaly and plasma-orange for the active callout label — works but the contrast between unselected anomaly polygons (orange #FF8A60) and selected (gold) could be sharpened. Minor visual nit.",
+    "/launch endpoint is still synchronous on Claude generation (~90-150s). 'Streaming launch progress' from the original goal still not implemented — pre-existing carry-over from iter 3, not a regression.",
+    "preset_cross_hip valley edges are placed at fixed (-2*scale, 0, 4*scale)→(10*scale, 6*scale, 6*scale) etc. — these are visually plausible but not geometrically derived from the two hip-box intersections. The classification engine in the docstring (dihedral-angle test) is not actually run here; for the demo this is acceptable but worth noting for future iteration."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_topology_engine.py"
+  ],
+  "success_rate": { "backend": "100% (28/28: 10 new + 18 regression)", "frontend": "100% (all critical flows)" },
+  "test_credentials": "n/a — no auth in app",
+  "seed_data_creation": "Pytest created: TEST_Topo_cross_hip, TEST_Topo_hip, TEST_Topo_gable, TEST_Topo_l_shape, TEST_Topo_dutch_gable, TEST_Topo_ch_classified, TEST_Topo_sec_theta, TEST_Topo_scan_anom, TEST_Topo_pricing, TEST_Topo_pdf, plus existing TEST_Insurance_Customer/TEST_Retail_Customer/TEST_Boundary/TEST_Bat90 from prior regression. Playwright/API created project eeb8191f-dd85-448f-8448-d8ffb700d83e (TEST_E2E_Iter4, cross_hip, scanned with 6 anomalies) — used to verify the Mission Dashboard UI.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Topology engine regression now covered at /app/backend/tests/test_topology_engine.py (parametrized across all 5 presets). Run with: pytest /app/backend/tests/test_topology_engine.py -v (~1.3s, no Claude). Full regression: pytest /app/backend/tests/ -v (~65s due to one /launch call hitting Claude). For UI verification of the 3-column Advanced Diagnostics dashboard, navigate directly to /mission/eeb8191f-dd85-448f-8448-d8ffb700d83e — project is configured + calipered (overlay) + scanned (6 anomalies, cross_hip topology) but NOT launched, so it exercises the scan.anomalies fallback path in MissionDashboard.jsx (mission.anomalies || scan.anomalies). Both test_testid lists are exhaustive in the script above. The two important data-testid contracts: anomaly-pick-{id} buttons in AnomalySelector and qe-{squares|totalsf|ridges|valleys|hips|eaves|rakes|pitch|rtk|style} in QuantEstimation card.",
+  "rca_of_the_issue": "n/a — no bugs found this iteration."
+}

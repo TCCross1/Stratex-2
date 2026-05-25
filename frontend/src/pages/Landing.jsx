@@ -116,13 +116,33 @@ export default function Landing() {
           <SectionTitle eyebrow="// SPATIAL MODEL LIVE" title="STRATEX Vision™ — Photogrammetry Mesh"/>
           <HudCard scanline className="p-2">
             <RoofModel3D
-              telemetry={{ total_sf: 2800, squares: 28, ridge_lf: 84, eaves_lf: 124, valleys_lf: 28, pitch_num: 8, pitch: "8/12" }}
+              telemetry={{
+                style: "cross_hip",
+                scale: 1.0,
+                facets: [
+                  {id:"A1", vertices:[[-23,0,-13],[23,0,-13],[12,7.5,0],[-12,7.5,0]], normal:[0,0.83,-0.55], area_planar_sf:600, area_true_sf:660, pitch:8, color_tag:"#FF8A60"},
+                  {id:"A2", vertices:[[23,0,-13],[23,0,13],[12,7.5,0]], normal:[0.83,0.55,0], area_planar_sf:170, area_true_sf:200, pitch:8, color_tag:"#FFB87A"},
+                  {id:"A3", vertices:[[23,0,13],[-23,0,13],[-12,7.5,0],[12,7.5,0]], normal:[0,0.83,0.55], area_planar_sf:600, area_true_sf:660, pitch:8, color_tag:"#7BB7C6"},
+                  {id:"A4", vertices:[[-23,0,13],[-23,0,-13],[-12,7.5,0]], normal:[-0.83,0.55,0], area_planar_sf:170, area_true_sf:200, pitch:8, color_tag:"#6FA3B5"},
+                ],
+                edges: [
+                  {a:[-23,0,-13],b:[23,0,-13],length_ft:46,classification:"eave"},
+                  {a:[23,0,-13],b:[23,0,13],length_ft:26,classification:"eave"},
+                  {a:[23,0,13],b:[-23,0,13],length_ft:46,classification:"eave"},
+                  {a:[-23,0,13],b:[-23,0,-13],length_ft:26,classification:"eave"},
+                  {a:[-23,0,-13],b:[-12,7.5,0],length_ft:18,classification:"hip"},
+                  {a:[23,0,-13],b:[12,7.5,0],length_ft:18,classification:"hip"},
+                  {a:[23,0,13],b:[12,7.5,0],length_ft:18,classification:"hip"},
+                  {a:[-23,0,13],b:[-12,7.5,0],length_ft:18,classification:"hip"},
+                  {a:[-12,7.5,0],b:[12,7.5,0],length_ft:24,classification:"ridge"},
+                ],
+              }}
               anomalies={[
-                {id:"ANOM-01", type:"Wet Substrate", severity:"CRITICAL", thermal_delta:"+7.2°F", confidence:0.97, lat:38.04, lon:-84.50},
-                {id:"ANOM-02", type:"Hail Bruising", severity:"HIGH", thermal_delta:"+2.4°F", confidence:0.91, lat:38.04, lon:-84.50},
-                {id:"ANOM-03", type:"Compromised Decking", severity:"HIGH", thermal_delta:"+9.6°F", confidence:0.94, lat:38.04, lon:-84.50},
+                {id:"AD-KY041-001", diagnosis:"Trapped Moisture", facet_id:"A1", severity:"CRITICAL", thermal_delta:"+7.2°F", confidence:0.92, area_affected_sf:96, lat:38.0406, lon:-84.5037},
+                {id:"AD-KY041-002", diagnosis:"CDX Deck Rot", facet_id:"A3", severity:"HIGH", thermal_delta:"+9.6°F", confidence:0.94, area_affected_sf:140, lat:38.0406, lon:-84.5037},
               ]}
-              height={520}
+              height={560}
+              showLabels
             />
           </HudCard>
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">

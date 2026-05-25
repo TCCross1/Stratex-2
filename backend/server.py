@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
+from roof_topology import build_topology
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -47,6 +49,7 @@ class ScopeConfig(BaseModel):
     drip_edge_color: str
     disposal_strategy: str   # Automated Mobile Trailer Rig | Commercial Roll-off Dumpster
     fastener_type: str
+    roof_style: str = "cross_hip"  # gable | hip | cross_hip | l_shape | dutch_gable
 
 
 class CaliperReading(BaseModel):
@@ -90,54 +93,68 @@ XACTIMATE_TAGS = {
 }
 
 
-def simulate_roof_telemetry(seed: str) -> Dict[str, Any]:
-    """Deterministic simulated drone photogrammetry output."""
-    rnd = random.Random(seed)
-    total_sf = round(rnd.uniform(2400, 3400), 0)
-    eaves_lf = round(total_sf * rnd.uniform(0.038, 0.045), 0)
-    rakes_lf = round(total_sf * rnd.uniform(0.034, 0.042), 0)
-    ridge_lf = round(total_sf * rnd.uniform(0.025, 0.032), 0)
-    valleys_lf = round(total_sf * rnd.uniform(0.008, 0.014), 0)
-    hips_lf = round(total_sf * rnd.uniform(0.010, 0.018), 0)
-    pitch = rnd.choice([6, 7, 8, 9, 10, 12])
-    squares = round(total_sf / 100.0, 2)
+def simulate_roof_telemetry(seed: str, style: str = "cross_hip") -> Dict[str, Any]:
+    """Deterministic simulated drone photogrammetry → multi-facet topology.
+
+    The full STRATEX™ Vision pipeline (SfM → MVS/NeRF → mesh extract → facet
+    segmentation → RTK calibration → thermal fusion) is documented in
+    `roof_topology.py`. For the demo we synthesise the FINAL output (facets +
+    edges + anomalies + totals) deterministically from the project seed.
+    """
+    topo = build_topology(style=style, project_seed=seed)
+    totals = topo["totals"]
     return {
-        "total_sf": total_sf,
-        "squares": squares,
-        "eaves_lf": eaves_lf,
-        "rakes_lf": rakes_lf,
-        "ridge_lf": ridge_lf,
-        "valleys_lf": valleys_lf,
-        "hips_lf": hips_lf,
-        "pitch": f"{pitch}/12",
-        "pitch_num": pitch,
+        "style": topo["style"],
+        "scale": topo["scale"],
+        "facets": topo["facets"],
+        "edges": topo["edges"],
+        "totals": totals,
+        "total_sf": totals["total_sf"],
+        "squares": totals["squares"],
+        "ridge_lf": totals["ridges_lf"],
+        "valleys_lf": totals["valleys_lf"],
+        "hips_lf": totals["hips_lf"],
+        "eaves_lf": totals["eaves_lf"],
+        "rakes_lf": totals["rakes_lf"],
+        "pitch": f"{topo['primary_pitch']}/12",
+        "pitch_num": int(round(topo["primary_pitch"])) or 8,
+        "rtk_precision_cm": topo["rtk_precision_cm"],
+        "mesh_status": topo["mesh_status"],
         "captured_at": now_iso(),
     }
 
 
 def detect_anomalies(seed: str, telemetry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The topology engine produces anomalies co-registered to facets; return them."""
+    if telemetry and telemetry.get("facets"):
+        topo = build_topology(style=telemetry.get("style", "cross_hip"), project_seed=seed)
+        return topo["anomalies"]
+    # Fallback to original generator
     rnd = random.Random(seed + "anom")
     anomaly_types = [
-        ("Wet Substrate", "subsurface_moisture", "+7.2°F"),
-        ("Missing Shingle Field", "missing_shingle", "-3.1°F"),
-        ("Loose Flashing", "flashing_defect", "+2.4°F"),
-        ("Hail Bruising Cluster", "impact_bruising", "+1.8°F"),
-        ("Compromised Decking", "rotted_decking", "+9.6°F"),
-        ("Sealant Failure", "sealant_failure", "+1.1°F"),
+        ("Trapped Moisture", "subsurface_moisture", "+7.2°F", "CRITICAL"),
+        ("Missing Shingle Field", "missing_shingle", "-3.1°F", "HIGH"),
+        ("Loose Flashing", "flashing_defect", "+2.4°F", "MED"),
+        ("Hail Bruising Cluster", "impact_bruising", "+1.8°F", "MED"),
+        ("CDX Deck Rot", "rotted_decking", "+9.6°F", "CRITICAL"),
+        ("Sealant Failure", "sealant_failure", "+1.1°F", "LOW"),
     ]
     count = rnd.randint(4, 7)
     anomalies = []
     for i in range(count):
-        kind, code, delta = rnd.choice(anomaly_types)
+        kind, code, delta, sev = rnd.choice(anomaly_types)
         anomalies.append({
-            "id": f"ANOM-{i+1:02d}",
+            "id": f"AD-KY041-{i+1:03d}",
             "type": kind,
+            "diagnosis": kind,
             "code": code,
             "thermal_delta": delta,
             "lat": round(38.0406 + rnd.uniform(-0.0005, 0.0005), 6),
             "lon": round(-84.5037 + rnd.uniform(-0.0005, 0.0005), 6),
-            "severity": rnd.choice(["LOW", "MED", "HIGH", "CRITICAL"]),
+            "severity": sev,
             "confidence": round(rnd.uniform(0.86, 0.99), 3),
+            "facet_id": f"F{(i % 4) + 1}",
+            "area_affected_sf": round(rnd.uniform(60, 280), 1),
         })
     return anomalies
 
@@ -376,8 +393,8 @@ async def health():
 async def create_project(body: ProjectCreate):
     project = Project(intake=body.intake, scope=body.scope, status="configured")
     doc = project.model_dump()
-    # Pre-compute roof telemetry on create
-    doc["roof_telemetry"] = simulate_roof_telemetry(project.id)
+    # Pre-compute roof telemetry with the requested topology
+    doc["roof_telemetry"] = simulate_roof_telemetry(project.id, style=body.scope.roof_style)
     await db.projects.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -427,7 +444,7 @@ async def compute_pricing(project_id: str):
     if not p:
         raise HTTPException(404, "Project not found")
     if not p.get("roof_telemetry"):
-        p["roof_telemetry"] = simulate_roof_telemetry(project_id)
+        p["roof_telemetry"] = simulate_roof_telemetry(project_id, style=(p.get("scope") or {}).get("roof_style", "cross_hip"))
     if not p.get("caliper"):
         # default single-layer caliper
         p["caliper"] = {
@@ -470,7 +487,7 @@ async def launch_mission(project_id: str, preflight: PreflightStatus):
 
     if not p.get("pricing"):
         if not p.get("roof_telemetry"):
-            p["roof_telemetry"] = simulate_roof_telemetry(project_id)
+            p["roof_telemetry"] = simulate_roof_telemetry(project_id, style=(p.get("scope") or {}).get("roof_style", "cross_hip"))
         if not p.get("caliper"):
             p["caliper"] = {
                 "layers_detected": 1,
@@ -515,7 +532,11 @@ async def run_vision_scan(project_id: str):
     p = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not p:
         raise HTTPException(404, "Project not found")
-    telemetry = p.get("roof_telemetry") or simulate_roof_telemetry(project_id)
+    style = (p.get("scope") or {}).get("roof_style", "cross_hip")
+    telemetry = p.get("roof_telemetry") or simulate_roof_telemetry(project_id, style=style)
+    # ensure facets exist (in case an older project had only flat telemetry)
+    if not telemetry.get("facets"):
+        telemetry = simulate_roof_telemetry(project_id, style=style)
     anomalies = detect_anomalies(project_id, telemetry)
     scan = {
         "telemetry": telemetry,

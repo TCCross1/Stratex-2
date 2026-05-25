@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
-import { ASSETS, UNDERLAYMENT_OPTIONS, DRIP_EDGE_COLORS, DISPOSAL_STRATEGIES, FASTENER_TYPES, PROJECT_TYPES, INSURANCE_CARRIERS } from "@/lib/constants";
+import { ASSETS, UNDERLAYMENT_OPTIONS, DRIP_EDGE_COLORS, DISPOSAL_STRATEGIES, FASTENER_TYPES, PROJECT_TYPES, INSURANCE_CARRIERS, ROOF_STYLES } from "@/lib/constants";
 import { createProject, submitCaliper, runScan, launchMission } from "@/lib/api";
 import { ArrowRight, ArrowLeft, Crosshair, FileText, Layers, Box, Rocket, AlertTriangle, CheckCircle2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +46,7 @@ export default function NewMission() {
     drip_edge_color: "Charcoal",
     disposal_strategy: "Automated Mobile Trailer Rig",
     fastener_type: "Hot-Dipped Galvanized",
+    roof_style: "cross_hip",
   });
   const [edgeThickness, setEdgeThickness] = useState(1.15);
   const [preflight, setPreflight] = useState({
@@ -162,6 +163,23 @@ export default function NewMission() {
             <Layers size={18}/><span className="font-mono text-[11px] uppercase tracking-[0.28em]">STEP 02 • Scope Configuration Matrix</span>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
+            <div className="md:col-span-2">
+              <label className="hud-label">Roof Topology Preset (drives the Vision™ mesh model)</label>
+              <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {ROOF_STYLES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    data-testid={`scope-roof-style-${s.id}`}
+                    onClick={() => setScope({ ...scope, roof_style: s.id })}
+                    className={`hud-option text-left ${scope.roof_style === s.id ? "active" : ""}`}
+                  >
+                    <div>{s.label}</div>
+                    <div className="font-mono text-[10px] mt-1 normal-case tracking-normal text-muted-hud" style={{ textTransform: "none" }}>{s.blurb}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="hud-label">Underlayment Brand</label>
               <div className="grid gap-2">{UNDERLAYMENT_OPTIONS.map((u)=><Choice key={u} value={u} current={scope.underlayment_brand} onClick={(v)=>setScope({...scope, underlayment_brand:v})} testid={`scope-under-${u.toLowerCase().replace(/\s+/g,'-')}`}/>)}</div>
@@ -250,12 +268,14 @@ export default function NewMission() {
             </div>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <DataReadout label="Total SF" value={project?.roof_telemetry?.total_sf || "—"} testid="mesh-sf"/>
-                <DataReadout label="Squares" value={project?.roof_telemetry?.squares || "—"} testid="mesh-sq"/>
+                <DataReadout label="Total SF" value={project?.roof_telemetry?.totals?.total_sf || project?.roof_telemetry?.total_sf || "—"} testid="mesh-sf"/>
+                <DataReadout label="Squares" value={project?.roof_telemetry?.totals?.squares || project?.roof_telemetry?.squares || "—"} testid="mesh-sq"/>
                 <DataReadout label="Pitch" value={project?.roof_telemetry?.pitch || "—"} testid="mesh-pitch"/>
-                <DataReadout label="Ridge LF" value={project?.roof_telemetry?.ridge_lf || "—"} testid="mesh-ridge"/>
-                <DataReadout label="Eaves LF" value={project?.roof_telemetry?.eaves_lf || "—"} testid="mesh-eaves"/>
-                <DataReadout label="Valleys LF" value={project?.roof_telemetry?.valleys_lf || "—"} accent="orange" testid="mesh-valleys"/>
+                <DataReadout label="Ridges LF" value={project?.roof_telemetry?.totals?.ridges_lf || project?.roof_telemetry?.ridge_lf || "—"} testid="mesh-ridge"/>
+                <DataReadout label="Valleys LF" value={project?.roof_telemetry?.totals?.valleys_lf || project?.roof_telemetry?.valleys_lf || "—"} accent="orange" testid="mesh-valleys"/>
+                <DataReadout label="Hips LF" value={project?.roof_telemetry?.totals?.hips_lf || project?.roof_telemetry?.hips_lf || "—"} testid="mesh-hips"/>
+                <DataReadout label="Eaves LF" value={project?.roof_telemetry?.totals?.eaves_lf || project?.roof_telemetry?.eaves_lf || "—"} testid="mesh-eaves"/>
+                <DataReadout label="RTK Precision" value={`${project?.roof_telemetry?.rtk_precision_cm || "—"} cm`} accent="volt" testid="mesh-rtk"/>
               </div>
 
               <HudCard className="p-4" alert={scan?.critical_count > 0}>

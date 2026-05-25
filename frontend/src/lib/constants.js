@@ -12,3 +12,11 @@ export const DISPOSAL_STRATEGIES = ["Automated Mobile Trailer Rig", "Commercial 
 export const FASTENER_TYPES = ["Electro-Galvanized", "Hot-Dipped Galvanized", "Stainless Steel"];
 export const PROJECT_TYPES = ["Private Cash Pay", "Insurance Claim"];
 export const INSURANCE_CARRIERS = ["State Farm", "Allstate", "USAA", "Liberty Mutual", "Farmers", "Travelers", "Nationwide", "Progressive"];
+
+export const ROOF_STYLES = [
+  { id: "cross_hip", label: "Cross-Hip", blurb: "Two intersecting hip volumes — valleys + ridges" },
+  { id: "hip", label: "Hip", blurb: "Four-facet hip roof (no gables)" },
+  { id: "gable", label: "Front Gable", blurb: "Simple two-slope gable" },
+  { id: "l_shape", label: "L-Shape Hip", blurb: "L-shaped plan with intersecting hip wing" },
+  { id: "dutch_gable", label: "Dutch Gable", blurb: "Hip lower + gable upper hybrid" },
+];
