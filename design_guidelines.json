@@ -1,0 +1,162 @@
+{
+  "project_name": "STRATEX",
+  "theme": "dark",
+  "archetype": "Electric & Neon (HUD/Cyber-Shield Context)",
+  "design_philosophy": "Elite, high-end, futuristic tech-force, military-grade HUD. Investor-ready dark mode iPad app. Total reliance on pure deep darks, electric teal accents, and monospaced data readouts. Asymmetric, left-aligned, heavy use of grids and raw UI data borders.",
+  "typography": {
+    "fonts": {
+      "display": {
+        "family": "'Orbitron', sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap",
+        "usage": "Hero headers, major module titles (Vision™, Thermal™, Quant™), big numbers"
+      },
+      "heading": {
+        "family": "'Rajdhani', sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap",
+        "usage": "Card titles, section headers, widget titles"
+      },
+      "body": {
+        "family": "'Sora', sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&display=swap",
+        "usage": "Paragraphs, general UI text, agent narratives"
+      },
+      "mono": {
+        "family": "'JetBrains Mono', monospace",
+        "url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap",
+        "usage": "Data metrics, telemetry, coordinates, pricing readouts, HUD labels"
+      }
+    },
+    "rules": {
+      "headings": "Uppercase, tracking-widest, tight line-height.",
+      "data": "Always tabular-nums, tracking-tight, neon glows on active metrics."
+    }
+  },
+  "colors": {
+    "background": {
+      "matte_obsidian": "#06080B",
+      "deep_charcoal": "#10141D",
+      "hud_panel": "rgba(16, 20, 29, 0.75)"
+    },
+    "accents": {
+      "cyber_teal": "#00F0FF",
+      "volt_green": "#39FF14",
+      "plasma_orange": "#FF5500"
+    },
+    "text": {
+      "silver_white": "#E2E8F0",
+      "pure_white": "#FFFFFF",
+      "muted": "#94A3B8"
+    },
+    "borders": {
+      "teal_glow": "rgba(0, 240, 255, 0.4)",
+      "dim_grid": "rgba(226, 232, 240, 0.05)"
+    },
+    "forbidden": [
+      "purple",
+      "violet",
+      "white backgrounds",
+      "gradients into light colors",
+      "#000000 (use matte obsidian)",
+      "#808080 (use silver/muted slate)"
+    ]
+  },
+  "layout": {
+    "spacing": "Generous spacing. Use p-6, p-8, p-12. Avoid cramped panels.",
+    "alignment": "Asymmetric, left-aligned primarily. Avoid standard centered layouts.",
+    "grid": "HUD-style rigid grids, 1px visible border-collapse borders between grid items.",
+    "app_structure": "Fixed top nav + sidebar/header HUD + workspace grid for dashboard."
+  },
+  "components": {
+    "hud_card": {
+      "structure": "bg-[#10141D]/80 backdrop-blur-md border border-[#00F0FF]/30",
+      "geometry": "Sharp corners (rounded-none or max rounded-sm). Simulate corner notches with clip-path or pseudo elements. No rounded blobs.",
+      "inner": "p-6 relative overflow-hidden. Add subtle scanline grain background texture overlay."
+    },
+    "glowing_button": {
+      "primary": "bg-[#00F0FF]/10 border border-[#00F0FF] text-[#00F0FF] hover:bg-[#00F0FF] hover:text-[#06080B] hover:shadow-[0_0_20px_rgba(0,240,255,0.6)] uppercase tracking-widest transition-all duration-300 font-bold",
+      "alert": "bg-[#FF5500]/10 border border-[#FF5500] text-[#FF5500] hover:bg-[#FF5500] hover:text-[#06080B] hover:shadow-[0_0_20px_rgba(255,85,0,0.6)] uppercase tracking-widest",
+      "disabled": "opacity-50 cursor-not-allowed border-dashed"
+    },
+    "step_indicator": {
+      "bar": "Horizontal segmented HUD bar. bg-[#10141D] h-2 w-full flex gap-1",
+      "segment_active": "bg-[#00F0FF] shadow-[0_0_10px_rgba(0,240,255,0.8)]",
+      "segment_inactive": "bg-[#E2E8F0]/10",
+      "pulse": "Active segment should have a slow opacity pulse (animate-pulse)"
+    },
+    "pre_flight_led": {
+      "ok": "w-3 h-3 rounded-full bg-[#39FF14] shadow-[0_0_8px_rgba(57,255,20,0.8)]",
+      "alert": "w-3 h-3 rounded-full bg-[#FF5500] shadow-[0_0_8px_rgba(255,85,0,0.8)]",
+      "inactive": "w-3 h-3 rounded-full border border-gray-700"
+    },
+    "data_readout": {
+      "label": "text-[10px] uppercase tracking-widest text-[#94A3B8] font-mono",
+      "value": "text-lg text-[#00F0FF] font-mono font-bold drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]"
+    },
+    "agent_narrative_panel": {
+      "style": "Border-l-2 border-[#00F0FF] pl-4 py-2 bg-gradient-to-r from-[#00F0FF]/5 to-transparent",
+      "text": "text-sm text-[#E2E8F0] font-body leading-relaxed",
+      "typewriter_effect": "Recommended for entrance animation"
+    }
+  },
+  "pages": {
+    "landing": {
+      "hero": "Investor pitch focus. Dark obsidian background with faint glowing grid. STRATEX Logo prominent. High-contrast typography. CTA 'Launch Fleet Command' with cyber teal glow.",
+      "pillars": "Three distinct HUD cards for Vision™, Thermal™, and Quant™. Hover effects trigger data scanline sweep.",
+      "trailer_preview": "Use the trailer engineering scene asset."
+    },
+    "intake_wizard": {
+      "steps": [
+        "1: Project Intake & Auth",
+        "2: Scope Configuration Matrix",
+        "3: Macro-Edge Profile & Layer Analysis (Use Caliper Analysis tablet asset)",
+        "4: Quant Pricing Node (Use Quant Pricing tablet asset, show O&P lock & Xactimate tags)",
+        "5: Fleet Autonomous Launch Portal (Pre-flight check list with green/orange LEDs, large 'Authorize Aerial Reconnaissance' CTA)"
+      ]
+    },
+    "live_dashboard": {
+      "layout": "Use Dashboard montage asset for reference. 3D wireframe placeholder in center, thermal anomaly minimap, agent narrative panels on right sidebar, pricing summary bottom bar.",
+      "data": "Live telemetry, Xactimate line items updating in real-time."
+    },
+    "project_ledger": {
+      "layout": "Tabular data grid (Shadcn table customized). Fixed header, hover row highlights in faint teal. Status badges in Volt Green or Plasma Orange."
+    }
+  },
+  "motion": {
+    "scanline_sweep": "CSS animation moving a semi-transparent linear-gradient from top to bottom over cards.",
+    "glow_pulse": "Subtle box-shadow opacity oscillation for active states.",
+    "staggered_reveal": "List items and table rows fade in with slight Y-axis translation, sequentially.",
+    "hover": "Instant color snap, slow decay."
+  },
+  "assets": {
+    "logo": {
+      "url": "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/uxbfg6t0_IMG_2137.png",
+      "usage": "Main navigation, Hero section, Loading screens."
+    },
+    "dashboard_montage": {
+      "url": "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/zdnjwm8j_IMG_2145.png",
+      "usage": "Feature showcase on landing page, generic fallback for 3D/Thermal UI placeholders."
+    },
+    "trailer_engineering": {
+      "url": "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/3cs90n0v_IMG_2146.png",
+      "usage": "Landing page 'Fleet/Trailer Launch' section background or hero image."
+    },
+    "caliper_tablet": {
+      "url": "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/37kjvb3k_IMG_2141.png",
+      "usage": "Wizard Step 3: Macro-Edge Profile visual."
+    },
+    "pricing_tablet": {
+      "url": "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/dq9f5yjv_IMG_2140.png",
+      "usage": "Wizard Step 4: Quant Pricing visual."
+    }
+  },
+  "icons": "lucide-react. Standardize stroke-width to 1.5 for precision tech feel. NO EMOJIS.",
+  "testing": {
+    "rule": "All interactive elements MUST have data-testid attributes.",
+    "format": "kebab-case, role-based. e.g., data-testid='launch-auth-button', data-testid='wizard-step-3'"
+  },
+  "tech_stack_directives": {
+    "components": "Use pure HTML/Tailwind for marketing/hero layouts. Use Shadcn components for complex interactive elements (Select, Tables, Dialogs) but strip Vercel-look defaults and apply HUD styles.",
+    "forms": "React Hook Form + Zod for Intake Wizard.",
+    "file_type": "React JS (.js, .jsx). No TypeScript."
+  }
+}
