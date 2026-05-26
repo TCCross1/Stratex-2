@@ -55,7 +55,7 @@ export default function Nav() {
 
         {/* Mobile menu button */}
         <button
-          onClick={() => setOpen(!open)}
+          onClick={() => { try{navigator.vibrate?.(8);}catch(_){}; setOpen(!open); }}
           data-testid="nav-mobile-toggle"
           aria-label="Toggle menu"
           className="md:hidden w-11 h-11 flex items-center justify-center border border-[#00F0FF]/40 text-teal"

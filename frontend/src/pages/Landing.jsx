@@ -30,7 +30,7 @@ export default function Landing() {
               <span className="led led-teal" />
               <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">SYSTEM ONLINE • RECON GRID v1.2.0</span>
             </div>
-            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.06em] leading-[0.95] text-silver">
+            <h1 className="font-display text-[2rem] leading-[1.02] sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.04em] sm:tracking-[0.06em] sm:leading-[0.95] text-silver break-words">
               <span className="block">STRATEGIC</span>
               <span className="block">THERMAL</span>
               <span className="block text-teal glow-teal">RECONNAISSANCE</span>
@@ -38,11 +38,11 @@ export default function Landing() {
             <p className="mt-5 md:mt-6 max-w-xl text-sm md:text-lg text-muted-hud font-body leading-relaxed">
               STRATEX™ is the world's first autonomous, solar-powered roofing recon platform — pairing radiometric thermal mapping with a multi-agent actuarial engine to deliver insurance-grade estimates without a human ever climbing a ladder.
             </p>
-            <div className="mt-8 md:mt-10 flex flex-wrap gap-3 md:gap-4">
-              <Link to="/mission/new" data-testid="hero-launch-cta" className="btn-hud pulse-glow">
+            <div className="mt-8 md:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 md:gap-4">
+              <Link to="/mission/new" data-testid="hero-launch-cta" className="btn-hud pulse-glow w-full sm:w-auto justify-center">
                 <Radar size={16} /> Launch Fleet Command
               </Link>
-              <Link to="/projects" data-testid="hero-projects-cta" className="btn-hud btn-hud-ghost">
+              <Link to="/projects" data-testid="hero-projects-cta" className="btn-hud btn-hud-ghost w-full sm:w-auto justify-center">
                 <Box size={16} /> Project Ledger
               </Link>
             </div>

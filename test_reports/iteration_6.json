@@ -1,0 +1,55 @@
+{
+  "summary": "Iteration 6 mobile-only retest at iPhone 13 Pro viewport (390x844). Verified the two iteration-5 fixes. CRITICAL FIX 1 (NewMission isMobile declaration) — CONFIRMED FIXED: wizard advances all 5 steps with no runtime crash, Step 4 Vision Mesh canvas renders at 306x360 (~360px height), Step 4 next-btn label='Lock & Continue' and Step 5 authorize-btn label='AUTHORIZE' (correct mobile labels). HIGH FIX 2 (Landing horizontal overflow) — STILL FAILING: document.body.scrollWidth=407 > window.innerWidth=390 (17px overflow). Although H1 now uses text-[2rem] and break-words and CTAs stack vertically, the hero column itself still extends past the viewport (left=16 to right=401 on all hero children). All regression checks PASS: Nav hamburger, Mission Dashboard mobile tabs with anim-fade-up wrapper, anomaly→forensic auto-jump, Projects/Fleet/Reports zero horizontal scroll, haptic vibration non-throwing, zero console errors on all routes.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Landing.jsx (hero grid container)",
+        "issue": "Hero column still overflows viewport by 17px on iPhone 13 Pro: document.body.scrollWidth=407 vs window.innerWidth=390. All hero children (badge, H1 spans STRATEGIC/THERMAL/RECONNAISSANCE, paragraph, CTA wrapper, both CTAs, stats grid, hud-card image wrapper) measure left=16 right=401 width=385 — i.e. their containing column is wider than the viewport. The H1 fix (text-[2rem] + break-words) made the H1 *content* fit inside its 385px box, but the box itself is positioned x=[16,401] which exceeds 390. The visual symptom in the screenshot is the right edge of 'RECONNAISSANCE' clipping past the right side of the screen, and a horizontal scrollbar appearing. Root cause: the .grid-cols-1 lg:grid-cols-2 container or its parent .container/max-w wrapper appears to compute a column width of 385px starting at x=16, which equals viewport_width(390) - left_padding(16) + right_overflow(11) — the right padding is being lost. Check `/app/frontend/src/pages/Landing.jsx` line ~24 (grid wrapper) and any parent in App layout / index.css for missing `box-sizing: border-box` or width:100vw without compensating padding, or for a fixed min-width breaking the layout.",
+        "selector": "/app/frontend/src/pages/Landing.jsx line ~24 (grid wrapper) — inspect parent layout container. Fix candidates: (a) add `overflow-x: hidden` on body/main, (b) ensure outer wrapper uses `max-w-screen-2xl px-4 mx-auto` with `w-full` (NOT `w-screen`), (c) constrain hero `<section>` width to `max-w-[100vw]`.",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Landing hero (iPhone 390px)",
+        "issues": [
+          "The 'RECONNAISSANCE' word still visually clips on the right edge due to the 17px column overflow described above. Even though H1 has break-words, the parent column extends past the viewport so the right portion of the H1 falls off-screen."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_6.json",
+    "/app/test_reports/iter6_landing.png",
+    "/app/test_reports/iter6_step4_real.png",
+    "/app/test_reports/iter6_step5_real.png",
+    "/app/test_reports/iter6_md_anomjump.png"
+  ],
+  "action_items": [
+    "[HIGH] Fix remaining 17px horizontal overflow on Landing at 390px. The H1+CTA fixes were necessary but not sufficient — the parent hero column itself measures 385px wide positioned at x=16, ending at x=401 (11-17px past viewport). Either (a) add `overflow-x: hidden` on the page root, (b) replace any `w-screen` with `w-full`, or (c) wrap the hero section with a container that uses `max-w-[100vw] px-4 mx-auto` and ensure no descendant uses fixed width / min-width that breaks the column.",
+    "[LOW] Consider also tightening tracking on H1 for sub-360px viewports (`tracking-[0.02em]`) so 'RECONNAISSANCE' has more breathing room once the parent overflow is fixed."
+  ],
+  "critical_code_review_comments": [
+    "Iteration-5 fix only patched the *visible content* of the hero (H1 size + CTA stacking) but didn't address the actual *layout container* overflow. The H1 is now wrapping correctly internally, yet body.scrollWidth still equals 407, proving the overflow originates from a parent wrapper, not the H1. Recommend adding a CI guard `expect(document.body.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 2)` on every route at 390px before declaring mobile responsive.",
+    "Note for E1: the Made-with-Emergent badge overlay covers the bottom-right corner of the sticky wizard action bar on mobile, intercepting real Playwright click events on `wizard-next-btn` and `authorize-launch-btn` (had to use JS .click() to advance steps in tests). For end-users this is non-blocking because the badge is in the iframe overlay and clicks pass through, but consider raising the sticky bar's z-index or adding bottom padding so the button is not visually hidden behind the Emergent badge on iPhone."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (not tested)", "frontend": "92% (12/13 mobile checks pass; only Landing parent-container overflow remains)" },
+  "test_credentials": "n/a (no auth)",
+  "seed_data_creation": "Used existing project id 9527c7cb-b5e5-4ae4-b517-26d489dd4bb8 (already had mission + 5 anomalies + agent_reports). No new seeds created.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Mobile-only iteration. NewMission Step 4 isMobile crash is FIXED (verified by clicking through all 5 wizard steps via JS .click() — Step 4 canvas renders w=306 h=360, label='Lock & Continue', Step 5 label='AUTHORIZE', no console errors, no runtime overlay). Landing horizontal overflow is STILL present at 17px because the fix only addressed H1 content width — the parent column is what overflows. All other mobile features verified: nav-mobile-toggle/drawer, mtab-model/forensic/anomalies/quant with anim-fade-up wrappers (count=1 each), anomaly-pick-AD-KY041-001 → auto-jumps to mtab-forensic (becomes active with `bg-[#00F0FF]/10 shadow-[0_0_12px]`), Projects/Fleet/Reports all scrollWidth=390 (no overflow), navigator.vibrate() returns 'ok' without throwing. Project id for mission dashboard mobile retest remains 9527c7cb-b5e5-4ae4-b517-26d489dd4bb8.",
+  "rca of the issue": {
+    "landing_horizontal_scroll_partial_fix": {
+      "reproduction": "1) Open / on a 390x844 viewport. 2) Evaluate document.body.scrollWidth → 407 (innerWidth=390 → 17px overflow). 3) Evaluate getBoundingClientRect() on the H1 spans and all hero children → every one reports left=16, right=401, width=385. 4) The hero column box itself extends 11px past the right edge of the viewport.",
+      "rca": "Iteration-5 fixed H1 mobile font-size (text-[2rem]) and added break-words so 'RECONNAISSANCE' fits inside a 385px box. That makes H1.scrollWidth=385 which is below the (column width of 385). However the hero parent COLUMN starts at left=16 (from px-4) and is 385px wide, so its right edge is at x=401 — 11px past the 390px viewport. The 17px body overflow comes from this parent column plus the corner-br span (left=387, right=401, width=14). The fix needs to constrain the parent wrapper, not just the H1.",
+      "fix": "Add `overflow-x: hidden` to the page body or main wrapper (quick mitigation) AND/OR wrap the hero `<section>` in a `max-w-[100vw] px-4 mx-auto` container with `box-sizing: border-box` so total column width = viewport_width - 2*16 = 358px. Also ensure no ancestor uses `w-screen` (which expands beyond viewport when scrollbar exists)."
+    },
+    "newmission_isMobile_crash_verified_fixed": {
+      "verification": "Confirmed `const isMobile = useIsMobile(900);` declared inside NewMission() at line 35. Walked through all 5 steps via JS .click() on wizard-next-btn / authorize-launch-btn (the sticky bar is occluded by the Emergent badge for Playwright but works for real users). Step 4: canvas renders w=306 h=360 (~360px height target met), wizard-next-btn.textContent='Lock & Continue' (mobile label). Step 5: authorize-launch-btn.textContent='AUTHORIZE' (mobile label). No runtime error overlay, no console errors, no pageerror events."
+    }
+  }
+}

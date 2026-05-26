@@ -70,6 +70,7 @@ export default function MissionDashboard() {
       {isMobile ? (
         <HudCard scanline className="p-3 mb-6">
           <MobileTabs tab={mobileTab} setTab={setMobileTab} anomaliesCount={anomalies.length}/>
+          <div key={mobileTab} className="anim-fade-up">
           {mobileTab === "model" && (
             <div className="hud-card overflow-hidden mt-3">
               <span className="corner-bl"/><span className="corner-br"/>
@@ -77,7 +78,7 @@ export default function MissionDashboard() {
                 telemetry={tele}
                 anomalies={anomalies}
                 highlightAnomalyId={selectedAnomaly?.id}
-                onSelectAnomaly={(a) => { setSelectedAnomaly(a); setMobileTab("forensic"); }}
+                onSelectAnomaly={(a) => { setSelectedAnomaly(a); setMobileTab("forensic"); try{navigator.vibrate?.(10);}catch(_){} }}
                 height={380}
                 showLabels={false}
               />
@@ -116,11 +117,12 @@ export default function MissionDashboard() {
                 <AnomalySelector
                   anomalies={anomalies}
                   selectedId={selectedAnomaly?.id}
-                  onSelect={(a) => { setSelectedAnomaly(a); setMobileTab("forensic"); }}
+                  onSelect={(a) => { setSelectedAnomaly(a); setMobileTab("forensic"); try{navigator.vibrate?.(8);}catch(_){} }}
                 />
               </HudCard>
             </div>
           )}
+          </div>
         </HudCard>
       ) : (
         <HudCard scanline className="p-3 mb-6">
@@ -256,14 +258,20 @@ function MobileTabs({ tab, setTab, anomaliesCount }) {
     { id: "anomalies", label: `Anomalies${anomaliesCount ? ` (${anomaliesCount})` : ""}`, icon: AlertTriangle },
     { id: "quant",     label: "Quant™",   icon: Radar },
   ];
+  const click = (id) => {
+    if (id !== tab) {
+      try { navigator.vibrate?.(8); } catch (_) {}
+      setTab(id);
+    }
+  };
   return (
     <div data-testid="mobile-diag-tabs" className="flex gap-1 overflow-x-auto -mx-1 px-1 no-bounce">
       {tabs.map((t) => (
         <button
           key={t.id}
-          onClick={() => setTab(t.id)}
+          onClick={() => click(t.id)}
           data-testid={`mtab-${t.id}`}
-          className={`flex items-center gap-2 px-3 py-2 border whitespace-nowrap font-mono text-[10px] uppercase tracking-widest transition-all ${tab === t.id ? "border-[#00F0FF] text-teal bg-[#00F0FF]/10" : "border-[#00F0FF]/25 text-muted-hud"}`}
+          className={`flex items-center gap-2 px-3 py-2 border whitespace-nowrap font-mono text-[10px] uppercase tracking-widest transition-all ${tab === t.id ? "border-[#00F0FF] text-teal bg-[#00F0FF]/10 shadow-[0_0_12px_rgba(0,240,255,0.35)]" : "border-[#00F0FF]/25 text-muted-hud"}`}
           style={{ minHeight: 40 }}
         >
           <t.icon size={12} strokeWidth={1.5}/> {t.label}

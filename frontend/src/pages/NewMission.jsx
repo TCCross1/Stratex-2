@@ -32,6 +32,7 @@ const Choice = ({ value, current, onClick, testid }) => (
 
 export default function NewMission() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile(900);
   const [step, setStep] = useState(1);
   const [project, setProject] = useState(null);
   const [scan, setScan] = useState(null);
@@ -62,6 +63,7 @@ export default function NewMission() {
 
   const next = async () => {
     if (busy) return;
+    try { navigator.vibrate?.(6); } catch (_) {}
     setBusy(true);
     try {
       if (step === 1) {
