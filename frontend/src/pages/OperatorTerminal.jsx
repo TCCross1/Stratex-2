@@ -6,6 +6,19 @@ import useIsMobile from "@/hooks/use-is-mobile";
 import { listOperatorJobs, getOperatorJob, operatorLaunch } from "@/lib/api";
 import { Radar, Rocket, MapPin, AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+const OP_ICON = L.divIcon({
+  className: "stratex-leaflet-pin",
+  html: `<div style="position:relative;width:28px;height:36px;transform:translate(-14px,-32px);filter:drop-shadow(0 0 6px #FF5500);">
+    <svg viewBox="0 0 28 36" width="28" height="36" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 0 C5.5 0 0 6.7 0 14.5 C0 25 14 36 14 36 C14 36 28 25 28 14.5 C28 6.7 22.5 0 14 0 Z" fill="#06080B" stroke="#FF5500" stroke-width="1.5"/>
+      <circle cx="14" cy="14" r="4.5" fill="#FF5500"/>
+    </svg></div>`,
+  iconSize: [28, 36], iconAnchor: [14, 32],
+});
 
 const STATUS = { PENDING_FIELD_CAPTURE: "Awaiting Launch", IN_FLIGHT: "In Flight", DATA_CAPTURE_COMPLETE: "Capture Complete" };
 
@@ -103,6 +116,20 @@ export function OperatorJobDetail() {
       </div>
 
       {job.status === "PENDING_FIELD_CAPTURE" && (
+        <>
+          <HudCard className="p-3 mb-4">
+            <div className="font-mono text-[11px] uppercase tracking-widest text-plasma flex items-center gap-2 mb-2"><MapPin size={12}/> DISPATCH TARGET</div>
+            <div className="relative border border-[#FF5500]/40 overflow-hidden" style={{ height: 240 }}>
+              <span className="corner-bl"/><span className="corner-br"/>
+              {Number.isFinite(job.lat) && Number.isFinite(job.lon) && (
+                <MapContainer center={[job.lat, job.lon]} zoom={17} style={{ height: "100%", width: "100%", background: "#06080B" }} scrollWheelZoom={false} dragging={!isMobile}>
+                  <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
+                  <Marker position={[job.lat, job.lon]} icon={OP_ICON}/>
+                </MapContainer>
+              )}
+            </div>
+            <div className="mt-2 font-mono text-[10px] text-muted-hud">TARGET: <span className="text-teal">{job.lat?.toFixed?.(5)}, {job.lon?.toFixed?.(5)}</span> • RTK acquisition will resolve to centimeter precision on launch.</div>
+          </HudCard>
         <HudCard scanline className="p-5">
           <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest mb-3"><Radar size={14}/> PRE-FLIGHT SAFETY HANDSHAKE</div>
           <div className="space-y-2 mb-4">
@@ -133,6 +160,7 @@ export function OperatorJobDetail() {
             </button>
           </div>
         </HudCard>
+        </>
       )}
 
       {job.status === "DATA_CAPTURE_COMPLETE" && (

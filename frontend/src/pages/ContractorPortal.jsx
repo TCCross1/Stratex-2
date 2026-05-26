@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator } from "lucide-react";
 import { toast } from "sonner";
+import MapPicker from "@/components/MapPicker";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_FIELD_CAPTURE: "Awaiting Field Capture",
@@ -110,11 +111,14 @@ export function NewJob() {
         <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.08em] text-silver mb-1">New Job Dispatch</h1>
         <p className="text-sm text-muted-hud font-body mb-5">Enter the property + homeowner details. The drone job is queued to the STRATEX operator fleet immediately.</p>
         <HudCard scanline className="p-5 space-y-3">
+          <div className="font-mono text-[11px] uppercase tracking-widest text-teal flex items-center gap-2 mb-1"><MapPin size={12}/> Property Location (Map Dispatch)</div>
+          <MapPicker
+            lat={form.lat}
+            lon={form.lon}
+            address={form.property_address}
+            onChange={({ lat, lon, address }) => setForm((f)=>({ ...f, lat, lon, property_address: address || f.property_address }))}
+          />
           <div><label className="hud-label">Property Address</label><input data-testid="job-address" className="hud-input" value={form.property_address} onChange={(e)=>setForm({...form, property_address: e.target.value})}/></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="hud-label">Latitude</label><input data-testid="job-lat" type="number" step="0.0001" className="hud-input" value={form.lat} onChange={(e)=>setForm({...form, lat:parseFloat(e.target.value)})}/></div>
-            <div><label className="hud-label">Longitude</label><input data-testid="job-lon" type="number" step="0.0001" className="hud-input" value={form.lon} onChange={(e)=>setForm({...form, lon:parseFloat(e.target.value)})}/></div>
-          </div>
           <div><label className="hud-label">Homeowner Name</label><input data-testid="job-homeowner" className="hud-input" value={form.homeowner_name} onChange={(e)=>setForm({...form, homeowner_name: e.target.value})}/></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="hud-label">Project Type</label>
