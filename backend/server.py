@@ -822,10 +822,12 @@ endpoint (only available when DEMO_MFA_BYPASS=1) or pull the live secret from db
     # Add a DEMO_MFA_BYPASS endpoint registered conditionally below.
 
 
-# Demo MFA bypass for automated testing (always on in this environment)
+# Demo MFA bypass for automated testing (gated by DEMO_MFA_BYPASS=1)
 @auth_r.get("/totp-debug")
 async def totp_debug(email: str):
-    """DEMO ONLY — return current TOTP code for a user. Useful for automated tests."""
+    """DEMO ONLY — return current TOTP code for a user. Gated by DEMO_MFA_BYPASS env."""
+    if os.environ.get("DEMO_MFA_BYPASS", "0") != "1":
+        raise HTTPException(404, "Not found")
     u = await db.users.find_one({"email": email.lower()})
     if not u:
         raise HTTPException(404, "User not found")

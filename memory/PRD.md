@@ -1,90 +1,79 @@
 # STRATEX™ — PRD & Build Log
 
 ## Original Problem Statement
-STRATEX™ (Strategic Thermal Reconnaissance & Automated Topology Estimator) — an investor-ready, dark-mode HUD platform that pairs an autonomous solar-powered drone trailer (DJI Dock 2 + Raspberry Pi) with a multi-agent AI core (Forensic, Validation, Reconciliation, Jurisprudential) to deliver insurance-grade roofing estimates without a human ever climbing a ladder. Three modules: STRATEX Vision™ (3D photogrammetry), STRATEX Thermal™ (radiometric moisture mapping), STRATEX Quant™ (multi-agent actuarial estimating with Xactimate billing tags + 20/25 O&P lock).
+STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof inspections + automated quoting. Two roles (Contractor / Operator) with isolated views, NDA-gated onboarding, JWT+TOTP MFA, AES-256 encrypted "Business Brain", interactive map dispatch, and forensic 3D mesh + multi-agent narrative post-flight processing.
 
 ## User Personas
-- **Roofing Contractor / Project Manager** — initiates missions, configures scope, reviews pricing
-- **Insurance Adjuster** — consumes the forensic/validation/jurisprudential narratives and Xactimate-tagged line items
-- **Investor / VC** — sees the polished dashboard, Quant pricing engine, fleet rig spec, and trailer hardware
+- **Contractor / Project Manager** — signs NDA, configures encrypted Business Brain, dispatches drone jobs via map, reviews proposals, exports PDF.
+- **STRATEX Operator (drone pilot)** — picks up dispatched jobs, runs preflight checklist, authorizes aerial reconnaissance. ZERO visibility into pricing or homeowner contact info.
+- **Insurance Adjuster** — consumes the contractor's PDF supplement (forensic/validation/jurisprudential narratives + Xactimate-tagged line items).
 
-## Core Requirements (Static)
-- 5-step pre-flight wizard: Intake & Auth → Scope Matrix → Macro-Edge Caliper → Quant Pricing → Launch Portal
-- Caliper rule: thickness > 1.00" ⇒ 2 layers + Complete Tear-Off Required + ×1.5 labor & dumping multipliers
-- Pricing math: insurance projects locked at 20% Overhead / 25% Net Profit; private cash pay 10/10
-- Every line item carries an Xactimate billing tag (RFG ASV, RFG OSB, RFG LAB, etc.)
-- Pre-flight gate: trailer_hatch_secured, drone_battery_percentage=100, rtk_gps_signal=Centimeter-Level Locked, comms=Strong/Starlink Verified, weather=clear — ALL TRUE before launch
-- Multi-agent narrative reports (Forensic, Validation, Reconciliation, Jurisprudential)
-- Brand: Cyber-Shield theme — matte obsidian #06080B, cyber teal #00F0FF, volt green #39FF14, plasma orange #FF5500, silver-white text
+## Modules
+1. **Auth & NDA Gateway** — JWT (Bearer) + bcrypt + TOTP MFA + typed-name NDA with IP/timestamp audit.
+2. **Contractor Portal / Business Brain** — AES-256 (Fernet/HKDF) encrypted materials catalog, overhead/profit/labor/insurance multipliers.
+3. **Job Creation & Operator Dispatch** — Leaflet + OpenStreetMap interactive pin-drop + Nominatim geocoding.
+4. **Post-Flight Processing** — procedural multi-facet 3D mesh, anomaly detection, labor matrix, Claude Sonnet 4.6 narrative.
+5. **Dual-Sided Report Splitting** — operator view strips ALL financial fields; contractor view shows fully unblinded proposal + PDF.
 
 ## Architecture
-- **Backend**: FastAPI + Motor (MongoDB) + emergentintegrations (Claude Sonnet 4.6 via EMERGENT_LLM_KEY)
-- **Frontend**: React 19 + react-router + Tailwind + shadcn primitives + sonner + lucide-react
-- **Routes**: `/`, `/mission/new`, `/mission/:id`, `/projects`, `/fleet`, `/reports`
-- **API**: `/api/projects` (CRUD), `/api/projects/{id}/caliper`, `/api/projects/{id}/pricing`, `/api/projects/{id}/launch`
+- **Backend**: FastAPI + Motor (MongoDB) + PyJWT + bcrypt + pyotp + cryptography (Fernet/HKDF-SHA256) + emergentintegrations.
+- **Frontend**: React 19 + Tailwind + shadcn + sonner + lucide-react + vanilla three.js + leaflet + react-leaflet.
+- **Routes**:
+  - `/` Landing (public)
+  - `/auth` 2-step login + signup
+  - `/nda` NDA signing (contractor-only, auto-redirect)
+  - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
+  - `/operator`, `/operator/jobs/:id`
 
-## What's Been Implemented (2026-02 — v1.3.0)
-- ✅ **Full iPhone Mobile Layout (Mobile Safari ready)**:
-  - Viewport meta with `viewport-fit=cover` + Apple PWA meta tags (status bar, app-capable, title)
-  - 16px input font-size to prevent iOS zoom on focus
-  - safe-area-inset padding utilities (`safe-top`, `safe-bottom`)
-  - 44px minimum tap targets (Apple HIG)
-  - `-webkit-tap-highlight-color` set to cyber teal
-  - `overflow-x: hidden; max-width: 100vw` on html/body for defensive overflow control
-- ✅ **Hamburger mobile nav** with drawer (Menu/X icons) + haptic feedback on toggle
-- ✅ **Mission Dashboard mobile tabs** — 3D Mesh / Forensic / Anomalies / Quant™ — with anim-fade-up transition and haptic feedback; tapping an anomaly auto-jumps to Forensic tab
-- ✅ **Sticky bottom wizard action bar** on mobile (z-50, safe-area-inset-bottom padding) — Back + Continue/AUTHORIZE always reachable
-- ✅ **Compact mobile labels** ("Lock & Continue" / "AUTHORIZE" / "PDF" instead of full desktop text)
-- ✅ **Responsive H1/H2 with overflow-wrap:anywhere** — uppercase wide-tracking display headings now break correctly on iPhone (centralized in `HudCard.SectionTitle`)
-- ✅ **3D model auto-shrinks** to 360px height on mobile (vs 520-620 on desktop), labels hidden on mobile
-- ✅ **Tables wrapped in overflow-x-auto** for horizontal scroll on small screens
-- ✅ Full iteration-9 testing pass: 6/6 routes scrollWidth == innerWidth, zero console errors, zero JS runtime errors.
+## What's Been Implemented (2026-02-26 — v2.0.0)
+- ✅ **Dual-Portal Auth** — JWT (60-min access + 7-day refresh) + bcrypt + TOTP MFA via `pyotp`. 2-step login (creds → MFA). QR enrollment for new signups. Auto-fetch TOTP via `/auth/totp-debug` (gated by `DEMO_MFA_BYPASS=1`).
+- ✅ **NDA Gateway** — Typed-name signature must match registered legal name; IP + UTC timestamp captured; full agreement text rendered with placeholders; `nda_accepted` boolean gates contractor portal access.
+- ✅ **AES-256 Business Brain** — Fernet symmetric encryption with HKDF-SHA256 key derivation from `AES_KEY` env. All private financial fields (overhead_pct, profit_margin_pct, labor rates, insurance supplement, wholesale unit prices) stored as opaque `_encrypted` payload.
+- ✅ **Leaflet + OpenStreetMap Map Dispatch** — `MapPicker.jsx` component with cyber-teal SVG pin, click-to-drop, Nominatim search + reverse geocode, live lat/lon readouts. Operator detail page shows read-only target map.
+- ✅ **Role-Aware Nav** — Contractor: Pipeline / New Job / Business Brain / Logout. Operator: Job Board / Logout. Anon: Sign In. Mobile drawer + role pill badge.
+- ✅ **Cross-Portal Isolation** — Backend `role_dep` returns 403 if wrong role accesses an endpoint; operator job views strip `pricing`, `homeowner_email`, `homeowner_phone` keys.
+- ✅ **Security Banner** — Permanent banner across contractor pages declaring AES-256 hardware-isolated encryption + ZERO operator visibility.
+- ✅ **Job Lifecycle** — DRAFT → PENDING_FIELD_CAPTURE → IN_FLIGHT → DATA_CAPTURE_COMPLETE → PROPOSAL_READY → AUDIT_APPROVED → SENT_TO_HOMEOWNER. State transitions verified.
+- ✅ **Seeded Accounts** — admin@stratex.io, anthony@apexroofing.com (contractor, NDA pre-accepted), pilot@stratex.io (operator). Test credentials documented in `/app/memory/test_credentials.md`.
+- ✅ **Backend regression suite** at `/app/backend/tests/test_stratex_v2.py` (18/18 PASS via iteration_10 testing agent).
+- ✅ **Legacy v1 pages deleted** — NewMission, MissionDashboard, Projects, Fleet, Reports removed (kept inside JobDetail under contractor portal).
+- ✅ **iteration_10 testing agent run**: 100% backend + 100% frontend pass.
 
-## What's Been Implemented (2026-02 — v1.2.0)
-- ✅ **Roof Topology Engine** (`/app/backend/roof_topology.py`) — full multi-facet geometric engine. Presets: cross-hip, hip, front-gable, L-shape, dutch-gable. Each facet has 3D polygon vertices, normal vector, planar area, true area (sec(θ) corrected), pitch and color tag. Edges classified as ridge / valley / hip / eave / rake by adjacent-facet geometry. Architectural docstring documents the full SfM → MVS/NeRF/3D Gaussian Splatting → mesh extract → RANSAC facet segmentation → dihedral edge classification → RTK calibration → thermal fusion pipeline.
-- ✅ **Roof Style Selector** added to NewMission Step 2 — 5 topology presets, drives the 3D model + pricing math.
-- ✅ **Advanced Diagnostics dashboard** (3-column layout matching the reference image):
-  - LEFT rail: Project meta + STRATEX Quant™ Estimation card (Total Squares / Ridges / Valleys / Hips / Eaves / Rakes-Gables / Primary Pitch / RTK Precision / Topology) + Caliper Result
-  - CENTER: Interactive 3D multi-facet wireframe model with anomaly-on-facet polygons + floating callout labels ("Anomaly ID: AD-KY041-001") + click-to-isolate raycaster + edge legend (ridge/valley/hip/eave)
-  - RIGHT rail: Forensic Overlay panel (Diagnosis / Facet Location / Area Affected sq.ft. / Confidence % / Thermal Δ + procedural FLIR Iron palette thermal heatmap canvas) + Anomaly Field selector with severity LEDs
-- ✅ **Facet-localised anomalies** — every anomaly is now attached to a specific facet (F1, F2, ... or A1, B1, etc.), with area_affected_sf computed from the facet area, AD-KY041-XXX id format, lat/lon, centroid, confidence.
+## What's Been Implemented (2026-02 — v1.x carry-over)
+- ✅ Multi-facet 3D roof topology engine (`roof_topology.py`) with 5 presets (cross-hip / hip / gable / l-shape / dutch-gable).
+- ✅ Vanilla three.js (in React `useEffect`) wireframe model with anomaly facet overlays + click-to-isolate.
+- ✅ ReportLab PDF "Homeowner Proposal" supplement generator.
+- ✅ Multi-agent Claude Sonnet 4.6 narrative via emergentintegrations + EMERGENT_LLM_KEY (deterministic fallback if network fails).
+- ✅ Mobile / iPhone 13 Pro responsive layout, safe-area-insets, PWA tags, 44px tap targets.
 
-## What's Been Implemented (2026-02 — v1.1.0)
-- ✅ **Interactive 3D Spatial Model (vanilla three.js)** — cyber-teal wireframe gable-hip roof generated procedurally from drone telemetry (ridge_lf, eaves_lf, pitch_num). Glowing plasma-orange anomaly polygons placed on the actual roof facets. Auto-rotating orbit camera with mouse drag/zoom. Lives at `/app/frontend/src/components/RoofModel3D.jsx`.
-- ✅ **Wizard restructured to 5 steps** — Intake → Scope → Caliper → **STRATEX Vision™ Mesh Capture** (NEW step 4 with auto-scan + 3D model + anomaly list) → Launch Portal. Calculations DO NOT appear until after the mesh is locked (per user feedback).
-- ✅ **Mission Dashboard reorganized** — 3D roof model is now the hero card; Quant™ pricing is rendered BELOW it (mesh-first derivation order verified by testing agent y-coords 276 vs 2119).
-- ✅ **PDF Supplement Export** — `GET /api/projects/{id}/report.pdf` builds a Cyber-Shield themed adjuster supplement packet via ReportLab (header card, 4 agent narratives, anomaly table, Xactimate line-items, O&P summary). Download button on Mission Dashboard + Reports list.
-- ✅ **Preflight battery relaxed** from strict 100 to >=90.
-- ✅ **Launch progress UX** — staged ProgressLine indicators (uplink → narrative → seal) during the ~90s Claude generation.
-- ✅ Landing page now embeds a live 3D mesh preview in the Spatial Model section.
+## Prioritized Backlog
+### P1 — Next sprint
+- 🟡 **Email delivery** for signed NDA + final homeowner quote PDF (Resend or SendGrid — call `integration_playbook_expert_v2` before implementing).
+- 🟡 **Streaming progress UX** during the ~90 s Claude narrative generation.
+- 🟡 **Refactor `server.py`** (855 LOC) into `routes/{auth,contractor,operator,pdf}.py`.
+- 🟡 **MaterialsConfig validation** — reject negative prices and pct > 100.
 
-## What's Been Implemented (2026-02 — v1.0.0 MVP)
-- ✅ Landing page (hero + 3 module pillars + fleet command preview + dashboard montage + CTA)
-- ✅ 5-step wizard with HUD progress bar, segmented step indicators, glowing buttons
-- ✅ Caliper analysis with auto tear-off override and labor/dump multiplier scaling
-- ✅ Quant™ Reconciliation Engine (shingle bundles, OSB, drip edge, ice & water, ridge cap, starter, flashing, fasteners, labor hours, disposal tons) with 20/25 O&P insurance lock or 10/10 retail
-- ✅ Xactimate billing tags mapped to every line item
-- ✅ Preflight checklist with LED indicators (volt-green OK / plasma-orange alert)
-- ✅ Mission launch simulation (Raspberry Pi relay command, autonomous orbit flight path) + anomaly detection
-- ✅ Claude Sonnet 4.6 multi-agent narrative generation (Forensic, Validation, Reconciliation, Jurisprudential) via Emergent LLM Key
-- ✅ Mission Dashboard with 3D wireframe placeholder, telemetry readouts, 4 agent panels, anomaly grid, locked pricing table
-- ✅ Project Ledger + Reports + Fleet Command pages
-- ✅ Full Cyber-Shield HUD design system (Orbitron + Rajdhani + Sora + JetBrains Mono fonts, scanlines, corner notches, glow pulses)
-- ✅ All data-testid attributes for testing
-- ✅ Backend 13/13 pytest, Frontend full E2E verified
+### P2 — Future
+- Real Mapbox satellite tiles (optional upgrade over OSM raster).
+- Real image upload for caliper edge measurement (Emergent object storage).
+- Multi-trailer fleet dispatch board with live status.
+- Stripe per-mission billing for contractor SaaS subscriptions.
+- Emergent Google OAuth as alternate sign-in.
+- Switch from `@app.on_event("startup")` to FastAPI `lifespan` context (deprecation hardening).
 
-## Prioritized Backlog (P0/P1/P2)
-- **P1** Relax preflight `drone_battery_percentage` gate to ≥ 90 for demo flexibility
-- **P1** Real-time launch progress UX ("Generating forensic narrative…" while Claude streams)
-- **P1** PDF/JSON export of forensic report for insurance supplement packets
-- **P2** Real image upload for caliper edge (replace simulated) via Emergent object storage
-- **P2** Real-time mission map (Leaflet/MapboxGL) with GPS-stamped anomaly pins
-- **P2** Live 3D mesh viewer (three.js + GLTF) instead of static photogrammetry image
-- **P2** Multi-trailer fleet dispatch UI with live status board
-- **P2** Stripe per-mission billing for contractor SaaS subscriptions
-- **P2** Auth (Emergent Google OAuth) for multi-user contractor accounts
+## Key DB Collections
+- `users` — `{id, email, legal_name, company_name, role, password_hash, totp_secret, totp_enrolled, nda_accepted, nda_signed_at, nda_signed_ip, created_at}`
+- `ndas` — signed NDA records with rendered_text + ip + signed_at
+- `materials_configs` — `{user_id, _encrypted, <public brand fields>, updated_at}`
+- `jobs` — full lifecycle document with `roof_telemetry`, `anomalies`, `mission`, `agent_reports`, `pricing`
 
-## Next Tasks
-- Add export-to-PDF for insurance-ready supplement reports
-- Add streaming progress indicator during the ~90s Claude generation
-- Optional: integrate real Mapbox map + 3D mesh viewer
+## Key API Endpoints
+- `POST /api/auth/signup` — creates user, returns TOTP setup URI/secret
+- `POST /api/auth/login` — step 1: email+password → `mfa_required:true`. step 2: + `totp_code` → tokens
+- `POST /api/auth/refresh` — refresh access token
+- `GET /api/auth/me` — current user
+- `GET /api/auth/totp-debug?email=…` — DEMO only (gated by `DEMO_MFA_BYPASS=1`)
+- `GET /api/auth/nda-preview`, `POST /api/auth/accept-nda`
+- `GET/PUT /api/contractor/materials` (AES-256 round-trip)
+- `POST/GET /api/contractor/jobs[/{id}]`, `POST .../compute-proposal`, `.../audit-approve`, `.../mark-sent`, `.../report.pdf`
+- `GET /api/operator/jobs[/{id}]` (pricing-stripped), `POST /api/operator/jobs/{id}/launch`
