@@ -1,0 +1,177 @@
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { HudCard } from "@/components/HudCard";
+import { ASSETS } from "@/lib/constants";
+import { loginStep1, loginStep2, signup, totpDebug } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { Lock, Shield, KeyRound, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
+import QRCode from "qrcode";
+
+function fmtErr(d) {
+  if (!d) return "Something went wrong.";
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) return d.map((e) => e?.msg || JSON.stringify(e)).join(" ");
+  return d?.msg || String(d);
+}
+
+export default function AuthPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [mode, setMode] = useState("login"); // login | signup
+  // login
+  const [email, setEmail] = useState("anthony@apexroofing.com");
+  const [password, setPassword] = useState("Contractor!2026");
+  const [totp, setTotp] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [step, setStep] = useState(1); // 1 = creds, 2 = totp
+  const [busy, setBusy] = useState(false);
+
+  // signup
+  const [sEmail, setSEmail] = useState("");
+  const [sPassword, setSPassword] = useState("");
+  const [sLegal, setSLegal] = useState("");
+  const [sCompany, setSCompany] = useState("");
+  const [sRole, setSRole] = useState("contractor");
+  const [qrUri, setQrUri] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [tSecret, setTSecret] = useState("");
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (step === 1) {
+        const r = await loginStep1(email.trim().toLowerCase(), password);
+        if (r.mfa_required) {
+          setStep(2);
+          try {
+            // demo helper to auto-fill TOTP in 1 click
+            const d = await totpDebug(email.trim().toLowerCase());
+            if (d?.current_code) setTotp(d.current_code);
+          } catch (_) {}
+        } else {
+          login(r.access_token, r.user);
+          toast.success("Logged in");
+          navigate(r.user.role === "operator" ? "/operator" : "/contractor");
+        }
+      } else {
+        const r = await loginStep2(email.trim().toLowerCase(), password, totp);
+        login(r.access_token, r.user);
+        toast.success("AUTHENTICATED");
+        if (r.user.role === "contractor" && !r.user.nda_accepted) navigate("/nda");
+        else navigate(r.user.role === "operator" ? "/operator" : "/contractor");
+      }
+    } catch (e) { toast.error(fmtErr(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handleSignup = async (e) => {
+    e?.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await signup({ email: sEmail.trim().toLowerCase(), password: sPassword, legal_name: sLegal, company_name: sCompany, role: sRole });
+      setQrUri(r.totp_setup.uri);
+      setTSecret(r.totp_setup.secret);
+      const dataUrl = await QRCode.toDataURL(r.totp_setup.uri, { color: { dark: "#00F0FF", light: "#06080B" }, margin: 1, width: 220 });
+      setQrDataUrl(dataUrl);
+      toast.success("Account created — scan the TOTP QR code");
+      setEmail(sEmail);
+      setPassword(sPassword);
+      setMode("login");
+      setStep(1);
+    } catch (e) { toast.error(fmtErr(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div data-testid="auth-page" className="min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <Link to="/" className="flex items-center justify-center gap-3 mb-6">
+          <img src={ASSETS.logo} alt="STRATEX" className="h-12 w-auto"/>
+        </Link>
+        <HudCard scanline className="p-6">
+          <div className="font-mono text-[10px] tracking-[0.32em] text-teal uppercase mb-2 flex items-center gap-2">
+            <Shield size={12}/> SECURE PORTAL
+          </div>
+          <h1 className="font-display text-2xl uppercase tracking-[0.06em] text-silver mb-1" style={{ overflowWrap: "anywhere" }}>
+            {mode === "login" ? (step === 1 ? "Sign In" : "Multi-Factor Verify") : "Create Account"}
+          </h1>
+          <p className="text-[11px] font-mono text-muted-hud mb-4">
+            {mode === "login" ? "Bearer JWT + TOTP MFA" : "Encrypted at rest • TOTP required"}
+          </p>
+
+          {mode === "login" && step === 1 && (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <div>
+                <label className="hud-label">Email</label>
+                <input data-testid="auth-email" type="email" required className="hud-input" value={email} onChange={(e)=>setEmail(e.target.value)} autoComplete="email"/>
+              </div>
+              <div>
+                <label className="hud-label">Password</label>
+                <div className="relative">
+                  <input data-testid="auth-password" type={showPw ? "text" : "password"} required className="hud-input pr-12" value={password} onChange={(e)=>setPassword(e.target.value)} autoComplete="current-password"/>
+                  <button type="button" onClick={()=>setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-hud" aria-label="Toggle password">{showPw?<EyeOff size={16}/>:<Eye size={16}/>}</button>
+                </div>
+              </div>
+              <button type="submit" disabled={busy} className="btn-hud w-full justify-center" data-testid="auth-submit-login">
+                <Lock size={14}/> {busy?"…":"Continue"}
+              </button>
+            </form>
+          )}
+
+          {mode === "login" && step === 2 && (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <div className="font-mono text-xs text-muted-hud mb-1">Account: <span className="text-teal">{email}</span></div>
+              <div>
+                <label className="hud-label">6-Digit TOTP Code (Google Authenticator / 1Password / Authy)</label>
+                <input data-testid="auth-totp" autoFocus type="text" inputMode="numeric" pattern="\d{6}" maxLength="6" required className="hud-input text-center text-2xl tracking-[0.5em] font-mono" value={totp} onChange={(e)=>setTotp(e.target.value.replace(/\D/g,""))}/>
+                <div className="text-[11px] font-mono text-muted-hud mt-1">(Demo: pre-populated from /api/auth/totp-debug)</div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={()=>{setStep(1); setTotp("");}} className="btn-hud btn-hud-ghost flex-1 justify-center">Back</button>
+                <button type="submit" disabled={busy || totp.length!==6} className="btn-hud flex-1 justify-center" data-testid="auth-submit-totp">
+                  <KeyRound size={14}/> {busy?"…":"AUTHENTICATE"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {mode === "signup" && !qrDataUrl && (
+            <form onSubmit={handleSignup} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" data-testid="role-contractor" onClick={()=>setSRole("contractor")} className={`hud-option ${sRole==="contractor"?"active":""}`}>Contractor</button>
+                <button type="button" data-testid="role-operator" onClick={()=>setSRole("operator")} className={`hud-option ${sRole==="operator"?"active":""}`}>Operator</button>
+              </div>
+              <div><label className="hud-label">Legal Name</label><input data-testid="signup-legal" required className="hud-input" value={sLegal} onChange={(e)=>setSLegal(e.target.value)}/></div>
+              {sRole==="contractor" && <div><label className="hud-label">Company</label><input data-testid="signup-company" required className="hud-input" value={sCompany} onChange={(e)=>setSCompany(e.target.value)}/></div>}
+              <div><label className="hud-label">Email</label><input data-testid="signup-email" type="email" required className="hud-input" value={sEmail} onChange={(e)=>setSEmail(e.target.value)}/></div>
+              <div><label className="hud-label">Password (≥ 10 chars)</label><input data-testid="signup-password" type="password" minLength={10} required className="hud-input" value={sPassword} onChange={(e)=>setSPassword(e.target.value)}/></div>
+              <button type="submit" disabled={busy} className="btn-hud w-full justify-center" data-testid="signup-submit">{busy?"…":"Create Account"}</button>
+            </form>
+          )}
+
+          {mode === "signup" && qrDataUrl && (
+            <div className="space-y-3">
+              <div className="font-mono text-xs text-volt">Account created. Scan this QR with your authenticator:</div>
+              <img src={qrDataUrl} alt="TOTP QR" className="mx-auto"/>
+              <div className="font-mono text-[10px] text-muted-hud break-all">Manual key: <span className="text-teal">{tSecret}</span></div>
+              <button onClick={()=>{setMode("login"); setQrDataUrl("");}} className="btn-hud w-full justify-center">Continue to Sign In</button>
+            </div>
+          )}
+
+          <div className="hud-divider my-4"/>
+          <button onClick={()=>{setMode(mode==="login"?"signup":"login"); setStep(1); setQrDataUrl("");}} className="text-[11px] font-mono uppercase tracking-widest text-teal hover:text-silver" data-testid="auth-switch-mode">
+            {mode==="login" ? "→ Create new contractor / operator account" : "← Back to sign in"}
+          </button>
+
+          <div className="mt-6 border-t border-[#00F0FF]/20 pt-3 text-[10px] font-mono text-muted-hud leading-relaxed">
+            <Shield size={10} className="inline mr-1 text-volt"/> Material costs, profit margins, overhead multipliers, and client financial data are subject to <span className="text-volt">hardware-isolated AES-256 encryption</span>. STRATEX operators have ZERO visibility into your proprietary business rules.
+          </div>
+        </HudCard>
+      </div>
+    </div>
+  );
+}
