@@ -1,0 +1,31 @@
+{
+  "summary": "iPhone 13 Pro (390x844) overflow retest. Hero H1 fix verified visually (RECONNAISSANCE wraps correctly within 358px, fully visible). However, Landing route STILL FAILS the scrollWidth<=innerWidth+2 invariant: body.scrollWidth=407 vs innerWidth=390 (17px overflow). All 5 OTHER routes pass with diff=0. No console errors anywhere. RCA: the fix only addressed the Hero H1; two OTHER long-tracking uppercase H2s on Landing still overflow the viewport: (a) SectionTitle h2 'STRATEX VISION (TM) - PHOTOGRAMMETRY MESH' produces sw=383 vs cw=342 (+41px) - this is the exact source of the 17px body overflow (24px section padding + 383 content = 407); (b) local h2 'DEPLOY YOUR FIRST AUTONOMOUS MISSION' overflows +15px inside a CTA card. Both share the same root cause as the original H1 - uppercase + tracking>=0.1em forces single-line longer than viewport-padding.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HudCard.SectionTitle h2 (used on Landing for 'STRATEX VISION (TM) - PHOTOGRAMMETRY MESH')", "issue": "On iPhone 13 Pro the h2 has scrollWidth=383 vs clientWidth=342 (+41px). Since the wrapping section uses px-6 (24px), it forces body.scrollWidth=407 vs innerWidth=390. Same overflow-wrap fix used on Landing Hero H1 needs to be applied here, OR a smaller mobile font/tighter tracking.", "selector": "h2.font-display.text-3xl.sm:text-4xl.tracking-[0.16em]", "priority": "HIGH"},
+      {"component": "Landing.jsx line 167 - CTA h2 'DEPLOY YOUR FIRST AUTONOMOUS MISSION'", "issue": "scrollWidth=275 vs clientWidth=260 (+15px). Overflow is clipped by parent overflow-hidden so it does not push body width, but the heading is being cut visually on iPhone. Apply overflowWrap:'anywhere' + slightly smaller mobile size.", "selector": "h2.font-display.text-3xl.md:text-5xl.tracking-[0.1em]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/ (Landing) at 390x844", "issues": ["Hero H1 RECONNAISSANCE wraps correctly and fits (358px wide, fully visible) - the original fix worked for it.", "However the 3 section titles below use a separate uppercase tracking-[0.16em] h2 that was not patched - STRATEX VISION title still overflows the viewport by 41px (cause of the 17px body-overflow)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Edit /app/frontend/src/components/HudCard.jsx line 32 SectionTitle h2 - add style={{overflowWrap:'anywhere', wordBreak:'break-word'}} and consider reducing mobile size from text-3xl to text-[1.5rem] OR tightening tracking from 0.16em to 0.04em on mobile. This alone will eliminate the 17px Landing body overflow.",
+    "Edit /app/frontend/src/pages/Landing.jsx line 167 h2 - apply same overflow-wrap inline style; consider text-[1.5rem] mobile size to remove the 15px CTA overflow (already clipped by overflow-hidden but visually cropped).",
+    "Re-run the same iPhone 13 Pro overflow check after fix; all 6 routes should report diff<=2."
+  ],
+  "critical_code_review_comments": [
+    "Pattern: every uppercase + wide-tracking heading on this app is at risk on small viewports. Consider centralising a `font-display-uppercase` utility that already includes overflow-wrap:anywhere + responsive tracking, rather than patching each h1/h2 individually.",
+    "The two failing h2s share visual style with the originally-fixed H1 - this suggests the iteration-7 RCA undercounted overflow sources. Audit ALL uppercase tracking-[0.1em+] headings across the app at 390px."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "83% (5 of 6 routes pass; Landing still fails)"},
+  "seed_data_creation": "none",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Landing scrollWidth=407, innerWidth=390 at 390x844. The earlier H1 hero fix is verified working. The remaining 17px overflow is caused by HudCard.jsx SectionTitle h2 (line 32) being used on Landing line 118 for 'STRATEX Vision (TM) - Photogrammetry Mesh'. A secondary +15px overflow (clipped) exists at Landing.jsx line 167 h2. Routes confirmed passing diff=0: /mission/new, /mission/9527c7cb-b5e5-4ae4-b517-26d489dd4bb8, /projects, /fleet, /reports. No console errors.",
+  "rca of the issue": "DOM walk found body>div#root>App>Landing-wrapper>section.px-6 contains a max-w-[1500px]>div.mb-6>h2 whose scrollWidth (383px) exceeds its clientWidth (342px). Section horizontal padding is 24px on each side (px-6) -> visible right edge = 24 + 383 = 407 = body.scrollWidth. The h2 text 'STRATEX VISION (TM) - PHOTOGRAMMETRY MESH' is rendered uppercase with letter-spacing 0.16em and text-3xl (30px). At 390px viewport with 48px total side padding only 342px remain, but the longest single-word fragment ('PHOTOGRAMMETRY') at 30px*0.16em tracking measures ~383px and white-space wrapping does not break inside the word. Mitigation: add overflowWrap:'anywhere'+wordBreak:'break-word' AND/OR reduce mobile font-size/tracking (same fix shape already used on Hero H1 line 33)."
+}

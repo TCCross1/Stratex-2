@@ -25,12 +25,12 @@ export default function Landing() {
       <section className="relative px-4 md:px-12 pt-10 md:pt-16 pb-16 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 grid-floor opacity-30 pointer-events-none" />
         <div className="max-w-[1500px] mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-8 md:gap-12 items-center relative">
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-3 mb-4 md:mb-6">
               <span className="led led-teal" />
               <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">SYSTEM ONLINE • RECON GRID v1.2.0</span>
             </div>
-            <h1 className="font-display text-[2rem] leading-[1.02] sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.04em] sm:tracking-[0.06em] sm:leading-[0.95] text-silver break-words">
+            <h1 className="font-display text-[1.75rem] leading-[1.04] sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.02em] sm:tracking-[0.06em] sm:leading-[0.95] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
               <span className="block">STRATEGIC</span>
               <span className="block">THERMAL</span>
               <span className="block text-teal glow-teal">RECONNAISSANCE</span>
