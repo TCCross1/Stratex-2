@@ -22,7 +22,7 @@ export default function Projects() {
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <div className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">// MISSION LEDGER</div>
-          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.14em] text-silver">Project Archive</h1>
+          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.06em] md:tracking-[0.14em] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>Project Archive</h1>
         </div>
         <Link to="/mission/new" className="btn-hud pulse-glow" data-testid="projects-new-btn">
           <Plus size={14}/> New Mission

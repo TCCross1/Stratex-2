@@ -54,7 +54,7 @@ export default function MissionDashboard() {
             <ArrowLeft size={12}/> Project Ledger
           </Link>
           <div className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">// STRATEX VISION™ • ADVANCED DIAGNOSTICS</div>
-          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.12em] md:tracking-[0.14em] text-silver truncate">Project {project.id.slice(0,8).toUpperCase()}</h1>
+          <h1 className="font-display text-xl md:text-4xl uppercase tracking-[0.06em] md:tracking-[0.14em] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>Project {project.id.slice(0,8).toUpperCase()}</h1>
           <div className="font-mono text-xs md:text-sm text-muted-hud flex items-center gap-2 mt-1 truncate"><MapPin size={12}/> {project.intake?.customer_name} • {project.intake?.property_address}</div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">

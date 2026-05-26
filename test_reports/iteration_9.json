@@ -1,0 +1,30 @@
+{
+  "summary": "Final iPhone 13 Pro (390x844) mobile overflow retest after central SectionTitle + H1 overflow-wrap fix. ALL 6 ROUTES PASS the scrollWidth<=innerWidth+2 invariant with diff=0 (innerWidth=390, body.scrollWidth=390). Zero console errors on every route. The 17px Landing overflow caused by HudCard.SectionTitle h2 (STRATEX VISION photogrammetry mesh) is fully resolved. Multi-step NewMission page also scanned at multiple scroll positions with diff=0 throughout.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_9.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Central fix in HudCard.SectionTitle (text-[1.5rem] sm:text-3xl + tracking-[0.04em] sm:tracking-[0.12em] + overflowWrap:anywhere) is the correct architectural pattern - reused across all uppercase wide-tracking headings.",
+    "Suggest extracting the responsive uppercase heading style into a shared utility class (e.g. .font-display-uppercase) to enforce the same pattern on any future heading and prevent regression."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100% (6/6 routes pass, 0 console errors)"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iPhone 13 Pro overflow checks pass with diff=0 on /, /mission/new, /mission/9527c7cb-b5e5-4ae4-b517-26d489dd4bb8, /projects, /fleet, /reports. Console errors=0 across all routes. The central HudCard.SectionTitle fix resolved the Landing 17px overflow that persisted through iteration 8. No further mobile overflow work required.",
+  "route_results": [
+    {"route": "/", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0},
+    {"route": "/mission/new", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0},
+    {"route": "/mission/9527c7cb-b5e5-4ae4-b517-26d489dd4bb8", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0},
+    {"route": "/projects", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0},
+    {"route": "/fleet", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0},
+    {"route": "/reports", "innerWidth": 390, "bodyScrollWidth": 390, "diff": 0, "console_errors": 0}
+  ],
+  "rca of the issue": "Resolved. Iteration-8 RCA correctly identified HudCard.SectionTitle h2 (line 32-34) as the root cause. The applied fix (mobile text-[1.5rem] + tracking-[0.04em] + overflowWrap:anywhere + wordBreak:break-word) shrinks the longest single-word fragment 'PHOTOGRAMMETRY' below the 342px available content width on a 390px viewport with 24px side padding, eliminating the 17px body overflow. Companion fixes on Landing.jsx line 167 CTA h2 and on H1s in MissionDashboard/Projects/NewMission ensure the same protection across all uppercase wide-tracking headings."
+}

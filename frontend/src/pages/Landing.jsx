@@ -164,7 +164,7 @@ export default function Landing() {
         <div className="max-w-[1500px] mx-auto">
           <HudCard scanline className="p-10 md:p-16 text-center">
             <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// AUTHORIZE AERIAL RECONNAISSANCE</div>
-            <h2 className="font-display text-3xl md:text-5xl uppercase tracking-[0.1em] text-silver leading-tight">
+            <h2 className="font-display text-[1.5rem] sm:text-3xl md:text-5xl uppercase tracking-[0.04em] sm:tracking-[0.1em] text-silver leading-tight" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
               Deploy your first <span className="text-teal glow-teal">autonomous</span> mission
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-hud font-body">

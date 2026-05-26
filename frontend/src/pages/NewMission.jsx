@@ -117,7 +117,7 @@ export default function NewMission() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <div className="font-mono text-[11px] tracking-[0.32em] text-teal uppercase">// PRE-FLIGHT PIPELINE</div>
-          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.14em] text-silver">Initiate New Mission</h1>
+          <h1 className="font-display text-2xl md:text-4xl uppercase tracking-[0.06em] md:tracking-[0.14em] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>Initiate New Mission</h1>
         </div>
         <div className="font-mono text-[10px] md:text-[11px] tracking-widest text-muted-hud uppercase">
           Step <span className="text-teal">{step}</span> / 5 — <span className="text-silver">{STEPS[step-1].label}</span>
