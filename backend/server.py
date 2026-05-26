@@ -1126,7 +1126,22 @@ async def billing_checkout(body: CheckoutBody, request: Request, user=Depends(co
         cancel_url=f"{origin}/billing",
         metadata={"user_id": user["id"], "tier": body.tier, "email": user["email"]},
     )
-    session = await checkout.create_checkout_session(req)
+    # Upstream Stripe proxy is occasionally slow — bound the call so we surface a 504 instead of a 502.
+    last_err: Optional[Exception] = None
+    for attempt in range(2):
+        try:
+            session = await asyncio.wait_for(checkout.create_checkout_session(req), timeout=20.0)
+            break
+        except asyncio.TimeoutError as e:
+            last_err = e
+            logger.warning("stripe checkout attempt %d timed out (>20s)", attempt + 1)
+            continue
+        except Exception as e:
+            last_err = e
+            logger.warning("stripe checkout attempt %d failed: %s", attempt + 1, e)
+            continue
+    else:
+        raise HTTPException(504, f"Stripe upstream slow: {last_err}")
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
         "session_id": session.session_id,

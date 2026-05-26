@@ -25,6 +25,16 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-26 — v2.1.0)
+- ✅ **🛰️ Esri Satellite Tile Upgrade** — `MapPicker` now defaults to Esri World Imagery with a SAT/MAP toggle; operator dispatch target map also uses satellite. Free, no key required.
+- ✅ **⏳ Animated 4-Agent Streaming UX** — clicking "Compute Proposal" runs a paced visual: Forensic → Validation → Reconciliation → Jurisprudential, each phase advancing every 900ms with spinning → checkmark transitions.
+- ✅ **🚛 Fleet Command** — new `/fleet` page (contractor + operator). Continental satellite map with 6 STRATEX rigs (Vanguard, Outrider, Horizon, Raven, Sentinel, Obsidian), KPI strip (Total/Deployed/Standby/Charging/Maintenance/Avg Battery), rig roster panel with battery/uplink/RTK telemetry. Polls every 6s with deterministic rotation through STANDBY/CHARGING/DEPLOYED/IN_FLIGHT/MAINTENANCE states.
+- ✅ **📧 Resend Email Integration** — `POST /api/contractor/jobs/{id}/email-proposal` (PDF attachment) + `POST /api/auth/email-nda`. Gracefully mocks when `RESEND_API_KEY` is unset (returns `{ok:true, mocked:true}`). HTML templates designed in STRATEX cyber-shield aesthetic.
+- ✅ **💳 Stripe Subscription Billing** — `/billing` Pricing page with 3 tiers: Starter $99 / Pro $299 (highlighted) / Enterprise $999. Uses Emergent-managed test key `sk_test_emergent`. Full flow: create-checkout → Stripe-hosted checkout → `/billing/success` polls `/billing/status/{session_id}` → idempotently upgrades user subscription_tier on `payment_status="paid"`. Webhook handler at `/api/webhook/stripe` also catches `checkout.session.completed`. 20s timeout + 1 retry around upstream Stripe proxy to avoid 502 hangs.
+- ✅ **🔐 Emergent Google Sign-In** — `AuthCallback.jsx` detects `#session_id=…` hash, calls `/api/auth/google/session` which exchanges with `EMERGENT_AUTH_URL` and either creates a new contractor account (NDA still required) or signs in an existing one, issuing a STRATEX JWT. "Continue with Google" button on `/auth`.
+- ✅ **🛡️ MaterialsConfig Pydantic Validation** — all percentage fields bounded 0–100, all price fields non-negative and ≤ $100k. 422 on violation.
+- ✅ **Backend Code Quality** — Stripe upstream call now bounded by `asyncio.wait_for(20s)` + 1 automatic retry.
+
 ## What's Been Implemented (2026-02-26 — v2.0.0)
 - ✅ **Dual-Portal Auth** — JWT (60-min access + 7-day refresh) + bcrypt + TOTP MFA via `pyotp`. 2-step login (creds → MFA). QR enrollment for new signups. Auto-fetch TOTP via `/auth/totp-debug` (gated by `DEMO_MFA_BYPASS=1`).
 - ✅ **NDA Gateway** — Typed-name signature must match registered legal name; IP + UTC timestamp captured; full agreement text rendered with placeholders; `nda_accepted` boolean gates contractor portal access.
@@ -48,18 +58,18 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 
 ## Prioritized Backlog
 ### P1 — Next sprint
-- 🟡 **Email delivery** for signed NDA + final homeowner quote PDF (Resend or SendGrid — call `integration_playbook_expert_v2` before implementing).
-- 🟡 **Streaming progress UX** during the ~90 s Claude narrative generation.
-- 🟡 **Refactor `server.py`** (855 LOC) into `routes/{auth,contractor,operator,pdf}.py`.
-- 🟡 **MaterialsConfig validation** — reject negative prices and pct > 100.
+- 🟡 **Refactor `server.py`** (1228 LOC) into `routes/{auth,contractor,operator,billing,fleet,email,pdf}.py`.
+- 🟡 **Resend API key wiring** — when the user supplies `RESEND_API_KEY`, real email delivery flips on automatically.
+- 🟡 **Stripe webhook signature verification end-to-end** — currently using emergentintegrations defaults (works in test mode).
+- 🟡 **Per-row data-testids on Pipeline table** for E2E test stability.
 
 ### P2 — Future
-- Real Mapbox satellite tiles (optional upgrade over OSM raster).
-- Real image upload for caliper edge measurement (Emergent object storage).
-- Multi-trailer fleet dispatch board with live status.
-- Stripe per-mission billing for contractor SaaS subscriptions.
-- Emergent Google OAuth as alternate sign-in.
+- Real image upload for caliper edge measurement (Emergent object storage). *(Skipped in v2 — drone mesh measurements replaced it.)*
 - Switch from `@app.on_event("startup")` to FastAPI `lifespan` context (deprecation hardening).
+- Stripe customer portal link for cancellation/upgrades.
+- Multi-tenant white-label theming (Enterprise tier feature).
+- Auto-retry email delivery on transient Resend failures.
+- Real-time websocket fleet telemetry (replace 6s poll).
 
 ## Key DB Collections
 - `users` — `{id, email, legal_name, company_name, role, password_hash, totp_secret, totp_enrolled, nda_accepted, nda_signed_at, nda_signed_ip, created_at}`
