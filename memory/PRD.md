@@ -23,6 +23,23 @@ STRATEX™ (Strategic Thermal Reconnaissance & Automated Topology Estimator) —
 - **Routes**: `/`, `/mission/new`, `/mission/:id`, `/projects`, `/fleet`, `/reports`
 - **API**: `/api/projects` (CRUD), `/api/projects/{id}/caliper`, `/api/projects/{id}/pricing`, `/api/projects/{id}/launch`
 
+## What's Been Implemented (2026-02 — v1.3.0)
+- ✅ **Full iPhone Mobile Layout (Mobile Safari ready)**:
+  - Viewport meta with `viewport-fit=cover` + Apple PWA meta tags (status bar, app-capable, title)
+  - 16px input font-size to prevent iOS zoom on focus
+  - safe-area-inset padding utilities (`safe-top`, `safe-bottom`)
+  - 44px minimum tap targets (Apple HIG)
+  - `-webkit-tap-highlight-color` set to cyber teal
+  - `overflow-x: hidden; max-width: 100vw` on html/body for defensive overflow control
+- ✅ **Hamburger mobile nav** with drawer (Menu/X icons) + haptic feedback on toggle
+- ✅ **Mission Dashboard mobile tabs** — 3D Mesh / Forensic / Anomalies / Quant™ — with anim-fade-up transition and haptic feedback; tapping an anomaly auto-jumps to Forensic tab
+- ✅ **Sticky bottom wizard action bar** on mobile (z-50, safe-area-inset-bottom padding) — Back + Continue/AUTHORIZE always reachable
+- ✅ **Compact mobile labels** ("Lock & Continue" / "AUTHORIZE" / "PDF" instead of full desktop text)
+- ✅ **Responsive H1/H2 with overflow-wrap:anywhere** — uppercase wide-tracking display headings now break correctly on iPhone (centralized in `HudCard.SectionTitle`)
+- ✅ **3D model auto-shrinks** to 360px height on mobile (vs 520-620 on desktop), labels hidden on mobile
+- ✅ **Tables wrapped in overflow-x-auto** for horizontal scroll on small screens
+- ✅ Full iteration-9 testing pass: 6/6 routes scrollWidth == innerWidth, zero console errors, zero JS runtime errors.
+
 ## What's Been Implemented (2026-02 — v1.2.0)
 - ✅ **Roof Topology Engine** (`/app/backend/roof_topology.py`) — full multi-facet geometric engine. Presets: cross-hip, hip, front-gable, L-shape, dutch-gable. Each facet has 3D polygon vertices, normal vector, planar area, true area (sec(θ) corrected), pitch and color tag. Edges classified as ridge / valley / hip / eave / rake by adjacent-facet geometry. Architectural docstring documents the full SfM → MVS/NeRF/3D Gaussian Splatting → mesh extract → RANSAC facet segmentation → dihedral edge classification → RTK calibration → thermal fusion pipeline.
 - ✅ **Roof Style Selector** added to NewMission Step 2 — 5 topology presets, drives the 3D model + pricing math.
