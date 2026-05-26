@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 7 final iPhone 13 Pro (390x844) mobile responsiveness retest. Global fix (html+body overflow-x:hidden; max-width:100vw) confirmed applied in index.css and verified at runtime (html.overflowX='hidden', body.overflowX='hidden', body.maxWidth='390px'). 5 of 6 routes pass the `document.body.scrollWidth <= window.innerWidth + 2` check with 0px delta: /projects (390/390), /fleet (390/390), /reports (390/390), /mission/<id> (390/390), and /mission/new on every single one of the 5 wizard steps (390/390 on Step1-5). The ONLY remaining FAILURE is route `/` (Landing): bodySW=407 vs innerW=390 = 17px overflow — UNCHANGED from iteration 6. Root cause now precisely localized: the inner grid container `<div class='max-w-[1500px] mx-auto grid lg:grid-cols-[1.05fr_1fr]'>` correctly measures left=16 right=374 w=358 (fits viewport), BUT its FIRST grid child `<div>` (containing H1+CTA+stats) defaults to CSS Grid's `min-width: auto` so it expands to its intrinsic content width = 385px (driven by the un-breakable word 'RECONNAISSANCE' in the H1). Therefore that child renders at left=16 right=401 (11px past viewport) and body.scrollWidth becomes 407. The `overflow-x:hidden` on html/body successfully hides the SCROLLBAR but does NOT change scrollWidth — the metric the task requires. STICKY WIZARD BAR VERIFIED FIXED: position=fixed, zIndex=50, bottom=0, paddingBottom uses inline style calc(env(safe-area-inset-bottom)+0.75rem) (computed=12px in Chromium since no notch simulation, but the safe-area term is wired up correctly). Wizard next-btn and authorize-launch-btn both have non-zero size (178x44 and 136x44 respectively). Page wrapper paddingBottom=144px (pb-36) on mobile confirmed. Step 4 canvas renders 306x360 (~360px height). Step 4 next label='Lock & Continue', Step 5 label='AUTHORIZE'. Mission Dashboard mobile tabs all visible, anim-fade-up present (1 instance), navigator.vibrate() returns 'ok'. ZERO console errors and ZERO pageerrors on every route tested.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Landing.jsx — first grid item containing H1 hero block",
+        "issue": "On iPhone 13 Pro (390px), document.body.scrollWidth=407 (17px overflow). DOM walk: SECTION.relative.px-4 = 0..390 (w=390, overflow-x:hidden), inner DIV.max-w-[1500px].grid = 16..374 (w=358, correct), but its first child DIV (untyped, holds the H1+CTAs+stats) = 16..401 (w=385, +11px). H1 inside that child is also 385 wide, with span 'RECONNAISSANCE' rendering at full 385px width — Orbitron weight-900 at text-[2rem] with tracking 0.04em produces an intrinsic word-width >358px, and `break-words` (overflow-wrap:break-word) only breaks if NO valid break points exist (a single token has none in latin script). The CSS Grid default `min-width: auto` then forces the grid track to that intrinsic width, blowing out the 358px parent. The html/body `overflow-x:hidden; max-width:100vw` correctly suppresses the visible scrollbar but does NOT shrink body.scrollWidth.",
+        "selector": "/app/frontend/src/pages/Landing.jsx line 28 (first child of grid container) AND line 33 (the H1)",
+        "priority": "HIGH",
+        "fix_recommendation": "Apply BOTH of these on the grid item to make scrollWidth==390 on the Landing route at 390px viewport: (a) add `min-w-0` to the first grid child div on line 28 (`<div className='min-w-0'>`) so the grid track is no longer pinned to intrinsic word-width; (b) change H1 utility from `break-words` to `[overflow-wrap:anywhere]` (or Tailwind `break-all` if acceptable visually) so 'RECONNAISSANCE' wraps mid-word at sub-360px. Optionally (c) drop H1 mobile size from text-[2rem] to text-[1.625rem] tracking-[0.02em] at sub-400px viewports so the word fits without breaking. Without (a), the grid item itself will still overflow even if H1 internally wraps."
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Landing hero at 390px",
+        "issues": [
+          "The word 'RECONNAISSANCE' is visually clipped on the right edge of the screen (scrollbar hidden by overflow-x:hidden, so content is just cut). The 'STARLINK' / '14 DAYS' stat values in the right column of the stats grid also clip on the right because they inherit the same overflowing parent column."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_7.json"
+  ],
+  "action_items": [
+    "[HIGH] Fix Landing 17px overflow ONLY. Add `min-w-0` to the first grid child div in /app/frontend/src/pages/Landing.jsx line 28, AND change H1 className from `break-words` to `[overflow-wrap:anywhere]`. These two changes together will make body.scrollWidth==390 at 390px. The global index.css overflow-x:hidden + max-width:100vw is correctly in place and handles all OTHER routes; Landing needs an additional component-local fix because its content has a non-breakable token wider than the grid track.",
+    "[LOW] After the Landing fix, re-verify with: `await page.evaluate('document.body.scrollWidth')` should equal 390 at the / route on a 390x844 viewport."
+  ],
+  "critical_code_review_comments": [
+    "Iteration 6's recommendation 'add overflow-x:hidden to body/main' was implemented but is INSUFFICIENT to satisfy the task's literal acceptance criterion (`scrollWidth <= innerWidth + 2`). overflow-x:hidden suppresses the visible horizontal scrollbar but body.scrollWidth still reports the intrinsic content width. For TRUE 'zero overflow' at the metric level you must also fix the offending child element (in this case the Landing grid item via min-w-0 + better wrap). Consider adding a CI guard that fails CI if any of the 6 mobile routes returns scrollWidth > innerWidth+2.",
+    "Sticky bar inline style `paddingBottom: calc(env(safe-area-inset-bottom) + 0.75rem)` resolves to 12px in headless Chromium because env(safe-area-inset-bottom) evaluates to 0 outside an iOS PWA / Safari with viewport-fit=cover. To make this actually take effect on a real iPhone, ensure the index.html has `<meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover'>`. Verify by grepping index.html (out of scope for this iteration but worth flagging).",
+    "Step 4 canvas renders correctly at 360px height on mobile (was 520px on desktop) — isMobile-conditional height is working. No regression."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "n/a (frontend-only iteration)",
+    "frontend": "94% — 5/6 routes pass scrollWidth check (Landing fails); 100% of regression items pass (sticky bar z-50, safe-area padding wired up, pb-36 wrapper, Step 4 canvas=360, mobile labels 'Lock & Continue' + 'AUTHORIZE', mobile tabs, anim-fade-up, haptic, zero console errors)."
+  },
+  "test_credentials": "n/a (no auth)",
+  "seed_data_creation": "Used existing project 9527c7cb-b5e5-4ae4-b517-26d489dd4bb8 for Mission Dashboard tests. No new seeds. Created an in-memory wizard run that filled Steps 1-5 with TEST_ data (never submitted) — not persisted.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Re-test ONLY iPhone 13 Pro 390x844 viewport on the / route after main agent applies the Landing min-w-0 + overflow-wrap:anywhere fix. Acceptance: document.body.scrollWidth must equal 390 (or <=392) at /. All other routes already pass and should be left alone. Sticky bar z-index 50 + safe-area-inset-bottom padding is CONFIRMED applied correctly — no further changes needed there. Step 4 canvas 360px + 'Lock & Continue' + Step 5 'AUTHORIZE' all CONFIRMED. Note: Made-with-Emergent badge still occludes the bottom-right of the sticky bar at the click-hit-test level (elementFromPoint at btn center returns a P element from the badge iframe overlay, not the button) — this is an Emergent platform overlay, NOT a product bug; Playwright must use JS .click() to bypass; real users on iPhone get pass-through clicks via the iframe.",
+  "rca of the issue": {
+    "landing_overflow_root_cause": "CSS Grid default `min-width: auto` on a grid item forces the track to expand to the item's intrinsic min-content width. The first grid child of Landing's hero grid contains an H1 with the word 'RECONNAISSANCE' (un-breakable in default break-words mode at 32px Orbitron). That word's intrinsic width (~385px) exceeds the available track width (~358px after px-4 padding), so the grid item swells to 385px, ending at x=401 (11px past viewport). The 17px body.scrollWidth excess = 11px child overflow + ~6px hud-card decorative `corner-br` span at x=387..401. Iteration-6's overflow-x:hidden on html/body hides the resulting scrollbar but does NOT shrink scrollWidth.",
+    "reproduction_at_iteration_7": "1) viewport 390x844. 2) goto /. 3) evaluate document.body.scrollWidth -> 407. 4) Walk DOM from H1 upward: H1=385@16..401, parent unnamed DIV=385@16..401, grandparent .max-w-[1500px].grid = 358@16..374. The unnamed parent DIV is the grid item that should be 358 but is 385 due to min-width:auto.",
+    "fix_path": "Two-line change in /app/frontend/src/pages/Landing.jsx: (1) line 28: `<div>` -> `<div className='min-w-0'>`; (2) line 33 H1: replace `break-words` with `[overflow-wrap:anywhere]`. Both changes are required — (1) alone leaves the H1 visually overflowing its (now-narrower) box; (2) alone leaves the grid item still expanded by min-width:auto.",
+    "regression_verifications_passed": "NewMission wizard (all 5 steps no overflow, Step 4 canvas 306x360, labels correct, sticky bar z-50 fixed position with safe-area padding wired up, pb-36 wrapper, buttons clickable via JS), Mission Dashboard (overflow=0, mobile tabs visible, anim-fade-up present, haptic ok), Projects/Fleet/Reports (overflow=0), zero console errors on every route."
+  }
+}

@@ -113,7 +113,7 @@ export default function NewMission() {
   const back = () => { if (step > 1 && !busy) setStep(step - 1); };
 
   return (
-    <div data-testid="new-mission-page" className="px-4 md:px-12 py-6 md:py-10 max-w-[1500px] mx-auto pb-28 md:pb-10">
+    <div data-testid="new-mission-page" className="px-4 md:px-12 py-6 md:py-10 max-w-[1500px] mx-auto pb-36 md:pb-10">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <div className="font-mono text-[11px] tracking-[0.32em] text-teal uppercase">// PRE-FLIGHT PIPELINE</div>
@@ -379,7 +379,7 @@ export default function NewMission() {
       )}
 
       {/* footer nav — sticky on mobile, inline on desktop */}
-      <div className="md:mt-8 mt-4 md:static fixed bottom-0 left-0 right-0 md:bg-transparent bg-[#06080B]/95 backdrop-blur-md border-t md:border-0 border-[#00F0FF]/20 md:p-0 p-3 z-40 safe-bottom flex flex-wrap items-center justify-between gap-3">
+      <div className="md:mt-8 mt-4 md:static fixed bottom-0 left-0 right-0 md:bg-transparent bg-[#06080B]/95 backdrop-blur-md border-t md:border-0 border-[#00F0FF]/20 md:p-0 px-3 pt-3 pb-3 md:pb-3 z-50 safe-bottom flex flex-wrap items-center justify-between gap-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}>
         <button onClick={back} disabled={step===1 || busy} className="btn-hud btn-hud-ghost" data-testid="wizard-back-btn">
           <ArrowLeft size={14}/> Back
         </button>
