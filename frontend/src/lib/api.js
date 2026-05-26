@@ -36,3 +36,19 @@ export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf
 export const listOperatorJobs = () => inst.get("/operator/jobs").then(r => r.data);
 export const getOperatorJob = (id) => inst.get(`/operator/jobs/${id}`).then(r => r.data);
 export const operatorLaunch = (id, preflight) => inst.post(`/operator/jobs/${id}/launch`, preflight).then(r => r.data);
+
+// ---------- Fleet ----------
+export const fleetStatus = () => inst.get("/fleet/status").then(r => r.data);
+
+// ---------- Email ----------
+export const emailNda = () => inst.post("/auth/email-nda").then(r => r.data);
+export const emailProposal = (id, homeowner_email, cc_self=true) => inst.post(`/contractor/jobs/${id}/email-proposal`, { homeowner_email, cc_self }).then(r => r.data);
+
+// ---------- Google OAuth ----------
+export const googleSessionExchange = (session_id) => inst.post("/auth/google/session", { session_id }).then(r => r.data);
+
+// ---------- Billing (Stripe) ----------
+export const getBillingPlans = () => inst.get("/billing/plans").then(r => r.data);
+export const getBillingMe = () => inst.get("/billing/me").then(r => r.data);
+export const createCheckout = (tier, origin_url) => inst.post("/billing/checkout", { tier, origin_url }).then(r => r.data);
+export const getCheckoutStatus = (session_id) => inst.get(`/billing/status/${session_id}`).then(r => r.data);

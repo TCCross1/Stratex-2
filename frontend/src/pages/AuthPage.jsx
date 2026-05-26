@@ -167,6 +167,31 @@ export default function AuthPage() {
             {mode==="login" ? "→ Create new contractor / operator account" : "← Back to sign in"}
           </button>
 
+          <div className="my-4 flex items-center gap-3">
+            <span className="flex-1 h-px bg-[#00F0FF]/20"/>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-hud">or</span>
+            <span className="flex-1 h-px bg-[#00F0FF]/20"/>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+              const redirectUrl = window.location.origin + "/contractor";
+              window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+            }}
+            data-testid="google-signin"
+            className="w-full flex items-center justify-center gap-2 border border-[#00F0FF]/40 bg-[#10141D] hover:bg-[#00F0FF]/10 text-silver py-2.5 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5c10.4 0 19.4-7.6 19.4-19.5 0-1.3-.1-2.3-.3-3.5z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13.5 24 13.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.2 4.5 9.5 9 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.3l-6.2-5.2c-2 1.4-4.6 2.2-7.2 2.2-5.2 0-9.6-3.3-11.2-8l-6.5 5C9.4 38.9 16.1 43.5 24 43.5z"/>
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2c-.4.4 6.6-4.8 6.6-14.9 0-1.3-.1-2.3-.3-3.5z"/>
+            </svg>
+            <span className="font-mono text-[12px] uppercase tracking-widest">Continue with Google</span>
+          </button>
+
           <div className="mt-6 border-t border-[#00F0FF]/20 pt-3 text-[10px] font-mono text-muted-hud leading-relaxed">
             <Shield size={10} className="inline mr-1 text-volt"/> Material costs, profit margins, overhead multipliers, and client financial data are subject to <span className="text-volt">hardware-isolated AES-256 encryption</span>. STRATEX operators have ZERO visibility into your proprietary business rules.
           </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Crosshair, Search } from "lucide-react";
+import { Crosshair, Search, Satellite, Map as MapIcon } from "lucide-react";
 
 // Custom STRATEX cyber-teal pin marker (no asset shim needed)
 const STRATEX_ICON = L.divIcon({
@@ -43,6 +43,7 @@ function Recenter({ lat, lng }) {
 export default function MapPicker({ lat, lon, address, onChange }) {
   const [q, setQ] = useState(address || "");
   const [busy, setBusy] = useState(false);
+  const [layer, setLayer] = useState("sat"); // 'sat' | 'road'
   const debounceRef = useRef(null);
 
   useEffect(() => { setQ(address || ""); }, [address]);
@@ -96,24 +97,44 @@ export default function MapPicker({ lat, lon, address, onChange }) {
         />
         {busy && <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-teal uppercase tracking-widest">…locating</span>}
       </div>
-      <div className="relative border border-[#00F0FF]/35 overflow-hidden" style={{ height: 360 }}>
+      <div className="relative border border-[#00F0FF]/35 overflow-hidden" style={{ height: 380 }}>
         <span className="corner-bl"/><span className="corner-br"/>
         <MapContainer
           center={center}
-          zoom={17}
+          zoom={18}
           style={{ height: "100%", width: "100%", background: "#06080B" }}
           scrollWheelZoom
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {layer === "sat" ? (
+            <>
+              <TileLayer
+                attribution='Imagery &copy; Esri &mdash; World Imagery'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
+              />
+              <TileLayer
+                attribution='&copy; OpenStreetMap labels'
+                url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png"
+                opacity={0.55}
+                maxZoom={19}
+              />
+            </>
+          ) : (
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          )}
           {Number.isFinite(lat) && Number.isFinite(lon) && (
             <Marker position={[lat, lon]} icon={STRATEX_ICON}/>
           )}
           <ClickHandler onPick={reverse}/>
           <Recenter lat={lat} lng={lon}/>
         </MapContainer>
+        <div className="absolute top-2 right-2 z-[400] flex border border-[#00F0FF]/40 overflow-hidden font-mono text-[10px] uppercase tracking-widest">
+          <button onClick={()=>setLayer("sat")} data-testid="map-layer-sat" className={`px-2 py-1 flex items-center gap-1 transition-all ${layer==="sat"?"bg-[#00F0FF] text-obsidian":"bg-[#06080B]/85 text-teal hover:bg-[#00F0FF]/15"}`}><Satellite size={10}/> SAT</button>
+          <button onClick={()=>setLayer("road")} data-testid="map-layer-road" className={`px-2 py-1 flex items-center gap-1 transition-all ${layer==="road"?"bg-[#00F0FF] text-obsidian":"bg-[#06080B]/85 text-teal hover:bg-[#00F0FF]/15"}`}><MapIcon size={10}/> MAP</button>
+        </div>
         <div className="absolute bottom-2 left-2 z-[400] bg-[#06080B]/85 border border-[#00F0FF]/40 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-teal flex items-center gap-1 pointer-events-none">
           <Crosshair size={10}/> CLICK MAP TO DROP DISPATCH PIN
         </div>

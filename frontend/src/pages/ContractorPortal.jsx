@@ -9,9 +9,10 @@ import {
   listContractorJobs, createJob, getContractorJob, computeProposal, auditApprove, markSent, contractorPdfUrl,
   getMaterials, saveMaterials,
 } from "@/lib/api";
-import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator } from "lucide-react";
+import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
+import { emailProposal } from "@/lib/api";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_FIELD_CAPTURE: "Awaiting Field Capture",
@@ -141,12 +142,48 @@ export function NewJob() {
 }
 
 // JOB DETAIL — captures + proposal + actions
+const AGENT_PHASES = [
+  { key: "forensic",       label: "FORENSIC AGENT",       sub: "Analyzing thermal δ + anomaly footprints" },
+  { key: "validation",     label: "VALIDATION AGENT",     sub: "Cross-referencing facets ↔ telemetry mesh" },
+  { key: "reconciliation", label: "RECONCILIATION AGENT", sub: "Applying Business Brain (AES-256 decrypt)" },
+  { key: "jurisprudential",label: "JURISPRUDENTIAL AGENT",sub: "Overlaying local code + Xactimate tags" },
+];
+
+function AgentStream({ phaseIdx }) {
+  return (
+    <div data-testid="agent-stream" className="space-y-2 mt-4 text-left max-w-md mx-auto">
+      {AGENT_PHASES.map((p, i) => {
+        const done = i < phaseIdx;
+        const active = i === phaseIdx;
+        return (
+          <div key={p.key} className={`hud-card p-3 flex items-center gap-3 transition-all ${active ? "border-[#00F0FF]" : ""}`}>
+            <span className="corner-bl"/><span className="corner-br"/>
+            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+              {done ? <CheckCircle2 size={18} className="text-volt"/> :
+               active ? <Loader2 size={18} className="text-teal animate-spin"/> :
+               <span className="w-2 h-2 bg-muted-hud/40 rounded-full"/>}
+            </div>
+            <div className="min-w-0">
+              <div className={`font-mono text-[11px] tracking-widest uppercase ${done?"text-volt":active?"text-teal":"text-muted-hud"}`}>{p.label}</div>
+              <div className="text-[11px] text-muted-hud font-body truncate">{p.sub}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function JobDetail() {
   const { id } = useParams();
   const isMobile = useIsMobile(900);
   const [job, setJob] = useState(null);
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [streamPhase, setStreamPhase] = useState(-1); // -1 idle, 0..4 phases, 4 = done
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
 
   const load = async () => { const j = await getContractorJob(id); setJob(j); const an=(j.mission?.anomalies||j.anomalies||[]); if(an[0]) setSelectedAnomaly(an[0]); };
   useEffect(()=>{ load().catch(()=>{}); }, [id]);
@@ -158,6 +195,49 @@ export function JobDetail() {
   const pricing = job.pricing;
 
   const run = async (fn, label) => { setBusy(true); try { await fn(); toast.success(label); await load(); } catch(e){ toast.error(e.response?.data?.detail || e.message); } finally { setBusy(false); } };
+
+  const computeWithStream = async () => {
+    setBusy(true);
+    setStreamPhase(0);
+    // Pace the visual through 4 agents while the (fast) compute call runs in parallel
+    let phaseTimer = null;
+    let phase = 0;
+    const advance = () => {
+      phase += 1;
+      if (phase < AGENT_PHASES.length) {
+        setStreamPhase(phase);
+        phaseTimer = setTimeout(advance, 900);
+      }
+    };
+    phaseTimer = setTimeout(advance, 900);
+    try {
+      await computeProposal(id);
+      // ensure all phases show as done
+      if (phaseTimer) clearTimeout(phaseTimer);
+      setStreamPhase(AGENT_PHASES.length);
+      // brief delay so user sees the volt-green completion
+      await new Promise((r)=>setTimeout(r, 500));
+      toast.success("PROPOSAL LOCKED");
+      await load();
+    } catch (e) {
+      if (phaseTimer) clearTimeout(phaseTimer);
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setStreamPhase(-1);
+      setBusy(false);
+    }
+  };
+
+  const sendEmail = async () => {
+    setEmailBusy(true);
+    try {
+      const r = await emailProposal(id, emailTo || job.homeowner_email || "", true);
+      toast.success(r.mocked ? "EMAIL LOGGED (set RESEND_API_KEY to send)" : `Sent to ${r.to}`);
+      setEmailOpen(false);
+      await load();
+    } catch (e) { toast.error(e.response?.data?.detail || e.message); }
+    finally { setEmailBusy(false); }
+  };
 
   return (
     <>
@@ -223,9 +303,10 @@ export function JobDetail() {
               <HudCard className="p-6 mb-4 text-center">
                 <div className="flex items-center justify-center gap-2 mb-3 text-teal"><Lock size={14}/><span className="font-mono text-[11px] uppercase tracking-widest">Encrypted Business Brain Standing By</span></div>
                 <p className="text-muted-hud text-sm mb-4">Apply your private Materials Configuration (overhead %, profit margin, labor rate, insurance supplement) to generate the binding homeowner proposal.</p>
-                <button onClick={()=>run(()=>computeProposal(id), "Proposal computed")} disabled={busy} className="btn-hud" data-testid="compute-proposal-btn">
-                  <Calculator size={14}/> {busy?"…":"COMPUTE PROPOSAL"}
+                <button onClick={computeWithStream} disabled={busy} className="btn-hud" data-testid="compute-proposal-btn">
+                  <Calculator size={14}/> {busy?"COMPUTING…":"COMPUTE PROPOSAL"}
                 </button>
+                {streamPhase >= 0 && <AgentStream phaseIdx={streamPhase}/>}
               </HudCard>
             )}
 
@@ -233,12 +314,26 @@ export function JobDetail() {
               <HudCard scanline className="p-5 mb-4">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                   <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest"><DollarSign size={14}/> Locked Proposal — {pricing.lock_mode}</div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <a href={contractorPdfUrl(id)} target="_blank" rel="noreferrer" className="btn-hud btn-hud-ghost" data-testid="job-pdf-btn"><Download size={14}/> PDF</a>
+                    <button onClick={()=>{setEmailTo(job.homeowner_email||""); setEmailOpen(true);}} className="btn-hud btn-hud-ghost" data-testid="email-proposal-btn"><Mail size={14}/> Email</button>
                     {job.status === "PROPOSAL_READY" && <button onClick={()=>run(()=>auditApprove(id), "Audit approved")} disabled={busy} className="btn-hud" data-testid="audit-approve-btn"><CheckCircle2 size={14}/> Audit Approved</button>}
                     {job.status === "AUDIT_APPROVED" && <button onClick={()=>run(()=>markSent(id), "Marked sent")} disabled={busy} className="btn-hud btn-hud-alert" data-testid="mark-sent-btn"><Send size={14}/> Mark Sent</button>}
                   </div>
                 </div>
+
+                {emailOpen && (
+                  <HudCard alert className="p-4 mb-3" data-testid="email-dialog">
+                    <div className="font-mono text-[11px] uppercase tracking-widest text-plasma mb-2 flex items-center gap-2"><Mail size={12}/> Email Proposal to Homeowner</div>
+                    <input data-testid="email-to-input" className="hud-input mb-3" placeholder="homeowner@example.com" value={emailTo} onChange={(e)=>setEmailTo(e.target.value)}/>
+                    <div className="flex gap-2">
+                      <button onClick={sendEmail} disabled={emailBusy || !emailTo} className="btn-hud" data-testid="email-send-confirm">{emailBusy?"Sending…":"Send Proposal PDF"}</button>
+                      <button onClick={()=>setEmailOpen(false)} className="btn-hud btn-hud-ghost">Cancel</button>
+                    </div>
+                    {job.emailed_to && <div className="mt-2 text-[10px] font-mono text-muted-hud uppercase tracking-widest">Last sent: {job.emailed_to} • {job.emailed_at}</div>}
+                  </HudCard>
+                )}
+
                 <div className="overflow-x-auto">
                   <table className="hud-table">
                     <thead><tr><th>Line Item</th><th>Qty</th><th>Unit</th><th>$/Unit</th><th>Total</th><th>Tag</th></tr></thead>

@@ -122,8 +122,8 @@ export function OperatorJobDetail() {
             <div className="relative border border-[#FF5500]/40 overflow-hidden" style={{ height: 240 }}>
               <span className="corner-bl"/><span className="corner-br"/>
               {Number.isFinite(job.lat) && Number.isFinite(job.lon) && (
-                <MapContainer center={[job.lat, job.lon]} zoom={17} style={{ height: "100%", width: "100%", background: "#06080B" }} scrollWheelZoom={false} dragging={!isMobile}>
-                  <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
+                <MapContainer center={[job.lat, job.lon]} zoom={18} style={{ height: "100%", width: "100%", background: "#06080B" }} scrollWheelZoom={false} dragging={!isMobile}>
+                  <TileLayer attribution='Imagery &copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19}/>
                   <Marker position={[job.lat, job.lon]} icon={OP_ICON}/>
                 </MapContainer>
               )}

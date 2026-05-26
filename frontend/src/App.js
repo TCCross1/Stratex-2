@@ -5,9 +5,12 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Nav from "@/components/Nav";
 import Landing from "@/pages/Landing";
 import AuthPage from "@/pages/AuthPage";
+import AuthCallback from "@/pages/AuthCallback";
 import NDAPage from "@/pages/NDAPage";
 import { ContractorJobs, NewJob, JobDetail, MaterialsConfig } from "@/pages/ContractorPortal";
 import { OperatorBoard, OperatorJobDetail } from "@/pages/OperatorTerminal";
+import FleetBoard from "@/pages/FleetBoard";
+import Pricing, { BillingSuccess } from "@/pages/Pricing";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -22,6 +25,12 @@ function Protected({ role, children }) {
 function AppShell() {
   const { user } = useAuth();
   const loc = useLocation();
+
+  // Synchronously detect Google OAuth callback BEFORE other routing runs
+  if (typeof window !== "undefined" && window.location.hash && window.location.hash.includes("session_id=")) {
+    return <AuthCallback/>;
+  }
+
   const hideNav = ["/auth", "/nda"].includes(loc.pathname);
   return (
     <>
@@ -38,6 +47,10 @@ function AppShell() {
 
         <Route path="/operator" element={<Protected role="operator"><OperatorBoard/></Protected>}/>
         <Route path="/operator/jobs/:id" element={<Protected role="operator"><OperatorJobDetail/></Protected>}/>
+
+        <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
+        <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>
+        <Route path="/billing/success" element={<Protected role="contractor"><BillingSuccess/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>

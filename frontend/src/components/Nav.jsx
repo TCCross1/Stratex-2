@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
-import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList } from "lucide-react";
+import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard } from "lucide-react";
 
 const NavLink = ({ to, label, icon: Icon, testid, onClick }) => {
   const loc = useLocation();
@@ -28,9 +28,12 @@ const CONTRACTOR_ITEMS = [
   { to: "/contractor", label: "Pipeline", icon: Layers, testid: "nav-pipeline" },
   { to: "/contractor/jobs/new", label: "New Job", icon: Plus, testid: "nav-new-job" },
   { to: "/contractor/materials", label: "Business Brain", icon: Lock, testid: "nav-materials" },
+  { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-fleet" },
+  { to: "/billing", label: "Billing", icon: CreditCard, testid: "nav-billing" },
 ];
 const OPERATOR_ITEMS = [
   { to: "/operator", label: "Job Board", icon: ClipboardList, testid: "nav-operator-board" },
+  { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-operator-fleet" },
 ];
 const ANON_ITEMS = [
   { to: "/", label: "Command", icon: Radar, testid: "nav-command" },

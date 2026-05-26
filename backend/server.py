@@ -18,9 +18,10 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any
 import os
 import uuid
@@ -111,6 +112,28 @@ class MaterialsConfig(BaseModel):
     labor_rate_per_hour: float = 78.00
     labor_rate_per_square: float = 0.0  # if set, used instead of hourly
     insurance_supplement_multiplier_pct: float = 12.0  # applied to insurance jobs
+
+    @field_validator(
+        "shingle_bundle_price", "underlayment_square_price", "ice_water_roll_price",
+        "ridge_cap_bundle_price", "starter_bundle_price", "drip_edge_lf_price",
+        "fastener_square_price", "osb_sheet_price", "labor_rate_per_hour", "labor_rate_per_square",
+    )
+    @classmethod
+    def _non_negative_price(cls, v: float, info) -> float:
+        if v < 0:
+            raise ValueError(f"{info.field_name} cannot be negative")
+        if v > 100000:
+            raise ValueError(f"{info.field_name} is unreasonably high (>$100,000)")
+        return v
+
+    @field_validator("overhead_pct", "profit_margin_pct", "insurance_supplement_multiplier_pct")
+    @classmethod
+    def _percentage_bounds(cls, v: float, info) -> float:
+        if v < 0:
+            raise ValueError(f"{info.field_name} cannot be negative")
+        if v > 100:
+            raise ValueError(f"{info.field_name} cannot exceed 100%")
+        return v
 
 
 class JobCreate(BaseModel):
@@ -737,6 +760,79 @@ async def root():
 
 
 # ---------------------------------------------------------------------------
+# FLEET STATUS — live multi-trailer telemetry (deterministic mock per slot)
+# ---------------------------------------------------------------------------
+
+FLEET_RIGS = [
+    {"id": "STX-01", "callsign": "VANGUARD", "base": "Lexington, KY", "lat": 38.0406, "lon": -84.5037},
+    {"id": "STX-02", "callsign": "OUTRIDER", "base": "Louisville, KY", "lat": 38.2527, "lon": -85.7585},
+    {"id": "STX-03", "callsign": "HORIZON",  "base": "Indianapolis, IN", "lat": 39.7684, "lon": -86.1581},
+    {"id": "STX-04", "callsign": "RAVEN",    "base": "Nashville, TN", "lat": 36.1627, "lon": -86.7816},
+    {"id": "STX-05", "callsign": "SENTINEL", "base": "Cincinnati, OH", "lat": 39.1031, "lon": -84.5120},
+    {"id": "STX-06", "callsign": "OBSIDIAN", "base": "St Louis, MO", "lat": 38.6270, "lon": -90.1994},
+]
+
+
+@api.get("/fleet/status")
+async def fleet_status(user=Depends(current_user)):
+    """Live telemetry for the STRATEX trailer fleet. Mocked but deterministic per call slot."""
+    # rotate the slot every 6 seconds so the UI animates as it polls
+    slot = int(datetime.now(timezone.utc).timestamp() // 6)
+    rigs = []
+    # pull in-flight jobs to attach to "deployed" rigs
+    in_flight = await db.jobs.find({"status": "IN_FLIGHT"}, {"_id": 0}).to_list(20)
+    pending = await db.jobs.find({"status": "PENDING_FIELD_CAPTURE"}, {"_id": 0}).to_list(20)
+    for i, base in enumerate(FLEET_RIGS):
+        seed = (slot + i * 7) % 100
+        # rotate statuses: STANDBY / DEPLOYED / IN_FLIGHT / CHARGING / MAINTENANCE
+        if seed < 35:
+            status = "STANDBY"
+            battery = 96 + (seed % 5)
+        elif seed < 55:
+            status = "CHARGING"
+            battery = 38 + seed
+        elif seed < 75:
+            status = "DEPLOYED"
+            battery = 80 - (seed % 10)
+        elif seed < 92:
+            status = "IN_FLIGHT"
+            battery = 60 + (seed % 15)
+        else:
+            status = "MAINTENANCE"
+            battery = max(20, seed - 10)
+        rig = {
+            **base,
+            "status": status,
+            "battery_pct": battery,
+            "uplink": "STARLINK" if seed % 11 != 0 else "LTE-FAILOVER",
+            "rtk_signal_cm": round(0.5 + (seed % 4) * 0.4, 2),
+            "active_job_id": None,
+            "active_job_address": None,
+            "missions_today": (seed % 7),
+            "last_heartbeat": now_iso(),
+        }
+        if status in ("DEPLOYED", "IN_FLIGHT"):
+            pool = in_flight + pending
+            if pool:
+                j = pool[(slot + i) % len(pool)]
+                rig["active_job_id"] = j["id"][:8]
+                rig["active_job_address"] = j.get("property_address")
+                rig["lat"] = (rig["lat"] + j.get("lat", rig["lat"])) / 2
+                rig["lon"] = (rig["lon"] + j.get("lon", rig["lon"])) / 2
+        rigs.append(rig)
+    totals = {
+        "total_rigs": len(rigs),
+        "deployed": sum(1 for r in rigs if r["status"] in ("DEPLOYED", "IN_FLIGHT")),
+        "standby":  sum(1 for r in rigs if r["status"] == "STANDBY"),
+        "charging": sum(1 for r in rigs if r["status"] == "CHARGING"),
+        "maintenance": sum(1 for r in rigs if r["status"] == "MAINTENANCE"),
+        "avg_battery_pct": round(sum(r["battery_pct"] for r in rigs) / len(rigs)),
+        "missions_today": sum(r["missions_today"] for r in rigs),
+    }
+    return {"rigs": rigs, "totals": totals, "as_of": now_iso()}
+
+
+# ---------------------------------------------------------------------------
 # SEED on startup
 # ---------------------------------------------------------------------------
 
@@ -833,6 +929,281 @@ async def totp_debug(email: str):
         raise HTTPException(404, "User not found")
     import pyotp
     return {"email": u["email"], "current_code": pyotp.TOTP(u["totp_secret"]).now()}
+
+
+# ---------------------------------------------------------------------------
+# GOOGLE OAUTH (Emergent-managed) — bridges to our JWT
+# ---------------------------------------------------------------------------
+# REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+
+@auth_r.post("/google/session")
+async def google_session(body: Dict[str, str]):
+    """Exchange an Emergent OAuth session_id for a STRATEX JWT. Creates user if first time."""
+    session_id = body.get("session_id")
+    if not session_id:
+        raise HTTPException(400, "session_id required")
+    import httpx
+    url = os.environ.get("EMERGENT_AUTH_URL", "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data")
+    async with httpx.AsyncClient(timeout=15) as cli:
+        r = await cli.get(url, headers={"X-Session-ID": session_id})
+        if r.status_code != 200:
+            raise HTTPException(401, "Invalid Google session")
+        data = r.json()
+    email = (data.get("email") or "").lower()
+    name = data.get("name") or email.split("@")[0]
+    picture = data.get("picture") or ""
+    if not email:
+        raise HTTPException(400, "Google profile missing email")
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user:
+        # First-time Google signup → defaults to contractor role; no MFA, NDA still required
+        user = {
+            "id": str(uuid.uuid4()),
+            "email": email,
+            "legal_name": name,
+            "company_name": "",
+            "role": "contractor",
+            "password_hash": "",   # google-only account; no local password
+            "totp_secret": new_totp_secret(),
+            "totp_enrolled": True,  # Google itself acts as MFA
+            "nda_accepted": False,
+            "google_picture": picture,
+            "auth_provider": "google",
+            "created_at": now_iso(),
+        }
+        await db.users.insert_one(user)
+        user.pop("_id", None)
+    else:
+        # update picture + mark provider
+        await db.users.update_one({"email": email}, {"$set": {"google_picture": picture, "auth_provider": user.get("auth_provider") or "google"}})
+    access = create_access_token(user["id"], user["role"], user["email"])
+    refresh = create_refresh_token(user["id"])
+    return {
+        "access_token": access, "refresh_token": refresh, "token_type": "Bearer",
+        "user": _public_user(user),
+    }
+
+
+# ---------------------------------------------------------------------------
+# EMAIL — Resend integration (NDA + Quote PDF delivery)
+# ---------------------------------------------------------------------------
+
+def _resend_ready() -> bool:
+    return bool(os.environ.get("RESEND_API_KEY"))
+
+
+async def _send_email(to: str, subject: str, html: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    if not _resend_ready():
+        return {"mocked": True, "to": to, "subject": subject, "note": "RESEND_API_KEY not configured — email logged but not sent"}
+    import resend as _resend
+    _resend.api_key = os.environ["RESEND_API_KEY"]
+    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    params = {"from": f"STRATEX <{sender}>", "to": [to], "subject": subject, "html": html}
+    if attachments:
+        params["attachments"] = attachments
+    return await asyncio.to_thread(_resend.Emails.send, params)
+
+
+def _proposal_email_html(job: Dict[str, Any]) -> str:
+    p = job.get("pricing") or {}
+    final = p.get("final_total", 0)
+    return f"""
+<table cellpadding="0" cellspacing="0" style="background:#06080B;color:#E2E8F0;font-family:Helvetica,Arial,sans-serif;width:100%;max-width:640px;padding:24px;border:1px solid #00F0FF;">
+  <tr><td>
+    <div style="color:#00F0FF;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;">// STRATEX&trade; Proposal</div>
+    <h1 style="color:#E2E8F0;letter-spacing:0.06em;text-transform:uppercase;margin:8px 0 4px;">{job.get('homeowner_name','Homeowner')}</h1>
+    <div style="color:#94A3B8;font-size:12px;margin-bottom:20px;">{job.get('property_address','')}</div>
+    <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #00F0FF33;margin-bottom:16px;">
+      <tr style="background:#10141D;"><td style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;">Project Type</td><td style="color:#E2E8F0;">{job.get('project_type','')}</td></tr>
+      <tr><td style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;">Carrier</td><td style="color:#E2E8F0;">{job.get('insurance_carrier','—')}</td></tr>
+      <tr style="background:#10141D;"><td style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;">Roof Topology</td><td style="color:#E2E8F0;">{job.get('roof_style','')}</td></tr>
+      <tr><td style="color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;">Final Total</td><td style="color:#FF5500;font-weight:bold;font-size:18px;">${final:,.2f}</td></tr>
+    </table>
+    <p style="color:#94A3B8;line-height:1.6;font-size:13px;">Your full forensic supplement, anomaly catalog, and Xactimate-tagged line-items are attached as a PDF. Please review and reach out to {job.get('contractor_company','your contractor')} with any questions.</p>
+    <div style="margin-top:24px;color:#00F0FF;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;">STRATEX&trade; Autonomous Recon Network</div>
+  </td></tr>
+</table>"""
+
+
+def _nda_email_html(typed_name: str, when: str) -> str:
+    return f"""
+<table cellpadding="0" cellspacing="0" style="background:#06080B;color:#E2E8F0;font-family:Helvetica,Arial,sans-serif;width:100%;max-width:640px;padding:24px;border:1px solid #39FF14;">
+  <tr><td>
+    <div style="color:#39FF14;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;">// NDA EXECUTED &middot; AUDIT TRAIL</div>
+    <h1 style="color:#E2E8F0;letter-spacing:0.06em;text-transform:uppercase;margin:8px 0 12px;">Welcome to STRATEX&trade;</h1>
+    <p style="color:#94A3B8;line-height:1.6;font-size:13px;">{typed_name}, your Mutual Non-Disclosure & Data Privacy Agreement has been digitally signed and recorded at <span style="color:#00F0FF;">{when}</span>. Your contractor portal is now fully unlocked.</p>
+    <p style="color:#94A3B8;line-height:1.6;font-size:13px;">Your private business multipliers (overhead, profit margin, labor, insurance supplement) are now protected under hardware-isolated AES-256 application-layer encryption. STRATEX operators have ZERO visibility into your proprietary business rules.</p>
+    <div style="margin-top:24px;color:#39FF14;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;">SECURITY PROTOCOL ACTIVE</div>
+  </td></tr>
+</table>"""
+
+
+class EmailProposalBody(BaseModel):
+    homeowner_email: Optional[EmailStr] = None
+    cc_self: bool = True
+
+
+@api.post("/contractor/jobs/{job_id}/email-proposal")
+async def email_proposal(job_id: str, body: EmailProposalBody, user=Depends(contractor_only)):
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if not job.get("pricing"):
+        raise HTTPException(400, "Compute the proposal before emailing")
+    to_email = (body.homeowner_email or job.get("homeowner_email") or "").strip()
+    if not to_email:
+        raise HTTPException(400, "Homeowner email required (no homeowner_email on file)")
+    import base64
+    pdf = _build_pdf(job)
+    attachments = [{"filename": f"STRATEX_Proposal_{job_id[:8]}.pdf", "content": base64.b64encode(pdf).decode()}]
+    html = _proposal_email_html(job)
+    result = await _send_email(to_email, f"STRATEX™ Roofing Proposal — {job.get('property_address','')}", html, attachments)
+    if body.cc_self and user.get("email") and user["email"] != to_email:
+        await _send_email(user["email"], f"[CC] STRATEX™ Proposal sent to {to_email}", html, attachments)
+    await db.jobs.update_one({"id": job_id}, {"$set": {"emailed_to": to_email, "emailed_at": now_iso()}})
+    return {"ok": True, "to": to_email, "mocked": result.get("mocked", False), "id": result.get("id")}
+
+
+@auth_r.post("/email-nda")
+async def email_nda(user=Depends(current_user)):
+    if not user.get("nda_accepted"):
+        raise HTTPException(400, "NDA not yet signed")
+    when = user.get("nda_signed_at") or now_iso()
+    html = _nda_email_html(user.get("legal_name", ""), when)
+    result = await _send_email(user["email"], "STRATEX™ — NDA Executed & Portal Unlocked", html)
+    return {"ok": True, "to": user["email"], "mocked": result.get("mocked", False)}
+
+
+# ---------------------------------------------------------------------------
+# STRIPE BILLING — subscription tiers (one-time monthly charges)
+# ---------------------------------------------------------------------------
+
+# Backend-defined tiers (never trust frontend amounts)
+PRICING_TIERS = {
+    "starter":    {"name": "Starter",    "price": 99.00,  "blurb": "Solo operators, up to 5 missions/mo",   "features": ["5 missions/mo", "Single trailer dispatch", "PDF supplement export", "Email delivery"]},
+    "pro":        {"name": "Pro",        "price": 299.00, "blurb": "Growing crews — unlimited missions",     "features": ["UNLIMITED missions", "Multi-trailer fleet", "Insurance supplement automation", "Priority dispatch", "AES-256 Business Brain"]},
+    "enterprise": {"name": "Enterprise", "price": 999.00, "blurb": "White-label & multi-tenant operations",  "features": ["Everything in Pro", "White-label branding", "Custom integrations", "Dedicated support", "Audit log + SOC2 export"]},
+}
+
+
+class CheckoutBody(BaseModel):
+    tier: str
+    origin_url: str
+
+
+@api.get("/billing/plans")
+async def billing_plans():
+    return {"tiers": PRICING_TIERS, "currency": "USD"}
+
+
+@api.get("/billing/me")
+async def billing_me(user=Depends(current_user)):
+    full = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0, "totp_secret": 0})
+    return {
+        "subscription_tier": (full or {}).get("subscription_tier"),
+        "subscription_status": (full or {}).get("subscription_status"),
+        "subscription_started_at": (full or {}).get("subscription_started_at"),
+    }
+
+
+@api.post("/billing/checkout")
+async def billing_checkout(body: CheckoutBody, request: Request, user=Depends(contractor_only)):
+    if body.tier not in PRICING_TIERS:
+        raise HTTPException(400, "Invalid tier")
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(500, "Stripe not configured")
+    host_url = str(request.base_url).rstrip("/")
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    tier = PRICING_TIERS[body.tier]
+    origin = body.origin_url.rstrip("/")
+    req = CheckoutSessionRequest(
+        amount=float(tier["price"]),
+        currency="usd",
+        success_url=f"{origin}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin}/billing",
+        metadata={"user_id": user["id"], "tier": body.tier, "email": user["email"]},
+    )
+    session = await checkout.create_checkout_session(req)
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "user_id": user["id"],
+        "email": user["email"],
+        "tier": body.tier,
+        "amount": float(tier["price"]),
+        "currency": "usd",
+        "payment_status": "initiated",
+        "status": "open",
+        "metadata": {"tier": body.tier},
+        "created_at": now_iso(),
+    })
+    return {"url": session.url, "session_id": session.session_id}
+
+
+@api.get("/billing/status/{session_id}")
+async def billing_status(session_id: str, request: Request, user=Depends(contractor_only)):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    api_key = os.environ["STRIPE_API_KEY"]
+    host_url = str(request.base_url).rstrip("/")
+    checkout = StripeCheckout(api_key=api_key, webhook_url=f"{host_url}/api/webhook/stripe")
+    status = await checkout.get_checkout_status(session_id)
+    txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if txn and txn.get("payment_status") != "paid" and status.payment_status == "paid":
+        # Idempotent upgrade: only flip subscription once
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"payment_status": "paid", "status": status.status, "paid_at": now_iso()}},
+        )
+        await db.users.update_one(
+            {"id": txn["user_id"]},
+            {"$set": {
+                "subscription_tier": txn["tier"],
+                "subscription_status": "active",
+                "subscription_started_at": now_iso(),
+            }},
+        )
+    elif txn and status.status == "expired":
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"payment_status": status.payment_status, "status": status.status}},
+        )
+    return {
+        "status": status.status,
+        "payment_status": status.payment_status,
+        "amount_total": status.amount_total,
+        "currency": status.currency,
+        "metadata": status.metadata,
+    }
+
+
+@api.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    api_key = os.environ["STRIPE_API_KEY"]
+    host_url = str(request.base_url).rstrip("/")
+    checkout = StripeCheckout(api_key=api_key, webhook_url=f"{host_url}/api/webhook/stripe")
+    body = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    try:
+        evt = await checkout.handle_webhook(body, sig)
+    except Exception as e:
+        logger.warning("stripe webhook handle failed: %s", e)
+        return {"received": False}
+    if evt.payment_status == "paid" and evt.session_id:
+        txn = await db.payment_transactions.find_one({"session_id": evt.session_id}, {"_id": 0})
+        if txn and txn.get("payment_status") != "paid":
+            await db.payment_transactions.update_one(
+                {"session_id": evt.session_id},
+                {"$set": {"payment_status": "paid", "status": "complete", "paid_at": now_iso()}},
+            )
+            await db.users.update_one(
+                {"id": txn["user_id"]},
+                {"$set": {"subscription_tier": txn["tier"], "subscription_status": "active", "subscription_started_at": now_iso()}},
+            )
+    return {"received": True}
 
 
 # ---------------------------------------------------------------------------

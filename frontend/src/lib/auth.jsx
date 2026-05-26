@@ -12,7 +12,14 @@ export function AuthProvider({ children }) {
     try { const u = await fetchMe(); setUser(u); } catch { setUser(null); localStorage.removeItem("stratex_token"); }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // CRITICAL: Skip /me check during Google OAuth callback so the session can be exchanged first.
+    if (typeof window !== "undefined" && window.location.hash && window.location.hash.includes("session_id=")) {
+      setUser(null);
+      return;
+    }
+    refresh();
+  }, [refresh]);
 
   const login = (access_token, userObj) => {
     localStorage.setItem("stratex_token", access_token);
