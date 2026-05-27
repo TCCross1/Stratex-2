@@ -12,6 +12,7 @@ import { OperatorBoard, OperatorJobDetail } from "@/pages/OperatorTerminal";
 import FleetBoard from "@/pages/FleetBoard";
 import Pricing, { BillingSuccess } from "@/pages/Pricing";
 import NeonLayerPreview from "@/pages/NeonLayerPreview";
+import RoofAuditHarness from "@/pages/RoofAuditHarness";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<Landing/>}/>
         <Route path="/_neon-preview" element={<NeonLayerPreview/>}/>
+        <Route path="/_roof-audit" element={<RoofAuditHarness/>}/>
         <Route path="/auth" element={<AuthPage/>}/>
         <Route path="/nda" element={<Protected><NDAPage/></Protected>}/>
 

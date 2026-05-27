@@ -531,6 +531,9 @@ export default function RoofModel3D({
   showGutters = true,
   // legacy prop (backward-compat) — if `layers` is provided, derive primaryLayer + showGutters from it
   layers = null,
+  // optional debug hook — audit harness passes a callback that receives the
+  // THREE.Scene + finishLayerGroups reference right after construction.
+  __debugSceneProbe = null,
 }) {
   // ----- Back-compat shim: translate legacy {roofing, framing, gutters} to BEES contract -----
   const resolvedPrimary = layers
@@ -1061,6 +1064,23 @@ export default function RoofModel3D({
     renderer.domElement.addEventListener("click", onClick);
 
     stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, finishLayerGroups, framingGroup, gutterGroup, wipePlane, bbox, span, centre, lastPrimary: resolvedPrimary };
+
+    // Audit hook — emit-once probe so external harnesses (e.g. /_roof-audit)
+    // can read back the rendered scene / per-layer mesh groups for geometric
+    // validation. No-op for production routes (default callback is null).
+    if (typeof __debugSceneProbe === "function") {
+      try {
+        __debugSceneProbe({
+          scene,
+          finishLayerGroups,
+          framingGroup,
+          gutterGroup,
+          bbox,
+          span,
+          centre,
+        });
+      } catch (e) { /* never break render on probe failure */ }
+    }
 
     return () => {
       cancelAnimationFrame(raf);
