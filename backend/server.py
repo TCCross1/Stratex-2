@@ -96,6 +96,9 @@ class MaterialsConfig(BaseModel):
     drip_edge_color: str = "Charcoal"
     fastener_type: str = "Hot-Dipped Galvanized"
 
+    # Field-measured shingle thickness (from caliper OCR — optional)
+    measured_thickness_mm: float = 0.0
+
     # Unit prices (PRIVATE / encrypted at rest)
     shingle_bundle_price: float = 38.50
     underlayment_square_price: float = 78.00
@@ -404,6 +407,7 @@ async def save_materials(body: MaterialsConfig, user=Depends(contractor_only)):
         "starter_brand": body.starter_brand,
         "drip_edge_color": body.drip_edge_color,
         "fastener_type": body.fastener_type,
+        "measured_thickness_mm": body.measured_thickness_mm,
     }
     encrypted = encrypt_value(PRIVATE)
     await db.materials_configs.update_one(
@@ -412,6 +416,100 @@ async def save_materials(body: MaterialsConfig, user=Depends(contractor_only)):
         upsert=True,
     )
     return {"ok": True, "encrypted_field_count": len(PRIVATE)}
+
+
+# ---------------------------------------------------------------------------
+# CALIPER PHOTO OCR — accept a phone photo of a digital caliper, return the
+# thickness reading (in mm + thousandths inch). Powered by Gemini vision via
+# the Emergent LLM Key. If the LLM key is unavailable or fails to parse the
+# image, the endpoint falls back to a "manual_entry_required" response so the
+# field engineer can type the reading instead.
+# ---------------------------------------------------------------------------
+
+class CaliperOCRBody(BaseModel):
+    image_base64: str          # JPEG/PNG/WEBP, no data: prefix expected
+    mime_type: str = "image/jpeg"
+
+
+@api.post("/contractor/caliper-ocr")
+async def caliper_ocr(body: CaliperOCRBody, user=Depends(contractor_only)):
+    """Read a digital caliper display from a phone photo.
+
+    Returns: { ok, thickness_mm, thickness_in, confidence, raw_response, fallback }
+    """
+    import re
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        return {
+            "ok": False,
+            "thickness_mm": None,
+            "thickness_in": None,
+            "confidence": "none",
+            "fallback": True,
+            "message": "LLM key unavailable — please enter thickness manually.",
+        }
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        # Sanitize base64 (strip data URI prefix if present)
+        b64 = body.image_base64
+        if b64.startswith("data:"):
+            b64 = b64.split(",", 1)[1]
+        prompt = (
+            "You are reading the DIGITAL DISPLAY of a calipers (Mitutoyo or similar). "
+            "Return ONLY a JSON object: "
+            '{"thickness_mm": <number>, "thickness_in": <number>, "unit_shown": "<\"mm\" or \"in\">", "confidence": "<\"high\"|\"medium\"|\"low\">"}. '
+            "If the display is unreadable, return all numbers as null with confidence=\"low\". "
+            "Convert: 1 in = 25.4 mm. Do not include any other text."
+        )
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"caliper-{user['id']}",
+            system_message=prompt,
+        ).with_model("gemini", "gemini-3-flash-preview")
+        resp = await chat.send_message(UserMessage(
+            text="Read the calipers display and return the JSON.",
+            file_contents=[ImageContent(image_base64=b64)],
+        ))
+        raw = str(resp)
+        m = re.search(r"\{[\s\S]*\}", raw)
+        if not m:
+            raise ValueError("LLM returned no JSON")
+        import json
+        parsed = json.loads(m.group(0))
+        thickness_mm = parsed.get("thickness_mm")
+        thickness_in = parsed.get("thickness_in")
+        # Cross-fill if only one unit returned
+        if thickness_mm and not thickness_in:
+            thickness_in = round(thickness_mm / 25.4, 4)
+        elif thickness_in and not thickness_mm:
+            thickness_mm = round(thickness_in * 25.4, 3)
+        # Audit-log the OCR call so we can later replay it
+        await db.audit_log.insert_one({
+            "user_id": user["id"],
+            "action": "caliper_ocr",
+            "thickness_mm": thickness_mm,
+            "thickness_in": thickness_in,
+            "confidence": parsed.get("confidence"),
+            "at": now_iso(),
+        })
+        return {
+            "ok": thickness_mm is not None,
+            "thickness_mm": thickness_mm,
+            "thickness_in": thickness_in,
+            "unit_shown": parsed.get("unit_shown"),
+            "confidence": parsed.get("confidence", "low"),
+            "fallback": False,
+        }
+    except Exception as e:
+        logger.warning("caliper OCR failed: %s", e)
+        return {
+            "ok": False,
+            "thickness_mm": None,
+            "thickness_in": None,
+            "confidence": "none",
+            "fallback": True,
+            "message": f"OCR failed ({type(e).__name__}) — please enter thickness manually.",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +532,7 @@ async def public_demo_topology():
         "gutters": topo["gutters"],
         "anomalies": anomalies,
         "totals": topo["totals"],
+        "validation": topo.get("validation"),
     }
 
 

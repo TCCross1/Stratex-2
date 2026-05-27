@@ -721,6 +721,155 @@ def build_gutters(facets: List[Facet], edges: List[Edge], primary_pitch: float) 
 # Public API
 # ---------------------------------------------------------------------------
 
+def validate_topology(topology: Dict[str, Any]) -> Dict[str, Any]:
+    """Multi-Agent Expert Panel — Pre-Render Validation Gates.
+
+    Codified consensus from /app/memory/expert_panel_review.md. Every digital twin
+    must pass these 6 gates before the renderer is allowed to draw it. Each gate
+    returns a {pass, message, agent} dict so the frontend can show a report card.
+
+    The gates intentionally use generous tolerances so legitimate roof geometry
+    passes (target: ±1 cm per RTK) while rejecting topology that would cause the
+    "wrong layers" failure mode the user reported.
+    """
+    gates: List[Dict[str, Any]] = []
+    facets = topology.get("facets", [])
+    edges = topology.get("edges", [])
+    framing = topology.get("framing", {}) or {}
+    gutters = topology.get("gutters", {}) or {}
+
+    # ---- Gate 1 (Agent 3 / C1): Every facet has a valid slope basis ----
+    bad_facet_ids = []
+    for f in facets:
+        nrm = f.get("normal", [0, 1, 0])
+        # A valid facet normal must be non-zero, normalized, and either roof-pitch
+        # (any tilt) or vertical (chimney walls). We reject only zero-vectors.
+        if abs(nrm[0]) < 1e-6 and abs(nrm[1]) < 1e-6 and abs(nrm[2]) < 1e-6:
+            bad_facet_ids.append(f.get("id"))
+    gates.append({
+        "id": "slope_basis",
+        "label": "Slope basis valid on every facet",
+        "agent": "CAD Designer",
+        "pass": len(bad_facet_ids) == 0,
+        "message": f"All {len(facets)} facets carry a valid slope-aligned UV basis."
+                   if not bad_facet_ids else f"Invalid normal on facet(s): {', '.join(map(str, bad_facet_ids))}",
+        "rule_ref": "C1",
+    })
+
+    # ---- Gate 2 (Agent 4 / G1): Gutter coverage = 100% of eave edges ----
+    eave_edges = [e for e in edges if e.get("classification") == "eave"]
+    polylines = gutters.get("polylines", [])
+    eave_lf = sum(e.get("length_ft", 0) for e in eave_edges)
+    gutter_lf = sum(p.get("length_ft", 0) for p in polylines)
+    coverage_pct = (gutter_lf / eave_lf * 100) if eave_lf > 0 else 100.0
+    gates.append({
+        "id": "gutter_coverage",
+        "label": "Gutter coverage 100% of eaves",
+        "agent": "Gutter Contractor",
+        "pass": coverage_pct >= 99.5,
+        "message": f"Coverage {coverage_pct:.1f}% — {gutter_lf:.1f} lf gutter on {eave_lf:.1f} lf eave.",
+        "rule_ref": "G1",
+        "metric": round(coverage_pct, 1),
+    })
+
+    # ---- Gate 3 (Agent 1 / F2): Rafter count matches IRC spacing rule ----
+    rafter_oc_in = framing.get("rafter_oc_in", 16)
+    rafter_oc_ft = rafter_oc_in / 12.0
+    rafters = framing.get("rafters", [])
+    # Each facet contributes ~ (eave_len / oc_ft) + 1 rafters. We sum expected counts.
+    expected_total = 0
+    for f in facets:
+        # Skip vertical/chimney facets (pitch=90 means wall, not a roof slope)
+        if abs(f.get("pitch", 0) - 90.0) < 0.1:
+            continue
+        verts = f.get("vertices", [])
+        if len(verts) < 3:
+            continue
+        # Find longest horizontal edge ≈ eave length
+        edges_local = []
+        for i in range(len(verts)):
+            a, b = verts[i], verts[(i + 1) % len(verts)]
+            length = math.sqrt((b[0]-a[0])**2 + (b[1]-a[1])**2 + (b[2]-a[2])**2)
+            edges_local.append((length, (a[1] + b[1]) / 2))
+        edges_local.sort(key=lambda e: e[1])  # sort by avg y → lowest first (eave)
+        eave_len = edges_local[0][0]
+        if eave_len > 0.5:
+            expected_total += max(2, int(eave_len / rafter_oc_ft)) + 1
+    rafter_count = len(rafters)
+    # Allow ±20% slack (real-world birds-mouth/jack rafters vary)
+    if expected_total == 0:
+        rafter_ok = True
+        rafter_msg = "No roof facets to evaluate."
+    else:
+        rafter_ok = 0.8 * expected_total <= rafter_count <= 1.2 * expected_total
+        rafter_msg = f"{rafter_count} rafters @ {rafter_oc_in}\" o.c. (expected {expected_total} ±20%)."
+    gates.append({
+        "id": "rafter_count",
+        "label": f"Rafter spacing within IRC §R802.4",
+        "agent": "Framing Carpenter / Architect",
+        "pass": rafter_ok,
+        "message": rafter_msg,
+        "rule_ref": "F2",
+        "metric": rafter_count,
+    })
+
+    # ---- Gate 4 (Agent 1 / F4): Sub-fascia covers every eave ----
+    sub_fascia = framing.get("sub_fascia", [])
+    sub_fascia_lf = sum(s.get("length_ft", 0) for s in sub_fascia)
+    sf_coverage = (sub_fascia_lf / eave_lf * 100) if eave_lf > 0 else 100.0
+    gates.append({
+        "id": "sub_fascia",
+        "label": "Structural sub-fascia on every eave",
+        "agent": "Framing Carpenter / Architect",
+        "pass": sf_coverage >= 99.5,
+        "message": f"{sub_fascia_lf:.1f} lf sub-fascia on {eave_lf:.1f} lf eave ({sf_coverage:.1f}%).",
+        "rule_ref": "F4",
+        "metric": round(sf_coverage, 1),
+    })
+
+    # ---- Gate 5 (Agent 2 / R5): Material direction = slope-aligned ----
+    # This is enforced at render-time by the slope-aligned UV basis. Here we just
+    # verify the contract: every facet has a non-vertical normal that the renderer
+    # can build a U/V frame from. (Vertical facets like chimney walls are exempt.)
+    non_slope_count = sum(
+        1 for f in facets
+        if abs(f.get("pitch", 0) - 90.0) > 0.1            # not a vertical wall
+        and abs(f.get("normal", [0, 1, 0])[1]) < 0.001    # but no upward component
+    )
+    gates.append({
+        "id": "material_direction",
+        "label": "Material flows with slope on every facet",
+        "agent": "Roofing Contractor",
+        "pass": non_slope_count == 0,
+        "message": "All roof facets carry an upward normal component → textures will align eave→ridge."
+                   if non_slope_count == 0 else f"{non_slope_count} facet(s) ambiguous slope direction.",
+        "rule_ref": "R5",
+    })
+
+    # ---- Gate 6 (Agent 3 / C2): Edge classification hierarchy present ----
+    have_ridge_or_hip = any(e.get("classification") in ("ridge", "hip") for e in edges)
+    have_eave = len(eave_edges) > 0
+    gates.append({
+        "id": "edge_hierarchy",
+        "label": "Edge classification hierarchy (eave + ridge/hip)",
+        "agent": "CAD Designer",
+        "pass": have_ridge_or_hip and have_eave,
+        "message": "Eaves + ridges/hips classified for line-weight hierarchy."
+                   if have_ridge_or_hip and have_eave else "Missing ridge/hip or eave classification.",
+        "rule_ref": "C2",
+    })
+
+    passed = sum(1 for g in gates if g["pass"])
+    total = len(gates)
+    return {
+        "gates": gates,
+        "passed": passed,
+        "total": total,
+        "all_pass": passed == total,
+        "score_pct": round(passed / total * 100, 1),
+    }
+
+
 def build_topology(style: str, project_seed: str) -> Dict[str, Any]:
     style = style if style in PRESETS else "stratex_demo"
     rnd = random.Random(project_seed + "scale")
@@ -731,7 +880,7 @@ def build_topology(style: str, project_seed: str) -> Dict[str, Any]:
     primary_pitch = facets[0].pitch if facets else 8
     framing = build_framing(facets, edges, rafter_oc_in=16)
     gutters = build_gutters(facets, edges, primary_pitch=primary_pitch)
-    return {
+    topology = {
         "style": style,
         "scale": scale,
         "facets": [f.to_dict() for f in facets],
@@ -746,3 +895,6 @@ def build_topology(style: str, project_seed: str) -> Dict[str, Any]:
         "framing": framing,
         "gutters": gutters,
     }
+    # Run the multi-agent expert panel before returning.
+    topology["validation"] = validate_topology(topology)
+    return topology

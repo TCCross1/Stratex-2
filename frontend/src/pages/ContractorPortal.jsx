@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
 import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor, notifyHomeownerDelay } from "@/lib/api";
 import LaunchCountdownBadge from "@/components/LaunchCountdownBadge";
+import CaliperUpload from "@/components/CaliperUpload";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
@@ -744,6 +745,10 @@ export function MaterialsConfig() {
             <Field label="Starter Strip" value={m.starter_brand} onChange={(v)=>set("starter_brand", v)}/>
             <Field label="Drip Edge Color" value={m.drip_edge_color} onChange={(v)=>set("drip_edge_color", v)}/>
             <Field label="Fastener Type" value={m.fastener_type} onChange={(v)=>set("fastener_type", v)}/>
+            <NumField label="Measured Shingle Thickness (mm)" value={m.measured_thickness_mm} onChange={(v)=>set("measured_thickness_mm", v)} testid="mat-thickness-mm"/>
+          </div>
+          <div className="mt-4">
+            <CaliperUpload onReading={(r) => set("measured_thickness_mm", r.thickness_mm)} />
           </div>
         </HudCard>
 

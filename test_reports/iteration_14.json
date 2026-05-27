@@ -1,0 +1,46 @@
+{
+  "summary": "STRATEX v2.4 — Multi-agent expert panel validation gates (/public/demo-topology) + Caliper OCR endpoint (gemini-3-flash-preview via Emergent LLM Key) + materials.measured_thickness_mm passthrough. All 8 backend tests in test_stratex_v24.py PASS. Validation block carries 6 gates with score_pct=100 and required keys (id,label,agent,pass,message,rule_ref). Caliper OCR auth-gated (401 unauth) and gracefully falls back without 500 for a 1x1 transparent PNG. measured_thickness_mm round-trips through PUT→GET correctly (4.95 → persisted → read back).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/contractor/materials",
+        "issue": "Returns raw Mongo doc — does NOT merge with MaterialsConfig() defaults. Any user whose record was persisted BEFORE measured_thickness_mm was added will see the GET response missing that field (first test run failed because anthony@apexroofing.com had a pre-existing record; after one PUT the field appears). Fix: in get_materials, merge defaults: `return {**MaterialsConfig().model_dump(), **doc}` after decrypt/pop."
+      },
+      {
+        "endpoint": "POST /api/operator/jobs/{id}/launch (and any other endpoint calling build_topology)",
+        "issue": "Operator launch builds topology via build_topology(...) but stores only a hand-picked subset (style/scale/facets/edges/totals/rtk_precision_cm/mesh_status/pitch) into job.roof_telemetry — `validation` is dropped. /public/demo-topology IS the only endpoint that flows the validation block. If the front-end multi-agent report-card is supposed to render on contractor/operator job pages too, validation must be carried into roof_telemetry. Add `\"validation\": topo.get(\"validation\")` to the roof_telemetry $set block at server.py L732-742."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stratex_v24.py",
+    "/app/test_reports/pytest/iter14_v24.xml"
+  ],
+  "action_items": [
+    "(Minor) Patch GET /api/contractor/materials to merge MaterialsConfig() defaults into stored doc so new fields appear for users with legacy records (one-line fix).",
+    "(Minor) Add `validation: topo.get('validation')` to roof_telemetry $set at server.py L732 so contractor/operator job-detail endpoints can render the 6-gate expert-panel card.",
+    "(Pre-existing, carry-over from iter13) Update /app/backend/tests/test_stratex_v22.py::TestPhase1::test_run_phase1 — change `assert len(body['checks']) == 3` to `>= 3` (engine now emits 6)."
+  ],
+  "critical_code_review_comments": [
+    "server.py caliper_ocr at L434 — robust try/except catches all exceptions and emits clean fallback JSON. Good. Recommend adding a counter/metric for ocr_failures to ops dashboard.",
+    "server.py L368 — get_materials returns raw Mongo doc instead of merging defaults; will silently regress whenever MaterialsConfig adds a new field. Pattern: `return {**MaterialsConfig().model_dump(), **doc, ...}`. Same issue would affect any future field added to MaterialsConfig.",
+    "roof_topology.validate_topology — clean, deterministic, 6 gates with rule_refs (C1, G1, F2, F4, R5, C2). Generous tolerances (±20% rafter count, ≥99.5% coverage) so legitimate hip/gable/L-shape topologies all pass. Score format is consistent.",
+    "server.py L713 (operator launch) builds full topology but downsamples to a fixed roof_telemetry projection — validation, framing, gutters all live only in the in-memory `topo` dict for that request, never reach the DB. Future PDF/UI consumers can't read validation results from the job document. Consider storing full topology blob (compressed) or at least the validation summary."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_stratex_v24.py"
+  ],
+  "success_rate": {"backend": "100% (8/8 v2.4 tests after one-time migration of legacy materials doc)", "frontend": "not tested (review_request: backend only)"},
+  "test_credentials": "anthony@apexroofing.com / Contractor!2026 (TOTP via /api/auth/totp-debug)",
+  "seed_data_creation": "None. Test mutates materials_config for anthony@apexroofing.com (writes 4.95 then resets to 0.0).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "v2.4 GREEN. /app/backend/tests/test_stratex_v24.py covers all 6 features from the review_request: (1+2) /public/demo-topology validation 6-gate block w/ score_pct=100 and required keys; (3) caliper-ocr auth-gating; (4) caliper-ocr response shape on tiny PNG returns fallback=true gracefully (NOT 500); (5) GET materials.measured_thickness_mm field presence; (6) PUT round-trip of 4.95. One nuance: GET materials test will fail first-run for users with legacy records — fixture self-heals on second PUT. Real GET-defaults-merge bug noted in action_items. Operator-launch DOES build topology but does not store validation into roof_telemetry; also noted.",
+  "rca of the issue": "Two minor backend gaps surfaced — (A) get_materials returns the raw stored doc rather than merging defaults from MaterialsConfig(); legacy records persisted before `measured_thickness_mm` was added do not show the new field until the next PUT writes it. One-line merge fix recommended. (B) Operator launch endpoint builds the full topology (incl. validation gates) but only stores a fixed projection into roof_telemetry — validation is dropped before persistence, so contractor/operator job-detail UIs cannot render the expert-panel card without re-running build_topology. Fix: include `validation: topo.get('validation')` in the roof_telemetry $set block at server.py L732."
+}

@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 /**
  * STRATEX™ Vision Advanced Diagnostics — Forensic Engineering Canvas
@@ -132,129 +136,100 @@ function blueprintTex(tintHex) {
 // Each generator returns a CanvasTexture sized 256x256 for tiled mapping on facets.
 
 function makeShingleTexture() {
-  // ASPHALT 3-TAB SHINGLE per Agent 2 / R1 — dark base + neon CYAN-BLUE course lines.
-  // Drawn so that HORIZONTAL course separators read as parallel-to-eave when mapped
-  // through the slope-aligned UV basis (V increases up the slope).
-  // Canvas convention: U increases left-right, V increases bottom-top.
-  // Therefore: courses = horizontal stripes, tab cuts = short vertical strokes.
+  // ASPHALT 3-TAB SHINGLE per Agent 2 / R1 — RAZOR-SHARP CAD aesthetic.
+  // No blur halos: crisp 1-2 px neon cyan-blue lines on a pitch-black field.
+  // Each course = 5" exposure. 4 courses per texture tile = 20"; texture tile = 4 ft slope.
   const size = 512;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  // Dark interior + granular asphalt noise
-  ctx.fillStyle = "#040b14"; ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 1600; i++) {
+  ctx.fillStyle = "#02060c"; ctx.fillRect(0, 0, size, size);
+  // Faint granular asphalt noise — keeps interior from looking flat-black
+  for (let i = 0; i < 900; i++) {
     const x = Math.random() * size, y = Math.random() * size;
-    ctx.fillStyle = `rgba(40,90,140,${0.03 + Math.random() * 0.06})`;
+    ctx.fillStyle = `rgba(30,80,130,${0.025 + Math.random() * 0.04})`;
     ctx.fillRect(x, y, 1, 1);
   }
-  // 4 courses per texture (= 5" exposure × 4 = 20" of slope rise per texture tile,
-  // and texture tile = 4 ft of slope rise → courses naturally read at correct scale)
   const courses = 4;
   const rowH = size / courses;
-  // Each course is 36" wide; with REPEAT_FT.shingle = 4ft = 48" the texture
-  // shows ~1.33 shingles wide → use 3 tab-cuts per repeat (creating 1 full shingle + 1 partial)
-  const shinglesPerRow = 3;       // 3 shingles wide per texture (each = 3 tabs)
+  const shinglesPerRow = 3;
   const shingleW = size / shinglesPerRow;
-  const tabW = shingleW / 3;       // 3 tabs per shingle = standard 3-tab asphalt
+  const tabW = shingleW / 3;
   for (let r = 0; r < courses; r++) {
     const y = r * rowH;
-    const offset = (r % 2) * (tabW * 1.5);  // half-shingle stagger per course
-    // BOLD course separator — black shadow + neon cyan-blue glow strip
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 5;
+    const offset = (r % 2) * (tabW * 1.5);
+    // Course separator — single crisp 2px neon line, no glow halo
+    ctx.strokeStyle = "#1ea7ff";
+    ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, y + rowH); ctx.lineTo(size, y + rowH); ctx.stroke();
-    ctx.shadowColor = "#1ea7ff"; ctx.shadowBlur = 7;
-    ctx.strokeStyle = "#5fc8ff";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(0, y + rowH - 3); ctx.lineTo(size, y + rowH - 3); ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Per-tab vertical cuts — short strokes (only top 60% of course to mimic real 3-tab)
+    // Per-tab vertical cuts — hairline 1.2px, brighter than course separator
     for (let cIdx = -1; cIdx <= shinglesPerRow + 1; cIdx++) {
       const sx = cIdx * shingleW + offset;
-      // 2 tab cuts per shingle (creates 3 tabs)
       for (let t = 1; t < 3; t++) {
         const cutX = sx + t * tabW;
-        ctx.shadowColor = "#5fc8ff"; ctx.shadowBlur = 4;
-        ctx.strokeStyle = "#1ea7ff";
-        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = "#7fd4ff";
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(cutX, y + rowH * 0.42);
+        ctx.moveTo(cutX, y + rowH * 0.40);
         ctx.lineTo(cutX, y + rowH - 2);
         ctx.stroke();
       }
-      ctx.shadowBlur = 0;
-    }
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1, 1);  // slope-aligned UVs already encode world-scale
-  tex.anisotropy = 4;
-  return tex;
-}
-
-function makeMetalTexture() {
-  // STANDING-SEAM METAL per Agent 2 / R3 — dark base, neon CYAN seams running EAVE-TO-RIDGE.
-  // Canvas: vertical stripes ⇒ when mapped via slope-aligned UV (V = up-slope), the seams
-  // run from eave to ridge as required. Rivet dots are placed along each seam.
-  const size = 512;
-  const c = document.createElement("canvas"); c.width = c.height = size;
-  const ctx = c.getContext("2d");
-  ctx.fillStyle = "#020a14"; ctx.fillRect(0, 0, size, size);
-  // Subtle brushed grain running vertically (along slope direction)
-  for (let x = 0; x < size; x += 2) {
-    ctx.fillStyle = `rgba(20,55,90,${0.06 + Math.random() * 0.04})`;
-    ctx.fillRect(x, 0, 1, size);
-  }
-  // 2 standing-seam panels per texture (REPEAT_FT.metal = 3ft → 2 panels @ 18")
-  const panels = 2;
-  const panelW = size / panels;
-  for (let i = 0; i <= panels; i++) {
-    const x = i * panelW;
-    // BOLD raised seam — black shadow + neon cyan core + bright white inner edge
-    ctx.shadowColor = "#00f0ff"; ctx.shadowBlur = 10;
-    ctx.strokeStyle = "#00f0ff";
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Hot core down the seam
-    ctx.strokeStyle = "#e0fbff";
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
-    // Clip/rivet dots along the seam every ~14" of real slope (texture covers 3ft → 14"/36" ≈ 0.39 → 2.5 dots/tile)
-    const dotsPerTile = 3;
-    for (let d = 0; d < dotsPerTile; d++) {
-      const dy = (d + 0.5) * (size / dotsPerTile);
-      // Outer halo
-      ctx.fillStyle = "rgba(0,240,255,0.55)";
-      ctx.beginPath(); ctx.arc(x, dy, 6, 0, Math.PI * 2); ctx.fill();
-      // Bright core
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(x, dy, 2.6, 0, Math.PI * 2); ctx.fill();
     }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(1, 1);
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function makeMetalTexture() {
+  // STANDING-SEAM METAL per Agent 2 / R3 — RAZOR-SHARP CAD aesthetic.
+  // Single crisp seam stroke + small bright dot rivets at clip points. No blur.
+  const size = 512;
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#020912"; ctx.fillRect(0, 0, size, size);
+  // Vertical brushed grain — extremely faint
+  for (let x = 0; x < size; x += 3) {
+    ctx.fillStyle = `rgba(15,50,90,${0.04 + Math.random() * 0.025})`;
+    ctx.fillRect(x, 0, 1, size);
+  }
+  const panels = 2;
+  const panelW = size / panels;
+  for (let i = 0; i <= panels; i++) {
+    const x = i * panelW;
+    // Seam — single crisp 2.4px neon cyan line
+    ctx.strokeStyle = "#00f0ff";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
+    // Clip/rivet dots — small bright cores, no halo
+    const dotsPerTile = 3;
+    for (let d = 0; d < dotsPerTile; d++) {
+      const dy = (d + 0.5) * (size / dotsPerTile);
+      ctx.fillStyle = "#e8fbff";
+      ctx.beginPath(); ctx.arc(x, dy, 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 1);
+  tex.anisotropy = 8;
   return tex;
 }
 
 function makeSlateTexture() {
-  // SLATE per Agent 2 / R4 — dark base, neon VIOLET scallop tile outlines, parallel-to-eave courses.
-  // Canvas: horizontal staggered courses (same orientation logic as shingle).
+  // SLATE per Agent 2 / R4 — RAZOR-SHARP CAD aesthetic. Crisp scallop outlines.
   const size = 512;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
   ctx.fillStyle = "#070420"; ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 1800; i++) {
+  for (let i = 0; i < 1100; i++) {
     const x = Math.random() * size, y = Math.random() * size;
-    ctx.fillStyle = `rgba(140,80,210,${0.04 + Math.random() * 0.08})`;
+    ctx.fillStyle = `rgba(120,70,200,${0.03 + Math.random() * 0.06})`;
     ctx.fillRect(x, y, 1, 1);
   }
-  // 3 courses per texture (REPEAT_FT.slate = 3.5ft, 18" tall tiles → ~2.3 courses, rounded to 3)
   const courses = 3;
   const rowH = size / courses;
-  // 3 tiles per row (3.5ft / 12" tiles ≈ 3.5 → use 3)
   const tilesPerRow = 3;
   const tileW = size / tilesPerRow;
   for (let r = 0; r < courses; r++) {
@@ -262,26 +237,24 @@ function makeSlateTexture() {
     const offset = (r % 2) * (tileW / 2);
     for (let cIdx = -1; cIdx <= tilesPerRow + 1; cIdx++) {
       const x = cIdx * tileW + offset;
-      // BOLD scalloped top edge — bright lavender (the lit edge)
-      ctx.shadowColor = "#c77dff"; ctx.shadowBlur = 8;
-      ctx.strokeStyle = "#edd0ff";
-      ctx.lineWidth = 2.4;
+      // Scalloped top edge — single 2px violet stroke
+      ctx.strokeStyle = "#c77dff";
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH * 0.45);
       ctx.lineTo(x + tileW / 2, yo);
       ctx.lineTo(x + tileW, yo + rowH * 0.45);
       ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Vertical tile edges
-      ctx.strokeStyle = "rgba(199,125,255,0.85)";
-      ctx.lineWidth = 1.6;
+      // Vertical tile edges — hairline 1.2px, dimmer violet
+      ctx.strokeStyle = "rgba(160,100,220,0.85)";
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH * 0.45); ctx.lineTo(x, yo + rowH);
       ctx.moveTo(x + tileW, yo + rowH * 0.45); ctx.lineTo(x + tileW, yo + rowH);
       ctx.stroke();
-      // Bottom course separator — dark
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 2;
+      // Bottom course separator — same violet hairline
+      ctx.strokeStyle = "rgba(160,100,220,0.6)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH); ctx.lineTo(x + tileW, yo + rowH);
       ctx.stroke();
@@ -290,7 +263,7 @@ function makeSlateTexture() {
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(1, 1);
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -334,12 +307,13 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   }
   g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
-  // Blueprint-engineering aesthetic per Agent 3 / C5+C6: DARK interior fill, neon detail
-  // lines self-illuminate via emissiveMap. Accent color = layer's ratified hue (Agent 2 / R1-R4).
+  // CAD-blueprint aesthetic: pitch-black interior, RAZOR-SHARP neon lines on top.
+  // emissiveMap routes only the painted line work; emissiveIntensity is tuned so
+  // the lines read as saturated neon without bleeding into the dark background.
   const finishConfig = {
-    shingle: { tex: finishTex("shingle"), baseColor: 0x081420, emissive: 0xffffff, accentHex: NEON_CYAN_BLUE, metalness: 0.25, roughness: 0.55, opacity: 0.99, emissiveIntensity: 1.55 },
-    metal:   { tex: finishTex("metal"),   baseColor: 0x041020, emissive: 0xffffff, accentHex: NEON_CYAN,      metalness: 0.85, roughness: 0.25, opacity: 0.99, emissiveIntensity: 1.65 },
-    slate:   { tex: finishTex("slate"),   baseColor: 0x0a0524, emissive: 0xffffff, accentHex: NEON_VIOLET,    metalness: 0.30, roughness: 0.55, opacity: 0.99, emissiveIntensity: 1.40 },
+    shingle: { tex: finishTex("shingle"), baseColor: 0x040b14, emissive: 0xffffff, accentHex: NEON_CYAN_BLUE, metalness: 0.25, roughness: 0.55, opacity: 0.99, emissiveIntensity: 0.85 },
+    metal:   { tex: finishTex("metal"),   baseColor: 0x030812, emissive: 0xffffff, accentHex: NEON_CYAN,      metalness: 0.85, roughness: 0.30, opacity: 0.99, emissiveIntensity: 0.95 },
+    slate:   { tex: finishTex("slate"),   baseColor: 0x070420, emissive: 0xffffff, accentHex: NEON_VIOLET,    metalness: 0.30, roughness: 0.55, opacity: 0.99, emissiveIntensity: 0.80 },
   };
   const cfg = finishConfig[finishKind] || finishConfig.shingle;
   const mat = new THREE.MeshStandardMaterial({
@@ -356,21 +330,16 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   });
   const mesh = new THREE.Mesh(g, mat);
 
-  // Bright neon perimeter outline in the layer's accent color — variable thickness
-  // simulated via two stacked LineSegments (inner thin + outer wider feathered glow).
+  // Per-facet perimeter — single crisp line in the layer accent color. No halo.
+  // (top-CAD aesthetic: no glow, just a saturated 1-2px stroke).
   const edgeGeo = new THREE.EdgesGeometry(g, 1);
   const accent = new THREE.Color(cfg.accentHex);
   const wfInner = new THREE.LineSegments(
     edgeGeo,
     new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.95 }),
   );
-  const wfGlow = new THREE.LineSegments(
-    edgeGeo,
-    new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
-  );
-  wfGlow.scale.setScalar(1.004);
   const group = new THREE.Group();
-  group.add(mesh); group.add(wfInner); group.add(wfGlow);
+  group.add(mesh); group.add(wfInner);
   group.userData.facet = facet;
   group.userData.finishKind = finishKind;
   return group;
@@ -490,7 +459,28 @@ export default function RoofModel3D({
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(w, h);
     renderer.setClearColor(BG, 1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
     mount.appendChild(renderer.domElement);
+
+    // ----- POST-PROCESSING -----
+    // Top-tier CAD neon work (Jarvis HUD, Forma renderings) is RAZOR-SHARP lines —
+    // never blurred bloom haze. We keep a composer + RenderPass for resize symmetry,
+    // but bloom strength is intentionally near-zero. The "glow" comes from saturated
+    // line colors + a 1px additive halo on each edge (see buildFacetMesh).
+    const composer = new EffectComposer(renderer);
+    composer.setPixelRatio(window.devicePixelRatio);
+    composer.setSize(w, h);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(w, h),
+      0.18,   // strength — subtle lift on only the BRIGHTEST highlights
+      0.30,   // radius   — tight, almost imperceptible
+      0.75,   // threshold — only fully-saturated neon detail lines bloom at all
+    );
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
 
     // -------- ambient lighting (tactical console) --------
     scene.add(new THREE.AmbientLight(0xffffff, 0.42));
@@ -509,14 +499,14 @@ export default function RoofModel3D({
     groundCanvas.width = groundCanvas.height = 512;
     const gctx = groundCanvas.getContext("2d");
     const grad = gctx.createRadialGradient(256, 256, 30, 256, 256, 256);
-    grad.addColorStop(0,   "rgba(0,240,255,0.32)");
-    grad.addColorStop(0.4, "rgba(0,240,255,0.08)");
+    grad.addColorStop(0,   "rgba(0,240,255,0.14)");
+    grad.addColorStop(0.4, "rgba(0,240,255,0.04)");
     grad.addColorStop(1,   "rgba(0,0,0,0)");
     gctx.fillStyle = grad; gctx.fillRect(0, 0, 512, 512);
     const groundTex = new THREE.CanvasTexture(groundCanvas);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(groundSize, groundSize),
-      new THREE.MeshBasicMaterial({ map: groundTex, transparent: true, opacity: 0.85, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: groundTex, transparent: true, opacity: 0.7, depthWrite: false }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(centre.x, bbox.min.y - 0.8, centre.z);
@@ -566,35 +556,25 @@ export default function RoofModel3D({
       const b = new THREE.Vector3(...r.b);
       const path = new THREE.LineCurve3(a, b);
       const heavy = idx % 3 === 0;
-      const radius = heavy ? 0.075 : 0.04;
+      const radius = heavy ? 0.06 : 0.032;
       const tube = new THREE.TubeGeometry(path, 1, radius, 6, false);
       const mat = new THREE.MeshStandardMaterial({
         color: cyanCore, emissive: cyanCore,
-        emissiveIntensity: heavy ? 0.95 : 0.75,
-        metalness: 0.3, roughness: 0.4,
-        transparent: true, opacity: 0.95,
+        emissiveIntensity: heavy ? 0.55 : 0.42,
+        metalness: 0.3, roughness: 0.45,
+        transparent: true, opacity: 0.96,
       });
       framingGroup.add(new THREE.Mesh(tube, mat));
-      // Additive glow line over the tube for halo
-      const glowGeom = new THREE.BufferGeometry().setFromPoints([a, b]);
-      framingGroup.add(new THREE.Line(glowGeom, new THREE.LineBasicMaterial({
-        color: cyanGlow, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false,
-      })));
     });
     // Sub-fascia: ORANGE heavy tubes along every eave (Agent 1 / F4 + F6, Agent 4 / G6)
     (framing.sub_fascia || []).forEach((s) => {
       const a = new THREE.Vector3(s.a[0], s.a[1] - 0.5, s.a[2]);
       const b = new THREE.Vector3(s.b[0], s.b[1] - 0.5, s.b[2]);
       const path = new THREE.LineCurve3(a, b);
-      const tube = new THREE.TubeGeometry(path, 1, 0.12, 8, false);
+      const tube = new THREE.TubeGeometry(path, 1, 0.10, 8, false);
       framingGroup.add(new THREE.Mesh(tube, new THREE.MeshStandardMaterial({
-        color: orangeCore, emissive: orangeCore, emissiveIntensity: 1.0,
+        color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.65,
         metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.98,
-      })));
-      // Orange glow halo
-      const glowGeom = new THREE.BufferGeometry().setFromPoints([a, b]);
-      framingGroup.add(new THREE.Line(glowGeom, new THREE.LineBasicMaterial({
-        color: orangeHot, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false,
       })));
     });
     scene.add(framingGroup);
@@ -607,17 +587,12 @@ export default function RoofModel3D({
       const a = new THREE.Vector3(p.a[0], p.a[1] - 0.6, p.a[2]);
       const b = new THREE.Vector3(p.b[0], p.b[1] - 0.6, p.b[2]);
       const path = new THREE.LineCurve3(a, b);
-      // K-style gutter — thick orange tube per Agent 4 / G2
-      const tube = new THREE.TubeGeometry(path, 1, 0.28, 10, false);
+      // K-style gutter — clean orange tube, no glow halo (Agent 4 / G2)
+      const tube = new THREE.TubeGeometry(path, 1, 0.22, 10, false);
       gutterGroup.add(new THREE.Mesh(tube, new THREE.MeshStandardMaterial({
-        color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.95,
-        metalness: 0.55, roughness: 0.25,
-        transparent: true, opacity: 0.97,
-      })));
-      // Additive feathered glow on top
-      const glowGeom = new THREE.BufferGeometry().setFromPoints([a, b]);
-      gutterGroup.add(new THREE.Line(glowGeom, new THREE.LineBasicMaterial({
-        color: orangeHot, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false,
+        color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.55,
+        metalness: 0.55, roughness: 0.28,
+        transparent: true, opacity: 0.98,
       })));
       // Hanger studs every ~2 ft (Agent 4 / G5)
       const len = a.distanceTo(b);
@@ -626,9 +601,9 @@ export default function RoofModel3D({
         const t = i / n;
         const pos = a.clone().lerp(b, t);
         const dot = new THREE.Mesh(
-          new THREE.SphereGeometry(0.13, 8, 8),
+          new THREE.SphereGeometry(0.11, 8, 8),
           new THREE.MeshStandardMaterial({
-            color: 0xfff0d6, emissive: 0xffb877, emissiveIntensity: 1.0,
+            color: 0xffd6a8, emissive: 0xff9447, emissiveIntensity: 0.55,
             transparent: true, opacity: 0.95,
           }),
         );
@@ -723,7 +698,7 @@ export default function RoofModel3D({
       } else {
         controls.update();
       }
-      renderer.render(scene, camera);
+      composer.render();
 
       // Update HTML overlay positions every ~3 frames
       if (Math.floor(t * 20) % 2 === 0) {
@@ -764,6 +739,8 @@ export default function RoofModel3D({
       const nw = mount.clientWidth, nh = mount.clientHeight || height;
       camera.aspect = nw / nh; camera.updateProjectionMatrix();
       renderer.setSize(nw, nh);
+      composer.setSize(nw, nh);
+      bloomPass.setSize(nw, nh);
     };
     window.addEventListener("resize", onResize);
 

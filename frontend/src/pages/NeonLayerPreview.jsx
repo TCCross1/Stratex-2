@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import RoofModel3D from "@/components/RoofModel3D";
+import ValidationReport from "@/components/ValidationReport";
 import { api } from "@/lib/api";
 
 /**
@@ -34,6 +35,12 @@ export default function NeonLayerPreview() {
           Four mutually-exclusive primary layers. Each panel below renders the same compound demo roof with a different
           neon finish active, plus one final panel showing Framing-only and one with gutters toggled OFF for contrast.
         </p>
+
+        {demo?.validation && (
+          <div className="mb-8 max-w-2xl">
+            <ValidationReport validation={demo.validation} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {LAYERS.map((l) => (

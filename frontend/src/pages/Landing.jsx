@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
+import ValidationReport from "@/components/ValidationReport";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { api } from "@/lib/api";
 import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
@@ -138,6 +139,11 @@ export default function Landing() {
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">
             Every Quant™ calculation is locked to the geometry of this mesh. Drag to orbit, scroll to zoom — anomalies pulse plasma orange on the exact roof facet where the drone detected them.
           </p>
+          {demo?.validation && (
+            <div className="mt-6 max-w-2xl">
+              <ValidationReport validation={demo.validation} />
+            </div>
+          )}
           <div className="grid md:grid-cols-4 gap-4 mt-8">
             <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Cloud size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Cloud Rendering</span></div><p className="text-silver font-heading">Real-time photogrammetry stitch</p></HudCard>
             <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Activity size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Thermal Map</span></div><p className="text-silver font-heading">Radiometric anomaly overlay</p></HudCard>
