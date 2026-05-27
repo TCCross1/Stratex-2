@@ -958,6 +958,50 @@ def _build_pdf(job: Dict[str, Any]) -> bytes:
     t.setStyle(TableStyle([("FONT",(0,0),(-1,-1),"Helvetica",9),("FONT",(0,0),(0,-1),"Helvetica-Bold",8),("FONT",(2,0),(2,-1),"Helvetica-Bold",8),("TEXTCOLOR",(0,0),(0,-1),TEAL),("TEXTCOLOR",(2,0),(2,-1),TEAL),("TEXTCOLOR",(1,0),(1,-1),SILVER),("TEXTCOLOR",(3,0),(3,-1),SILVER),("BACKGROUND",(0,0),(-1,-1),OBS),("BOX",(0,0),(-1,-1),0.7,TEAL)]))
     el.append(t)
     el.append(Spacer(1, 12))
+
+    # --- STRATEX EXPERT PANEL CERTIFICATION (validation gates from roof_telemetry) ---
+    rt = job.get("roof_telemetry") or {}
+    val = rt.get("validation") or {}
+    gates = val.get("gates") or []
+    if gates:
+        passed = val.get("passed", 0)
+        total = val.get("total", len(gates))
+        score = val.get("score_pct", 0)
+        cert_color = TEAL if val.get("all_pass") else ORANGE
+        el.append(Paragraph(
+            f"STRATEX™ EXPERT PANEL CERTIFIED · {passed}/{total} GATES · {score}%",
+            ParagraphStyle("cert", parent=h2, textColor=cert_color, fontSize=11),
+        ))
+        cert_rows = [["GATE", "AGENT", "RULE", "STATUS", "MESSAGE"]]
+        for g in gates:
+            cert_rows.append([
+                g.get("label", ""),
+                g.get("agent", ""),
+                g.get("rule_ref", ""),
+                "PASS" if g.get("pass") else "FAIL",
+                g.get("message", "")[:70],
+            ])
+        ct = Table(cert_rows, colWidths=[1.55*inch, 1.45*inch, 0.45*inch, 0.55*inch, 3.0*inch])
+        ct.setStyle(TableStyle([
+            ("FONT", (0, 0), (-1, -1), "Helvetica", 7),
+            ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 7),
+            ("TEXTCOLOR", (0, 0), (-1, 0), TEAL),
+            ("TEXTCOLOR", (0, 1), (-1, -1), SILVER),
+            ("TEXTCOLOR", (3, 1), (3, -1), cert_color),
+            ("FONT", (3, 1), (3, -1), "Helvetica-Bold", 7),
+            ("BACKGROUND", (0, 0), (-1, -1), OBS),
+            ("BOX", (0, 0), (-1, -1), 0.5, TEAL),
+            ("INNERGRID", (0, 0), (-1, -1), 0.2, MUTED),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        el.append(ct)
+        el.append(Spacer(1, 6))
+        el.append(Paragraph(
+            "This proposal is backed by a 4-agent expert panel quality gate (Master Framing Carpenter / Architect, Master Roofing Contractor, Master CAD Designer, Master Gutter Contractor). Every digital twin must pass these deterministic checks before any measurement enters the supplement. Reference: /memory/expert_panel_review.md.",
+            ParagraphStyle("cert_note", parent=p, textColor=MUTED, fontSize=8, leading=11),
+        ))
+        el.append(Spacer(1, 12))
+
     for k, label in [("forensic","FORENSIC FINDINGS"),("validation","EVIDENCE PACKAGE"),("reconciliation","RECONCILIATION"),("jurisprudential","CODE COMPLIANCE")]:
         el.append(Paragraph(label, h2))
         el.append(Paragraph((job.get("agent_reports") or {}).get(k, "—"), p))

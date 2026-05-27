@@ -57,6 +57,18 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 ### Quality Gate (codified in expert_panel_review.md):
 Every digital twin generation must pass 6 validation gates before render — codifies the "no wrong layers" rule the user demanded so the visual replication stays in tolerance of actual RTK-calibrated photogrammetry (target: ±1 cm).
 
+## What's Been Implemented (2026-02-28 — v3.4.1 — Brightened Palette + PDF Cert)
+- ✅ **User feedback applied**: "dark neons on dark background is hard to read." Brightened the entire palette for proper contrast against the near-black material interiors:
+  - Shingle: `#1EA7FF` → **`#4CC3FF`** (bright cyan-blue)
+  - Metal:   `#00F0FF` → **`#5FF4FF`** (bright cyan)
+  - Slate:   `#C77DFF` → **`#D99DFF`** (bright violet)
+  - Sub-fascia + Gutters: `#FF7A00` → **`#FF9A3C`** (bright orange)
+  - In-texture line colors also brightened (e.g. shingle tab cuts now `#C8ECFF`, slate scallops now `#E8C2FF`)
+- ✅ Bumped emissive intensities ~50% (shingle 0.85→1.30, metal 0.95→1.40, slate 0.80→1.20) so painted lines read at normal viewing distance.
+- ✅ Updated Contractor Portal layer-toggle pill colors to match the new palette (`#5FF4FF`, `#4CC3FF`, `#D99DFF`).
+- ✅ **PDF Expert Panel Certification block** — added to `_build_pdf()` in `server.py`. Every contractor PDF supplement now opens with a "STRATEX™ EXPERT PANEL CERTIFIED · 6/6 GATES · 100%" header followed by a 5-column table listing each gate's label / agent / rule ref / PASS-FAIL / message. Adjuster-ready trust signal.
+- ✅ **Job-detail validation card** — `<ValidationReport />` now renders directly below the 3D viewport on both Contractor JobDetail AND Operator JobDetail pages (using `roof_telemetry.validation` which is set on every Phase 2 data capture).
+
 ## What's Been Implemented (2026-02-28 — v3.4.0 — World-Class Polish Pass)
 - ✅ **Razor-sharp CAD aesthetic** — stripped post-processing bloom haze and canvas-level `shadowBlur` halos per user feedback ("study top CAD neon drawings"). All neon now comes from saturated 1–2 px strokes on near-black background. Minimal subtle bloom kept (strength 0.18, threshold 0.75) so only the brightest highlights catch a soft glint. Matches Jarvis-HUD / Autodesk Forma reference aesthetic.
 - ✅ **Texture rewrite v3** — every line is a single crisp stroke: 2 px course separators, 1.2 px tab cuts (shingle); 2.4 px seams + small bright dot rivets (metal); 2 px scallops + 1.2 px tile edges (slate). Anisotropy 8 for tack-sharp diagonal viewing.

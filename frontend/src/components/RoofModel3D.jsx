@@ -24,12 +24,12 @@ const SAND    = 0xc99a5e;
 const STEEL   = 0x8fb8c6;
 const SILVER  = 0xc7d4dd;
 const BG      = 0x0b0f19;
-// Multi-Agent Expert Panel ratified palette — unified blue+orange architectural neon
-const NEON_CYAN_BLUE = 0x1ea7ff;   // SHINGLE detail lines
-const NEON_CYAN      = 0x00f0ff;   // METAL standing-seam lines + Framing rafters
-const NEON_VIOLET    = 0xc77dff;   // SLATE scallop edges
+// Multi-Agent Expert Panel ratified palette — BRIGHTENED for dark background contrast
+const NEON_CYAN_BLUE = 0x4cc3ff;   // SHINGLE detail lines (was 0x1ea7ff — too dark)
+const NEON_CYAN      = 0x5ff4ff;   // METAL standing-seam + Framing rafters (was 0x00f0ff)
+const NEON_VIOLET    = 0xd99dff;   // SLATE scallop edges (was 0xc77dff)
 const NEON_YELLOW    = 0xffea00;   // (reserved)
-const NEON_ORANGE    = 0xff7a00;   // GUTTER system + Sub-fascia accent
+const NEON_ORANGE    = 0xff9a3c;   // GUTTER + Sub-fascia accent (was 0xff7a00)
 const MATRIX         = NEON_CYAN;  // back-compat alias (framing)
 const ELECTRIC       = NEON_ORANGE;// back-compat alias (gutter)
 
@@ -157,17 +157,17 @@ function makeShingleTexture() {
   for (let r = 0; r < courses; r++) {
     const y = r * rowH;
     const offset = (r % 2) * (tabW * 1.5);
-    // Course separator — single crisp 2px neon line, no glow halo
-    ctx.strokeStyle = "#1ea7ff";
+    // Course separator — bright cyan-blue, 2px
+    ctx.strokeStyle = "#7fd6ff";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, y + rowH); ctx.lineTo(size, y + rowH); ctx.stroke();
-    // Per-tab vertical cuts — hairline 1.2px, brighter than course separator
+    // Per-tab vertical cuts — almost-white hairline so they pop against the dark base
     for (let cIdx = -1; cIdx <= shinglesPerRow + 1; cIdx++) {
       const sx = cIdx * shingleW + offset;
       for (let t = 1; t < 3; t++) {
         const cutX = sx + t * tabW;
-        ctx.strokeStyle = "#7fd4ff";
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "#c8ecff";
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.moveTo(cutX, y + rowH * 0.40);
         ctx.lineTo(cutX, y + rowH - 2);
@@ -198,16 +198,16 @@ function makeMetalTexture() {
   const panelW = size / panels;
   for (let i = 0; i <= panels; i++) {
     const x = i * panelW;
-    // Seam — single crisp 2.4px neon cyan line
-    ctx.strokeStyle = "#00f0ff";
+    // Seam — bright cyan, 2.4px
+    ctx.strokeStyle = "#5ff4ff";
     ctx.lineWidth = 2.4;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
     // Clip/rivet dots — small bright cores, no halo
     const dotsPerTile = 3;
     for (let d = 0; d < dotsPerTile; d++) {
       const dy = (d + 0.5) * (size / dotsPerTile);
-      ctx.fillStyle = "#e8fbff";
-      ctx.beginPath(); ctx.arc(x, dy, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(x, dy, 2.6, 0, Math.PI * 2); ctx.fill();
     }
   }
   const tex = new THREE.CanvasTexture(c);
@@ -237,23 +237,23 @@ function makeSlateTexture() {
     const offset = (r % 2) * (tileW / 2);
     for (let cIdx = -1; cIdx <= tilesPerRow + 1; cIdx++) {
       const x = cIdx * tileW + offset;
-      // Scalloped top edge — single 2px violet stroke
-      ctx.strokeStyle = "#c77dff";
+      // Scalloped top edge — bright violet, 2px
+      ctx.strokeStyle = "#e8c2ff";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH * 0.45);
       ctx.lineTo(x + tileW / 2, yo);
       ctx.lineTo(x + tileW, yo + rowH * 0.45);
       ctx.stroke();
-      // Vertical tile edges — hairline 1.2px, dimmer violet
-      ctx.strokeStyle = "rgba(160,100,220,0.85)";
-      ctx.lineWidth = 1.2;
+      // Vertical tile edges — mid-bright violet hairline
+      ctx.strokeStyle = "rgba(217,157,255,0.92)";
+      ctx.lineWidth = 1.3;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH * 0.45); ctx.lineTo(x, yo + rowH);
       ctx.moveTo(x + tileW, yo + rowH * 0.45); ctx.lineTo(x + tileW, yo + rowH);
       ctx.stroke();
       // Bottom course separator — same violet hairline
-      ctx.strokeStyle = "rgba(160,100,220,0.6)";
+      ctx.strokeStyle = "rgba(217,157,255,0.7)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, yo + rowH); ctx.lineTo(x + tileW, yo + rowH);
@@ -308,12 +308,12 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
   // CAD-blueprint aesthetic: pitch-black interior, RAZOR-SHARP neon lines on top.
-  // emissiveMap routes only the painted line work; emissiveIntensity is tuned so
-  // the lines read as saturated neon without bleeding into the dark background.
+  // emissiveMap routes only the painted line work; emissiveIntensity tuned so
+  // the BRIGHTENED palette reads clearly against the dark base without bleeding.
   const finishConfig = {
-    shingle: { tex: finishTex("shingle"), baseColor: 0x040b14, emissive: 0xffffff, accentHex: NEON_CYAN_BLUE, metalness: 0.25, roughness: 0.55, opacity: 0.99, emissiveIntensity: 0.85 },
-    metal:   { tex: finishTex("metal"),   baseColor: 0x030812, emissive: 0xffffff, accentHex: NEON_CYAN,      metalness: 0.85, roughness: 0.30, opacity: 0.99, emissiveIntensity: 0.95 },
-    slate:   { tex: finishTex("slate"),   baseColor: 0x070420, emissive: 0xffffff, accentHex: NEON_VIOLET,    metalness: 0.30, roughness: 0.55, opacity: 0.99, emissiveIntensity: 0.80 },
+    shingle: { tex: finishTex("shingle"), baseColor: 0x040b14, emissive: 0xffffff, accentHex: NEON_CYAN_BLUE, metalness: 0.25, roughness: 0.55, opacity: 0.99, emissiveIntensity: 1.30 },
+    metal:   { tex: finishTex("metal"),   baseColor: 0x030812, emissive: 0xffffff, accentHex: NEON_CYAN,      metalness: 0.85, roughness: 0.30, opacity: 0.99, emissiveIntensity: 1.40 },
+    slate:   { tex: finishTex("slate"),   baseColor: 0x070420, emissive: 0xffffff, accentHex: NEON_VIOLET,    metalness: 0.30, roughness: 0.55, opacity: 0.99, emissiveIntensity: 1.20 },
   };
   const cfg = finishConfig[finishKind] || finishConfig.shingle;
   const mat = new THREE.MeshStandardMaterial({

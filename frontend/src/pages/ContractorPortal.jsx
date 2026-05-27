@@ -15,6 +15,7 @@ import MapPicker from "@/components/MapPicker";
 import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor, notifyHomeownerDelay } from "@/lib/api";
 import LaunchCountdownBadge from "@/components/LaunchCountdownBadge";
 import CaliperUpload from "@/components/CaliperUpload";
+import ValidationReport from "@/components/ValidationReport";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
@@ -534,10 +535,10 @@ export function JobDetail() {
                 {/* BEES Layer Controller — 4 mutually-exclusive primary radios + 1 secondary gutter toggle */}
                 <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 mt-12 pointer-events-auto items-center" data-testid="layer-toggle-bar">
                   {[
-                    { k: "framing", label: "FRAMING", color: "#00FF66" },
-                    { k: "shingle", label: "SHINGLE", color: "#A684D6" },
-                    { k: "metal",   label: "METAL",   color: "#5FA0C9" },
-                    { k: "slate",   label: "SLATE",   color: "#8FB8C6" },
+                    { k: "framing", label: "FRAMING", color: "#5FF4FF" },
+                    { k: "shingle", label: "SHINGLE", color: "#4CC3FF" },
+                    { k: "metal",   label: "METAL",   color: "#5FF4FF" },
+                    { k: "slate",   label: "SLATE",   color: "#D99DFF" },
                   ].map((t) => {
                     const active = primaryLayer === t.k;
                     return (
@@ -625,6 +626,13 @@ export function JobDetail() {
                 )}
               </div>
             </HudCard>
+
+            {/* Expert Panel Certification (validation gates from roof_telemetry) */}
+            {tele?.validation && (
+              <div className="mb-4" data-testid="contractor-validation-block">
+                <ValidationReport validation={tele.validation} />
+              </div>
+            )}
 
             {/* === Anomaly field & spatial mesh details (collapsed beneath) === */}
             <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_320px]"} gap-3 mb-4`}>

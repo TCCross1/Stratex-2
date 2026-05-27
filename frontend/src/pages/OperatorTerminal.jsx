@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
+import ValidationReport from "@/components/ValidationReport";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { listOperatorJobs, getOperatorJob, operatorLaunch, operatorDryRun, operatorWeatherMonitor } from "@/lib/api";
 import { Radar, Rocket, MapPin, AlertTriangle, CheckCircle2, ChevronRight, Shield, Wind, Radio, Zap, UserCheck, Eye, PawPrint, Battery, Lock, XCircle, Activity, CloudRain } from "lucide-react";
@@ -318,6 +319,11 @@ export function OperatorJobDetail() {
               <RoofModel3D telemetry={tele} anomalies={anomalies} height={isMobile?380:520} showLabels={!isMobile}/>
             </div>
           </HudCard>
+          {tele?.validation && (
+            <div className="mb-4" data-testid="operator-validation-block">
+              <ValidationReport validation={tele.validation} />
+            </div>
+          )}
           <HudCard className="p-4">
             <div className="font-mono text-[11px] uppercase tracking-widest text-teal mb-3">Anomalies Detected (operator-visible technical validation)</div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
