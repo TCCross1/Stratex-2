@@ -130,7 +130,9 @@ export default function Landing() {
               anomalies={demo?.anomalies || []}
               height={isMobile ? 360 : 560}
               showLabels={!isMobile}
-              layers={{ roofing: true, framing: true, gutters: true }}
+              layers={null}
+              primaryLayer="shingle"
+              showGutters={true}
             />
           </HudCard>
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">

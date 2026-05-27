@@ -287,7 +287,8 @@ export function JobDetail() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
-  const [layers, setLayers] = useState({ roofing: true, framing: true, gutters: true });
+  const [primaryLayer, setPrimaryLayer] = useState("shingle"); // BEES: framing | shingle | metal | slate
+  const [showGutters, setShowGutters] = useState(true);
   const [reschedule, setReschedule] = useState(null);
   const [weather, setWeather] = useState(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
@@ -524,34 +525,61 @@ export function JobDetail() {
                   height={isMobile ? 520 : 620}
                   showLabels={!isMobile}
                   showDimensions={!isMobile}
-                  layers={layers}
+                  layers={null}
+                  primaryLayer={primaryLayer}
+                  showGutters={showGutters}
                 />
 
-                {/* Tri-Layer Toggle bar — top-right under SAT title */}
-                <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 mt-12 pointer-events-auto" data-testid="layer-toggle-bar">
+                {/* BEES Layer Controller — 4 mutually-exclusive primary radios + 1 secondary gutter toggle */}
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 mt-12 pointer-events-auto items-center" data-testid="layer-toggle-bar">
                   {[
-                    { k: "roofing",  label: "ROOFING",  color: "#FF5722" },
-                    { k: "framing",  label: "FRAMING",  color: "#00FF66" },
-                    { k: "gutters",  label: "GUTTERS",  color: "#00F0FF" },
-                  ].map((t) => (
-                    <button
-                      key={t.k}
-                      data-testid={`layer-toggle-${t.k}`}
-                      onClick={() => setLayers((l) => ({ ...l, [t.k]: !l[t.k] }))}
-                      className="px-2 py-1 font-mono text-[10px] uppercase tracking-widest border transition-all"
-                      style={{
-                        background: layers[t.k] ? `${t.color}22` : "rgba(11,15,25,0.85)",
-                        color: layers[t.k] ? t.color : "#94A3B8",
-                        borderColor: layers[t.k] ? t.color : "rgba(0,240,255,0.25)",
-                        boxShadow: layers[t.k] ? `0 0 10px ${t.color}66, inset 0 0 6px ${t.color}33` : "none",
-                        textShadow: layers[t.k] ? `0 0 6px ${t.color}` : "none",
-                        backdropFilter: "blur(8px)",
-                      }}
-                    >
-                      <span className="w-1.5 h-1.5 inline-block mr-1 align-middle" style={{ background: t.color, boxShadow: `0 0 4px ${t.color}` }}/>
-                      {t.label}
-                    </button>
-                  ))}
+                    { k: "framing", label: "FRAMING", color: "#00FF66" },
+                    { k: "shingle", label: "SHINGLE", color: "#A684D6" },
+                    { k: "metal",   label: "METAL",   color: "#5FA0C9" },
+                    { k: "slate",   label: "SLATE",   color: "#8FB8C6" },
+                  ].map((t) => {
+                    const active = primaryLayer === t.k;
+                    return (
+                      <button
+                        key={t.k}
+                        data-testid={`layer-toggle-${t.k}`}
+                        aria-pressed={active}
+                        onClick={() => setPrimaryLayer(t.k)}
+                        className="px-2 py-1 font-mono text-[10px] uppercase tracking-widest border transition-all"
+                        style={{
+                          background: active ? `${t.color}22` : "rgba(11,15,25,0.85)",
+                          color: active ? t.color : "#94A3B8",
+                          borderColor: active ? t.color : "rgba(0,240,255,0.25)",
+                          boxShadow: active ? `0 0 10px ${t.color}66, inset 0 0 6px ${t.color}33` : "none",
+                          textShadow: active ? `0 0 6px ${t.color}` : "none",
+                          backdropFilter: "blur(8px)",
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 inline-block mr-1 align-middle" style={{ background: t.color, boxShadow: `0 0 4px ${t.color}` }}/>
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                  {/* Vertical divider */}
+                  <span className="h-4 w-px bg-[#00F0FF]/30 mx-1"/>
+                  {/* Secondary gutter overlay — independent of primary */}
+                  <button
+                    data-testid="layer-toggle-gutters"
+                    aria-pressed={showGutters}
+                    onClick={() => setShowGutters((g) => !g)}
+                    className="px-2 py-1 font-mono text-[10px] uppercase tracking-widest border transition-all"
+                    style={{
+                      background: showGutters ? "#FF8A1F22" : "rgba(11,15,25,0.85)",
+                      color: showGutters ? "#FF8A1F" : "#94A3B8",
+                      borderColor: showGutters ? "#FF8A1F" : "rgba(0,240,255,0.25)",
+                      boxShadow: showGutters ? "0 0 10px #FF8A1F66, inset 0 0 6px #FF8A1F33" : "none",
+                      textShadow: showGutters ? "0 0 6px #FF8A1F" : "none",
+                      backdropFilter: "blur(8px)",
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 inline-block mr-1 align-middle" style={{ background: "#FF8A1F", boxShadow: "0 0 4px #FF8A1F" }}/>
+                    GUTTERS {showGutters ? "ON" : "OFF"}
+                  </button>
                 </div>
 
                 {/* Top-left: Project Identity card */}

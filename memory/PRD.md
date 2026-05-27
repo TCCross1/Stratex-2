@@ -25,6 +25,19 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v3.1.0 — BEES Layer Visibility Constraints)
+- ✅ **🎛️ Mutually-exclusive layer controller** per spec. New props on `RoofModel3D.jsx`:
+  - `primaryLayer` (radio): `"framing" | "shingle" | "metal" | "slate"`
+  - `showGutters` (independent bool)
+  - Legacy `layers={roofing,framing,gutters}` prop still accepted (back-compat shim translates it)
+- ✅ **3 distinct finish textures** (procedural CanvasTexture, cached):
+  - **Shingle** — staggered architectural tabs in violet/purple gradient (metalness 0.05 / roughness 0.85)
+  - **Metal** — vertical standing-seam panels in steel-blue with raised seam highlights (metalness 0.85 / roughness 0.25)
+  - **Slate** — staggered scalloped slate tiles in cool grey (metalness 0.20 / roughness 0.70)
+- ✅ **Framing isolation mode** — when `primaryLayer === "framing"`, every facet mesh is hidden (`facetGroups[*].visible = false`) and only the neon-green rafter wireframe + sub-fascia render. Forbidden state collisions (framing + finish, OR multiple finishes) are unreachable by construction.
+- ✅ **UI**: 4-button radio group + visual divider + persistent gutters secondary toggle on both `ContractorPortal.jsx` and `Landing.jsx`. `aria-pressed` set correctly. Existing data-testids preserved (`layer-toggle-framing/shingle/metal/slate/gutters`).
+- ✅ Visually verified all 4 states + gutter toggle via screenshot cycle on the demo job.
+
 ## What's Been Implemented (2026-02-28 — v3.0.1 — Landing Page Demo Mesh Uplift)
 - ✅ **🌐 New public endpoint** `GET /api/public/demo-topology` (no auth) — returns the full `stratex_demo` compound topology (17 facets + 40 edges + framing rafters + gutter polylines + 4 sample anomalies) keyed off a deterministic `LANDING_DEMO_v1` seed so the marketing page is reproducible.
 - ✅ **🖼️ Landing page mesh swapped** — `Landing.jsx` previously hardcoded a 4-facet cross-hip mesh (the cause of the "still looks the same" report). Now fetches from `/api/public/demo-topology` on mount and renders the compound roof with all 3 tri-layer toggles (roofing + framing + gutters) ON by default.

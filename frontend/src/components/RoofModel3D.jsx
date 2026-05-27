@@ -113,7 +113,115 @@ function blueprintTex(tintHex) {
   return TEX_CACHE[tintHex];
 }
 
-function buildFacetMesh(facet, hasAnomaly = false) {
+// ---------- FINISH-SPECIFIC textures ----------
+// Each generator returns a CanvasTexture sized 256x256 for tiled mapping on facets.
+
+function makeShingleTexture() {
+  const size = 256;
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#2c2333"; ctx.fillRect(0, 0, size, size);
+  // Staggered architectural shingle tabs — 8 rows × ~5 tabs offset every other row
+  const rowH = size / 8;
+  const tabW = size / 4;
+  for (let r = 0; r < 8; r++) {
+    const offset = (r % 2) * (tabW / 2);
+    for (let cIdx = -1; cIdx <= 4; cIdx++) {
+      const x = cIdx * tabW + offset;
+      const y = r * rowH;
+      // Tab body
+      const grad = ctx.createLinearGradient(x, y, x, y + rowH);
+      grad.addColorStop(0, "#6b5783");
+      grad.addColorStop(0.6, "#473860");
+      grad.addColorStop(1, "#2a1f3d");
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + 1, y + 1, tabW - 2, rowH - 2);
+      // Tab divider (vertical cuts)
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x + tabW / 2, y); ctx.lineTo(x + tabW / 2, y + rowH); ctx.stroke();
+      // Row separator
+      ctx.strokeStyle = "rgba(0,0,0,0.65)";
+      ctx.beginPath(); ctx.moveTo(x, y + rowH); ctx.lineTo(x + tabW, y + rowH); ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
+function makeMetalTexture() {
+  const size = 256;
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  // Vertical standing-seam panels: alternating clean stripe + thin raised seam
+  const panelW = size / 6;
+  for (let i = 0; i < 6; i++) {
+    const x = i * panelW;
+    // Panel surface — cool steel-blue gradient
+    const grad = ctx.createLinearGradient(x, 0, x + panelW, 0);
+    grad.addColorStop(0,   "#1a3a52");
+    grad.addColorStop(0.5, "#3e7396");
+    grad.addColorStop(1,   "#1a3a52");
+    ctx.fillStyle = grad; ctx.fillRect(x, 0, panelW, size);
+    // Raised seam at the right edge of each panel
+    ctx.fillStyle = "#5fa0c9";
+    ctx.fillRect(x + panelW - 2, 0, 2, size);
+    ctx.fillStyle = "rgba(120,180,210,0.5)";
+    ctx.fillRect(x + panelW - 4, 0, 1, size);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  return tex;
+}
+
+function makeSlateTexture() {
+  const size = 256;
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#1a2733"; ctx.fillRect(0, 0, size, size);
+  // Diamond/scallop slate tiles — staggered hexagonal grid
+  const rowH = size / 10;
+  const tileW = size / 6;
+  for (let r = 0; r < 12; r++) {
+    const yo = r * rowH;
+    const offset = (r % 2) * (tileW / 2);
+    for (let cIdx = -1; cIdx <= 6; cIdx++) {
+      const x = cIdx * tileW + offset;
+      const grey = 60 + Math.floor(Math.sin(r * 1.7 + cIdx * 1.3) * 18 + 18);
+      // Slate body — subtle variation
+      ctx.fillStyle = `rgb(${grey},${grey+8},${grey+20})`;
+      ctx.beginPath();
+      ctx.moveTo(x + tileW / 2, yo);
+      ctx.lineTo(x + tileW, yo + rowH * 0.45);
+      ctx.lineTo(x + tileW, yo + rowH);
+      ctx.lineTo(x, yo + rowH);
+      ctx.lineTo(x, yo + rowH * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      // Edge highlight
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  return tex;
+}
+
+let SHINGLE_TEX, METAL_TEX, SLATE_TEX;
+function finishTex(kind) {
+  if (kind === "shingle") return (SHINGLE_TEX ||= makeShingleTexture());
+  if (kind === "metal")   return (METAL_TEX   ||= makeMetalTexture());
+  if (kind === "slate")   return (SLATE_TEX   ||= makeSlateTexture());
+  return null;
+}
+
+function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   const v = facet.vertices;
   const positions = fanTriangulate(v);
   const g = new THREE.BufferGeometry();
@@ -142,31 +250,35 @@ function buildFacetMesh(facet, hasAnomaly = false) {
   }
   g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
-  const baseColor = orientationColor(facet);
-  const tex = blueprintTex(baseColor);
+  // Choose material per finish kind. Each gets a distinct base color + texture.
+  const finishConfig = {
+    shingle: { tex: finishTex("shingle"), baseColor: 0x7a5fa0, emissive: 0x301f4a, metalness: 0.05, roughness: 0.85, opacity: 0.95, emissiveIntensity: 0.35 },
+    metal:   { tex: finishTex("metal"),   baseColor: 0x5fa0c9, emissive: 0x1a4a6e, metalness: 0.85, roughness: 0.25, opacity: 0.96, emissiveIntensity: 0.30 },
+    slate:   { tex: finishTex("slate"),   baseColor: 0x6e7e8f, emissive: 0x1e2a36, metalness: 0.20, roughness: 0.70, opacity: 0.94, emissiveIntensity: 0.25 },
+  };
+  const cfg = finishConfig[finishKind] || finishConfig.shingle;
   const mat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(baseColor),
-    map: tex,
-    metalness: 0.18,
-    roughness: 0.6,
+    color: new THREE.Color(cfg.baseColor),
+    map: cfg.tex,
+    metalness: cfg.metalness,
+    roughness: cfg.roughness,
     transparent: true,
-    opacity: hasAnomaly ? 0.78 : 0.58,
+    opacity: hasAnomaly ? Math.min(1, cfg.opacity) : cfg.opacity,
     side: THREE.DoubleSide,
-    emissive: new THREE.Color(baseColor),
-    emissiveIntensity: 0.22,
-    emissiveMap: tex,
+    emissive: new THREE.Color(cfg.emissive),
+    emissiveIntensity: cfg.emissiveIntensity,
   });
   const mesh = new THREE.Mesh(g, mat);
 
-  // soft outline highlight
+  // soft outline highlight — orange perimeter (like the reference frames)
   const wf = new THREE.LineSegments(
     new THREE.EdgesGeometry(g, 1),
-    new THREE.LineBasicMaterial({ color: baseColor, transparent: true, opacity: 0.55 }),
+    new THREE.LineBasicMaterial({ color: ORANGE, transparent: true, opacity: 0.65 }),
   );
   const group = new THREE.Group();
   group.add(mesh); group.add(wf);
   group.userData.facet = facet;
-  group.userData.baseColor = baseColor;
+  group.userData.finishKind = finishKind;
   return group;
 }
 
@@ -236,8 +348,17 @@ export default function RoofModel3D({
   onSelectAnomaly,
   showLabels = true,
   showDimensions = true,
-  layers = { roofing: true, framing: false, gutters: false },
+  // NEW BEES Layer Visibility Constraints (mutually exclusive primary layers + secondary gutter overlay)
+  primaryLayer = "shingle",  // "framing" | "shingle" | "metal" | "slate"
+  showGutters = true,
+  // legacy prop (backward-compat) — if `layers` is provided, derive primaryLayer + showGutters from it
+  layers = null,
 }) {
+  // ----- Back-compat shim: translate legacy {roofing, framing, gutters} to BEES contract -----
+  const resolvedPrimary = layers
+    ? (layers.framing ? "framing" : (layers.roofing ? "shingle" : "framing"))
+    : primaryLayer;
+  const resolvedGutters = layers ? !!layers.gutters : !!showGutters;
   const mountRef = useRef(null);
   const stateRef = useRef({});
   const [labelPositions, setLabelPositions] = useState([]);
@@ -314,7 +435,10 @@ export default function RoofModel3D({
 
     // -------- facets --------
     const facetGroups = facets.map((f) => {
-      const g = buildFacetMesh(f, anomalyFacetSet.has(f.id));
+      const finishKind = resolvedPrimary === "framing" ? "shingle" : resolvedPrimary;
+      const g = buildFacetMesh(f, anomalyFacetSet.has(f.id), finishKind);
+      // Framing-mode hides finish meshes entirely
+      g.visible = resolvedPrimary !== "framing";
       scene.add(g);
       return g;
     });
@@ -335,7 +459,7 @@ export default function RoofModel3D({
 
     // -------- FRAMING LAYER (neon-green matrix wireframe) --------
     const framingGroup = new THREE.Group();
-    framingGroup.visible = !!layers.framing;
+    framingGroup.visible = resolvedPrimary === "framing";
     const tele = telemetry || {};
     const framing = tele.framing || {};
     // Rafters
@@ -357,7 +481,7 @@ export default function RoofModel3D({
 
     // -------- GUTTERS LAYER (neon-cyan extruded tube along eaves + downspouts) --------
     const gutterGroup = new THREE.Group();
-    gutterGroup.visible = !!layers.gutters;
+    gutterGroup.visible = !!resolvedGutters;
     const gutters = tele.gutters || {};
     (gutters.polylines || []).forEach((p) => {
       const a = new THREE.Vector3(p.a[0], p.a[1] - 0.6, p.a[2]);
@@ -530,7 +654,7 @@ export default function RoofModel3D({
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [telemetry?.style, telemetry?.scale, anomalies.length, height]);
+  }, [telemetry?.style, telemetry?.scale, anomalies.length, height, resolvedPrimary]);
 
   useEffect(() => {
     const { controls, scanner } = stateRef.current;
@@ -540,12 +664,16 @@ export default function RoofModel3D({
 
   useEffect(() => {
     const { framingGroup, gutterGroup, facetGroups } = stateRef.current;
-    if (framingGroup) framingGroup.visible = !!layers.framing;
-    if (gutterGroup)  gutterGroup.visible  = !!layers.gutters;
-    if (facetGroups) facetGroups.forEach((g) => {
-      g.visible = !!layers.roofing;
+    // BEES Layer Visibility Rules:
+    //   - resolvedPrimary === "framing":  facets HIDDEN, framing visible
+    //   - resolvedPrimary === any finish: facets VISIBLE (texture chosen at mount), framing HIDDEN
+    //   - gutters: independent secondary
+    if (framingGroup) framingGroup.visible = resolvedPrimary === "framing";
+    if (gutterGroup)  gutterGroup.visible  = !!resolvedGutters;
+    if (facetGroups)  facetGroups.forEach((g) => {
+      g.visible = resolvedPrimary !== "framing";
     });
-  }, [layers.roofing, layers.framing, layers.gutters]);
+  }, [resolvedPrimary, resolvedGutters]);
 
   useEffect(() => {
     const { anomalyGroups } = stateRef.current; if (!anomalyGroups) return;
