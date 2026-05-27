@@ -914,33 +914,129 @@ async def _record_fleet_drop(contractor_id: str, job_id: str):
     )
 
 
-def _mock_phase1(job: Dict[str, Any]) -> List[Phase1Result]:
-    """Deterministic Phase 1 mock. ~10% chance of warning; <2% chance of fail. Real APIs swap in here."""
+def _classify_open_meteo(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply ASTM C1153 thermographic-roof-survey gates to live Open-Meteo data."""
+    h = data.get("hourly") or {}
+    times  = h.get("time") or []
+    precip = h.get("precipitation") or []
+    prob   = h.get("precipitation_probability") or []
+    wind   = h.get("wind_speed_10m") or []
+    clouds = h.get("cloud_cover") or []
+
+    # Open-Meteo with past_hours=24 + forecast_hours=3 returns 28 entries:
+    # indices 0..23 = past 24h (oldest→newest), 24 = current hour, 25..27 = forecast next 3h
+    past24      = precip[:24] if len(precip) >= 24 else precip
+    cloud_12h   = clouds[12:24] if len(clouds) >= 24 else clouds
+    next2_prob  = prob[25:27]   if len(prob)   >= 27 else prob[-2:] if prob else []
+    next2_pcp   = precip[25:27] if len(precip) >= 27 else precip[-2:] if precip else []
+    cur_wind    = wind[24]      if len(wind)   > 24  else (wind[-1] if wind else 0.0)
+
+    past_24h_precip_in    = round(sum(past24), 3)
+    avg_cloud_12h_pct     = round(sum(cloud_12h) / len(cloud_12h), 1) if cloud_12h else 0.0
+    next2h_precip_prob    = max(next2_prob) if next2_prob else 0
+    next2h_precip_in      = round(sum(next2_pcp), 3) if next2_pcp else 0.0
+    return {
+        "past_24h_precip_in": past_24h_precip_in,
+        "avg_cloud_12h_pct": avg_cloud_12h_pct,
+        "next2h_precip_prob_pct": next2h_precip_prob,
+        "next2h_precip_in": next2h_precip_in,
+        "current_wind_mph": round(float(cur_wind), 1),
+        "first_obs_ts": times[0] if times else None,
+        "last_obs_ts":  times[-1] if times else None,
+    }
+
+
+async def _fetch_openmeteo(lat: float, lon: float) -> Optional[Dict[str, Any]]:
+    """Fetch past-24h + next-3h hourly weather from Open-Meteo (no key, free)."""
+    if not (isinstance(lat, (int, float)) and isinstance(lon, (int, float))):
+        return None
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        "&hourly=precipitation,precipitation_probability,wind_speed_10m,cloud_cover"
+        "&past_hours=24&forecast_hours=3"
+        "&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto"
+    )
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=8) as cli:
+            r = await cli.get(url)
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        logger.warning("open-meteo fetch failed for %.4f,%.4f: %s", lat, lon, e)
+        return None
+
+
+async def _astm_phase1(job: Dict[str, Any]) -> List[Phase1Result]:
+    """Deterministic FAA/GIS mock + REAL Open-Meteo ASTM C1153 weather gates."""
     seed_int = abs(hash(job["id"])) % 100
     results: List[Phase1Result] = []
 
-    # 1. LAANC / FAA Airspace Clearance
+    # 1. FAA / LAANC Airspace — MOCKED (no public free API)
     if seed_int < 4:
         results.append(Phase1Result(name="FAA / LAANC Airspace", status="FAIL",
             details="Property intersects Class B controlled airspace — manual waiver required from FAA UAS Data Exchange."))
     elif seed_int < 14:
         results.append(Phase1Result(name="FAA / LAANC Airspace", status="WARN",
-            details="Auto-LAANC authorization granted for 200ft ceiling, 0–400ft AGL flight envelope. Authorization ID: LAANC-AUTO-" + job["id"][:8].upper()))
+            details="Auto-LAANC authorization granted (0–400ft AGL envelope). Auth ID: LAANC-AUTO-" + job["id"][:8].upper()))
     else:
         results.append(Phase1Result(name="FAA / LAANC Airspace", status="PASS",
             details="Class G uncontrolled airspace. No FAA authorization required."))
 
-    # 2. Micro-Climate Weather Sweep
-    wind = round(1.0 + (seed_int % 4) * 0.8, 1)  # 1.0–3.4 mph
-    precip = seed_int % 5  # 0-4 %
-    if wind > 5.0 or precip > 10:
-        results.append(Phase1Result(name="Micro-Climate Weather", status="FAIL",
-            details=f"Wind {wind}mph / precipitation {precip}% within next 60min. Auto-reschedule recommended."))
+    # 2–5. ASTM C1153 thermographic-roof weather gates — REAL Open-Meteo
+    om = await _fetch_openmeteo(job.get("lat", 0.0), job.get("lon", 0.0))
+    if not om:
+        # Network failure — be honest, fail-closed (safer than launching blind)
+        results.append(Phase1Result(name="Pre-Rain 24h Lookback (ASTM C1153)", status="FAIL",
+            details="Weather telemetry unavailable (Open-Meteo unreachable). Launch locked pending live data — try again in 5 minutes."))
+        results.append(Phase1Result(name="Solar Loading (12h Cloud Cover)", status="FAIL", details="Weather telemetry unavailable."))
+        results.append(Phase1Result(name="Forecast 2h Buffer (Incoming Front)", status="FAIL", details="Weather telemetry unavailable."))
+        results.append(Phase1Result(name="Sustained Wind", status="FAIL", details="Weather telemetry unavailable."))
     else:
-        results.append(Phase1Result(name="Micro-Climate Weather", status="PASS",
-            details=f"Sustained wind {wind}mph (≤5mph threshold); precipitation probability {precip}% (≤10% threshold). Doppler radar clear."))
+        m = _classify_open_meteo(om)
+        # 2. PRE-RAIN 24h — must be effectively zero precipitation in past 24h
+        if m["past_24h_precip_in"] > 0.05:
+            results.append(Phase1Result(name="Pre-Rain 24h Lookback (ASTM C1153)", status="FAIL",
+                details=f"Delayed_Surface_Moisture — {m['past_24h_precip_in']:.2f}\" precipitation recorded in past 24h. ASTM C1153 requires dry shingle surface + 24h drying window before thermographic survey."))
+        elif m["past_24h_precip_in"] > 0.01:
+            results.append(Phase1Result(name="Pre-Rain 24h Lookback (ASTM C1153)", status="WARN",
+                details=f"Trace precipitation ({m['past_24h_precip_in']:.2f}\") in past 24h — recommend extending dry window to 48h for highest data integrity."))
+        else:
+            results.append(Phase1Result(name="Pre-Rain 24h Lookback (ASTM C1153)", status="PASS",
+                details=f"Past 24h precipitation: {m['past_24h_precip_in']:.2f}\" — shingle surface dry. Drying window satisfied."))
 
-    # 3. Utility & Power-Line GIS
+        # 3. SOLAR LOADING — daytime cloud cover past 12h must be ≤ 70%
+        if m["avg_cloud_12h_pct"] > 70.0:
+            results.append(Phase1Result(name="Solar Loading (12h Cloud Cover)", status="FAIL",
+                details=f"Delayed_Insufficient_Solar_Load — {m['avg_cloud_12h_pct']:.0f}% avg cloud cover past 12h exceeds 70% threshold. Roof has not absorbed sufficient solar energy for night-scan thermal contrast."))
+        elif m["avg_cloud_12h_pct"] > 50.0:
+            results.append(Phase1Result(name="Solar Loading (12h Cloud Cover)", status="WARN",
+                details=f"Marginal solar load — {m['avg_cloud_12h_pct']:.0f}% avg cloud cover past 12h. Thermal contrast will be reduced but readable."))
+        else:
+            results.append(Phase1Result(name="Solar Loading (12h Cloud Cover)", status="PASS",
+                details=f"Avg cloud cover past 12h: {m['avg_cloud_12h_pct']:.0f}% — sufficient solar absorption for night-scan thermal Δ."))
+
+        # 4. FORECAST 2h BUFFER — incoming rain front
+        if m["next2h_precip_prob_pct"] > 30 or m["next2h_precip_in"] > 0.01:
+            results.append(Phase1Result(name="Forecast 2h Buffer (Incoming Front)", status="FAIL",
+                details=f"Delayed_Incoming_Front — {m['next2h_precip_prob_pct']}% precipitation probability ({m['next2h_precip_in']:.2f}\" expected) in next 2 hours. Atmospheric Δ would wash out thermal contrast + fleet recovery time inadequate."))
+        else:
+            results.append(Phase1Result(name="Forecast 2h Buffer (Incoming Front)", status="PASS",
+                details=f"Forecast 2h: {m['next2h_precip_prob_pct']}% precip probability — clean operational runway."))
+
+        # 5. SUSTAINED WIND — must be ≤ 5 mph
+        if m["current_wind_mph"] > 8.0:
+            results.append(Phase1Result(name="Sustained Wind", status="FAIL",
+                details=f"Sustained wind {m['current_wind_mph']:.1f}mph — exceeds 5mph operational threshold + 8mph hard limit. RTK precision compromised."))
+        elif m["current_wind_mph"] > 5.0:
+            results.append(Phase1Result(name="Sustained Wind", status="WARN",
+                details=f"Sustained wind {m['current_wind_mph']:.1f}mph above 5mph threshold. Manual operator override required."))
+        else:
+            results.append(Phase1Result(name="Sustained Wind", status="PASS",
+                details=f"Sustained wind {m['current_wind_mph']:.1f}mph — within 5mph operational threshold."))
+
+    # 6. Utility & Power-Line GIS — MOCKED (paid GIS API later)
     if seed_int % 11 == 0:
         results.append(Phase1Result(name="Utility & Power-Line GIS", status="WARN",
             details="Medium-voltage distribution line at southwest property edge. Flight envelope auto-adjusted to maintain 25ft buffer."))
@@ -951,17 +1047,21 @@ def _mock_phase1(job: Dict[str, Any]) -> List[Phase1Result]:
     return results
 
 
+def _mock_phase1(job: Dict[str, Any]) -> List[Phase1Result]:
+    """Legacy synchronous mock — kept for any non-async callers; not used in production path."""
+    return []
+
+
 @api.post("/contractor/jobs/{job_id}/run-phase1")
 async def run_phase1(job_id: str, user=Depends(contractor_only)):
     """Execute Phase 1 Digital Gatekeeping. Software-locks launch unless overall=PASS."""
     job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
     if not job:
         raise HTTPException(404, "Job not found")
-    if job["status"] not in ("PENDING_PHASE1", "PENDING_FIELD_CAPTURE"):
+    if job["status"] not in ("PENDING_PHASE1", "PENDING_FIELD_CAPTURE", "PHASE1_BLOCKED"):
         raise HTTPException(400, f"Cannot re-run Phase 1 from status {job['status']}")
 
-    await asyncio.sleep(0.6)  # let the streaming UX breathe
-    results = _mock_phase1(job)
+    results = await _astm_phase1(job)
     has_fail = any(r.status == "FAIL" for r in results)
     overall = "FAIL" if has_fail else "PASS"
     phase1_status = {"overall": overall, "checks": [r.model_dump() for r in results], "ran_at": now_iso()}

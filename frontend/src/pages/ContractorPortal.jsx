@@ -29,7 +29,14 @@ const STATUS_COLOR = {
 };
 
 // PHASE 1 — Digital Gatekeeping card
-const PHASE1_ICONS = { "FAA / LAANC Airspace": Radio, "Micro-Climate Weather": Wind, "Utility & Power-Line GIS": Zap };
+const PHASE1_ICONS = {
+  "FAA / LAANC Airspace": Radio,
+  "Pre-Rain 24h Lookback (ASTM C1153)": Cloud,
+  "Solar Loading (12h Cloud Cover)": Wind,
+  "Forecast 2h Buffer (Incoming Front)": Cloud,
+  "Sustained Wind": Wind,
+  "Utility & Power-Line GIS": Zap,
+};
 function Phase1Card({ job, onRun, busy }) {
   const ph = job.phase1_status;
   return (
