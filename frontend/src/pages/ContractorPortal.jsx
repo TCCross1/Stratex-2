@@ -386,6 +386,14 @@ export function JobDetail() {
         {/* RESCHEDULE — when Phase 1 blocked on weather */}
         {job.status === "PHASE1_BLOCKED" && reschedule && (
           <HudCard scanline className="p-5 mb-4" data-testid="reschedule-card">
+            {job.scheduled_window_label && (
+              <div data-testid="homeowner-scheduled-banner" className="mb-3 px-3 py-2 border border-[#39FF14]/60 flex items-center gap-2"
+                   style={{ background: "rgba(57,255,20,0.06)", boxShadow: "0 0 12px rgba(57,255,20,0.18)" }}>
+                <CheckCircle2 size={14} className="text-volt"/>
+                <span className="font-mono text-[11px] uppercase tracking-widest text-volt">HOMEOWNER LOCKED IN: <span className="text-silver">{job.scheduled_window_label}</span></span>
+                <span className="ml-auto font-mono text-[9px] text-muted-hud uppercase tracking-widest">via {job.scheduled_via === "homeowner_sms_reply" ? "SMS reply" : "manual"}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
               <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
                 <Calendar size={13}/> Auto-Reschedule · Open-Meteo 7-day Forecast

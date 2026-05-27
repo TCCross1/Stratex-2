@@ -1561,11 +1561,18 @@ async def _send_sms(to: str, body: str) -> Dict[str, Any]:
 
 def _homeowner_delay_sms_body(job: Dict[str, Any], windows: List[Dict[str, Any]], contractor_name: str) -> str:
     homeowner = (job.get("homeowner_name") or "there").split()[0]
-    next_w = windows[0]["label"] if windows else "TBD (extended forecast review)"
+    if not windows:
+        return (
+            f"Hi {homeowner}, {contractor_name} here — today's weather isn't meeting ASTM standards "
+            f"for your roof scan. We're watching the forecast and will text you the moment a window opens. "
+            f"Powered by STRATEX."
+        )
+    numbered = "\n".join(f"{i+1}) {w['label']}" for i, w in enumerate(windows[:3]))
+    extra = " or 2/3" if len(windows) >= 2 else ""
     return (
-        f"Hi {homeowner}, {contractor_name} here — weather isn't meeting our roof-scan standards today, "
-        f"so we're rescheduling your inspection. Next safe window: {next_w}. "
-        f"No action needed — we'll confirm 24h prior. Powered by STRATEX."
+        f"Hi {homeowner}, {contractor_name} here. Weather isn't meeting our ASTM scan standards today — "
+        f"please reply with the # of your preferred window:\n{numbered}\n"
+        f"Reply 1{extra} to confirm. Powered by STRATEX."
     )
 
 
@@ -1735,7 +1742,11 @@ async def notify_homeowner_delay(job_id: str, body: NotifyHomeownerDelayBody, us
         sms_body = _homeowner_delay_sms_body(job, windows, contractor_name)
         sms_result = await _send_sms(to_phone, sms_body)
 
-    update_set: Dict[str, Any] = {"delay_notified_at": now_iso()}
+    update_set: Dict[str, Any] = {
+        "delay_notified_at": now_iso(),
+        # Persist proposed windows for the 2-way SMS reply mapping (homeowner texts back 1/2/3)
+        "proposed_windows": windows,
+    }
     if to_email and not email_result.get("skipped"):
         update_set["delay_notified_to"] = to_email
     if to_phone and not sms_result.get("skipped"):
@@ -1757,6 +1768,85 @@ async def notify_homeowner_delay(job_id: str, body: NotifyHomeownerDelayBody, us
         "sms": sms_result,
         "windows_count": len(windows),
     }
+
+
+# ---------------------------------------------------------------------------
+# TWILIO INBOUND SMS WEBHOOK — homeowner texts back 1/2/3 to confirm window
+# ---------------------------------------------------------------------------
+# Configure in Twilio Console: Phone Numbers → your number → Messaging → "A MESSAGE COMES IN"
+#   webhook URL = {your_public_url}/api/twilio/inbound-sms  (POST)
+# Twilio sends application/x-www-form-urlencoded with fields: From, To, Body, MessageSid, etc.
+# We reply with TwiML so the homeowner sees an instant confirmation.
+
+from fastapi import Form
+from fastapi.responses import Response
+
+_TWIML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
+
+
+def _twiml(message: str) -> Response:
+    body = f'{_TWIML_HEADER}<Response><Message>{message}</Message></Response>'
+    return Response(content=body, media_type="application/xml")
+
+
+@api.post("/twilio/inbound-sms")
+async def twilio_inbound_sms(
+    From: str = Form(""),
+    Body: str = Form(""),
+    MessageSid: str = Form(""),
+):
+    """Public webhook — Twilio hits this when an SMS comes in to our FROM number.
+    Matches the sender phone to the most-recent PHASE1_BLOCKED job that we notified,
+    parses '1'/'2'/'3', and locks in the scheduled launch window."""
+    sender = (From or "").strip()
+    txt = (Body or "").strip().lower()
+    if not sender:
+        return _twiml("We couldn't verify your number. Please call your contractor.")
+
+    # Look up the most recently notified PHASE1_BLOCKED job for this phone
+    job = await db.jobs.find_one(
+        {"status": "PHASE1_BLOCKED", "delay_notified_sms": sender},
+        {"_id": 0},
+        sort=[("delay_notified_at", -1)],
+    )
+    if not job:
+        return _twiml("We couldn't match your number to an active reschedule. Please call your contractor for help.")
+
+    windows = job.get("proposed_windows") or []
+    if not windows:
+        return _twiml("No reschedule windows are currently on file. Your contractor will reach out shortly.")
+
+    # Parse first digit 1-9 from body
+    import re as _re
+    m = _re.search(r"[1-9]", txt)
+    if not m:
+        opts = "/".join(str(i + 1) for i in range(min(3, len(windows))))
+        return _twiml(f"Sorry, didn't catch that. Please reply with {opts} to pick a window.")
+    choice = int(m.group(0))
+    if choice < 1 or choice > len(windows):
+        return _twiml(f"That option isn't available. Please reply 1-{min(3, len(windows))}.")
+
+    selected = windows[choice - 1]
+    await db.jobs.update_one(
+        {"id": job["id"]},
+        {"$set": {
+            "scheduled_launch_at": selected.get("iso") or selected.get("label"),
+            "scheduled_window_label": selected.get("label"),
+            "scheduled_via": "homeowner_sms_reply",
+            "scheduled_at": now_iso(),
+        }},
+    )
+    await _record_audit(job["id"], job.get("contractor_id", "system"), "HOMEOWNER_SCHEDULED_VIA_SMS", {
+        "from": sender,
+        "choice": choice,
+        "selected_label": selected.get("label"),
+        "selected_iso": selected.get("iso"),
+        "message_sid": MessageSid,
+    })
+    return _twiml(
+        f"Thanks! Locked in your roof scan for {selected.get('label','TBD')}. "
+        f"We'll text you a confirmation 24 hours before. — STRATEX"
+    )
 
 
 @auth_r.post("/email-nda")

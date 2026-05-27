@@ -25,6 +25,13 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v2.7.0 — 2-Way SMS Reschedule Loop)
+- ✅ **🔁 Twilio inbound SMS webhook** — new public `POST /api/twilio/inbound-sms` (form-encoded; Twilio standard). Homeowner texts back `1`/`2`/`3` → backend matches sender phone to most-recent `PHASE1_BLOCKED` job, locks `scheduled_launch_at` + `scheduled_window_label` + `scheduled_via="homeowner_sms_reply"`, responds with TwiML confirmation message that Twilio relays to the homeowner. Audit event `HOMEOWNER_SCHEDULED_VIA_SMS` captures the choice, the selected ISO, and the Twilio MessageSid.
+- ✅ **📤 Numbered SMS body** — outbound `_homeowner_delay_sms_body` now lists windows as `1) … 2) … 3) …` with "Reply 1/2/3 to confirm" CTA.
+- ✅ **🎯 "Homeowner Locked In" banner** on the contractor `reschedule-card` (data-testid `homeowner-scheduled-banner`) showing the confirmed window + the source (SMS reply / manual). Volt-green confirmation aesthetic.
+- ✅ **Job state extensions**: `proposed_windows` persisted on notify so reply mapping survives restarts; `scheduled_launch_at`, `scheduled_window_label`, `scheduled_via`, `scheduled_at` fields added.
+- ✅ Twilio webhook setup: in Twilio Console → Phone Numbers → your number → Messaging → **A MESSAGE COMES IN** → set to `{REACT_APP_BACKEND_URL}/api/twilio/inbound-sms` (POST). Twilio will form-POST `From`, `Body`, `MessageSid`.
+
 ## What's Been Implemented (2026-02-28 — v2.6.0 — Twilio SMS Homeowner Delay Notify)
 - ✅ **📲 Twilio SMS channel** layered on top of the email Phase-1-delay notification. `POST /api/contractor/jobs/{id}/notify-homeowner-delay` now accepts `homeowner_email` AND/OR `homeowner_phone` and fans out to both Resend (email) and Twilio (SMS). Either channel mocks gracefully when its credential env (`RESEND_API_KEY` / `TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM`) is absent. E.164 validation (`^\+[1-9]\d{6,14}$`) on phone — invalid → mock+skip without erroring the whole call. `twilio==9.10.9` added to requirements.txt.
 - ✅ **🆕 Homeowner phone field** on the New Job form (`data-testid="job-homeowner-phone"`), separate email field (`data-testid="job-homeowner-email"`). Both optional; backend already supported them.
