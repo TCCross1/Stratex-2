@@ -10,6 +10,19 @@ inst.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+// Flatten Pydantic 422 errors so they never reach React render as objects
+inst.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    const d = err.response?.data?.detail;
+    if (Array.isArray(d)) {
+      const msg = d.map((e) => `${e.loc?.slice(-1)?.[0] || "field"}: ${e.msg}`).join(" · ");
+      err.response.data.detail = msg;
+    }
+    return Promise.reject(err);
+  },
+);
+
 export const api = inst;
 
 // ---------- Auth ----------
@@ -39,6 +52,12 @@ export const operatorLaunch = (id, preflight) => inst.post(`/operator/jobs/${id}
 
 // ---------- Fleet ----------
 export const fleetStatus = () => inst.get("/fleet/status").then(r => r.data);
+
+// ---------- Risk Engine ----------
+export const runPhase1 = (id) => inst.post(`/contractor/jobs/${id}/run-phase1`).then(r => r.data);
+export const getJobAuditLog = (id) => inst.get(`/contractor/jobs/${id}/audit-log`).then(r => r.data);
+export const operatorDryRun = (id, reason, notes) => inst.post(`/operator/jobs/${id}/dry-run`, { reason, notes }).then(r => r.data);
+export const getBillingMeter = () => inst.get("/contractor/billing/meter").then(r => r.data);
 
 // ---------- Email ----------
 export const emailNda = () => inst.post("/auth/email-nda").then(r => r.data);

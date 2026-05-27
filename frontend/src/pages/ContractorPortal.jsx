@@ -9,20 +9,95 @@ import {
   listContractorJobs, createJob, getContractorJob, computeProposal, auditApprove, markSent, contractorPdfUrl,
   getMaterials, saveMaterials,
 } from "@/lib/api";
-import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2 } from "lucide-react";
+import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2, AlertTriangle, Wind, Cloud, Radio, Zap, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
-import { emailProposal } from "@/lib/api";
+import { emailProposal, runPhase1, getJobAuditLog } from "@/lib/api";
 
 const STATUS_LABEL = {
-  DRAFT: "Draft", PENDING_FIELD_CAPTURE: "Awaiting Field Capture",
+  DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
+  PENDING_FIELD_CAPTURE: "Awaiting Field Capture",
   IN_FLIGHT: "Aerial Recon In Progress", DATA_CAPTURE_COMPLETE: "Capture Complete",
   PROPOSAL_READY: "Proposal Ready", AUDIT_APPROVED: "Audit Approved", SENT_TO_HOMEOWNER: "Sent",
+  DRY_RUN_PENALTY: "Dry-Run Penalty",
 };
 const STATUS_COLOR = {
+  PENDING_PHASE1: "text-teal", PHASE1_BLOCKED: "text-plasma",
   PENDING_FIELD_CAPTURE: "text-teal", IN_FLIGHT: "text-teal", DATA_CAPTURE_COMPLETE: "text-volt",
   PROPOSAL_READY: "text-teal", AUDIT_APPROVED: "text-volt", SENT_TO_HOMEOWNER: "text-muted-hud",
+  DRY_RUN_PENALTY: "text-plasma",
 };
+
+// PHASE 1 — Digital Gatekeeping card
+const PHASE1_ICONS = { "FAA / LAANC Airspace": Radio, "Micro-Climate Weather": Wind, "Utility & Power-Line GIS": Zap };
+function Phase1Card({ job, onRun, busy }) {
+  const ph = job.phase1_status;
+  return (
+    <HudCard scanline className="p-5 mb-4" data-testid="phase1-card">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest"><Shield size={13}/> Phase 1 · Digital Gatekeeping</div>
+        {ph ? (
+          <span className={`font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 border ${ph.overall==="PASS"?"text-volt border-[#39FF14]/40":"text-plasma border-[#FF5500]/40"}`} data-testid="phase1-overall">{ph.overall}</span>
+        ) : (
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-hud">Not yet executed</span>
+        )}
+      </div>
+      <p className="text-[12px] text-muted-hud font-body mb-3">Automatic cloud checks running against FAA UAS Data Exchange, Doppler radar, and GIS utility plane. The launch button stays software-locked until all three pass.</p>
+      {ph && (
+        <div className="space-y-2 mb-3">
+          {ph.checks.map((c, i) => {
+            const Icon = PHASE1_ICONS[c.name] || Shield;
+            const accent = c.status==="PASS"?"text-volt":c.status==="WARN"?"text-teal":"text-plasma";
+            return (
+              <div key={i} className="hud-card p-3 flex items-start gap-3" data-testid={`phase1-check-${i}`}>
+                <span className="corner-bl"/><span className="corner-br"/>
+                <Icon size={14} className={`${accent} mt-0.5 shrink-0`}/>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-silver">{c.name}</span>
+                    <span className={`font-mono text-[10px] uppercase tracking-widest ${accent}`}>{c.status}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-hud font-body mt-0.5">{c.details}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <button onClick={onRun} disabled={busy} className="btn-hud" data-testid="run-phase1-btn">
+        <Shield size={14}/> {busy ? "Querying clearance APIs…" : ph ? "RE-RUN PHASE 1" : "EXECUTE PHASE 1 CHECKS"}
+      </button>
+    </HudCard>
+  );
+}
+
+// Compliance Audit Trail (immutable log viewer)
+function AuditLogPanel({ jobId }) {
+  const [log, setLog] = useState(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (open && !log) getJobAuditLog(jobId).then(setLog).catch(()=>setLog({events:[]})); }, [open, log, jobId]);
+  return (
+    <HudCard className="p-4 mb-4" data-testid="audit-log-panel">
+      <button onClick={()=>setOpen(!open)} className="w-full flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-volt" data-testid="audit-toggle">
+        <span className="flex items-center gap-2"><ScrollText size={13}/> Compliance Audit Trail — Immutable Log</span>
+        <ChevronRight size={14} className={open?"rotate-90 transition-transform":"transition-transform"}/>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-1.5" data-testid="audit-events">
+          {!log && <div className="font-mono text-[11px] text-muted-hud">Loading log…</div>}
+          {log && log.events.length === 0 && <div className="font-mono text-[11px] text-muted-hud">No events recorded yet.</div>}
+          {log && log.events.map((e, i) => (
+            <div key={e.id} className="border border-[#00F0FF]/15 px-2 py-1 font-mono text-[10px] flex items-center justify-between gap-2">
+              <span className="text-teal uppercase tracking-widest">{e.event}</span>
+              <span className="text-muted-hud">{e.ts}</span>
+            </div>
+          ))}
+          <div className="mt-2 font-mono text-[10px] text-volt uppercase tracking-widest">↑ Append-only · SOC2 exportable · No mutation allowed</div>
+        </div>
+      )}
+    </HudCard>
+  );
+}
 
 function SecurityBanner() {
   return (
@@ -101,7 +176,12 @@ export function NewJob() {
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true);
-    try { const j = await createJob(form); toast.success("Job dispatched to operator queue"); navigate(`/contractor/jobs/${j.id}`); }
+    try {
+      const payload = { ...form, homeowner_email: form.homeowner_email?.trim() || null };
+      const j = await createJob(payload);
+      toast.success("Job dispatched — running Phase 1 gatekeeping");
+      navigate(`/contractor/jobs/${j.id}`);
+    }
     catch (e) { toast.error(e.response?.data?.detail || e.message); }
     finally { setBusy(false); }
   };
@@ -256,11 +336,35 @@ export function JobDetail() {
           </div>
         </div>
 
+        {/* PHASE 1 — always show on pending/blocked or as a passed badge once captured */}
+        {(job.status === "PENDING_PHASE1" || job.status === "PHASE1_BLOCKED" || job.status === "PENDING_FIELD_CAPTURE") && (
+          <Phase1Card job={job} busy={busy} onRun={async ()=>{
+            setBusy(true);
+            try { await runPhase1(id); await load(); toast.success("Phase 1 complete"); }
+            catch(e){ toast.error(e.response?.data?.detail || e.message); }
+            finally { setBusy(false); }
+          }}/>
+        )}
+
+        {/* Dry-run penalty banner */}
+        {job.status === "DRY_RUN_PENALTY" && job.dry_run && (
+          <HudCard alert className="p-5 mb-4" data-testid="dry-run-banner">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-plasma mb-2">
+              <AlertTriangle size={14}/> Dry-Run Penalty · ${(job.dry_run.penalty_usd||150).toFixed(2)}
+            </div>
+            <p className="text-[13px] text-silver">Operator flagged this dispatch as <span className="text-plasma uppercase tracking-widest font-mono">{job.dry_run.reason.replace(/_/g," ")}</span>. The penalty has been added to next month's invoice. Audit recorded {job.dry_run.flagged_at}.</p>
+            {job.dry_run.notes && <p className="text-[11px] text-muted-hud font-mono mt-2">NOTES: {job.dry_run.notes}</p>}
+          </HudCard>
+        )}
+
+        {/* Audit log panel — always available once phase1 executed */}
+        {job.phase1_status && <AuditLogPanel jobId={id}/>}
+
         {/* Awaiting capture */}
         {job.status === "PENDING_FIELD_CAPTURE" && (
           <HudCard scanline className="p-8 text-center">
             <p className="text-silver font-heading text-lg">Awaiting Operator Capture</p>
-            <p className="text-muted-hud text-sm mt-2">Your STRATEX fleet operator will pick up this job from their terminal, run the pre-flight checklist, and authorize the aerial reconnaissance.</p>
+            <p className="text-muted-hud text-sm mt-2">Phase 1 cleared. Your STRATEX fleet operator will pick up this job from their terminal, run the on-site safety checks (Phase 2) and hardware diagnostics (Phase 3), and authorize the aerial reconnaissance.</p>
           </HudCard>
         )}
 

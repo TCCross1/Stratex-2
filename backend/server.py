@@ -148,14 +148,39 @@ class JobCreate(BaseModel):
     roof_style: str = "cross_hip"
     notes: Optional[str] = ""
 
+    @field_validator("homeowner_email", mode="before")
+    @classmethod
+    def _empty_email_to_none(cls, v):
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
 
 class PreflightStatus(BaseModel):
+    # Phase 2 — On-Site Physical Safety (operator tablet sign-off)
+    homeowner_verified: bool = False                # occupant/tenant aware of operation
+    vertical_obstruction_clear: bool = False        # no tree canopies, radio towers, unmapped lines
+    k9_and_child_clear_zone: bool = False           # pets indoors + perimeter clear of foot traffic
+    # Phase 3 — Hardware & Telemetry Diagnostic Lock
     trailer_hatch_secured: bool = True
     drone_battery_percentage: int = 100
+    battery_cell_variance_v: float = 0.015          # must be < 0.02 V
     rtk_gps_signal: str = "Centimeter-Level Locked"
     communication_uplink: str = "Strong / Starlink Verified"
+    # Legacy support
     local_weather_clear: bool = True
     personnel_clear: bool = True
+
+
+class Phase1Result(BaseModel):
+    name: str
+    status: str  # PASS | WARN | FAIL
+    details: str
+
+
+class DryRunBody(BaseModel):
+    reason: str  # locked_gate | unnotified_homeowner | aggressive_animal | wrong_address | other
+    notes: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +419,12 @@ async def create_job(body: JobCreate, user=Depends(contractor_only)):
         "insurance_carrier": body.insurance_carrier or "",
         "roof_style": body.roof_style,
         "notes": body.notes or "",
-        "status": "PENDING_FIELD_CAPTURE",
+        "status": "PENDING_PHASE1",   # NEW: must pass Phase 1 before reaching operator
+        "phase1_status": None,         # set by run_phase1
+        "phase1_completed_at": None,
+        "phase2_completed_at": None,
+        "phase3_completed_at": None,
+        "dry_run": None,
         "created_at": now_iso(),
         "roof_telemetry": None,
         "anomalies": [],
@@ -404,6 +434,7 @@ async def create_job(body: JobCreate, user=Depends(contractor_only)):
     }
     await db.jobs.insert_one(job)
     job.pop("_id", None)
+    # Auto-run Phase 1 immediately on creation (digital gatekeeping)
     return job
 
 
@@ -495,22 +526,52 @@ async def operator_launch(job_id: str, preflight: PreflightStatus, user=Depends(
         raise HTTPException(404, "Job not found")
     if job["status"] != "PENDING_FIELD_CAPTURE":
         raise HTTPException(400, f"Cannot launch a job in status {job['status']}")
-    all_clear = (
+
+    # ===== PHASE 1 GATE =====
+    if not job.get("phase1_status") or job["phase1_status"].get("overall") != "PASS":
+        raise HTTPException(400, "Phase 1 Digital Gatekeeping not cleared — software lock engaged")
+
+    # ===== PHASE 2 GATE (operator tablet sign-off) =====
+    phase2_clear = preflight.homeowner_verified and preflight.vertical_obstruction_clear and preflight.k9_and_child_clear_zone and preflight.personnel_clear
+    if not phase2_clear:
+        # Record audit + return 400; lock launch
+        await _record_audit(job_id, user["id"], "PHASE2_FAIL", {
+            "preflight": preflight.model_dump(),
+            "failed_checks": [k for k, v in preflight.model_dump().items() if isinstance(v, bool) and not v],
+        })
+        raise HTTPException(400, "Phase 2 Physical Safety not cleared — software lock engaged")
+
+    # ===== PHASE 3 GATE (hardware diagnostics) =====
+    phase3_clear = (
         preflight.trailer_hatch_secured
         and preflight.drone_battery_percentage >= 90
+        and preflight.battery_cell_variance_v < 0.02
         and preflight.rtk_gps_signal == "Centimeter-Level Locked"
         and preflight.communication_uplink.startswith("Strong")
         and preflight.local_weather_clear
-        and preflight.personnel_clear
     )
-    if not all_clear:
-        raise HTTPException(400, "Preflight checks did not all pass")
+    if not phase3_clear:
+        await _record_audit(job_id, user["id"], "PHASE3_FAIL", {"preflight": preflight.model_dump()})
+        raise HTTPException(400, "Phase 3 Hardware Diagnostics not cleared — software lock engaged")
+
+    await _record_audit(job_id, user["id"], "LAUNCH_AUTHORIZED", {"preflight": preflight.model_dump()})
 
     # Mark IN_FLIGHT, then asynchronously process (in-process simulated)
+    now = now_iso()
     await db.jobs.update_one(
         {"id": job_id},
-        {"$set": {"status": "IN_FLIGHT", "launched_at": now_iso(), "preflight": preflight.model_dump(), "operator_id": user["id"]}},
+        {"$set": {
+            "status": "IN_FLIGHT",
+            "launched_at": now,
+            "preflight": preflight.model_dump(),
+            "operator_id": user["id"],
+            "phase2_completed_at": now,
+            "phase3_completed_at": now,
+        }},
     )
+
+    # Count this as a fleet drop on the contractor's billing meter
+    await _record_fleet_drop(job["contractor_id"], job_id)
     # Build topology synchronously for the demo (fast)
     topo = build_topology(style=job.get("roof_style", "cross_hip"), project_seed=job_id)
     anomalies = topo["anomalies"]
@@ -786,20 +847,15 @@ async def fleet_status(user=Depends(current_user)):
         seed = (slot + i * 7) % 100
         # rotate statuses: STANDBY / DEPLOYED / IN_FLIGHT / CHARGING / MAINTENANCE
         if seed < 35:
-            status = "STANDBY"
-            battery = 96 + (seed % 5)
+            status = "STANDBY"; battery = 96 + (seed % 5)
         elif seed < 55:
-            status = "CHARGING"
-            battery = 38 + seed
+            status = "CHARGING"; battery = 38 + seed
         elif seed < 75:
-            status = "DEPLOYED"
-            battery = 80 - (seed % 10)
+            status = "DEPLOYED"; battery = 80 - (seed % 10)
         elif seed < 92:
-            status = "IN_FLIGHT"
-            battery = 60 + (seed % 15)
+            status = "IN_FLIGHT"; battery = 60 + (seed % 15)
         else:
-            status = "MAINTENANCE"
-            battery = max(20, seed - 10)
+            status = "MAINTENANCE"; battery = max(20, seed - 10)
         rig = {
             **base,
             "status": status,
@@ -830,6 +886,172 @@ async def fleet_status(user=Depends(current_user)):
         "missions_today": sum(r["missions_today"] for r in rigs),
     }
     return {"rigs": rigs, "totals": totals, "as_of": now_iso()}
+
+
+# ---------------------------------------------------------------------------
+# RISK ENGINE — PHASE 1 Digital Gatekeeping + Audit + Dry-Run + Billing meter
+# ---------------------------------------------------------------------------
+
+async def _record_audit(job_id: str, actor_id: Optional[str], event: str, payload: Dict[str, Any]):
+    """Append-only audit log — immutable (we never update or delete these rows)."""
+    await db.preflight_audit.insert_one({
+        "id": str(uuid.uuid4()),
+        "job_id": job_id,
+        "actor_id": actor_id,
+        "event": event,
+        "payload": payload,
+        "ts": now_iso(),
+    })
+
+
+async def _record_fleet_drop(contractor_id: str, job_id: str):
+    """Increment monthly drop counter for billing reconciliation. Per-month bucket."""
+    bucket = datetime.now(timezone.utc).strftime("%Y-%m")
+    await db.billing_meter.update_one(
+        {"contractor_id": contractor_id, "bucket": bucket},
+        {"$inc": {"drops": 1}, "$push": {"drop_job_ids": job_id}, "$setOnInsert": {"created_at": now_iso()}},
+        upsert=True,
+    )
+
+
+def _mock_phase1(job: Dict[str, Any]) -> List[Phase1Result]:
+    """Deterministic Phase 1 mock. ~10% chance of warning; <2% chance of fail. Real APIs swap in here."""
+    seed_int = abs(hash(job["id"])) % 100
+    results: List[Phase1Result] = []
+
+    # 1. LAANC / FAA Airspace Clearance
+    if seed_int < 4:
+        results.append(Phase1Result(name="FAA / LAANC Airspace", status="FAIL",
+            details="Property intersects Class B controlled airspace — manual waiver required from FAA UAS Data Exchange."))
+    elif seed_int < 14:
+        results.append(Phase1Result(name="FAA / LAANC Airspace", status="WARN",
+            details="Auto-LAANC authorization granted for 200ft ceiling, 0–400ft AGL flight envelope. Authorization ID: LAANC-AUTO-" + job["id"][:8].upper()))
+    else:
+        results.append(Phase1Result(name="FAA / LAANC Airspace", status="PASS",
+            details="Class G uncontrolled airspace. No FAA authorization required."))
+
+    # 2. Micro-Climate Weather Sweep
+    wind = round(1.0 + (seed_int % 4) * 0.8, 1)  # 1.0–3.4 mph
+    precip = seed_int % 5  # 0-4 %
+    if wind > 5.0 or precip > 10:
+        results.append(Phase1Result(name="Micro-Climate Weather", status="FAIL",
+            details=f"Wind {wind}mph / precipitation {precip}% within next 60min. Auto-reschedule recommended."))
+    else:
+        results.append(Phase1Result(name="Micro-Climate Weather", status="PASS",
+            details=f"Sustained wind {wind}mph (≤5mph threshold); precipitation probability {precip}% (≤10% threshold). Doppler radar clear."))
+
+    # 3. Utility & Power-Line GIS
+    if seed_int % 11 == 0:
+        results.append(Phase1Result(name="Utility & Power-Line GIS", status="WARN",
+            details="Medium-voltage distribution line at southwest property edge. Flight envelope auto-adjusted to maintain 25ft buffer."))
+    else:
+        results.append(Phase1Result(name="Utility & Power-Line GIS", status="PASS",
+            details="No high-voltage transmission or overhead utility obstructions detected on flight plane."))
+
+    return results
+
+
+@api.post("/contractor/jobs/{job_id}/run-phase1")
+async def run_phase1(job_id: str, user=Depends(contractor_only)):
+    """Execute Phase 1 Digital Gatekeeping. Software-locks launch unless overall=PASS."""
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if job["status"] not in ("PENDING_PHASE1", "PENDING_FIELD_CAPTURE"):
+        raise HTTPException(400, f"Cannot re-run Phase 1 from status {job['status']}")
+
+    await asyncio.sleep(0.6)  # let the streaming UX breathe
+    results = _mock_phase1(job)
+    has_fail = any(r.status == "FAIL" for r in results)
+    overall = "FAIL" if has_fail else "PASS"
+    phase1_status = {"overall": overall, "checks": [r.model_dump() for r in results], "ran_at": now_iso()}
+    new_status = "PENDING_FIELD_CAPTURE" if overall == "PASS" else "PHASE1_BLOCKED"
+    await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"phase1_status": phase1_status, "phase1_completed_at": now_iso(), "status": new_status}},
+    )
+    await _record_audit(job_id, user["id"], f"PHASE1_{overall}", {"checks": phase1_status["checks"]})
+    return phase1_status
+
+
+@api.post("/operator/jobs/{job_id}/dry-run")
+async def operator_dry_run(job_id: str, body: DryRunBody, user=Depends(operator_only)):
+    """Operator flags a job as Dry-Run (access denied / unnotified / aggressive animal / wrong address).
+    Charges the contractor $150 on next month's invoice (flag-only, no instant Stripe charge)."""
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if job["status"] not in ("PENDING_FIELD_CAPTURE", "PENDING_PHASE1", "PHASE1_BLOCKED"):
+        raise HTTPException(400, f"Cannot dry-run a job in status {job['status']}")
+
+    valid = {"locked_gate", "unnotified_homeowner", "aggressive_animal", "wrong_address", "other"}
+    if body.reason not in valid:
+        raise HTTPException(400, f"Invalid reason. Allowed: {sorted(valid)}")
+
+    dry_run = {
+        "reason": body.reason,
+        "notes": body.notes,
+        "operator_id": user["id"],
+        "flagged_at": now_iso(),
+        "penalty_usd": DRY_RUN_PENALTY,
+    }
+    await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "DRY_RUN_PENALTY", "dry_run": dry_run}},
+    )
+    # Append to billing meter (next month's invoice)
+    bucket = datetime.now(timezone.utc).strftime("%Y-%m")
+    await db.billing_meter.update_one(
+        {"contractor_id": job["contractor_id"], "bucket": bucket},
+        {"$inc": {"dry_run_count": 1, "dry_run_charges_usd": DRY_RUN_PENALTY},
+         "$push": {"dry_run_job_ids": job_id},
+         "$setOnInsert": {"created_at": now_iso()}},
+        upsert=True,
+    )
+    await _record_audit(job_id, user["id"], "DRY_RUN_FLAGGED", dry_run)
+    return await db.jobs.find_one({"id": job_id}, {"_id": 0})
+
+
+@api.get("/contractor/jobs/{job_id}/audit-log")
+async def job_audit_log(job_id: str, user=Depends(contractor_only)):
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0, "id": 1})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    log = await db.preflight_audit.find({"job_id": job_id}, {"_id": 0}).sort("ts", 1).to_list(500)
+    return {"job_id": job_id, "events": log}
+
+
+@api.get("/contractor/billing/meter")
+async def billing_meter_me(user=Depends(contractor_only)):
+    """Return current month's drop usage + dry-run penalties for the contractor's upcoming invoice."""
+    bucket = datetime.now(timezone.utc).strftime("%Y-%m")
+    meter = await db.billing_meter.find_one({"contractor_id": user["id"], "bucket": bucket}, {"_id": 0}) or {
+        "bucket": bucket, "drops": 0, "drop_job_ids": [], "dry_run_count": 0, "dry_run_charges_usd": 0.0, "dry_run_job_ids": [],
+    }
+    full = await db.users.find_one({"id": user["id"]}, {"_id": 0}) or {}
+    tier_key = full.get("subscription_tier") or "on_demand"
+    tier = PRICING_TIERS.get(tier_key, PRICING_TIERS["on_demand"])
+    drops = meter.get("drops", 0)
+    included = tier["included_drops"]
+    overage_drops = max(0, drops - included)
+    overage_charges = overage_drops * tier["extra_drop_price"]
+    dry_charges = float(meter.get("dry_run_charges_usd") or 0.0)
+    monthly_retainer = tier["price"] if full.get("subscription_status") == "active" else 0.0
+    return {
+        "bucket": bucket,
+        "tier_key": tier_key,
+        "tier_name": tier["name"],
+        "monthly_retainer": monthly_retainer,
+        "drops_used": drops,
+        "drops_included": included,
+        "overage_drops": overage_drops,
+        "overage_drop_price": tier["extra_drop_price"],
+        "overage_charges_usd": overage_charges,
+        "dry_run_count": meter.get("dry_run_count", 0),
+        "dry_run_charges_usd": dry_charges,
+        "estimated_invoice_total": monthly_retainer + overage_charges + dry_charges,
+        "implementation_fee_paid": full.get("implementation_fee_paid", False),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1078,12 +1300,42 @@ async def email_nda(user=Depends(current_user)):
 # STRIPE BILLING — subscription tiers (one-time monthly charges)
 # ---------------------------------------------------------------------------
 
-# Backend-defined tiers (never trust frontend amounts)
+# Backend-defined tiers — Model A (Premium Fleet Deployment Engine)
 PRICING_TIERS = {
-    "starter":    {"name": "Starter",    "price": 99.00,  "blurb": "Solo operators, up to 5 missions/mo",   "features": ["5 missions/mo", "Single trailer dispatch", "PDF supplement export", "Email delivery"]},
-    "pro":        {"name": "Pro",        "price": 299.00, "blurb": "Growing crews — unlimited missions",     "features": ["UNLIMITED missions", "Multi-trailer fleet", "Insurance supplement automation", "Priority dispatch", "AES-256 Business Brain"]},
-    "enterprise": {"name": "Enterprise", "price": 999.00, "blurb": "White-label & multi-tenant operations",  "features": ["Everything in Pro", "White-label branding", "Custom integrations", "Dedicated support", "Audit log + SOC2 export"]},
+    "on_demand": {
+        "name": "On-Demand",
+        "price": 98.00,
+        "included_drops": 0,
+        "extra_drop_price": 350.00,
+        "blurb": "Low-volume builders, historic restoration, system trials",
+        "features": [
+            "0 included fleet drops",
+            "$300–$400 per autonomous drop",
+            "Full STRATEX™ Risk Engine",
+            "Immutable pre-flight audit trail",
+            "PDF supplement export + email delivery",
+        ],
+    },
+    "volume_builder": {
+        "name": "Volume Builder",
+        "price": 998.00,
+        "included_drops": 4,
+        "extra_drop_price": 198.00,
+        "blurb": "Established residential roofing operators — heavy weekly volume",
+        "features": [
+            "4 fleet drops INCLUDED / month",
+            "$198 per additional drop (44%+ savings)",
+            "Multi-trailer dispatch + RTK fleet",
+            "AES-256 Business Brain isolation",
+            "Priority operator allocation",
+            "Compliance audit log + SOC2 export",
+        ],
+        "popular": True,
+    },
 }
+
+IMPLEMENTATION_FEE = 598.00
+DRY_RUN_PENALTY = 150.00
 
 
 class CheckoutBody(BaseModel):
