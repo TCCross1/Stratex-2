@@ -13,6 +13,7 @@ import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
 import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor, notifyHomeownerDelay } from "@/lib/api";
+import LaunchCountdownBadge from "@/components/LaunchCountdownBadge";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
@@ -151,7 +152,10 @@ export function ContractorJobs() {
                 <tbody data-testid="contractor-jobs-table">
                   {items.map((j)=>(
                     <tr key={j.id}>
-                      <td className="text-silver whitespace-nowrap">{j.homeowner_name}</td>
+                      <td className="text-silver whitespace-nowrap">
+                        {j.homeowner_name}
+                        <LaunchCountdownBadge scheduledAt={j.scheduled_launch_at} compact/>
+                      </td>
                       <td className="text-muted-hud whitespace-nowrap">{j.property_address}</td>
                       <td><span className="tag-pill">{j.project_type}</span></td>
                       <td><span className={`font-mono uppercase tracking-widest text-[10px] ${STATUS_COLOR[j.status]||"text-muted-hud"}`}>{STATUS_LABEL[j.status]||j.status}</span></td>
@@ -364,7 +368,10 @@ export function JobDetail() {
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div>
             <div className="font-mono text-[10px] tracking-[0.32em] text-teal uppercase">// JOB {job.id.slice(0,8)}</div>
-            <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.06em] text-silver" style={{ overflowWrap: "anywhere" }}>{job.homeowner_name}</h1>
+            <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.06em] text-silver" style={{ overflowWrap: "anywhere" }}>
+              {job.homeowner_name}
+              <LaunchCountdownBadge scheduledAt={job.scheduled_launch_at}/>
+            </h1>
             <div className="font-mono text-xs text-muted-hud flex items-center gap-1 mt-1"><MapPin size={11}/>{job.property_address}</div>
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest">

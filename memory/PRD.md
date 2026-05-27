@@ -25,6 +25,14 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v2.8.0 — Launch Countdown Badge)
+- ✅ **⏱️ Live launch-countdown badge** on the Pipeline rows + Job Detail header. New component `/components/LaunchCountdownBadge.jsx` ticks every 30s, reads `job.scheduled_launch_at`. Four tiers with distinct color + pulse behavior:
+  - `future` (≥7 days) — cyan, no pulse, "LAUNCHES IN 12D"
+  - `soon` (24h–7d) — neon green, no pulse, "LAUNCHES IN 2D 4H"
+  - `imminent` (<24h) — orange, **pulsing**, "LAUNCHES IN 18H 14M"
+  - `ready` (≤1h or past) — red, **pulsing**, "READY TO LAUNCH"
+- ✅ Auto-surfaces locked-in jobs at a glance — turns the pipeline into a live launch-cadence dashboard. Visually verified on `/contractor` route: orange "LAUNCHES IN 18H 14M" pulses on the SMS-confirmed job, other rows render without the badge as expected. `data-testid="launch-countdown-badge"` + `data-tier="…"` attributes for E2E.
+
 ## What's Been Implemented (2026-02-28 — v2.7.0 — 2-Way SMS Reschedule Loop)
 - ✅ **🔁 Twilio inbound SMS webhook** — new public `POST /api/twilio/inbound-sms` (form-encoded; Twilio standard). Homeowner texts back `1`/`2`/`3` → backend matches sender phone to most-recent `PHASE1_BLOCKED` job, locks `scheduled_launch_at` + `scheduled_window_label` + `scheduled_via="homeowner_sms_reply"`, responds with TwiML confirmation message that Twilio relays to the homeowner. Audit event `HOMEOWNER_SCHEDULED_VIA_SMS` captures the choice, the selected ISO, and the Twilio MessageSid.
 - ✅ **📤 Numbered SMS body** — outbound `_homeowner_delay_sms_body` now lists windows as `1) … 2) … 3) …` with "Reply 1/2/3 to confirm" CTA.
