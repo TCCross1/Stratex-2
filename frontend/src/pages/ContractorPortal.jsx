@@ -729,65 +729,143 @@ function Row({ label, v, accent }) {
 }
 
 // MATERIALS / BUSINESS BRAIN
+import MaterialConfigurator from "@/components/MaterialConfigurator";
+
 export function MaterialsConfig() {
   const [m, setM] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState("expert"); // "expert" | "legacy" | "pricing"
   useEffect(()=>{ getMaterials().then(setM).catch(()=>setM({})); }, []);
   const set = (k, v) => setM({ ...m, [k]: v });
   const save = async () => { setBusy(true); try { await saveMaterials(m); toast.success("Business Brain saved (encrypted at rest)"); } catch(e){ toast.error(e.response?.data?.detail || e.message); } finally { setBusy(false); } };
   if (!m) return <><SecurityBanner/><div className="p-10 text-muted-hud font-mono">Loading…</div></>;
+
+  // Material picks live alongside existing free-text fields, under a structured key
+  // so the legacy form fields (brand strings) stay queryable for backwards compatibility.
+  const matSelection = m.materials_selection || { system: "asphalt_shingle_system", picks: {}, custom_text: "" };
+
   return (
     <>
       <SecurityBanner/>
-      <div data-testid="materials-config-page" className="px-4 md:px-10 py-6 max-w-4xl mx-auto">
+      <div data-testid="materials-config-page" className="px-4 md:px-10 py-6 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest mb-2"><Lock size={14}/> ENCRYPTED BUSINESS BRAIN</div>
-        <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.06em] text-silver mb-4">Materials Configuration</h1>
+        <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.06em] text-silver mb-4">Business Brain</h1>
 
-        <HudCard className="p-5 mb-4">
-          <div className="font-mono text-[11px] uppercase tracking-widest text-teal mb-3 flex items-center gap-2"><Layers size={12}/> Product Catalog</div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <Field label="Shingle Brand" value={m.shingle_brand} onChange={(v)=>set("shingle_brand", v)} testid="mat-shingle-brand"/>
-            <Field label="Underlayment Brand" value={m.underlayment_brand} onChange={(v)=>set("underlayment_brand", v)}/>
-            <Field label="Ice & Water Shield" value={m.ice_water_brand} onChange={(v)=>set("ice_water_brand", v)}/>
-            <Field label="Ridge Vent" value={m.ridge_vent_brand} onChange={(v)=>set("ridge_vent_brand", v)}/>
-            <Field label="Starter Strip" value={m.starter_brand} onChange={(v)=>set("starter_brand", v)}/>
-            <Field label="Drip Edge Color" value={m.drip_edge_color} onChange={(v)=>set("drip_edge_color", v)}/>
-            <Field label="Fastener Type" value={m.fastener_type} onChange={(v)=>set("fastener_type", v)}/>
-            <NumField label="Measured Shingle Thickness (mm)" value={m.measured_thickness_mm} onChange={(v)=>set("measured_thickness_mm", v)} testid="mat-thickness-mm"/>
-          </div>
-          <div className="mt-4">
-            <CaliperUpload onReading={(r) => set("measured_thickness_mm", r.thickness_mm)} />
-          </div>
-        </HudCard>
+        {/* TABBED INTERFACE — Expert Configurator (new primary) · Legacy Free-Text · Encrypted Pricing */}
+        <div className="flex flex-wrap gap-2 mb-5 border-b border-[#00F0FF]/20 pb-3" data-testid="business-brain-tabs">
+          <TabButton active={tab==="expert"}  onClick={()=>setTab("expert")}  testid="bb-tab-expert">
+            🧠 MATERIAL EXPERT CONFIGURATOR
+          </TabButton>
+          <TabButton active={tab==="pricing"} onClick={()=>setTab("pricing")} testid="bb-tab-pricing">
+            🔒 ENCRYPTED PRICING & MULTIPLIERS
+          </TabButton>
+          <TabButton active={tab==="legacy"}  onClick={()=>setTab("legacy")}  testid="bb-tab-legacy">
+            ⚠ LEGACY FREE-TEXT BRANDS (DEPRECATED)
+          </TabButton>
+        </div>
 
-        <HudCard alert className="p-5 mb-4">
-          <div className="font-mono text-[11px] uppercase tracking-widest text-plasma mb-3 flex items-center gap-2"><Lock size={12}/> Private Wholesale Unit Prices (AES-256 encrypted)</div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <NumField label="Shingle / Bundle ($)" value={m.shingle_bundle_price} onChange={(v)=>set("shingle_bundle_price", v)} testid="mat-shingle-price"/>
-            <NumField label="Underlayment / Square ($)" value={m.underlayment_square_price} onChange={(v)=>set("underlayment_square_price", v)}/>
-            <NumField label="Ice & Water / Roll ($)" value={m.ice_water_roll_price} onChange={(v)=>set("ice_water_roll_price", v)}/>
-            <NumField label="Ridge Cap / Bundle ($)" value={m.ridge_cap_bundle_price} onChange={(v)=>set("ridge_cap_bundle_price", v)}/>
-            <NumField label="Starter / Bundle ($)" value={m.starter_bundle_price} onChange={(v)=>set("starter_bundle_price", v)}/>
-            <NumField label="Drip Edge / LF ($)" value={m.drip_edge_lf_price} onChange={(v)=>set("drip_edge_lf_price", v)}/>
-            <NumField label="Fasteners / Square ($)" value={m.fastener_square_price} onChange={(v)=>set("fastener_square_price", v)}/>
-            <NumField label="OSB Sheet ($)" value={m.osb_sheet_price} onChange={(v)=>set("osb_sheet_price", v)}/>
+        {/* ============ TAB 1 — EXPERT CONFIGURATOR ============ */}
+        {tab === "expert" && (
+          <div data-testid="bb-tab-content-expert">
+            <MaterialConfigurator
+              initialSelection={matSelection}
+              onChange={(sel) => set("materials_selection", sel)}
+            />
+            <div className="mt-4">
+              <CaliperUpload onReading={(r) => set("measured_thickness_mm", r.thickness_mm)} />
+            </div>
+            {/* Live "active selections" mini-summary */}
+            <HudCard className="p-4 mt-4">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-teal mb-2">// ACTIVE EXPERT SELECTIONS</div>
+              <div className="grid md:grid-cols-2 gap-2 text-[11px] font-mono">
+                <div><span className="text-muted-hud">SYSTEM:</span> <span className="text-silver">{matSelection.system}</span></div>
+                <div><span className="text-muted-hud">PICKS:</span> <span className="text-silver">{Object.keys(matSelection.picks || {}).length} fields</span></div>
+                {matSelection.picks && Object.entries(matSelection.picks).filter(([,v])=>v).slice(0, 6).map(([k,v]) => (
+                  <div key={k}><span className="text-muted-hud">{k}:</span> <span className="text-silver">{String(v).slice(0,42)}</span></div>
+                ))}
+              </div>
+            </HudCard>
           </div>
-        </HudCard>
+        )}
 
-        <HudCard alert className="p-5 mb-4">
-          <div className="font-mono text-[11px] uppercase tracking-widest text-plasma mb-3 flex items-center gap-2"><Lock size={12}/> Confidential Business Multipliers (Blind Multipliers)</div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <NumField label="Overhead (%)" value={m.overhead_pct} onChange={(v)=>set("overhead_pct", v)} testid="mat-overhead"/>
-            <NumField label="Net Profit Margin (%)" value={m.profit_margin_pct} onChange={(v)=>set("profit_margin_pct", v)} testid="mat-profit"/>
-            <NumField label="Labor Rate / Hour ($)" value={m.labor_rate_per_hour} onChange={(v)=>set("labor_rate_per_hour", v)}/>
-            <NumField label="Labor Rate / Square ($)" value={m.labor_rate_per_square} onChange={(v)=>set("labor_rate_per_square", v)}/>
-            <NumField label="Insurance Supplement (%)" value={m.insurance_supplement_multiplier_pct} onChange={(v)=>set("insurance_supplement_multiplier_pct", v)} testid="mat-supp"/>
+        {/* ============ TAB 2 — ENCRYPTED PRICING ============ */}
+        {tab === "pricing" && (
+          <div data-testid="bb-tab-content-pricing">
+            <HudCard alert className="p-5 mb-4">
+              <div className="font-mono text-[11px] uppercase tracking-widest text-plasma mb-3 flex items-center gap-2"><Lock size={12}/> Private Wholesale Unit Prices (AES-256 encrypted)</div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <NumField label="Shingle / Bundle ($)" value={m.shingle_bundle_price} onChange={(v)=>set("shingle_bundle_price", v)} testid="mat-shingle-price"/>
+                <NumField label="Underlayment / Square ($)" value={m.underlayment_square_price} onChange={(v)=>set("underlayment_square_price", v)}/>
+                <NumField label="Ice & Water / Roll ($)" value={m.ice_water_roll_price} onChange={(v)=>set("ice_water_roll_price", v)}/>
+                <NumField label="Ridge Cap / Bundle ($)" value={m.ridge_cap_bundle_price} onChange={(v)=>set("ridge_cap_bundle_price", v)}/>
+                <NumField label="Starter / Bundle ($)" value={m.starter_bundle_price} onChange={(v)=>set("starter_bundle_price", v)}/>
+                <NumField label="Drip Edge / LF ($)" value={m.drip_edge_lf_price} onChange={(v)=>set("drip_edge_lf_price", v)}/>
+                <NumField label="Fasteners / Square ($)" value={m.fastener_square_price} onChange={(v)=>set("fastener_square_price", v)}/>
+                <NumField label="OSB Sheet ($)" value={m.osb_sheet_price} onChange={(v)=>set("osb_sheet_price", v)}/>
+              </div>
+            </HudCard>
+            <HudCard alert className="p-5 mb-4">
+              <div className="font-mono text-[11px] uppercase tracking-widest text-plasma mb-3 flex items-center gap-2"><Lock size={12}/> Confidential Business Multipliers (Blind Multipliers)</div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <NumField label="Overhead (%)" value={m.overhead_pct} onChange={(v)=>set("overhead_pct", v)} testid="mat-overhead"/>
+                <NumField label="Net Profit Margin (%)" value={m.profit_margin_pct} onChange={(v)=>set("profit_margin_pct", v)} testid="mat-profit"/>
+                <NumField label="Labor Rate / Hour ($)" value={m.labor_rate_per_hour} onChange={(v)=>set("labor_rate_per_hour", v)}/>
+                <NumField label="Labor Rate / Square ($)" value={m.labor_rate_per_square} onChange={(v)=>set("labor_rate_per_square", v)}/>
+                <NumField label="Insurance Supplement (%)" value={m.insurance_supplement_multiplier_pct} onChange={(v)=>set("insurance_supplement_multiplier_pct", v)} testid="mat-supp"/>
+              </div>
+            </HudCard>
           </div>
-        </HudCard>
+        )}
 
-        <button onClick={save} disabled={busy} className="btn-hud" data-testid="mat-save"><FileText size={14}/> {busy?"Encrypting…":"SAVE BUSINESS BRAIN"}</button>
+        {/* ============ TAB 3 — LEGACY (DEPRECATED) ============ */}
+        {tab === "legacy" && (
+          <div data-testid="bb-tab-content-legacy">
+            <HudCard alert className="p-4 mb-4 border-2" style={{borderColor:"#FF5400"}}>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-plasma mb-1">⚠ DEPRECATION NOTICE</div>
+              <p className="text-[12px] text-silver font-body">
+                This free-text catalog has been superseded by the <b className="text-teal">Material Expert Configurator</b>.
+                Existing values are preserved for backwards compatibility but will be removed in v4.0. Please migrate your
+                selections to the Expert tab.
+              </p>
+            </HudCard>
+            <HudCard className="p-5 mb-4 opacity-80">
+              <div className="font-mono text-[11px] uppercase tracking-widest text-muted-hud mb-3 flex items-center gap-2"><Layers size={12}/> Legacy Product Catalog</div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="Shingle Brand" value={m.shingle_brand} onChange={(v)=>set("shingle_brand", v)} testid="mat-shingle-brand"/>
+                <Field label="Underlayment Brand" value={m.underlayment_brand} onChange={(v)=>set("underlayment_brand", v)}/>
+                <Field label="Ice & Water Shield" value={m.ice_water_brand} onChange={(v)=>set("ice_water_brand", v)}/>
+                <Field label="Ridge Vent" value={m.ridge_vent_brand} onChange={(v)=>set("ridge_vent_brand", v)}/>
+                <Field label="Starter Strip" value={m.starter_brand} onChange={(v)=>set("starter_brand", v)}/>
+                <Field label="Drip Edge Color" value={m.drip_edge_color} onChange={(v)=>set("drip_edge_color", v)}/>
+                <Field label="Fastener Type" value={m.fastener_type} onChange={(v)=>set("fastener_type", v)}/>
+                <NumField label="Measured Shingle Thickness (mm)" value={m.measured_thickness_mm} onChange={(v)=>set("measured_thickness_mm", v)} testid="mat-thickness-mm"/>
+              </div>
+            </HudCard>
+          </div>
+        )}
+
+        <button onClick={save} disabled={busy} className="btn-hud mt-2" data-testid="mat-save"><FileText size={14}/> {busy?"Encrypting…":"SAVE BUSINESS BRAIN"}</button>
       </div>
     </>
+  );
+}
+
+function TabButton({ active, onClick, testid, children }) {
+  return (
+    <button
+      data-testid={testid}
+      aria-pressed={active}
+      onClick={onClick}
+      className="px-4 py-2 font-mono text-[10.5px] uppercase tracking-widest border transition-all"
+      style={{
+        background: active ? "rgba(0,245,212,0.10)" : "rgba(11,15,25,0.85)",
+        color: active ? "#00F5D4" : "#94A3B8",
+        borderColor: active ? "#00F5D4" : "rgba(0,240,255,0.25)",
+        boxShadow: active ? "0 0 10px rgba(0,245,212,0.35), inset 0 0 6px rgba(0,245,212,0.18)" : "none",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

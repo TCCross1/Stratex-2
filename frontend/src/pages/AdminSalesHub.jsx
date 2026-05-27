@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { KY_SALES_TARGETS, SALES_STATUS_OPTIONS, SALES_STATUS_COLORS } from "@/lib/salesTargets";
+import { X, MessageSquare, Phone, FileText } from "lucide-react";
 
 /**
  * /admin/sales — Pre-Cached Sales Targets Hub (Section 4 seed)
@@ -20,6 +21,7 @@ export default function AdminSalesHub() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [forbidden, setForbidden] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [activeCRM, setActiveCRM] = useState(null);   // currently-open CRM drawer target (row obj) | null
   const mapRef = useRef(null);
   const mapInstRef = useRef(null);
 
@@ -194,20 +196,29 @@ export default function AdminSalesHub() {
                     <td className="px-3 py-3 font-body text-[11.5px] text-silver">{t.base}</td>
                     <td className="px-3 py-3 font-mono text-[11px] text-teal">{t.phone}</td>
                     <td className="px-3 py-3">
-                      <button
-                        data-testid={`status-chip-${t.id}`}
-                        onClick={() => bumpStatus(t.id)}
-                        className="px-2 py-1 font-mono text-[9.5px] uppercase tracking-widest border"
-                        style={{
-                          background: `${SALES_STATUS_COLORS[t.status]}22`,
-                          color: SALES_STATUS_COLORS[t.status],
-                          borderColor: SALES_STATUS_COLORS[t.status],
-                          boxShadow: `0 0 6px ${SALES_STATUS_COLORS[t.status]}66`,
-                        }}
-                        title="Click to advance pipeline"
-                      >
-                        {t.status}
-                      </button>
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <button
+                          data-testid={`status-chip-${t.id}`}
+                          onClick={() => bumpStatus(t.id)}
+                          className="px-2 py-1 font-mono text-[9.5px] uppercase tracking-widest border"
+                          style={{
+                            background: `${SALES_STATUS_COLORS[t.status]}22`,
+                            color: SALES_STATUS_COLORS[t.status],
+                            borderColor: SALES_STATUS_COLORS[t.status],
+                            boxShadow: `0 0 6px ${SALES_STATUS_COLORS[t.status]}66`,
+                          }}
+                          title="Click to advance pipeline"
+                        >
+                          {t.status}
+                        </button>
+                        <button
+                          data-testid={`open-crm-${t.id}`}
+                          onClick={() => setActiveCRM(t)}
+                          className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest border border-[#00F5D4]/40 text-teal hover:bg-[#00F5D4]/10"
+                        >
+                          OPEN CRM →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -223,6 +234,257 @@ export default function AdminSalesHub() {
             <div ref={mapRef} data-testid="sales-map" style={{ height: 540, width: "100%" }} />
           </div>
         </div>
+      </div>
+
+      {/* ============== CRM DRAWER ============== */}
+      {activeCRM && <CRMDrawer target={activeCRM} onClose={() => setActiveCRM(null)} />}
+    </div>
+  );
+}
+
+// ===========================================================================
+// CRM DRAWER — outreach notes + call logs + communication templates
+// ===========================================================================
+function CRMDrawer({ target, onClose }) {
+  const [tab, setTab] = useState("notes");        // notes | calls | templates
+  const [notes, setNotes] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  // Note composer
+  const [noteBody, setNoteBody] = useState("");
+  const [noteChannel, setNoteChannel] = useState("manual");
+
+  // Call log composer
+  const [callOutcome, setCallOutcome] = useState("connected");
+  const [callDuration, setCallDuration] = useState(0);
+  const [callNotes, setCallNotes] = useState("");
+
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      try {
+        const [n, c, t] = await Promise.all([
+          api.get(`/admin/sales-targets/${target.id}/outreach-notes`),
+          api.get(`/admin/sales-targets/${target.id}/call-logs`),
+          api.get(`/admin/communication-templates`),
+        ]);
+        if (dead) return;
+        setNotes(n.data?.notes || []);
+        setLogs(c.data?.logs || []);
+        setTemplates(t.data?.templates || []);
+      } catch (e) { /* silent */ }
+    })();
+    return () => { dead = true; };
+  }, [target.id]);
+
+  async function submitNote() {
+    if (!noteBody.trim()) return;
+    setBusy(true);
+    try {
+      const r = await api.post(`/admin/sales-targets/${target.id}/outreach-notes`, { body: noteBody, channel: noteChannel });
+      setNotes((prev) => [r.data.note, ...prev]);
+      setNoteBody("");
+    } catch (e) { /* silent */ } finally { setBusy(false); }
+  }
+
+  async function submitCall() {
+    setBusy(true);
+    try {
+      const r = await api.post(`/admin/sales-targets/${target.id}/call-logs`, {
+        outcome: callOutcome,
+        duration_seconds: Number(callDuration) || 0,
+        notes: callNotes,
+      });
+      setLogs((prev) => [r.data.log, ...prev]);
+      setCallNotes(""); setCallDuration(0);
+    } catch (e) { /* silent */ } finally { setBusy(false); }
+  }
+
+  const tabs = [
+    { k: "notes",     label: "Outreach Notes",     icon: MessageSquare, count: notes.length },
+    { k: "calls",     label: "Call Logs",          icon: Phone,         count: logs.length },
+    { k: "templates", label: "Comm Templates",     icon: FileText,      count: templates.length },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex" data-testid="crm-drawer">
+      <button onClick={onClose} className="flex-1 bg-black/70" aria-label="Close CRM drawer" />
+      <div className="w-[520px] max-w-[90vw] h-full overflow-y-auto bg-[#0B0F19] border-l-2 border-[#00F5D4]/50 shadow-[0_0_40px_rgba(0,245,212,0.25)]">
+        {/* Header */}
+        <div className="sticky top-0 z-10 px-5 py-4 border-b border-[#00F5D4]/30 bg-[#0B0F19] flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-[10px] tracking-widest uppercase text-teal mb-1">// CRM · LEXINGTON FOOTPRINT</div>
+            <div className="font-display text-lg text-silver truncate">{target.name}</div>
+            <div className="font-mono text-[10px] text-muted-hud truncate">{target.phone} · {target.base}</div>
+          </div>
+          <button onClick={onClose} data-testid="crm-drawer-close" className="text-muted-hud hover:text-teal"><X size={18}/></button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-[#00F0FF]/20">
+          {tabs.map((t) => {
+            const active = tab === t.k;
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.k}
+                data-testid={`crm-tab-${t.k}`}
+                onClick={() => setTab(t.k)}
+                className="flex-1 px-3 py-2 font-mono text-[10px] uppercase tracking-widest border-b-2 transition-all"
+                style={{
+                  borderBottomColor: active ? "#00F5D4" : "transparent",
+                  color: active ? "#00F5D4" : "#94A3B8",
+                  background: active ? "rgba(0,245,212,0.06)" : "transparent",
+                }}
+              >
+                <Icon size={11} className="inline mr-1.5 -mt-0.5"/>{t.label} <span className="opacity-60">({t.count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ========= NOTES TAB ========= */}
+        {tab === "notes" && (
+          <div className="p-4 space-y-3" data-testid="crm-tab-notes-content">
+            <div className="border border-[#00F0FF]/25 p-3">
+              <textarea
+                data-testid="crm-note-body"
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+                placeholder="Log outreach activity, call recap, follow-up plan…"
+                rows={3}
+                className="w-full bg-[#0B0F19] border border-[#00F0FF]/25 px-2 py-1.5 font-mono text-[11px] text-silver outline-none focus:border-teal"
+              />
+              <div className="flex items-center justify-between mt-2 gap-2">
+                <select
+                  data-testid="crm-note-channel"
+                  value={noteChannel}
+                  onChange={(e) => setNoteChannel(e.target.value)}
+                  className="bg-[#0B0F19] border border-[#00F0FF]/25 px-2 py-1 font-mono text-[10px] text-silver"
+                >
+                  {["manual","call","sms","email","meeting"].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button
+                  data-testid="crm-note-submit"
+                  onClick={submitNote} disabled={busy || !noteBody.trim()}
+                  className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest border border-teal text-teal hover:bg-teal/10 disabled:opacity-40"
+                >
+                  Append Note
+                </button>
+              </div>
+            </div>
+
+            {notes.length === 0 && (
+              <div className="font-mono text-[11px] text-muted-hud italic px-1">No outreach logged yet. Start the timeline above.</div>
+            )}
+            <ul className="space-y-2">
+              {notes.map((n) => (
+                <li key={n.id} className="border-l-2 border-[#00F5D4]/50 pl-3 py-1.5" data-testid={`crm-note-${n.id}`}>
+                  <div className="font-mono text-[9.5px] uppercase tracking-widest text-teal">
+                    {new Date(n.created_at).toLocaleString()} · {n.channel} · {n.author}
+                  </div>
+                  <div className="text-[12px] text-silver font-body whitespace-pre-wrap mt-0.5">{n.body}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ========= CALLS TAB ========= */}
+        {tab === "calls" && (
+          <div className="p-4 space-y-3" data-testid="crm-tab-calls-content">
+            <div className="border border-[#00F0FF]/25 p-3 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  data-testid="crm-call-outcome"
+                  value={callOutcome}
+                  onChange={(e) => setCallOutcome(e.target.value)}
+                  className="bg-[#0B0F19] border border-[#00F0FF]/25 px-2 py-1 font-mono text-[10px] text-silver"
+                >
+                  {["connected","voicemail","no_answer","callback_scheduled","wrong_number"].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input
+                  data-testid="crm-call-duration"
+                  type="number" value={callDuration} min={0}
+                  onChange={(e) => setCallDuration(e.target.value)}
+                  placeholder="Duration (s)"
+                  className="bg-[#0B0F19] border border-[#00F0FF]/25 px-2 py-1 font-mono text-[10px] text-silver"
+                />
+              </div>
+              <textarea
+                data-testid="crm-call-notes"
+                value={callNotes}
+                onChange={(e) => setCallNotes(e.target.value)}
+                placeholder="Call notes — decision-maker, objections, next step…"
+                rows={2}
+                className="w-full bg-[#0B0F19] border border-[#00F0FF]/25 px-2 py-1 font-mono text-[10.5px] text-silver outline-none focus:border-teal"
+              />
+              <button
+                data-testid="crm-call-submit"
+                onClick={submitCall} disabled={busy}
+                className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest border border-teal text-teal hover:bg-teal/10 disabled:opacity-40"
+              >
+                Append Call Log
+              </button>
+            </div>
+
+            {logs.length === 0 && (
+              <div className="font-mono text-[11px] text-muted-hud italic px-1">No calls logged yet.</div>
+            )}
+            <ul className="space-y-2">
+              {logs.map((l) => (
+                <li key={l.id} className="border-l-2 border-[#FF5400]/50 pl-3 py-1.5" data-testid={`crm-call-${l.id}`}>
+                  <div className="font-mono text-[9.5px] uppercase tracking-widest text-plasma">
+                    {new Date(l.created_at).toLocaleString()} · {l.outcome} · {l.duration_seconds}s
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-hud">by {l.created_by_email}</div>
+                  {l.notes && <div className="text-[12px] text-silver font-body whitespace-pre-wrap mt-0.5">{l.notes}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ========= TEMPLATES TAB ========= */}
+        {tab === "templates" && (
+          <div className="p-4 space-y-3" data-testid="crm-tab-templates-content">
+            <div className="font-mono text-[10px] text-muted-hud uppercase tracking-widest">
+              Pre-configured SMS/Email strings. Variables: {"{contact_name}"}, {"{sender_name}"}, {"{company}"}, {"{focus}"}, {"{annual_savings}"}
+            </div>
+            {templates.length === 0 && (
+              <div className="font-mono text-[11px] text-muted-hud italic px-1">No templates seeded yet. Refresh to seed defaults.</div>
+            )}
+            <ul className="space-y-3">
+              {templates.map((tpl) => (
+                <li key={tpl.id} className="border border-[#00F0FF]/25 p-3" data-testid={`crm-template-${tpl.id}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="font-mono text-[9.5px] uppercase tracking-widest text-teal">{tpl.channel} · {tpl.id}</div>
+                      <div className="font-display text-sm text-silver">{tpl.name}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const filled = (tpl.body || "")
+                          .replaceAll("{contact_name}", target.name)
+                          .replaceAll("{company}", target.name)
+                          .replaceAll("{focus}", target.focus || "your shop")
+                          .replaceAll("{sender_name}", "the STRATEX™ team");
+                        navigator.clipboard?.writeText(filled);
+                      }}
+                      className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest border border-teal text-teal hover:bg-teal/10"
+                    >
+                      Copy → {target.name.slice(0,12)}
+                    </button>
+                  </div>
+                  {tpl.subject && <div className="font-mono text-[10.5px] text-muted-hud mb-1">RE: {tpl.subject}</div>}
+                  <div className="text-[11px] text-silver font-body whitespace-pre-wrap">{tpl.body}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

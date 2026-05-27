@@ -15,6 +15,7 @@ import NeonLayerPreview from "@/pages/NeonLayerPreview";
 import RoofAuditHarness from "@/pages/RoofAuditHarness";
 import OnboardingROI from "@/pages/OnboardingROI";
 import AdminSalesHub from "@/pages/AdminSalesHub";
+import OverseerQueue from "@/pages/OverseerQueue";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -56,6 +57,7 @@ function AppShell() {
         <Route path="/operator/jobs/:id" element={<Protected role="operator"><OperatorJobDetail/></Protected>}/>
 
         <Route path="/admin/sales" element={<Protected role="admin"><AdminSalesHub/></Protected>}/>
+        <Route path="/admin/overseer" element={<Protected role="admin"><OverseerQueue/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

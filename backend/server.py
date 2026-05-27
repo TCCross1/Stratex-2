@@ -2529,6 +2529,247 @@ async def admin_sales_targets(user=Depends(admin_only)):
 
 
 # ---------------------------------------------------------------------------
+# ADMIN CRM STUBS — outreach notes, call logs, communication templates
+# Mongo collections:
+#   sales_outreach_notes      append-only log per target_id
+#   sales_call_logs           structured metadata per call attempt
+#   communication_templates   global SMS/Email pre-configured strings
+# ---------------------------------------------------------------------------
+def _known_target_ids() -> set:
+    return {t["id"] for t in KY_SALES_TARGETS_SEED}
+
+
+class OutreachNoteIn(BaseModel):
+    body: str
+    author: Optional[str] = ""           # admin's display name (falls back to email)
+    channel: Optional[str] = "manual"    # manual | call | sms | email | meeting
+
+
+@api.get("/admin/sales-targets/{target_id}/outreach-notes")
+async def list_outreach_notes(target_id: str, user=Depends(admin_only)):
+    if target_id not in _known_target_ids():
+        raise HTTPException(404, "Unknown sales target.")
+    notes = await db.sales_outreach_notes.find(
+        {"target_id": target_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(length=500)
+    return {"target_id": target_id, "count": len(notes), "notes": notes}
+
+
+@api.post("/admin/sales-targets/{target_id}/outreach-notes")
+async def add_outreach_note(target_id: str, body: OutreachNoteIn, user=Depends(admin_only)):
+    if target_id not in _known_target_ids():
+        raise HTTPException(404, "Unknown sales target.")
+    if not (body.body or "").strip():
+        raise HTTPException(400, "Note body is required.")
+    note = {
+        "id": str(uuid.uuid4()),
+        "target_id": target_id,
+        "body": body.body.strip(),
+        "author": body.author or user.get("email"),
+        "channel": body.channel or "manual",
+        "created_at": now_iso(),
+        "created_by_user_id": user["id"],
+    }
+    await db.sales_outreach_notes.insert_one(note)
+    note.pop("_id", None)
+    return {"ok": True, "note": note}
+
+
+class CallLogIn(BaseModel):
+    outcome: str                          # connected | voicemail | no_answer | callback_scheduled
+    duration_seconds: int = 0
+    notes: Optional[str] = ""
+    callback_at: Optional[str] = None    # ISO timestamp
+
+
+@api.get("/admin/sales-targets/{target_id}/call-logs")
+async def list_call_logs(target_id: str, user=Depends(admin_only)):
+    if target_id not in _known_target_ids():
+        raise HTTPException(404, "Unknown sales target.")
+    logs = await db.sales_call_logs.find(
+        {"target_id": target_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(length=500)
+    return {"target_id": target_id, "count": len(logs), "logs": logs}
+
+
+@api.post("/admin/sales-targets/{target_id}/call-logs")
+async def add_call_log(target_id: str, body: CallLogIn, user=Depends(admin_only)):
+    if target_id not in _known_target_ids():
+        raise HTTPException(404, "Unknown sales target.")
+    valid_outcomes = {"connected", "voicemail", "no_answer", "callback_scheduled", "wrong_number"}
+    if body.outcome not in valid_outcomes:
+        raise HTTPException(400, f"outcome must be one of {sorted(valid_outcomes)}")
+    log = {
+        "id": str(uuid.uuid4()),
+        "target_id": target_id,
+        "outcome": body.outcome,
+        "duration_seconds": max(0, int(body.duration_seconds or 0)),
+        "notes": (body.notes or "").strip(),
+        "callback_at": body.callback_at,
+        "created_at": now_iso(),
+        "created_by_user_id": user["id"],
+        "created_by_email": user["email"],
+    }
+    await db.sales_call_logs.insert_one(log)
+    log.pop("_id", None)
+    return {"ok": True, "log": log}
+
+
+_DEFAULT_TEMPLATES = [
+    {
+        "id": "intro-sms",
+        "channel": "sms",
+        "name": "Cold Intro · Drone Demo",
+        "subject": None,
+        "body": "Hi {contact_name} — {sender_name} with STRATEX™. We deploy autonomous drone roof inspections (no ladders, no climbing) and lock estimates to insurance grade. Worth a 15-min walkthrough? — {sender_name}",
+    },
+    {
+        "id": "intro-email",
+        "channel": "email",
+        "name": "Cold Intro · Email",
+        "subject": "STRATEX™ Strategic Thermal Reconnaissance — 15-min walkthrough for {company}",
+        "body": "Hi {contact_name},\n\nI'm {sender_name} with STRATEX™ — we deliver autonomous drone roof inspections fused with sub-surface thermal capacitance modeling, so estimates land insurance-grade without a ladder ever touching the roof.\n\nFor a shop like {company} ({focus}), a 15-min walkthrough usually pencils out within the first project. Open this week?\n\n— {sender_name}",
+    },
+    {
+        "id": "demo-followup-email",
+        "channel": "email",
+        "name": "Post-Demo Follow-Up",
+        "subject": "STRATEX™ — your {company} ROI breakdown",
+        "body": "Hi {contact_name},\n\nGreat speaking with you. Per the live ROI matrix we ran together, {company} reclaims approximately ${annual_savings} in the first 12 months by retiring manual ladder estimates. Attached: full Cost-Basis Matrix + sample Quant™ report.\n\nReady to schedule your pilot scan?\n\n— {sender_name}",
+    },
+    {
+        "id": "callback-sms",
+        "channel": "sms",
+        "name": "Callback Reminder",
+        "subject": None,
+        "body": "Hi {contact_name}, {sender_name} from STRATEX™ following up on our chat. Ladder-free roof recon, 60-second deployment. Got 10 min?",
+    },
+]
+
+
+class CommTemplateIn(BaseModel):
+    id: str
+    channel: str                          # sms | email
+    name: str
+    subject: Optional[str] = None         # required when channel == email
+    body: str
+
+
+@api.get("/admin/communication-templates")
+async def list_communication_templates(user=Depends(admin_only)):
+    docs = await db.communication_templates.find({}, {"_id": 0}).to_list(length=200)
+    if not docs:
+        # Seed defaults on first read so subsequent edits are persistent.
+        await db.communication_templates.insert_many([{**t, "created_at": now_iso(), "system_seed": True} for t in _DEFAULT_TEMPLATES])
+        docs = await db.communication_templates.find({}, {"_id": 0}).to_list(length=200)
+    return {"count": len(docs), "templates": docs}
+
+
+@api.put("/admin/communication-templates/{template_id}")
+async def upsert_communication_template(template_id: str, body: CommTemplateIn, user=Depends(admin_only)):
+    if body.channel not in ("sms", "email"):
+        raise HTTPException(400, "channel must be 'sms' or 'email'.")
+    if body.channel == "email" and not (body.subject or "").strip():
+        raise HTTPException(400, "Email templates require a subject.")
+    if template_id != body.id:
+        raise HTTPException(400, "Path id and body id must match.")
+    doc = {
+        "id": body.id,
+        "channel": body.channel,
+        "name": body.name,
+        "subject": body.subject,
+        "body": body.body,
+        "updated_at": now_iso(),
+        "updated_by": user["email"],
+    }
+    await db.communication_templates.update_one(
+        {"id": body.id}, {"$set": doc}, upsert=True,
+    )
+    return {"ok": True, "template": doc}
+
+
+# ---------------------------------------------------------------------------
+# DYNAMIC TELEMETRY ANOMALY HALT — Overseer review queue
+# When the frontend BEES rendering loop detects sub-pipeline anomalies on the
+# Electric Teal diagnostic layer, it POSTs a structured halt payload here.
+# The payload lands in an admin-only queue surfaced at /admin/overseer.
+# ---------------------------------------------------------------------------
+class TelemetryHaltPayload(BaseModel):
+    project_id: Optional[str] = None
+    layer: str                            # which BEES layer triggered (e.g. "electric_teal_diagnostic")
+    severity: str                         # advisory | warning | critical
+    reason_code: str                      # SHORT machine code: "FRAME_DROP", "NAN_VERTEX", "TEAL_VECTOR_BREAK"
+    reason_label: str                     # human label
+    telemetry_snapshot: Dict[str, Any] = {}    # facet/edge/anomaly numbers at halt
+    causal_logs: List[str] = []
+    fps_observed: Optional[float] = None
+    fps_threshold: Optional[float] = None
+    client_timestamp: Optional[str] = None
+    user_agent: Optional[str] = None
+
+
+@api.post("/telemetry/anomaly-halt")
+async def post_telemetry_halt(body: TelemetryHaltPayload, request: Request, user=Depends(current_user)):
+    """Frontend BEES pipeline → Overseer queue.
+
+    Accepts halt payloads from ANY authenticated user (so anomalies during
+    contractor/operator sessions also surface). Admin reads via /admin/overseer-queue.
+    """
+    valid_sev = {"advisory", "warning", "critical"}
+    if body.severity not in valid_sev:
+        raise HTTPException(400, f"severity must be one of {sorted(valid_sev)}")
+    record = {
+        "id": str(uuid.uuid4()),
+        "project_id": body.project_id,
+        "layer": body.layer or "electric_teal_diagnostic",
+        "severity": body.severity,
+        "reason_code": body.reason_code,
+        "reason_label": body.reason_label,
+        "telemetry_snapshot": body.telemetry_snapshot or {},
+        "causal_logs": body.causal_logs[:30],     # cap to keep payload sane
+        "fps_observed": body.fps_observed,
+        "fps_threshold": body.fps_threshold,
+        "client_timestamp": body.client_timestamp,
+        "user_agent": (body.user_agent or "")[:240],
+        "server_timestamp": now_iso(),
+        "reported_by_user_id": user["id"],
+        "reported_by_role": user["role"],
+        "reported_by_email": user["email"],
+        "review_status": "open",          # open | reviewed | dismissed
+        "reviewed_at": None,
+        "reviewed_by": None,
+    }
+    await db.overseer_queue.insert_one(record)
+    record.pop("_id", None)
+    return {"ok": True, "halt_id": record["id"], "review_status": "open"}
+
+
+@api.get("/admin/overseer-queue")
+async def get_overseer_queue(status: str = "open", user=Depends(admin_only)):
+    valid = {"open", "reviewed", "dismissed", "all"}
+    if status not in valid:
+        raise HTTPException(400, f"status must be one of {sorted(valid)}")
+    q = {} if status == "all" else {"review_status": status}
+    docs = await db.overseer_queue.find(q, {"_id": 0}).sort("server_timestamp", -1).to_list(length=300)
+    open_count = await db.overseer_queue.count_documents({"review_status": "open"})
+    return {"count": len(docs), "open_count": open_count, "items": docs}
+
+
+@api.put("/admin/overseer-queue/{halt_id}")
+async def update_overseer_item(halt_id: str, payload: Dict[str, Any], user=Depends(admin_only)):
+    new_status = (payload or {}).get("review_status")
+    if new_status not in ("reviewed", "dismissed"):
+        raise HTTPException(400, "review_status must be 'reviewed' or 'dismissed'.")
+    upd = {"review_status": new_status, "reviewed_at": now_iso(), "reviewed_by": user["email"]}
+    if payload.get("review_note"):
+        upd["review_note"] = str(payload["review_note"])[:500]
+    res = await db.overseer_queue.update_one({"id": halt_id}, {"$set": upd})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Halt id not found.")
+    return {"ok": True, "halt_id": halt_id, "review_status": new_status}
+
+
+# ---------------------------------------------------------------------------
 # ADMIN FINANCIAL BLOCKER — strip pricing/labor/overhead from ANY admin read
 # of another contractor's profile (Section 2.2 of Executive Spec).
 # ---------------------------------------------------------------------------

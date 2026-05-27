@@ -534,6 +534,8 @@ export default function RoofModel3D({
   // optional debug hook — audit harness passes a callback that receives the
   // THREE.Scene + finishLayerGroups reference right after construction.
   __debugSceneProbe = null,
+  // Project context (used for anomaly-halt Overseer payloads). Null on public routes.
+  projectId = null,
 }) {
   // ----- Back-compat shim: translate legacy {roofing, framing, gutters} to BEES contract -----
   const resolvedPrimary = layers
@@ -866,6 +868,34 @@ export default function RoofModel3D({
 
     const tick = () => {
       const t = (performance.now() - start) / 1000;
+
+      // ===== FPS sentinel for the anomaly watchdog =====
+      // Measures wall-clock delta between rAF callbacks. If sustained slow frames
+      // (>250ms gap) accumulate for >2s while visible, flag the Electric Teal
+      // diagnostic layer as breaking and dispatch a halt payload to the Overseer.
+      const tickNow = performance.now();
+      const dt = tickNow - (stateRef.current.lastTickAt || tickNow);
+      stateRef.current.lastTickAt = tickNow;
+      if (isVisible) {
+        if (dt > 250) {
+          stateRef.current.slowFrameRun += dt;
+          if (stateRef.current.slowFrameRun > 2000 && stateRef.current.anomalyWatchdog && !stateRef.current.anomalyWatchdog.halted) {
+            const fpsObserved = 1000 / Math.max(dt, 1);
+            stateRef.current.anomalyWatchdog.log(`Sustained slow-frame run: dt=${dt.toFixed(0)}ms accum=${stateRef.current.slowFrameRun.toFixed(0)}ms`);
+            stateRef.current.anomalyWatchdog.dispatchHalt(
+              "FRAME_DROP",
+              "Sustained sub-4fps rendering on the Electric Teal diagnostic layer — pipeline halted for Overseer review.",
+              "warning",
+              { fps_observed: Number(fpsObserved.toFixed(2)), accumulated_ms: Math.round(stateRef.current.slowFrameRun) },
+            );
+          }
+        } else {
+          // Frame is healthy → decay the slow-frame accumulator
+          stateRef.current.slowFrameRun = Math.max(0, stateRef.current.slowFrameRun - dt * 0.6);
+        }
+      }
+      // ===== end FPS sentinel =====
+
       anomalyGroups.forEach((g) => {
         const op = 0.6 + Math.sin(t * 3 + (g.userData.anomaly?.confidence || 0) * 10) * 0.22;
         g.children[0].material.opacity = op;
@@ -1081,6 +1111,86 @@ export default function RoofModel3D({
         });
       } catch (e) { /* never break render on probe failure */ }
     }
+
+    // ===== DYNAMIC TELEMETRY ANOMALY HALT — Electric Teal Watchdog =====
+    // Watchdog hooks the rendering pipeline at boot time:
+    //   1. NaN-vertex scan on every facet/edge BufferGeometry (one-shot, immediate)
+    //   2. Frame-rate sentinel — if rAF deltas exceed 250ms sustained for >2s,
+    //      the Electric Teal diagnostic layer is flagged as "BREAKING" and a
+    //      halt payload is POSTed to /api/telemetry/anomaly-halt → Overseer queue.
+    // The halt is non-blocking: rendering continues so the user is not stranded,
+    // but the admin queue gets a structured causal report.
+    const anomalyWatchdog = {
+      halted: false,
+      lastReportAt: 0,                              // throttle to once per 60s per mount
+      slowFrameStartAt: 0,
+      causalLogs: [],
+      log(msg) {
+        this.causalLogs.push(`[${Math.round(performance.now())}ms] ${msg}`);
+        if (this.causalLogs.length > 24) this.causalLogs.shift();
+      },
+      async dispatchHalt(reason_code, reason_label, severity, extra = {}) {
+        const nowMs = performance.now();
+        if (this.halted && nowMs - this.lastReportAt < 60_000) return;   // throttle
+        this.halted = true; this.lastReportAt = nowMs;
+        try {
+          const payload = {
+            project_id: projectId,
+            layer: "electric_teal_diagnostic",
+            severity,
+            reason_code,
+            reason_label,
+            telemetry_snapshot: {
+              facet_count: facets.length,
+              edge_count: edges.length,
+              anomaly_count: anomalies.length,
+              span: Number(span.toFixed(4)),
+              primary_layer: resolvedPrimary,
+              ...extra,
+            },
+            causal_logs: this.causalLogs.slice(),
+            client_timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent.slice(0, 220),
+          };
+          // Lazy import to avoid coupling — fail silently on public routes / no auth.
+          const { api } = await import("@/lib/api");
+          await api.post("/telemetry/anomaly-halt", payload);
+        } catch (e) {
+          // Silent — anomaly reporter must NEVER break the render loop.
+        }
+      },
+    };
+
+    // (1) NaN-vertex scan — one-shot at boot
+    let nanFound = null;
+    Object.values(finishLayerGroups).forEach((group) => {
+      group.children.forEach((facetGroup) => {
+        const mesh = facetGroup.children[0];
+        const pos = mesh?.geometry?.attributes?.position?.array;
+        if (!pos) return;
+        for (let i = 0; i < pos.length; i++) {
+          if (!Number.isFinite(pos[i])) {
+            nanFound = { facet: facetGroup.userData?.facet?.id || "<unknown>", index: i };
+            return;
+          }
+        }
+      });
+    });
+    if (nanFound) {
+      anomalyWatchdog.log(`NaN vertex detected facet=${nanFound.facet} idx=${nanFound.index}`);
+      anomalyWatchdog.dispatchHalt(
+        "NAN_VERTEX",
+        "BEES facet position buffer contains non-finite vertex — Electric Teal layer integrity broken.",
+        "critical",
+        { offending_facet: nanFound.facet, offending_index: nanFound.index },
+      );
+    }
+
+    // Expose watchdog on stateRef so tick() can drive the FPS sentinel.
+    stateRef.current.anomalyWatchdog = anomalyWatchdog;
+    stateRef.current.lastTickAt = performance.now();
+    stateRef.current.slowFrameRun = 0;
+    // ===== END Watchdog setup =====
 
     return () => {
       cancelAnimationFrame(raf);
