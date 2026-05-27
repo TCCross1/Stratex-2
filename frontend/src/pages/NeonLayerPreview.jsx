@@ -8,10 +8,10 @@ import { api } from "@/lib/api";
  * side-by-side. Public, no auth, not linked from the main nav.
  */
 const LAYERS = [
-  { key: "shingle", label: "Shingle", swatch: "#1ea7ff", desc: "Neon Blue" },
-  { key: "metal",   label: "Metal",   swatch: "#ff2d4a", desc: "Neon Red" },
-  { key: "slate",   label: "Slate",   swatch: "#c77dff", desc: "Neon Violet" },
-  { key: "framing", label: "Framing", swatch: "#ffea00", desc: "Neon Yellow" },
+  { key: "shingle", label: "Shingle (3-Tab)",   swatch: "#1ea7ff", desc: "Neon Cyan-Blue" },
+  { key: "metal",   label: "Metal Standing Seam", swatch: "#00f0ff", desc: "Neon Cyan + Rivets" },
+  { key: "slate",   label: "Slate",              swatch: "#c77dff", desc: "Neon Violet" },
+  { key: "framing", label: "Framing",            swatch: "#00f0ff", desc: "Cyan + Orange Sub-Fascia" },
 ];
 
 export default function NeonLayerPreview() {

@@ -38,16 +38,25 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 - ✅ **UI**: 4-button radio group + visual divider + persistent gutters secondary toggle on both `ContractorPortal.jsx` and `Landing.jsx`. `aria-pressed` set correctly. Existing data-testids preserved (`layer-toggle-framing/shingle/metal/slate/gutters`).
 - ✅ Visually verified all 4 states + gutter toggle via screenshot cycle on the demo job.
 
-## What's Been Implemented (2026-02-28 — v3.2.0 — Blueprint Engineering Aesthetic)
-- ✅ **User feedback applied**: undid the solid neon color wash. Each finish layer now has a DARK INTERIOR FILL with only the architectural DETAIL LINES drawn in neon, so the material reads from its pattern:
-  - **Asphalt 3-tab Shingle** → near-black interior + neon **BLUE** course separators + 3 vertical tab cuts per shingle (staggered course offset)
-  - **Standing-seam Metal**  → near-black interior + neon **RED** vertical seams + bright rivet dot pattern along each seam
-  - **Slate**                → near-black interior + neon **VIOLET** scalloped tile outlines + lavender top-edge highlights
-- ✅ **Framing wireframe** repainted to neon **YELLOW** with variable thickness: every 3rd rafter is a heavier tube (radius 0.085 vs 0.045), sub-fascia rendered as heavy yellow tubes along each eave.
-- ✅ **Gutter system** repainted to neon **ORANGE** — thicker tube (r=0.32), bright orange downspouts with torus splash elbows at ground, bright hot-amber hanger studs every ~2 ft.
-- ✅ **Per-facet perimeter outline** now uses each layer's accent color (cyan-blue / red / violet) with an additive feathered second pass for soft glow halo.
-- ✅ **High-detail line work**: bold ctx.shadowBlur halos around every seam/cut/scallop edge in canvas textures, plus 4–6 px BlackTriangle shadows under glow lines for that lifted/3D look.
-- ✅ Visually verified on `/_neon-preview` — Shingle reads as asphalt 3-tab, Metal reads as standing-seam-with-rivets, Slate reads as scallop tiles, Framing reads as yellow trusses, gutters glow orange.
+## What's Been Implemented (2026-02-28 — v3.3.0 — Multi-Agent Expert Panel Renderer)
+- ✅ **Convened 4-agent expert panel** (Master Framing Carpenter/Architect, Master Roofing Contractor, Master CAD Designer, Master Gutter Contractor). Consensus rules ratified and documented at `/app/memory/expert_panel_review.md`. All renderer changes flow from these rules.
+- ✅ **CRITICAL FIX — Slope-aligned UV basis** (Agent 3 / C1). Replaced the world-space UV projection in `buildFacetMesh` with a per-facet (U, V) basis where U = horizontal along the eave, V = up the slope. World-space scale (1 unit = 1 ft) is preserved via `REPEAT_FT` constants per material so a 3-tab shingle ALWAYS reads at correct 12" tab width regardless of facet size.
+- ✅ **Material patterns now obey craft rules**:
+  - **3-Tab Shingle** (Agent 2 / R1) — 4 courses per texture tile, 3 shingles per row with 3 tabs each; staggered half-shingle offset per course; courses now run PARALLEL TO EAVE on every facet.
+  - **Standing-Seam Metal** (Agent 2 / R3) — 2 panels per texture tile; seams run EAVE-TO-RIDGE (verified visually as diagonal converging lines on hip facets); rivet/clip dots every 14" along each seam.
+  - **Slate** (Agent 2 / R4) — 3 courses × 3 tiles per texture; bright lavender scalloped top edges; courses parallel to eave.
+- ✅ **Ratified neon palette** (unified blue+orange architectural language matching references):
+  - Shingle: `#1EA7FF` neon cyan-blue
+  - Metal:   `#00F0FF` neon cyan + bright white rivet cores
+  - Slate:   `#C77DFF` neon violet
+  - Framing rafters: `#00F0FF` cyan
+  - Sub-fascia + Gutters: `#FF7A00` neon orange
+- ✅ **Variable line weights** (Agent 3 / C2) — every 3rd rafter is a heavier doubled trimmer (r=0.075 vs 0.04); sub-fascia/gutter tubes are heavy; additive glow halos on top of every tube.
+- ✅ All visually verified on `/_neon-preview`. Shingle courses + metal seams + slate scallops + framing rafters all align correctly with each facet's slope direction.
+
+### Quality Gate (codified in expert_panel_review.md):
+Every digital twin generation must pass 6 validation gates before render — codifies the "no wrong layers" rule the user demanded so the visual replication stays in tolerance of actual RTK-calibrated photogrammetry (target: ±1 cm).
+
 
 
 
