@@ -184,7 +184,7 @@ export function NewJob() {
     homeowner_name: "Jane Smith",
     homeowner_email: "", homeowner_phone: "",
     project_type: "Insurance Claim", insurance_carrier: "State Farm",
-    roof_style: "cross_hip", notes: "",
+    roof_style: "stratex_demo", notes: "",
   });
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -234,7 +234,7 @@ export function NewJob() {
           </div>
           <div><label className="hud-label">Roof Topology</label>
             <select data-testid="job-roof-style" className="hud-input" value={form.roof_style} onChange={(e)=>setForm({...form, roof_style: e.target.value})}>
-              <option value="cross_hip">Cross-Hip</option><option value="hip">Hip</option><option value="gable">Front Gable</option><option value="l_shape">L-Shape</option><option value="dutch_gable">Dutch Gable</option>
+              <option value="stratex_demo">STRATEX Compound Demo (recommended)</option><option value="cross_hip">Cross-Hip</option><option value="hip">Hip</option><option value="gable">Front Gable</option><option value="l_shape">L-Shape</option><option value="dutch_gable">Dutch Gable</option>
             </select>
           </div>
           <button onClick={submit} disabled={busy} className="btn-hud w-full sm:w-auto" data-testid="job-submit"><Plus size={14}/> {busy?"Dispatching…":"DISPATCH TO FLEET"}</button>
@@ -287,7 +287,7 @@ export function JobDetail() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
-  const [layers, setLayers] = useState({ roofing: true, framing: false, gutters: false });
+  const [layers, setLayers] = useState({ roofing: true, framing: true, gutters: true });
   const [reschedule, setReschedule] = useState(null);
   const [weather, setWeather] = useState(null);
   const [notifyBusy, setNotifyBusy] = useState(false);

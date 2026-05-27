@@ -25,6 +25,19 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v3.0.0 — Compound Demo Topology + Default-On Tri-Layer)
+- ✅ **🏘️ New `stratex_demo` roof preset** — compound L-shape that mirrors the marketing reference render:
+  - **Main body**: 16 × 10 hip volume, pitch 9/12 (dominates the silhouette)
+  - **Front-left wing**: 5 × 6 hip projecting forward/left, pitch 7/12
+  - **Right-rear wing**: 6 × 4 hip projecting back/right, pitch 7/12
+  - **Chimney prism**: 1.2 × 1.2 × 3.5 box on the main rear slope (5 facets — 4 walls + top cap)
+  - 2 explicit valley edges where the wings intersect the main body
+  - Generates **17 facets, 40 edges, 7 anomalies, 119 rafters, 12 gutter polylines + 12 downspouts**
+- ✅ **🛠️ Default fallback** — `build_topology()` now defaults to `stratex_demo` (instead of `cross_hip`). Existing jobs with set styles keep their selection.
+- ✅ **🆕 Dropdown** — new-job form lists the demo style first ("STRATEX Compound Demo (recommended)") and defaults to it.
+- ✅ **🟢 All 3 Tri-Layer toggles ON by default** — ROOFING + FRAMING + GUTTERS visible from the moment the 3D canvas loads, so the full forensic stack shows immediately without operator interaction.
+- ✅ Verified end-to-end: created `stratex_demo` job → Phase 1 PASS → operator launch → DATA_CAPTURE_COMPLETE with 17 facets → 3D canvas renders the compound roof with chimney + anomaly patches + dimension callouts (screenshot confirmed).
+
 ## What's Been Implemented (2026-02-28 — v2.9.0 — 24h Reminder Background Sweep)
 - ✅ **🔔 24h reminder background scheduler** — `_reminder_24h_sweep_loop()` runs as an asyncio task started in `on_startup`. Every 15 min (configurable via `REMINDER_SWEEP_INTERVAL_S`) it scans for jobs with `scheduled_launch_at` in the 23–25h window (lead=24h ± 1h, configurable) AND `reminder_24h_sent_at` absent. Fires SMS (Twilio) + email (Resend) reminders to the homeowner, flips `status: PHASE1_BLOCKED → RESCHEDULED_CONFIRMED`, stamps `reminder_24h_sent_at` for idempotency, records audit event `REMINDER_24H_SENT`. Cleanly cancelled in `on_shutdown`.
 - ✅ **🛠️ Manual trigger** — `POST /api/contractor/run-reminder-sweep` returns `{swept_at, sent, errors}` for ops/QA without waiting for the 15-min tick.
