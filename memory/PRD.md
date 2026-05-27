@@ -25,6 +25,20 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-27 — v2.4.0 — STRATEX™ Vision UI Upgrade)
+- ✅ **🎨 Tactical Cyber-Industrial Console aesthetic** — `#0B0F19` ambient backdrop, frosted-glass overlay cards (`backdrop-blur: 16-18px`), thin neon teal/orange borders with inset glow.
+- ✅ **🧊 Color-coded geometry** — Ridges (cyan), Valleys (plasma orange), Hips (mid-teal), Eaves (silver). Edge opacity tuned per classification (valleys most visible).
+- ✅ **🟦 Facet orientation segmentation** — each facet colored by its dominant normal direction: front-facing → cyan, rear-facing → warm bronze (`#c99a5e`), side-facing → steel-teal (`#8fb8c6`).
+- ✅ **📐 Blueprint grid texture** — every facet rendered with a procedural canvas-generated grid pattern texture (16×16 fine + 4×4 heavy axes), planar-projected onto the dominant plane, tinted by facet orientation color, additively glowing via `emissiveMap`.
+- ✅ **🔥 Heat-mapped anomaly patches** — anomaly polygons render as orange additive-blended overlays sized proportional to `area_affected_sf / facet_area`, with pulsing edge opacity.
+- ✅ **📏 Dimension callouts** — the longest 2 edges per classification (8 total) get crisp white technical-font length labels overlaid on the canvas (HTML over WebGL), color-tinted per classification with glow.
+- ✅ **🏷️ Project Identity card** (`ProjectIdentityCard`) — top-left frosted card with circular shield logo, Project ID, Principal/CEO, Property.
+- ✅ **📊 STRATE™ Quant™ Estimation card** (`QuantEstimationCard`) — bottom-left summary: Total Squares · Valleys (LF) · Gables/Hips (LF) · Ridges (LF) · Total Roof SF.
+- ✅ **💰 Anomaly Monetization Engine card** (`AnomalyMonetizationCard`) — bottom-right floating asset card showing `Anomaly #XX: Diagnosis (X sq.ft.)` + dollar value (proposal total proportionally allocated by anomaly area share) + cyan diamond accent.
+- ✅ **🌡️ Enhanced Forensic Overlay PiP** — vertical thermal scale axis (+25°C / +5°C / −15°C), `640×512 IR · FLIR Iron` label, gradient legend bar (navy→magenta→orange→white).
+- ✅ **🎥 3/4 isometric camera framing** — 28° FOV, elevated position (1.4× span), positioned to mirror the reference image angle.
+- ✅ **✨ Ground glow plate** — radial cyan gradient under the model + tactical grid floor at 35% opacity gives the "blueprint laid out on a console table" depth illusion.
+
 ## What's Been Implemented (2026-02-27 — v2.3.0 — ASTM C1153 Live Weather)
 - ✅ **🌦️ REAL Open-Meteo integration** (free, no API key) replacing all 3 weather mocks in Phase 1 Digital Gatekeeping.
 - ✅ **4 ASTM C1153-compliant thermographic gates** wired into `_astm_phase1()`:

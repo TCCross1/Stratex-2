@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
-import ForensicOverlay, { AnomalySelector } from "@/components/ForensicOverlay";
+import ForensicOverlay, { AnomalySelector, ProjectIdentityCard, QuantEstimationCard, AnomalyMonetizationCard } from "@/components/ForensicOverlay";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth";
 import {
@@ -378,36 +378,94 @@ export function JobDetail() {
         {/* Capture complete views */}
         {(job.status === "DATA_CAPTURE_COMPLETE" || job.status === "PROPOSAL_READY" || job.status === "AUDIT_APPROVED" || job.status === "SENT_TO_HOMEOWNER") && (
           <>
-            <HudCard scanline className="p-3 mb-4">
-              <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-[260px_1fr_310px]"} gap-3`}>
-                <div className="space-y-3">
-                  <HudCard className="p-4">
-                    <div className="flex items-center gap-2 mb-2 text-teal"><Box size={14}/><span className="font-mono text-[10px] uppercase tracking-widest">Spatial Mesh</span></div>
-                    <div className="space-y-1 font-mono text-sm">
-                      <Row label="Total SF" v={tele.totals?.total_sf}/>
-                      <Row label="Squares" v={tele.totals?.squares}/>
-                      <Row label="Ridges LF" v={tele.totals?.ridges_lf}/>
-                      <Row label="Valleys LF" v={tele.totals?.valleys_lf} accent="orange"/>
-                      <Row label="Hips LF" v={tele.totals?.hips_lf}/>
-                      <Row label="Eaves LF" v={tele.totals?.eaves_lf}/>
-                      <Row label="Primary Pitch" v={tele.pitch}/>
-                      <Row label="RTK Precision" v={`${tele.rtk_precision_cm} cm`} accent="volt"/>
-                    </div>
-                  </HudCard>
+            {/* === STRATEX VISION ADVANCED DIAGNOSTICS === */}
+            <HudCard scanline className="p-0 mb-4 overflow-hidden" style={{ background: "#0B0F19" }}>
+              {/* Canvas header bar */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none border border-[#00F0FF]/40 px-4 py-1.5"
+                   style={{ background: "rgba(11,15,25,0.85)", backdropFilter: "blur(8px)", boxShadow: "0 0 16px rgba(0,240,255,0.25)" }}>
+                <span className="font-display text-[13px] tracking-[0.18em] uppercase text-silver">STRATEX™ Vision: <span className="text-teal">Advanced Diagnostics</span></span>
+              </div>
+
+              <div className="relative" style={{ minHeight: isMobile ? 520 : 620 }}>
+                {/* 3D canvas fills the entire HudCard */}
+                <RoofModel3D
+                  telemetry={tele}
+                  anomalies={anomalies}
+                  highlightAnomalyId={selectedAnomaly?.id}
+                  onSelectAnomaly={(a)=>setSelectedAnomaly(a)}
+                  height={isMobile ? 520 : 620}
+                  showLabels={!isMobile}
+                  showDimensions={!isMobile}
+                />
+
+                {/* Top-left: Project Identity card */}
+                <div className="absolute top-14 left-4 z-10 pointer-events-none">
+                  <ProjectIdentityCard project={{
+                    id_short: `AD-${job.id.slice(0,5).toUpperCase()}`,
+                    principal: job.contractor_company || "STRATEX Contractor",
+                    property: job.property_address || "—",
+                  }}/>
                 </div>
-                <div className="hud-card overflow-hidden">
-                  <span className="corner-bl"/><span className="corner-br"/>
-                  <RoofModel3D telemetry={tele} anomalies={anomalies} highlightAnomalyId={selectedAnomaly?.id} onSelectAnomaly={(a)=>setSelectedAnomaly(a)} height={isMobile?380:560} showLabels={!isMobile}/>
+
+                {/* Top-right: Forensic Overlay PiP */}
+                {selectedAnomaly && !isMobile && (
+                  <div className="absolute top-14 right-4 z-10 w-[320px] max-w-[34vw]">
+                    <ForensicOverlay anomaly={selectedAnomaly}/>
+                  </div>
+                )}
+
+                {/* Bottom-left: STRATE Quant Estimation */}
+                <div className="absolute bottom-12 left-4 z-10 pointer-events-none">
+                  <QuantEstimationCard telemetry={tele}/>
                 </div>
-                <div className="space-y-3">
-                  <ForensicOverlay anomaly={selectedAnomaly}/>
-                  <HudCard className="p-3">
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-muted-hud mb-2">Anomaly Field</div>
-                    <AnomalySelector anomalies={anomalies} selectedId={selectedAnomaly?.id} onSelect={setSelectedAnomaly}/>
-                  </HudCard>
+
+                {/* Bottom-right: Anomaly Monetization */}
+                <div className="absolute bottom-12 right-4 z-10 pointer-events-none">
+                  <AnomalyMonetizationCard
+                    anomaly={selectedAnomaly}
+                    lineItem={selectedAnomaly && pricing ? {
+                      total: (anomalies.reduce((s, a) => s + (a.area_affected_sf || 0), 0) > 0)
+                        ? (pricing.final_total || 0) * ((selectedAnomaly.area_affected_sf || 0) / anomalies.reduce((s, a) => s + (a.area_affected_sf || 0), 0))
+                        : 0
+                    } : null}
+                  />
                 </div>
+
+                {/* Anomaly ID floating tag (top-center upper third) */}
+                {selectedAnomaly && (
+                  <div className="absolute top-14 left-1/2 -translate-x-1/2 z-10 pointer-events-none border border-[#00F0FF]/60 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-teal"
+                       style={{ background: "rgba(11,15,25,0.85)", backdropFilter: "blur(8px)", boxShadow: "0 0 12px rgba(0,240,255,0.35)" }}>
+                    Anomaly ID: <span className="text-silver">{selectedAnomaly.id}</span>
+                  </div>
+                )}
               </div>
             </HudCard>
+
+            {/* === Anomaly field & spatial mesh details (collapsed beneath) === */}
+            <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_320px]"} gap-3 mb-4`}>
+              <HudCard className="p-4">
+                <div className="flex items-center gap-2 mb-2 text-teal"><Box size={14}/><span className="font-mono text-[10px] uppercase tracking-widest">Spatial Mesh Telemetry</span></div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-sm">
+                  <Row label="Total SF" v={tele.totals?.total_sf}/>
+                  <Row label="Squares" v={tele.totals?.squares}/>
+                  <Row label="Ridges LF" v={tele.totals?.ridges_lf}/>
+                  <Row label="Valleys LF" v={tele.totals?.valleys_lf} accent="orange"/>
+                  <Row label="Hips LF" v={tele.totals?.hips_lf}/>
+                  <Row label="Eaves LF" v={tele.totals?.eaves_lf}/>
+                  <Row label="Primary Pitch" v={tele.pitch}/>
+                  <Row label="RTK Precision" v={`${tele.rtk_precision_cm} cm`} accent="volt"/>
+                </div>
+              </HudCard>
+              <HudCard className="p-3">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-hud mb-2">Anomaly Field — Tap to inspect</div>
+                <AnomalySelector anomalies={anomalies} selectedId={selectedAnomaly?.id} onSelect={setSelectedAnomaly}/>
+                {selectedAnomaly && isMobile && (
+                  <div className="mt-3">
+                    <ForensicOverlay anomaly={selectedAnomaly}/>
+                  </div>
+                )}
+              </HudCard>
+            </div>
 
             {/* Pricing actions */}
             {!pricing && job.status === "DATA_CAPTURE_COMPLETE" && (
