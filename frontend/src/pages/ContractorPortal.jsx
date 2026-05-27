@@ -12,7 +12,7 @@ import {
 import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2, AlertTriangle, Wind, Cloud, Radio, Zap, ScrollText, Home, Activity, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
-import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor } from "@/lib/api";
+import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor, notifyHomeownerDelay } from "@/lib/api";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
@@ -274,6 +274,7 @@ export function JobDetail() {
   const [layers, setLayers] = useState({ roofing: true, framing: false, gutters: false });
   const [reschedule, setReschedule] = useState(null);
   const [weather, setWeather] = useState(null);
+  const [notifyBusy, setNotifyBusy] = useState(false);
 
   const load = async () => { const j = await getContractorJob(id); setJob(j); const an=(j.mission?.anomalies||j.anomalies||[]); if(an[0]) setSelectedAnomaly(an[0]); };
   useEffect(()=>{ load().catch(()=>{}); }, [id]);
@@ -375,8 +376,34 @@ export function JobDetail() {
         {/* RESCHEDULE — when Phase 1 blocked on weather */}
         {job.status === "PHASE1_BLOCKED" && reschedule && (
           <HudCard scanline className="p-5 mb-4" data-testid="reschedule-card">
-            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal mb-3">
-              <Calendar size={13}/> Auto-Reschedule · Open-Meteo 7-day Forecast
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
+                <Calendar size={13}/> Auto-Reschedule · Open-Meteo 7-day Forecast
+              </div>
+              <button
+                onClick={async () => {
+                  if (!job.homeowner_email) { toast.error("Homeowner email missing on this job"); return; }
+                  setNotifyBusy(true);
+                  try {
+                    const r = await notifyHomeownerDelay(id, job.homeowner_email);
+                    toast.success(r.mocked
+                      ? `EMAIL LOGGED — set RESEND_API_KEY to deliver to ${r.to}`
+                      : `Sent to ${r.to} · ${r.windows_count} window${r.windows_count===1?"":"s"} proposed`);
+                  } catch (e) {
+                    toast.error(e.response?.data?.detail || e.message);
+                  } finally { setNotifyBusy(false); }
+                }}
+                disabled={notifyBusy || job.delay_notified_to}
+                className="btn-hud btn-hud-ghost text-[10px]"
+                data-testid="notify-homeowner-delay-btn"
+                title={job.delay_notified_to ? `Already sent to ${job.delay_notified_to}` : "Email the homeowner the next safe launch window"}
+              >
+                {notifyBusy
+                  ? <><Loader2 size={12} className="animate-spin"/> SENDING…</>
+                  : job.delay_notified_to
+                    ? <><CheckCircle2 size={12}/> NOTIFIED {job.delay_notified_to.split("@")[0]}</>
+                    : <><Mail size={12}/> Notify Homeowner of Delay</>}
+              </button>
             </div>
             {reschedule.windows.length === 0 ? (
               <div className="font-mono text-[12px] text-plasma">No safe ASTM-compliant launch windows detected in the next 7 days for this property. Manual override or extended forecast review required.</div>

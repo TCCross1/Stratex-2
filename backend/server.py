@@ -1587,6 +1587,37 @@ def _phase1_fail_email_html(job: Dict[str, Any], checks: List[Dict[str, Any]], w
 </table>"""
 
 
+def _homeowner_delay_email_html(job: Dict[str, Any], windows: List[Dict[str, Any]], contractor_name: str) -> str:
+    """Friendly homeowner-facing weather-delay notice with proposed reschedule windows."""
+    homeowner = job.get("homeowner_name") or "there"
+    first_label = windows[0]["label"] if windows else None
+    rest = windows[1:3] if len(windows) > 1 else []
+    rest_html = "".join(
+        f"<li style='color:#475569;font-size:13px;line-height:1.7;'>{w['label']}</li>" for w in rest
+    )
+    rest_block = f"<p style='color:#475569;font-size:13px;line-height:1.6;margin:0 0 6px;'>Alternate options:</p><ul style='margin:0 0 18px 18px;padding:0;'>{rest_html}</ul>" if rest_html else ""
+    primary_block = (
+        f"<div style='background:#F0F9FF;border:1px solid #0EA5E9;padding:16px;margin:16px 0;'>"
+        f"<div style='color:#0369A1;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;margin-bottom:6px;'>Next Recommended Window</div>"
+        f"<div style='color:#0F172A;font-size:18px;font-weight:600;'>{first_label}</div>"
+        f"</div>"
+        if first_label else
+        "<p style='color:#475569;font-size:13px;line-height:1.6;'>Our weather monitoring is tracking conditions and we'll reach out with a new flight window the moment one opens up.</p>"
+    )
+    return f"""
+<table cellpadding="0" cellspacing="0" style="background:#FFFFFF;color:#0F172A;font-family:Helvetica,Arial,sans-serif;width:100%;max-width:600px;padding:32px 28px;border:1px solid #E2E8F0;border-radius:6px;">
+  <tr><td>
+    <h1 style="font-size:20px;margin:0 0 6px;color:#0F172A;">A quick weather update on your roof inspection</h1>
+    <p style="color:#475569;font-size:13px;line-height:1.7;margin:0 0 14px;">Hi {homeowner}, this is {contractor_name} — our advanced thermographic survey of your roof requires very specific atmospheric conditions (ASTM&nbsp;C1153 standard) to capture data that holds up under insurance review. Today's conditions don't meet that bar, so we're holding off rather than collecting a noisy scan.</p>
+    {primary_block}
+    {rest_block}
+    <p style="color:#475569;font-size:13px;line-height:1.6;margin:8px 0 0;">No action needed on your end — we'll confirm 24 hours before the flight. As always, our drones never enter your property or require anyone home; they operate from the public right-of-way.</p>
+    <p style="color:#475569;font-size:13px;line-height:1.6;margin:14px 0 0;">Thanks for your patience,<br/><strong>{contractor_name}</strong></p>
+    <div style="margin-top:24px;padding-top:14px;border-top:1px solid #E2E8F0;color:#94A3B8;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;">Powered by STRATEX&trade; · ASTM C1153 Compliance</div>
+  </td></tr>
+</table>"""
+
+
 def _nda_email_html(typed_name: str, when: str) -> str:
     return f"""
 <table cellpadding="0" cellspacing="0" style="background:#06080B;color:#E2E8F0;font-family:Helvetica,Arial,sans-serif;width:100%;max-width:640px;padding:24px;border:1px solid #39FF14;">
@@ -1624,6 +1655,38 @@ async def email_proposal(job_id: str, body: EmailProposalBody, user=Depends(cont
         await _send_email(user["email"], f"[CC] STRATEX™ Proposal sent to {to_email}", html, attachments)
     await db.jobs.update_one({"id": job_id}, {"$set": {"emailed_to": to_email, "emailed_at": now_iso()}})
     return {"ok": True, "to": to_email, "mocked": result.get("mocked", False), "id": result.get("id")}
+
+
+class NotifyHomeownerDelayBody(BaseModel):
+    homeowner_email: Optional[EmailStr] = None
+
+
+@api.post("/contractor/jobs/{job_id}/notify-homeowner-delay")
+async def notify_homeowner_delay(job_id: str, body: NotifyHomeownerDelayBody, user=Depends(contractor_only)):
+    """One-click homeowner weather-delay notification. Pulls the next 3 ASTM-compliant
+    launch windows from Open-Meteo and emails them to the homeowner in friendly,
+    non-technical language. Only valid while the job is PHASE1_BLOCKED."""
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if job.get("status") != "PHASE1_BLOCKED":
+        raise HTTPException(400, "Notify-delay is only available while the job is PHASE1_BLOCKED")
+    to_email = (body.homeowner_email or job.get("homeowner_email") or "").strip()
+    if not to_email:
+        raise HTTPException(400, "Homeowner email required (no homeowner_email on file)")
+    windows = await _safe_reschedule_windows(job)
+    contractor_name = user.get("company_name") or user.get("legal_name") or "your roofing contractor"
+    html = _homeowner_delay_email_html(job, windows, contractor_name)
+    subject = "Weather update on your roof inspection · STRATEX"
+    result = await _send_email(to_email, subject, html)
+    await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"delay_notified_to": to_email, "delay_notified_at": now_iso()}},
+    )
+    await _record_audit(job_id, user["id"], "HOMEOWNER_DELAY_NOTIFIED", {
+        "to": to_email, "mocked": result.get("mocked", False), "windows_count": len(windows),
+    })
+    return {"ok": True, "to": to_email, "mocked": result.get("mocked", False), "windows_count": len(windows)}
 
 
 @auth_r.post("/email-nda")
