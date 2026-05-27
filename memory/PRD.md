@@ -1,5 +1,48 @@
 # STRATEX™ — PRD & Build Log
 
+## What's Been Implemented (2026-02-27 — v3.6.0 — Onboarding ROI Funnel + Sales Hub + Materials Expert)
+
+### Section 1 — `/onboard` Onboarding & ROI Funnel
+- ✅ Dedicated `/onboard` route (Landing CTA + `cta-new-mission` rewired; sign-in CTA preserved)
+- ✅ Four data-capture metrics: `leads_per_week`, `leads_per_month`, `leads_per_year`, `historical_sales_2_years`
+- ✅ Live Central Kentucky GC leakage matrix renders the 5 overhead constants exactly per spec (10% commission, $28.50/hr blended labor, $350/mo field rep insurance, $0.655/mi × 45 mi avg, 3.5% ladder safety uplift)
+- ✅ ROI formula: `Manual cost ($185/roof) − STRATEX cost ($25/roof) ± 8% sales-rep time reclaim` — UI shows both gross savings AND audited net (default = $123,200 net annual savings at 420 leads/yr × $1.4M 2yr sales)
+- ✅ 3-tier pricing chart: Starter $199 (0-15), Growth Pro $499 (16-50), Enterprise Elite $1,299 (51+)
+- ✅ AI auto-circle ring follows `leads_per_month` band — verified migrating STARTER ↔ GROWTH PRO ↔ ENTERPRISE ELITE
+- ✅ Dual sign-up paths: `Upgraded CapEx Activation` (creates account + Stripe TEST checkout) vs `Commit Later · Standard Access` (creates account only, 3D viewports locked)
+
+### Section 2 — Data Promise & Isolation
+- ✅ Discretion Clause callout permanently visible on `/onboard` (Section 2.1 wording verbatim)
+- ✅ AES-256 reuse — new financial fields (`contractor_cost_matrix`, `labor_per_hour`, `profit_overhead_multipliers`) flow through the existing Business Brain `encrypt_value` / `decrypt_value` pipeline
+- ✅ Admin Financial Blocker: `GET /api/admin/contractor/{id}/financial-config` returns `{}` for ANY admin probe (verified via curl)
+
+### Section 3.1 — Materials Configurator (`/components/MaterialConfigurator.jsx`)
+- ✅ 4-system parent selector: Asphalt / Metal Standing-Seam / Slate Premium / Custom
+- ✅ Asphalt branch — Manufacturer → Line → Color → Starter → Hip&Ridge → Underlayment (felt/synthetic/I&W groups) → Drip Edge style/material/color → Step + Counter + Pipe Boot flashing → Fastener Matrix
+- ✅ Metal branch — Manufacturer → Series → Seam Profile → Substrate → Fasteners → Sealants → Color
+- ✅ Slate branch — Manufacturer/Quarry → Quarry Origin → Thickness Grade → Fastener
+- ✅ Custom branch — free-text proprietary specification field
+- ✅ Live quantity-takeoff math (12% shingle waste / 10% underlayment / 8% edge) — bundle, roll, edge piece counts compute when `takeoff_inputs` provided
+
+### Section 4 — Admin Sales Hub (`/admin/sales`)
+- ✅ Sortable table (Contractor / Base / Phone / Status) for all 7 Central Kentucky targets (ALE, Burnett, CentiMark, Big League, A Godsend, Odessa, Barrier)
+- ✅ Click-to-advance status pipeline: `uncontacted → contacted → demoed → negotiating → closed-won → closed-lost`
+- ✅ Leaflet dark-tile map (CartoDB Dark) with status-color-tinted pulse pins anchored to Lexington-radius coordinates
+- ✅ Status filter chips with live counts
+- ✅ `Protected role="admin"` guard + backend `admin_only` dependency double-locks the route
+
+### Backend Endpoints Added
+- `POST /api/onboarding/signup` — frictionless contractor sign-up (skips TOTP, accepts NDA via Discretion Clause)
+- `POST /api/onboarding/stripe-checkout` — Stripe TEST-mode checkout session
+- `GET /api/admin/sales-targets` — admin-only Lexington-radius contractor list
+- `GET /api/admin/contractor/{id}/financial-config` — admin financial blocker (hard `{}`)
+- `GET /api/contractor/materials-config`, `PUT /api/contractor/materials-config` — materials picks persistence
+
+### Compliance Evidence
+- Backend curl tests: contractor signup → 200 (returns JWT), contractor → admin endpoint → 403, admin → sales-targets → 200 with 7 records, admin → financial-config → `{}`, materials-config PUT round-trip → 200
+- Frontend captures: `/onboard` rendering all 3 tiers + auto-circle migrating with leads_per_month, `/admin/sales` showing table+map+pipeline progression, Landing CTAs verified pointing to `/onboard`
+- Stripe TEST mode active (no real charges in this environment per directive)
+
 ## What's Been Implemented (2026-02-27 — v3.5.0 — Cinematic Wipe Transition + BEES Live Switcher)
 - ✅ **Electric-teal layer-switch wipe transition** in `RoofModel3D.jsx`:
   - Wide bloom-friendly canvas-textured plane (1.2× × 2.6× span) with razor-bright white core flanked by saturated electric-teal halos + HUD scanline streaks.

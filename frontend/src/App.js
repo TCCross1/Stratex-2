@@ -13,6 +13,8 @@ import FleetBoard from "@/pages/FleetBoard";
 import Pricing, { BillingSuccess } from "@/pages/Pricing";
 import NeonLayerPreview from "@/pages/NeonLayerPreview";
 import RoofAuditHarness from "@/pages/RoofAuditHarness";
+import OnboardingROI from "@/pages/OnboardingROI";
+import AdminSalesHub from "@/pages/AdminSalesHub";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -33,12 +35,13 @@ function AppShell() {
     return <AuthCallback/>;
   }
 
-  const hideNav = ["/auth", "/nda"].includes(loc.pathname);
+  const hideNav = ["/auth", "/nda", "/onboard"].includes(loc.pathname);
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
+        <Route path="/onboard" element={<OnboardingROI/>}/>
         <Route path="/_neon-preview" element={<NeonLayerPreview/>}/>
         <Route path="/_roof-audit" element={<RoofAuditHarness/>}/>
         <Route path="/auth" element={<AuthPage/>}/>
@@ -51,6 +54,8 @@ function AppShell() {
 
         <Route path="/operator" element={<Protected role="operator"><OperatorBoard/></Protected>}/>
         <Route path="/operator/jobs/:id" element={<Protected role="operator"><OperatorJobDetail/></Protected>}/>
+
+        <Route path="/admin/sales" element={<Protected role="admin"><AdminSalesHub/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

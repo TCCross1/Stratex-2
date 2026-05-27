@@ -2347,6 +2347,246 @@ async def stripe_webhook(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# ONBOARDING / ROI FUNNEL — frictionless contractor sign-up + Stripe TEST checkout
+# ---------------------------------------------------------------------------
+ROI_TIERS = {
+    "starter":            {"name": "Starter",           "monthly_usd": 199.0,   "leads_min": 0,  "leads_max": 15},
+    "growth_pro":         {"name": "Growth Pro",        "monthly_usd": 499.0,   "leads_min": 16, "leads_max": 50},
+    "enterprise_elite":   {"name": "Enterprise Elite",  "monthly_usd": 1299.0,  "leads_min": 51, "leads_max": 1_000_000},
+}
+
+
+class OnboardingMetrics(BaseModel):
+    leads_per_week: int = 0
+    leads_per_month: int = 0
+    leads_per_year: int = 0
+    historical_sales_2_years: float = 0.0
+
+
+class OnboardingSignupBody(BaseModel):
+    email: str
+    password: str
+    company: Optional[str] = ""
+    role: str = "contractor"
+    onboarding_metrics: OnboardingMetrics
+    selected_tier: str
+    capex_upgrade: bool = False
+
+
+@api.post("/onboarding/signup")
+async def onboarding_signup(body: OnboardingSignupBody, request: Request):
+    """Frictionless /onboard funnel sign-up.
+
+    - Creates a contractor account WITHOUT requiring TOTP enrollment up-front
+      (the user can enroll MFA later inside the portal — keeps conversion high).
+    - The Discretion Clause shown on /onboard acts as an in-flow NDA, so we mark
+      `nda_accepted=true` and stamp the timestamp.
+    - Persists `onboarding_metrics` + `selected_tier` so the ROI matrix is
+      reproducible inside the contractor portal.
+    """
+    if body.role not in ("contractor",):
+        raise HTTPException(400, "Onboarding flow only creates contractor accounts.")
+    if body.selected_tier not in ROI_TIERS:
+        raise HTTPException(400, f"Unknown tier '{body.selected_tier}'.")
+
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "Valid work email required.")
+    if len(body.password or "") < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(409, "Email already registered. Sign in instead.")
+
+    user = {
+        "id": str(uuid.uuid4()),
+        "email": email,
+        "legal_name": "",
+        "company_name": body.company or "",
+        "role": "contractor",
+        "password_hash": hash_password(body.password),
+        "totp_secret": new_totp_secret(),
+        "totp_enrolled": False,
+        "nda_accepted": True,
+        "nda_signed_at": now_iso(),
+        "created_at": now_iso(),
+        "onboarding_metrics": body.onboarding_metrics.model_dump(),
+        "selected_tier": body.selected_tier,
+        "capex_upgrade_intent": bool(body.capex_upgrade),
+        "subscription_status": "pending",
+    }
+    await db.users.insert_one(user)
+
+    access = create_access_token(user["id"], user["role"], user["email"])
+    return {
+        "access_token": access,
+        "token_type": "Bearer",
+        "user": _public_user(user),
+        "mfa_setup_required": True,
+        "next_step": "stripe_checkout" if body.capex_upgrade else "contractor_portal",
+    }
+
+
+class OnboardCheckoutBody(BaseModel):
+    tier: str
+    origin_url: str
+
+
+@api.post("/onboarding/stripe-checkout")
+async def onboarding_stripe_checkout(body: OnboardCheckoutBody, request: Request, user=Depends(contractor_only)):
+    """Create a Stripe TEST-mode checkout session for the selected ROI tier."""
+    if body.tier not in ROI_TIERS:
+        raise HTTPException(400, "Invalid tier.")
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(500, "Stripe not configured in this environment.")
+    host_url = str(request.base_url).rstrip("/")
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    tier = ROI_TIERS[body.tier]
+    origin = body.origin_url.rstrip("/")
+    req = CheckoutSessionRequest(
+        amount=float(tier["monthly_usd"]),
+        currency="usd",
+        success_url=f"{origin}/contractor?roi_checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin}/onboard?roi_checkout=cancelled",
+        metadata={
+            "user_id": user["id"],
+            "email": user["email"],
+            "tier": body.tier,
+            "source": "onboarding_funnel",
+            "test_mode": "true",
+        },
+    )
+    try:
+        session = await asyncio.wait_for(checkout.create_checkout_session(req), timeout=20.0)
+    except Exception as e:
+        raise HTTPException(504, f"Stripe checkout creation failed: {e}")
+
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "user_id": user["id"],
+        "email": user["email"],
+        "tier": body.tier,
+        "amount": float(tier["monthly_usd"]),
+        "currency": "usd",
+        "payment_status": "initiated",
+        "status": "open",
+        "source": "onboarding_funnel",
+        "metadata": {"tier": body.tier, "source": "onboarding_funnel"},
+        "created_at": now_iso(),
+    })
+    return {"url": session.url, "session_id": session.session_id, "tier": body.tier, "amount": float(tier["monthly_usd"])}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN SALES HUB — Pre-Cached Central Kentucky sales targets
+# ---------------------------------------------------------------------------
+KY_SALES_TARGETS_SEED = [
+    {"id": "ale-roofing",     "name": "ALE Roofing LLC", "aka": "Formerly Atlas Contracting / Elleman Contracting",
+     "base": "Lexington, KY", "phone": "859-402-5211",
+     "focus": "Historic Preservation, Slate, Copper, Custom Internal Box Gutters, Residential/Commercial Replacements",
+     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted"},
+    {"id": "burnett-roofing", "name": "Burnett Roofing",
+     "base": "656 Bizzell Drive, Lexington, KY 40510", "phone": "859-253-0116",
+     "focus": "Tier 1 Commercial Manufacturing, Single-Ply Membranes (EPDM/TPO/PVC), Modified Bitumen, Architectural Sheet Metal",
+     "lat": 38.0739, "lng": -84.5494, "status": "uncontacted"},
+    {"id": "centimark",       "name": "CentiMark Corporation",
+     "base": "260 Crossfield Dr, Unit 4, Versailles, KY 40383", "phone": "502-716-5777",
+     "focus": "Large-Scale Industrial, Thermal Shock Inspections, Commercial Property Maintenance Assets",
+     "lat": 38.0530, "lng": -84.7286, "status": "uncontacted"},
+    {"id": "big-league",      "name": "Big League Roofers",
+     "base": "3022 Lexington Road, Nicholasville, KY 40356 · 2901 Richmond Road, Lexington, KY 40509", "phone": "859-693-7663",
+     "focus": "High-Volume GAF Master Elite Residential, Hail/Storm Insurance Adjuster Coordination",
+     "lat": 37.8806, "lng": -84.5728, "status": "uncontacted"},
+    {"id": "godsend",         "name": "A Godsend Roofing LLC",
+     "base": "380 E Main St, Lexington, KY 40507", "phone": "859-432-7663",
+     "focus": "Commercial/Residential Master Applicators, Complex Custom Step Flashing, Storm Repair Logistics",
+     "lat": 38.0457, "lng": -84.4906, "status": "uncontacted"},
+    {"id": "odessa",          "name": "Odessa Roofing, Inc.",
+     "base": "232 Gold Rush Road, Suite 110, Lexington, KY 40503", "phone": "859-271-0524",
+     "focus": "KRCA/NRCA Members, Custom Copper Flashing, Synthetic Slate, High-End Residential Architecture",
+     "lat": 38.0019, "lng": -84.5310, "status": "uncontacted"},
+    {"id": "barrier",         "name": "Barrier Roofs",
+     "base": "Lexington, KY", "phone": "859-251-5119",
+     "focus": "High-Volume Owens Corning Platinum Dealer, Insurance Claims Supplementing",
+     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted"},
+]
+
+
+@api.get("/admin/sales-targets")
+async def admin_sales_targets(user=Depends(admin_only)):
+    """Admin-only: returns the pre-cached Lexington-radius contractor list.
+
+    Loaded from Mongo `sales_targets` collection if seeded; otherwise returns
+    the in-code seed unchanged. Non-admin callers receive 403 via admin_only.
+    """
+    docs = await db.sales_targets.find({}, {"_id": 0}).to_list(length=200)
+    if not docs:
+        return {"targets": KY_SALES_TARGETS_SEED, "source": "seed_constant"}
+    return {"targets": docs, "source": "mongo"}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN FINANCIAL BLOCKER — strip pricing/labor/overhead from ANY admin read
+# of another contractor's profile (Section 2.2 of Executive Spec).
+# ---------------------------------------------------------------------------
+FINANCIAL_FIELDS_TO_STRIP = (
+    "contractor_cost_matrix",
+    "labor_per_hour",
+    "profit_overhead_multipliers",
+    "onboarding_metrics",
+    "_encrypted",
+)
+
+
+@api.get("/admin/contractor/{contractor_id}/financial-config")
+async def admin_view_contractor_financial(contractor_id: str, user=Depends(admin_only)):
+    """When an admin reads another contractor's financial config, return `{}`.
+
+    This is the explicit "blocker" required by Executive Spec Section 2.2:
+    administrative profiles get a hard-empty response when probing financial
+    columns belonging to a contractor account.
+    """
+    target = await db.users.find_one({"id": contractor_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "Contractor not found.")
+    # Hard-empty — financial isolation by policy.
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# MATERIALS CONFIGURATOR — stored alongside encrypted cost matrix
+# ---------------------------------------------------------------------------
+class MaterialsConfigBody(BaseModel):
+    system: str
+    picks: Dict[str, Any] = {}
+    custom_text: Optional[str] = ""
+
+
+@api.get("/contractor/materials-config")
+async def get_materials_config(user=Depends(contractor_only)):
+    doc = await db.materials_config.find_one({"user_id": user["id"]}, {"_id": 0})
+    return doc or {"system": "asphalt_shingle_system", "picks": {}, "custom_text": ""}
+
+
+@api.put("/contractor/materials-config")
+async def put_materials_config(body: MaterialsConfigBody, user=Depends(contractor_only)):
+    payload = {
+        "user_id": user["id"],
+        "system": body.system,
+        "picks": body.picks or {},
+        "custom_text": body.custom_text or "",
+        "updated_at": now_iso(),
+    }
+    await db.materials_config.update_one(
+        {"user_id": user["id"]}, {"$set": payload}, upsert=True,
+    )
+    return {"ok": True, "system": payload["system"], "pick_count": len(payload["picks"])}
+
+
+# ---------------------------------------------------------------------------
 # APP wiring
 # ---------------------------------------------------------------------------
 

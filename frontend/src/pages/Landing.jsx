@@ -45,11 +45,11 @@ export default function Landing() {
               STRATEX™ is the world's first autonomous, solar-powered roofing recon platform — pairing radiometric thermal mapping with a multi-agent actuarial engine to deliver insurance-grade estimates without a human ever climbing a ladder.
             </p>
             <div className="mt-8 md:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 md:gap-4">
-              <Link to="/auth" data-testid="hero-launch-cta" className="btn-hud pulse-glow w-full sm:w-auto justify-center">
-                <Radar size={16} /> Sign In / Create Account
+              <Link to="/onboard" data-testid="hero-launch-cta" className="btn-hud pulse-glow w-full sm:w-auto justify-center">
+                <Radar size={16} /> Start ROI Calculator → Sign Up
               </Link>
               <Link to="/auth" data-testid="hero-projects-cta" className="btn-hud btn-hud-ghost w-full sm:w-auto justify-center">
-                <Shield size={16} /> Secure Portal
+                <Shield size={16} /> Returning User — Sign In
               </Link>
             </div>
             <div className="mt-10 md:mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 max-w-2xl">
@@ -165,8 +165,8 @@ export default function Landing() {
               Configure intake, run a caliper analysis, lock your pricing under 20/25 O&P, and authorize launch — all in under 5 minutes.
             </p>
             <div className="mt-8 flex justify-center">
-              <Link to="/auth" data-testid="cta-new-mission" className="btn-hud pulse-glow">
-                <ArrowRight size={16}/> Sign In to Dispatch
+              <Link to="/onboard" data-testid="cta-new-mission" className="btn-hud pulse-glow">
+                <ArrowRight size={16}/> Run ROI Calculator → Sign Up
               </Link>
             </div>
           </HudCard>
