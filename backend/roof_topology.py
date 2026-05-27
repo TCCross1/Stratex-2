@@ -351,65 +351,92 @@ def preset_dutch_gable(scale: float = 1.0) -> Tuple[List[Facet], List[Edge]]:
 
 
 def preset_stratex_demo(scale: float = 1.0) -> Tuple[List[Facet], List[Edge]]:
-    """STRATEX™ flagship demo topology — mirrors the reference Vision render: a compound
-    L-shaped hip volume with TWO secondary hip wings projecting at lower ridge heights
-    plus a chimney prism on the main body. ~3,200 sf of total roof, 14 facets.
+    """STRATEX™ flagship demo topology — mirrors the reference plan-view footprint
+    from the customer's IMG_2174 spec. FIVE distinct hip volumes + chimney:
 
-    Layout (xz plan, y up):
-        ┌────────── MAIN ──────────┐
-        │  16 × 10  (centre origin) │
-        │                           │
-        ├── chimney ─┘              │
-        │                           │
-        └───┬───────────────┬───────┘
-        FRONT-LEFT WING     RIGHT REAR WING
-        5×6  (-9,-7)         6×4  (+9,+6)
+      Plan view (xz, +z = north / back of house):
+
+          ┌────── REAR WING (north) ──┐
+          │       8 × 4               │
+          ├───────────────────────────┤
+          │                           │
+          │   MAIN BODY (central)     │
+          │   18 × 12                 │   ← LARGE central mass, east-west ridge
+          │                           │
+       ┌──┤                           │
+       │  │                           │
+       │L │                           │
+       │  │                           │
+       └──┴──┬────────────────────────┘
+        WEST │   FRONT ENTRY PORCH
+        BUMP │     (small hip)
+        OUT  │
+             └────────────────────────
+
+    Total: 5 hip masses + chimney = ~16-18 facets, ~2,400-3,000 sf depending on scale.
     """
-    # Main body — larger, taller ridge so it dominates the silhouette
+    # 1. MAIN BODY — largest mass, east-west long axis, dominates the silhouette
     main_facets, main_edges = _hip_box(
-        L=16 * scale, W=10 * scale, eave_overhang=1.5, pitch=9,
+        L=18 * scale, W=12 * scale, eave_overhang=1.5, pitch=8,
         centre_x=0, centre_z=0, facet_prefix="M",
         colors=("#FF8A60", "#FFB87A", "#7BB7C6", "#6FA3B5"),
     )
-    # Front-left wing — projects forward (−z) AND left (−x); lower pitch so its ridge sits
-    # under the main body's eave plane (creates a valley intersection visually)
-    fl_facets, fl_edges = _hip_box(
-        L=5 * scale, W=6 * scale, eave_overhang=1.0, pitch=7,
-        centre_x=-9 * scale, centre_z=-7 * scale, facet_prefix="W",
+
+    # 2. REAR WING — projects NORTH from the back of the main body, long & shallow
+    rw_facets, rw_edges = _hip_box(
+        L=8 * scale, W=4 * scale, eave_overhang=1.0, pitch=7,
+        centre_x=0, centre_z=8 * scale, facet_prefix="R",
         colors=("#FFD37A", "#A7C8D2", "#D9A06E", "#88A8B5"),
     )
-    # Right rear wing — projects right + back
-    rr_facets, rr_edges = _hip_box(
-        L=6 * scale, W=4 * scale, eave_overhang=1.0, pitch=7,
-        centre_x=9 * scale, centre_z=6 * scale, facet_prefix="K",
+
+    # 3. WEST BUMPOUT — small projection on the LEFT side (room/sunroom)
+    wb_facets, wb_edges = _hip_box(
+        L=3 * scale, W=6 * scale, eave_overhang=1.0, pitch=7,
+        centre_x=-10 * scale, centre_z=-1 * scale, facet_prefix="W",
         colors=("#FFB46E", "#9FBFC9", "#E0A878", "#7E9DAA"),
     )
 
-    facets = main_facets + fl_facets + rr_facets
-    edges = main_edges + fl_edges + rr_edges
+    # 4. FRONT-LEFT HIP — projects SOUTH-WEST (matches IMG_2174 front-corner mass)
+    fl_facets, fl_edges = _hip_box(
+        L=5 * scale, W=4 * scale, eave_overhang=1.0, pitch=7,
+        centre_x=-6 * scale, centre_z=-8 * scale, facet_prefix="F",
+        colors=("#FF9C70", "#B4D2DC", "#D9A878", "#7CA0B0"),
+    )
 
-    # Add 2 explicit valleys where the wings meet the main body — purely visual cue
-    edges.append(Edge(
-        (-7 * scale, 0, -4 * scale), (-7 * scale, 5 * scale, -1 * scale),
-        edge_length((-7 * scale, 0, -4 * scale), (-7 * scale, 5 * scale, -1 * scale)),
-        "valley",
-    ))
-    edges.append(Edge(
-        (7 * scale, 0, 4 * scale), (7 * scale, 5 * scale, 1 * scale),
-        edge_length((7 * scale, 0, 4 * scale), (7 * scale, 5 * scale, 1 * scale)),
-        "valley",
-    ))
+    # 5. FRONT ENTRY PORCH — smallest hip, sits at the very front-center (south)
+    pf_facets, pf_edges = _hip_box(
+        L=4 * scale, W=3 * scale, eave_overhang=0.8, pitch=6,
+        centre_x=4 * scale, centre_z=-8.5 * scale, facet_prefix="P",
+        colors=("#FFC084", "#A3C0CA", "#E5B68A", "#86A2AE"),
+    )
+
+    facets = main_facets + rw_facets + wb_facets + fl_facets + pf_facets
+    edges = main_edges + rw_edges + wb_edges + fl_edges + pf_edges
+
+    # Valley intersections where wings meet the main body — IRC §R905.2.8.3 valleys
+    # These are visual + classification cues; the renderer uses them for valley line color.
+    valleys = [
+        # rear wing meets main body
+        ((-4 * scale, 4 * scale, 6 * scale), (-4 * scale, 6 * scale, 6 * scale), "valley"),
+        ((4 * scale,  4 * scale, 6 * scale), (4 * scale,  6 * scale, 6 * scale), "valley"),
+        # front-left hip meets main body
+        ((-9 * scale, 0,         -6 * scale), (-7 * scale, 4 * scale, -4 * scale), "valley"),
+        # front entry porch meets main body
+        ((2 * scale,  0,         -7 * scale), (4 * scale,  3 * scale, -6 * scale), "valley"),
+        # west bumpout meets main body
+        ((-9 * scale, 0,          2 * scale), (-7 * scale, 4 * scale,  0),         "valley"),
+    ]
+    for a, b, cls in valleys:
+        edges.append(Edge(a, b, edge_length(a, b), cls))
 
     # Chimney prism — small upright box on the main roof's rear slope
-    cx, cz = 4.0 * scale, 1.5 * scale
+    cx, cz = 5.0 * scale, 2.0 * scale
     cw, cd, ch = 1.2 * scale, 1.2 * scale, 3.5 * scale
     base_y = 5.5 * scale  # sits on the main roof surface
-    # Bottom 4 verts of chimney rectangle (on roof plane)
     P1 = (cx - cw / 2, base_y, cz - cd / 2)
     P2 = (cx + cw / 2, base_y, cz - cd / 2)
     P3 = (cx + cw / 2, base_y, cz + cd / 2)
     P4 = (cx - cw / 2, base_y, cz + cd / 2)
-    # Top 4 verts
     T1 = (P1[0], base_y + ch, P1[2])
     T2 = (P2[0], base_y + ch, P2[2])
     T3 = (P3[0], base_y + ch, P3[2])
@@ -417,11 +444,11 @@ def preset_stratex_demo(scale: float = 1.0) -> Tuple[List[Facet], List[Edge]]:
     chimney_color = "#6FA3B5"
     cf = []
     for i, verts in enumerate([
-        [P1, P2, T2, T1],  # front
-        [P2, P3, T3, T2],  # right
-        [P3, P4, T4, T3],  # back
-        [P4, P1, T1, T4],  # left
-        [T1, T2, T3, T4],  # top cap
+        [P1, P2, T2, T1],
+        [P2, P3, T3, T2],
+        [P3, P4, T4, T3],
+        [P4, P1, T1, T4],
+        [T1, T2, T3, T4],
     ]):
         nrm = polygon_normal(verts)
         ap = polygon_area_3d(verts)
@@ -431,11 +458,10 @@ def preset_stratex_demo(scale: float = 1.0) -> Tuple[List[Facet], List[Edge]]:
             id=f"CH{i+1}", vertices=verts, normal=nrm,
             area_planar_sf=round(planar, 2),
             area_true_sf=round(ap, 2),
-            pitch=pitch_from_normal(nrm) if i == 4 else 90.0,  # chimney walls are vertical
+            pitch=pitch_from_normal(nrm) if i == 4 else 90.0,
             color_tag=chimney_color,
         ))
     facets.extend(cf)
-    # Chimney edges drawn as 'rake' (so they render in silver, distinguishing from roof edges)
     for a, b in [(P1, P2), (P2, P3), (P3, P4), (P4, P1),
                  (T1, T2), (T2, T3), (T3, T4), (T4, T1),
                  (P1, T1), (P2, T2), (P3, T3), (P4, T4)]:

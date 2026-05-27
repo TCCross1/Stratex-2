@@ -69,6 +69,18 @@ Every digital twin generation must pass 6 validation gates before render — cod
 - ✅ **PDF Expert Panel Certification block** — added to `_build_pdf()` in `server.py`. Every contractor PDF supplement now opens with a "STRATEX™ EXPERT PANEL CERTIFIED · 6/6 GATES · 100%" header followed by a 5-column table listing each gate's label / agent / rule ref / PASS-FAIL / message. Adjuster-ready trust signal.
 - ✅ **Job-detail validation card** — `<ValidationReport />` now renders directly below the 3D viewport on both Contractor JobDetail AND Operator JobDetail pages (using `roof_telemetry.validation` which is set on every Phase 2 data capture).
 
+## What's Been Implemented (2026-02-28 — v3.4.2 — Reference-Accurate Roof Shape)
+- ✅ **Rebuilt `preset_stratex_demo`** in `roof_topology.py` to match the user's IMG_2174 plan-view reference. The compound topology is now FIVE distinct hip masses + chimney instead of three:
+  1. **Main body** — 18 × 12 ft east-west long axis, pitch 8/12 — the dominant central mass
+  2. **Rear wing** — 8 × 4 ft projecting north from the back, pitch 7/12
+  3. **West bumpout** — 3 × 6 ft small protrusion on the left side, pitch 7/12
+  4. **Front-left hip** — 5 × 4 ft south-west corner projection, pitch 7/12
+  5. **Front entry porch** — 4 × 3 ft smallest hip at front-center, pitch 6/12
+  6. Chimney prism (1.2 × 1.2 × 3.5) on the main rear slope
+- ✅ Added 5 explicit valley edges where each wing intersects the main body (per IRC §R905.2.8.3) — makes the valley line classification render correctly in plasma-orange.
+- ✅ Topology stats: **25 facets · 61 edges · 670 sf footprint · 187 lf eave perimeter**. Validation gates still 6/6 PASS at 100% on the new shape.
+- ✅ Framing layer now traces all 5 mass footprints distinctly — you can read the architectural plan directly from the cyan-on-orange wireframe.
+
 ## What's Been Implemented (2026-02-28 — v3.4.0 — World-Class Polish Pass)
 - ✅ **Razor-sharp CAD aesthetic** — stripped post-processing bloom haze and canvas-level `shadowBlur` halos per user feedback ("study top CAD neon drawings"). All neon now comes from saturated 1–2 px strokes on near-black background. Minimal subtle bloom kept (strength 0.18, threshold 0.75) so only the brightest highlights catch a soft glint. Matches Jarvis-HUD / Autodesk Forma reference aesthetic.
 - ✅ **Texture rewrite v3** — every line is a single crisp stroke: 2 px course separators, 1.2 px tab cuts (shingle); 2.4 px seams + small bright dot rivets (metal); 2 px scallops + 1.2 px tile edges (slate). Anisotropy 8 for tack-sharp diagonal viewing.
