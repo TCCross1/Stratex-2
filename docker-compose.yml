@@ -1,0 +1,122 @@
+# =============================================================================
+# STRATEX™ / HYDRA Core™ — Root Compose
+# -----------------------------------------------------------------------------
+# Services:
+#   - mongo     : MongoDB 7 with persistent volume
+#   - backend   : FastAPI + HYDRA Core engine (nvidia-container-toolkit pre-wired)
+#   - frontend  : React 19 dev/preview server (CRA / yarn start by default)
+#
+# GPU pre-wiring (backend service):
+#   - runtime: nvidia                        ← honored when nvidia-container-toolkit installed
+#   - device reservations declared under deploy.resources.reservations.devices
+#   - HYDRA_COMPUTE_DEVICE=cuda forces the hardware mapper to pick CUDA; remove
+#     or set to `cpu`/`mps` for laptop/CI runs.
+#   - NVIDIA_VISIBLE_DEVICES=all surfaces every connected GPU to the container,
+#     enabling multi-GPU dispatch via HardwareProfile.supports_multi_gpu.
+#
+# Bring-up:
+#   GPU host:   docker compose up -d
+#   CPU host:   HYDRA_RUNTIME=cpu HYDRA_COMPUTE_DEVICE=cpu docker compose up -d
+# =============================================================================
+
+services:
+
+  # ------------------------------------------------------------------ MongoDB
+  mongo:
+    image: mongo:7
+    container_name: hydra-mongo
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--quiet"]
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - hydra-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ------------------------------------------------------------------ Backend
+  backend:
+    container_name: hydra-backend
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        HYDRA_RUNTIME: ${HYDRA_RUNTIME:-cuda}
+    image: stratex/hydra-backend:${HYDRA_RUNTIME:-cuda}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      # --- Mongo wiring -------------------------------------------------------
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-stratex}
+      # --- HYDRA hardware mapper ---------------------------------------------
+      HYDRA_RUNTIME: ${HYDRA_RUNTIME:-cuda}
+      HYDRA_COMPUTE_DEVICE: ${HYDRA_COMPUTE_DEVICE:-cuda}
+      # --- NVIDIA container toolkit pre-wiring -------------------------------
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      # --- App secrets / integrations (override via .env) --------------------
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      EMERGENT_LLM_KEY: ${EMERGENT_LLM_KEY:-}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+    # GPU runtime — requires nvidia-container-toolkit installed on the host.
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all          # all visible GPUs; override to int N for partial
+              capabilities: [gpu, compute, utility]
+    ports:
+      - "8001:8001"
+    networks:
+      - hydra-net
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail http://127.0.0.1:8001/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ----------------------------------------------------------------- Frontend
+  frontend:
+    container_name: hydra-frontend
+    restart: unless-stopped
+    image: node:20-bookworm-slim
+    working_dir: /app
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-http://localhost:8001}
+      WATCHPACK_POLLING: "true"          # reliable HMR inside container
+      CI: "false"
+    command: ["sh", "-lc", "corepack enable && yarn install --frozen-lockfile && yarn start"]
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - hydra-net
+
+# ============================================================================
+volumes:
+  mongo_data:
+  mongo_config:
+  backend_logs:
+  frontend_node_modules:
+
+networks:
+  hydra-net:
+    driver: bridge
