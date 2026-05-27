@@ -21,12 +21,14 @@ const STATUS_LABEL = {
   IN_FLIGHT: "Aerial Recon In Progress", DATA_CAPTURE_COMPLETE: "Capture Complete",
   PROPOSAL_READY: "Proposal Ready", AUDIT_APPROVED: "Audit Approved", SENT_TO_HOMEOWNER: "Sent",
   DRY_RUN_PENALTY: "Dry-Run Penalty",
+  RESCHEDULED_CONFIRMED: "Reschedule Confirmed",
 };
 const STATUS_COLOR = {
   PENDING_PHASE1: "text-teal", PHASE1_BLOCKED: "text-plasma",
   PENDING_FIELD_CAPTURE: "text-teal", IN_FLIGHT: "text-teal", DATA_CAPTURE_COMPLETE: "text-volt",
   PROPOSAL_READY: "text-teal", AUDIT_APPROVED: "text-volt", SENT_TO_HOMEOWNER: "text-muted-hud",
   DRY_RUN_PENALTY: "text-plasma",
+  RESCHEDULED_CONFIRMED: "text-volt",
 };
 
 // PHASE 1 — Digital Gatekeeping card

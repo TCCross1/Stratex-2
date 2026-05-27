@@ -25,6 +25,13 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v2.9.0 — 24h Reminder Background Sweep)
+- ✅ **🔔 24h reminder background scheduler** — `_reminder_24h_sweep_loop()` runs as an asyncio task started in `on_startup`. Every 15 min (configurable via `REMINDER_SWEEP_INTERVAL_S`) it scans for jobs with `scheduled_launch_at` in the 23–25h window (lead=24h ± 1h, configurable) AND `reminder_24h_sent_at` absent. Fires SMS (Twilio) + email (Resend) reminders to the homeowner, flips `status: PHASE1_BLOCKED → RESCHEDULED_CONFIRMED`, stamps `reminder_24h_sent_at` for idempotency, records audit event `REMINDER_24H_SENT`. Cleanly cancelled in `on_shutdown`.
+- ✅ **🛠️ Manual trigger** — `POST /api/contractor/run-reminder-sweep` returns `{swept_at, sent, errors}` for ops/QA without waiting for the 15-min tick.
+- ✅ Frontend: new `RESCHEDULED_CONFIRMED` status added to `STATUS_LABEL` ("Reschedule Confirmed", volt-green).
+- ✅ Re-running Phase 1 from `RESCHEDULED_CONFIRMED` allowed (the auto re-check the morning of the scheduled scan).
+- ✅ E2E smoke: created a target=now+24h job → manual sweep returned `sent:1` → job status flipped → audit shows full 5-event chain (`PHASE1_FAIL → PHASE1_FAIL_EMAIL_SENT → HOMEOWNER_DELAY_NOTIFIED → HOMEOWNER_SCHEDULED_VIA_SMS → REMINDER_24H_SENT`). Re-sweep returned `sent:0` (idempotent ✓).
+
 ## What's Been Implemented (2026-02-28 — v2.8.0 — Launch Countdown Badge)
 - ✅ **⏱️ Live launch-countdown badge** on the Pipeline rows + Job Detail header. New component `/components/LaunchCountdownBadge.jsx` ticks every 30s, reads `job.scheduled_launch_at`. Four tiers with distinct color + pulse behavior:
   - `future` (≥7 days) — cyan, no pulse, "LAUNCHES IN 12D"

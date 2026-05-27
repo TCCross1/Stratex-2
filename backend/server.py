@@ -1102,7 +1102,7 @@ async def run_phase1(job_id: str, user=Depends(contractor_only)):
     job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
     if not job:
         raise HTTPException(404, "Job not found")
-    if job["status"] not in ("PENDING_PHASE1", "PENDING_FIELD_CAPTURE", "PHASE1_BLOCKED"):
+    if job["status"] not in ("PENDING_PHASE1", "PENDING_FIELD_CAPTURE", "PHASE1_BLOCKED", "RESCHEDULED_CONFIRMED"):
         raise HTTPException(400, f"Cannot re-run Phase 1 from status {job['status']}")
 
     results = await _astm_phase1(job)
@@ -1414,6 +1414,10 @@ async def on_startup():
     await seed("SEED_CONTRACTOR_EMAIL", "SEED_CONTRACTOR_PASSWORD", "contractor", "Anthony Cross", "Apex Roofing Co.")
     await seed("SEED_OPERATOR_EMAIL", "SEED_OPERATOR_PASSWORD", "operator", "Ramon Field", "STRATEX Fleet Ops")
 
+    # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
+    global _reminder_task
+    _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
+
     # write test_credentials.md
     creds_path = Path("/app/memory/test_credentials.md")
     creds_path.parent.mkdir(exist_ok=True)
@@ -1586,6 +1590,139 @@ async def _send_email(to: str, subject: str, html: str, attachments: Optional[Li
     if attachments:
         params["attachments"] = attachments
     return await asyncio.to_thread(_resend.Emails.send, params)
+
+
+def _reminder_24h_sms_body(job: Dict[str, Any], contractor_name: str) -> str:
+    homeowner = (job.get("homeowner_name") or "there").split()[0]
+    label = job.get("scheduled_window_label") or job.get("scheduled_launch_at") or "tomorrow"
+    return (
+        f"Hi {homeowner}, {contractor_name} here — friendly reminder that our drone roof scan "
+        f"is scheduled for {label}. No action needed on your end; we operate from the curb. "
+        f"Reply STOP to cancel. — STRATEX"
+    )
+
+
+# ----------- 24h reminder background sweep -----------
+# Module-level handle so we can cancel on shutdown
+_reminder_task: Optional[asyncio.Task] = None
+
+# Configurable cadence (override via env for tests)
+REMINDER_SWEEP_INTERVAL_S = int(os.environ.get("REMINDER_SWEEP_INTERVAL_S", "900"))   # 15 min
+REMINDER_LEAD_HOURS = float(os.environ.get("REMINDER_LEAD_HOURS", "24"))               # send 24h before
+REMINDER_WINDOW_HOURS = float(os.environ.get("REMINDER_WINDOW_HOURS", "1.0"))          # ± 1h window
+
+
+def _parse_scheduled_local(iso_or_label: str) -> Optional[datetime]:
+    """The open-meteo ISO comes back as local-zone naïve (e.g. '2026-05-27T21:00').
+    Treat that as wall-clock local time of the SERVER for simplicity; production should
+    persist the IANA tz from the API response."""
+    if not iso_or_label:
+        return None
+    try:
+        s = iso_or_label.replace(" · ", "T") if "T" not in iso_or_label and "·" in iso_or_label else iso_or_label
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+async def _reminder_24h_sweep_once() -> Dict[str, Any]:
+    """Find PHASE1_BLOCKED jobs whose scheduled_launch_at is ~24h away and the homeowner
+    hasn't been reminded yet. Send the SMS + email reminder, flip status, record audit."""
+    now = datetime.now(timezone.utc).astimezone()
+    lead = REMINDER_LEAD_HOURS
+    half = REMINDER_WINDOW_HOURS
+    sent = 0
+    errors: List[str] = []
+    # Pull a bounded slice — we don't expect more than a few hundred locked-in jobs at a time
+    cursor = db.jobs.find(
+        {
+            "scheduled_launch_at": {"$exists": True, "$ne": None},
+            "reminder_24h_sent_at": {"$exists": False},
+            "status": {"$in": ["PHASE1_BLOCKED", "RESCHEDULED_CONFIRMED"]},
+        },
+        {"_id": 0},
+    )
+    async for job in cursor:
+        try:
+            target = _parse_scheduled_local(job.get("scheduled_launch_at") or "")
+            if not target:
+                continue
+            # Compare as naive local-time deltas
+            delta_h = (target - now.replace(tzinfo=target.tzinfo) if target.tzinfo else target - now.replace(tzinfo=None)).total_seconds() / 3600.0
+            if not (lead - half <= delta_h <= lead + half):
+                continue
+
+            # Pull the contractor's display name
+            user = await db.users.find_one({"id": job.get("contractor_id")}, {"_id": 0}) or {}
+            contractor_name = user.get("company_name") or user.get("legal_name") or "your roofing contractor"
+
+            sms_result: Dict[str, Any] = {"skipped": True}
+            email_result: Dict[str, Any] = {"skipped": True}
+            phone = (job.get("delay_notified_sms") or job.get("homeowner_phone") or "").strip()
+            email = (job.get("delay_notified_to") or job.get("homeowner_email") or "").strip()
+
+            if phone:
+                body = _reminder_24h_sms_body(job, contractor_name)
+                sms_result = await _send_sms(phone, body)
+            if email:
+                html = (
+                    f"<table cellpadding='0' cellspacing='0' style='background:#FFFFFF;color:#0F172A;"
+                    f"font-family:Helvetica,Arial,sans-serif;width:100%;max-width:600px;padding:24px;"
+                    f"border:1px solid #E2E8F0;border-radius:6px;'><tr><td>"
+                    f"<h2 style='margin:0 0 8px;font-size:18px;color:#0F172A;'>Your roof inspection is tomorrow</h2>"
+                    f"<p style='color:#475569;font-size:13px;line-height:1.6;'>Hi {(job.get('homeowner_name') or 'there').split()[0]}, "
+                    f"this is a quick reminder that {contractor_name} will be performing your drone roof scan at <b>{job.get('scheduled_window_label') or job.get('scheduled_launch_at')}</b>.</p>"
+                    f"<p style='color:#475569;font-size:13px;line-height:1.6;'>No action needed — our drone operates from the public right-of-way and you don't need to be home.</p>"
+                    f"<div style='margin-top:18px;padding-top:12px;border-top:1px solid #E2E8F0;color:#94A3B8;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;'>Powered by STRATEX&trade;</div>"
+                    f"</td></tr></table>"
+                )
+                email_result = await _send_email(email, "Reminder: Your roof scan is tomorrow · STRATEX", html)
+
+            update = {
+                "reminder_24h_sent_at": now_iso(),
+                "status": "RESCHEDULED_CONFIRMED",
+            }
+            await db.jobs.update_one({"id": job["id"]}, {"$set": update})
+            await _record_audit(job["id"], job.get("contractor_id", "system"), "REMINDER_24H_SENT", {
+                "to_phone": phone or None,
+                "to_email": email or None,
+                "sms_mocked": sms_result.get("mocked", False) if not sms_result.get("skipped") else None,
+                "email_mocked": email_result.get("mocked", False) if not email_result.get("skipped") else None,
+                "target": job.get("scheduled_launch_at"),
+            })
+            sent += 1
+        except Exception as e:
+            errors.append(f"{job.get('id','?')}: {e}")
+            logger.warning("reminder sweep failed for job %s: %s", job.get("id"), e)
+
+    return {"swept_at": now_iso(), "sent": sent, "errors": errors}
+
+
+async def _reminder_24h_sweep_loop():
+    """Long-running background loop. Sleeps REMINDER_SWEEP_INTERVAL_S between sweeps. Survives errors."""
+    logger.info("reminder 24h sweep loop started (interval=%ss, lead=%sh ± %sh)",
+                REMINDER_SWEEP_INTERVAL_S, REMINDER_LEAD_HOURS, REMINDER_WINDOW_HOURS)
+    while True:
+        try:
+            result = await _reminder_24h_sweep_once()
+            if result["sent"] > 0 or result["errors"]:
+                logger.info("reminder sweep: sent=%s errors=%s", result["sent"], result["errors"])
+        except asyncio.CancelledError:
+            logger.info("reminder sweep loop cancelled")
+            raise
+        except Exception as e:
+            logger.warning("reminder sweep loop iteration failed: %s", e)
+        try:
+            await asyncio.sleep(REMINDER_SWEEP_INTERVAL_S)
+        except asyncio.CancelledError:
+            raise
+
+
+@api.post("/contractor/run-reminder-sweep")
+async def manual_reminder_sweep(user=Depends(contractor_only)):
+    """Manual trigger for the 24h reminder sweep — handy for ops/testing.
+    Returns the same summary as one background sweep iteration."""
+    return await _reminder_24h_sweep_once()
 
 
 def _proposal_email_html(job: Dict[str, Any]) -> str:
@@ -2054,4 +2191,11 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def shutdown():
+    global _reminder_task
+    if _reminder_task and not _reminder_task.done():
+        _reminder_task.cancel()
+        try:
+            await _reminder_task
+        except (asyncio.CancelledError, Exception):
+            pass
     client.close()
