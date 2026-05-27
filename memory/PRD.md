@@ -57,6 +57,35 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 ### Quality Gate (codified in expert_panel_review.md):
 Every digital twin generation must pass 6 validation gates before render — codifies the "no wrong layers" rule the user demanded so the visual replication stays in tolerance of actual RTK-calibrated photogrammetry (target: ±1 cm).
 
+## What's Been Implemented (2026-02-28 — v3.4.0 — World-Class Polish Pass)
+- ✅ **Razor-sharp CAD aesthetic** — stripped post-processing bloom haze and canvas-level `shadowBlur` halos per user feedback ("study top CAD neon drawings"). All neon now comes from saturated 1–2 px strokes on near-black background. Minimal subtle bloom kept (strength 0.18, threshold 0.75) so only the brightest highlights catch a soft glint. Matches Jarvis-HUD / Autodesk Forma reference aesthetic.
+- ✅ **Texture rewrite v3** — every line is a single crisp stroke: 2 px course separators, 1.2 px tab cuts (shingle); 2.4 px seams + small bright dot rivets (metal); 2 px scallops + 1.2 px tile edges (slate). Anisotropy 8 for tack-sharp diagonal viewing.
+- ✅ **Backend: `validate_topology()` multi-agent quality gate** — codified the 4-agent expert panel into 6 deterministic pre-render gates:
+  1. `slope_basis` (CAD Designer / C1)
+  2. `gutter_coverage` (Gutter Contractor / G1)
+  3. `rafter_count` (Framing Carpenter / F2 — IRC §R802.4 ±20%)
+  4. `sub_fascia` (Framing Carpenter / F4)
+  5. `material_direction` (Roofing Contractor / R5)
+  6. `edge_hierarchy` (CAD Designer / C2)
+  - Result attached to `topology["validation"]` on every `build_topology()` call.
+  - Returned by `/api/public/demo-topology` AND embedded in `roof_telemetry` on every contractor/operator job after Phase 2 data capture.
+- ✅ **Frontend: `<ValidationReport />` component** — clean 6-row report card with agent attribution + rule ref. Rendered on Landing page below the demo mesh AND at the top of the `/_neon-preview` gallery. Insurance-adjuster-ready proof of quality.
+- ✅ **Caliper Photo OCR** — new endpoint `POST /api/contractor/caliper-ocr`:
+  - Accepts `{image_base64, mime_type}` from a phone camera capture
+  - Pipes through **Gemini 3 Flash Preview** via emergentintegrations (Emergent LLM Key) with a strict JSON-only prompt
+  - Returns `{thickness_mm, thickness_in, confidence, fallback}`; gracefully falls back to manual entry if vision fails
+  - Audit-logged for every call
+- ✅ **Frontend: `<CaliperUpload />` component** — phone-capture `<input capture="environment">` button on the Materials Config page; auto-populates `measured_thickness_mm` on success.
+- ✅ **MaterialsConfig.measured_thickness_mm** — new persisted field; GET endpoint merges defaults into legacy records so existing contractor docs receive the new field automatically.
+- ✅ Backend tested: **8/8 backend tests pass** (iteration_14.json) — validation gates carry correct keys + 100% pass on demo, caliper OCR auth-gated + gracefully falls back without 500, `measured_thickness_mm` round-trips through PUT→GET.
+
+### Architecture Files Added
+- `/app/memory/expert_panel_review.md` — the ratified rule book
+- `/app/frontend/src/components/ValidationReport.jsx`
+- `/app/frontend/src/components/CaliperUpload.jsx`
+- `/app/frontend/src/pages/NeonLayerPreview.jsx` (internal `/_neon-preview` gallery)
+- `/app/image_testing.md` — caliper image test rules
+
 
 
 

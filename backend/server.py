@@ -378,6 +378,10 @@ async def get_materials(user=Depends(contractor_only)):
             logger.error("Failed to decrypt materials for %s: %s", user["id"], e)
     doc.pop("_encrypted", None)
     doc.pop("user_id", None)
+    # Merge MaterialsConfig defaults so legacy records expose any new fields
+    defaults = MaterialsConfig().model_dump()
+    for k, v in defaults.items():
+        doc.setdefault(k, v)
     return doc
 
 
@@ -739,6 +743,9 @@ async def operator_launch(job_id: str, preflight: PreflightStatus, user=Depends(
                 "hips_lf": topo["totals"]["hips_lf"], "eaves_lf": topo["totals"]["eaves_lf"],
                 "rakes_lf": topo["totals"]["rakes_lf"],
                 "pitch": f"{topo['primary_pitch']}/12", "pitch_num": int(round(topo["primary_pitch"])) or 8,
+                "framing": topo.get("framing"),
+                "gutters": topo.get("gutters"),
+                "validation": topo.get("validation"),
             },
             "anomalies": anomalies,
             "mission": mission,
