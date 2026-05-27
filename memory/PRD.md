@@ -38,16 +38,17 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 - ✅ **UI**: 4-button radio group + visual divider + persistent gutters secondary toggle on both `ContractorPortal.jsx` and `Landing.jsx`. `aria-pressed` set correctly. Existing data-testids preserved (`layer-toggle-framing/shingle/metal/slate/gutters`).
 - ✅ Visually verified all 4 states + gutter toggle via screenshot cycle on the demo job.
 
-## What's Been Implemented (2026-02-28 — v3.1.1 — Neon Layer Palette)
-- ✅ **Each visibility layer is now a distinct neon color** per user request "All layers should be neon on their own distinguishable colors":
-  - **Shingle** → Neon Magenta `#ff1ec8` (texture + emissive @ 0.75)
-  - **Metal**   → Neon Amber/Gold `#ffb300` (texture + emissive @ 0.70, metalness 0.90)
-  - **Slate**   → Neon Violet `#9d3cff` (texture + emissive @ 0.65)
-  - **Framing** → Neon Green `#00ff66` (unchanged — already neon)
-  - **Gutters** → Neon Cyan  `#00f0ff` (unchanged — already neon)
-- ✅ Procedural CanvasTextures repainted: shingle tabs in magenta/violet gradient w/ glowing seams, metal seams in gold w/ bright raised highlights, slate scallops in violet/indigo w/ lavender edge highlights.
-- ✅ Constants `NEON_MAGENTA`, `NEON_AMBER`, `NEON_VIOLET` added at top of `RoofModel3D.jsx` for easy reference.
-- ✅ Visually verified on Landing `/` (shingle neon magenta with cyan gutter strip clearly distinct at the eave).
+## What's Been Implemented (2026-02-28 — v3.2.0 — Blueprint Engineering Aesthetic)
+- ✅ **User feedback applied**: undid the solid neon color wash. Each finish layer now has a DARK INTERIOR FILL with only the architectural DETAIL LINES drawn in neon, so the material reads from its pattern:
+  - **Asphalt 3-tab Shingle** → near-black interior + neon **BLUE** course separators + 3 vertical tab cuts per shingle (staggered course offset)
+  - **Standing-seam Metal**  → near-black interior + neon **RED** vertical seams + bright rivet dot pattern along each seam
+  - **Slate**                → near-black interior + neon **VIOLET** scalloped tile outlines + lavender top-edge highlights
+- ✅ **Framing wireframe** repainted to neon **YELLOW** with variable thickness: every 3rd rafter is a heavier tube (radius 0.085 vs 0.045), sub-fascia rendered as heavy yellow tubes along each eave.
+- ✅ **Gutter system** repainted to neon **ORANGE** — thicker tube (r=0.32), bright orange downspouts with torus splash elbows at ground, bright hot-amber hanger studs every ~2 ft.
+- ✅ **Per-facet perimeter outline** now uses each layer's accent color (cyan-blue / red / violet) with an additive feathered second pass for soft glow halo.
+- ✅ **High-detail line work**: bold ctx.shadowBlur halos around every seam/cut/scallop edge in canvas textures, plus 4–6 px BlackTriangle shadows under glow lines for that lifted/3D look.
+- ✅ Visually verified on `/_neon-preview` — Shingle reads as asphalt 3-tab, Metal reads as standing-seam-with-rivets, Slate reads as scallop tiles, Framing reads as yellow trusses, gutters glow orange.
+
 
 
 ## What's Been Implemented (2026-02-28 — v3.0.1 — Landing Page Demo Mesh Uplift)

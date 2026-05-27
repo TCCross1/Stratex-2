@@ -11,6 +11,7 @@ import { ContractorJobs, NewJob, JobDetail, MaterialsConfig } from "@/pages/Cont
 import { OperatorBoard, OperatorJobDetail } from "@/pages/OperatorTerminal";
 import FleetBoard from "@/pages/FleetBoard";
 import Pricing, { BillingSuccess } from "@/pages/Pricing";
+import NeonLayerPreview from "@/pages/NeonLayerPreview";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ function AppShell() {
       {!hideNav && <Nav role={user?.role}/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
+        <Route path="/_neon-preview" element={<NeonLayerPreview/>}/>
         <Route path="/auth" element={<AuthPage/>}/>
         <Route path="/nda" element={<Protected><NDAPage/></Protected>}/>
 

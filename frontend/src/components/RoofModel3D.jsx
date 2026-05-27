@@ -20,11 +20,14 @@ const SAND    = 0xc99a5e;
 const STEEL   = 0x8fb8c6;
 const SILVER  = 0xc7d4dd;
 const BG      = 0x0b0f19;
-const MATRIX   = 0x00ff66;    // framing layer — neon green
-const ELECTRIC = 0x00f0ff;    // gutter layer — neon cyan
-const NEON_MAGENTA = 0xff1ec8; // shingle layer — neon magenta
-const NEON_AMBER   = 0xffb300; // metal layer   — neon amber/gold
-const NEON_VIOLET  = 0x9d3cff; // slate layer   — neon violet
+// World-class neon palette — per user spec
+const NEON_BLUE    = 0x1ea7ff;  // SHINGLE base
+const NEON_RED     = 0xff2d4a;  // METAL base
+const NEON_VIOLET  = 0xc77dff;  // SLATE base (brighter)
+const NEON_YELLOW  = 0xffea00;  // FRAMING wireframe
+const NEON_ORANGE  = 0xff7a00;  // GUTTER system
+const MATRIX       = NEON_YELLOW;   // back-compat alias
+const ELECTRIC     = NEON_ORANGE;   // back-compat alias
 
 const EDGE_COLOR = {
   ridge:  TEAL,
@@ -120,100 +123,164 @@ function blueprintTex(tintHex) {
 // Each generator returns a CanvasTexture sized 256x256 for tiled mapping on facets.
 
 function makeShingleTexture() {
-  // NEON MAGENTA — staggered architectural shingle tabs glowing on near-black ground
-  const size = 256;
+  // ASPHALT 3-TAB SHINGLE — dark base, neon BLUE detail lines only.
+  // You read the material from the staggered 3-tab pattern + horizontal courses.
+  const size = 512;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#1a0414"; ctx.fillRect(0, 0, size, size);
-  const rowH = size / 8;
-  const tabW = size / 4;
-  for (let r = 0; r < 8; r++) {
-    const offset = (r % 2) * (tabW / 2);
-    for (let cIdx = -1; cIdx <= 4; cIdx++) {
-      const x = cIdx * tabW + offset;
-      const y = r * rowH;
-      const grad = ctx.createLinearGradient(x, y, x, y + rowH);
-      grad.addColorStop(0,   "#ff5fd8");
-      grad.addColorStop(0.55,"#ff1ec8");
-      grad.addColorStop(1,   "#7a0760");
-      ctx.fillStyle = grad;
-      ctx.fillRect(x + 1, y + 1, tabW - 2, rowH - 2);
-      // Neon vertical seam glow
-      ctx.strokeStyle = "rgba(255,120,225,0.85)";
+  // Dark interior fill with a hint of granular texture
+  ctx.fillStyle = "#05080d"; ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 1400; i++) {
+    const x = Math.random() * size, y = Math.random() * size;
+    ctx.fillStyle = `rgba(40,70,110,${0.04 + Math.random() * 0.08})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+  const rowH = size / 10;       // 10 courses
+  const shingleW = size / 4;    // each "shingle" piece spans 4 across, contains 3 tabs
+  const tabW = shingleW / 3;    // 3 tabs per shingle = standard 3-tab asphalt
+  for (let r = 0; r < 10; r++) {
+    const offset = (r % 2) * (shingleW / 2);
+    const y = r * rowH;
+    // BOLD horizontal course shadow + glowing cyan top edge of next course
+    ctx.strokeStyle = "#0c1626";
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(0, y + rowH); ctx.lineTo(size, y + rowH); ctx.stroke();
+    // Glow line ABOVE the shadow — gives the "lifted" tab feel
+    ctx.strokeStyle = "#5fc8ff";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "#1ea7ff";
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.moveTo(0, y + rowH - 3); ctx.lineTo(size, y + rowH - 3); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Tab dividers — 3 short cuts per shingle (only top ~55% of row)
+    for (let cIdx = -1; cIdx <= 5; cIdx++) {
+      const sx = cIdx * shingleW + offset;
+      for (let t = 1; t < 3; t++) {
+        const cutX = sx + t * tabW;
+        ctx.strokeStyle = "#1ea7ff";
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = "#5fc8ff";
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.moveTo(cutX, y + rowH * 0.45);
+        ctx.lineTo(cutX, y + rowH - 2);
+        ctx.stroke();
+      }
+      // Shingle-piece divider (full vertical between groups of 3 tabs)
+      ctx.strokeStyle = "#3ab3ff";
       ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(x + tabW / 2, y); ctx.lineTo(x + tabW / 2, y + rowH); ctx.stroke();
-      // Dark row separator
-      ctx.strokeStyle = "rgba(0,0,0,0.75)";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(x, y + rowH); ctx.lineTo(x + tabW, y + rowH); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx, y + rowH * 0.15);
+      ctx.lineTo(sx, y + rowH - 2);
+      ctx.stroke();
     }
+    ctx.shadowBlur = 0;
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 4);
+  tex.repeat.set(5, 5);
+  tex.anisotropy = 4;
   return tex;
 }
 
 function makeMetalTexture() {
-  // NEON AMBER/GOLD — vertical standing-seam panels with hot edge glow
-  const size = 256;
+  // STANDING-SEAM METAL — dark base, neon RED seam lines + rivet dots only.
+  const size = 512;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
+  // Dark interior fill w/ subtle brushed grain
+  ctx.fillStyle = "#08030a"; ctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 2) {
+    ctx.fillStyle = `rgba(60,15,25,${0.08 + Math.random() * 0.05})`;
+    ctx.fillRect(0, y, size, 1);
+  }
   const panelW = size / 6;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i <= 6; i++) {
     const x = i * panelW;
-    const grad = ctx.createLinearGradient(x, 0, x + panelW, 0);
-    grad.addColorStop(0,   "#3a2105");
-    grad.addColorStop(0.5, "#ffb300");
-    grad.addColorStop(1,   "#3a2105");
-    ctx.fillStyle = grad; ctx.fillRect(x, 0, panelW, size);
-    // Bright raised seam
-    ctx.fillStyle = "#fff0a8";
-    ctx.fillRect(x + panelW - 2, 0, 2, size);
-    ctx.fillStyle = "rgba(255,220,120,0.65)";
-    ctx.fillRect(x + panelW - 4, 0, 1, size);
+    // BOLD raised seam — black shadow + neon red core + outer halo
+    ctx.shadowColor = "#ff2d4a";
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = "#ff2d4a";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Inner hot core on the seam
+    ctx.strokeStyle = "#ffd0d4";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke();
+    // Rivet dots along the seam every ~30px — hot halo + bright core
+    for (let y = 14; y < size; y += 30) {
+      ctx.fillStyle = "rgba(255,60,90,0.7)";
+      ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff5f6";
+      ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Faint horizontal trim line every 1/3 of texture to suggest panel splice
+  ctx.strokeStyle = "rgba(255,80,110,0.35)";
+  ctx.lineWidth = 1;
+  for (let y = size / 3; y < size; y += size / 3) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(size, y); ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(3, 3);
+  tex.repeat.set(4, 4);
+  tex.anisotropy = 4;
   return tex;
 }
 
 function makeSlateTexture() {
-  // NEON VIOLET — staggered slate tiles glowing on deep indigo ground
-  const size = 256;
+  // SLATE TILES — dark base, neon VIOLET scalloped outlines only.
+  const size = 512;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#10041f"; ctx.fillRect(0, 0, size, size);
-  const rowH = size / 10;
+  // Dark interior fill w/ violet noise
+  ctx.fillStyle = "#06031a"; ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 1800; i++) {
+    const x = Math.random() * size, y = Math.random() * size;
+    ctx.fillStyle = `rgba(120,70,200,${0.04 + Math.random() * 0.08})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+  const rowH = size / 12;
   const tileW = size / 6;
-  for (let r = 0; r < 12; r++) {
+  for (let r = 0; r < 14; r++) {
     const yo = r * rowH;
     const offset = (r % 2) * (tileW / 2);
-    for (let cIdx = -1; cIdx <= 6; cIdx++) {
+    for (let cIdx = -1; cIdx <= 7; cIdx++) {
       const x = cIdx * tileW + offset;
-      const wobble = Math.sin(r * 1.7 + cIdx * 1.3) * 18;
-      const rC = 130 + Math.floor(wobble);
-      const gC = 50  + Math.floor(wobble * 0.5);
-      const bC = 240 + Math.floor(wobble * 0.6);
-      ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
+      // Neon violet scalloped outline — TOP scallop is bright (lit edge)
+      ctx.shadowColor = "#c77dff";
+      ctx.shadowBlur = 7;
+      ctx.strokeStyle = "#e8c8ff";
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(x + tileW / 2, yo);
+      ctx.moveTo(x, yo + rowH * 0.45);
+      ctx.lineTo(x + tileW / 2, yo);
       ctx.lineTo(x + tileW, yo + rowH * 0.45);
-      ctx.lineTo(x + tileW, yo + rowH);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Vertical tile edges in mid violet
+      ctx.strokeStyle = "rgba(199,125,255,0.85)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, yo + rowH * 0.45);
       ctx.lineTo(x, yo + rowH);
-      ctx.lineTo(x, yo + rowH * 0.45);
-      ctx.closePath();
-      ctx.fill();
-      // Bright violet edge highlight
-      ctx.strokeStyle = "rgba(220,160,255,0.75)";
-      ctx.lineWidth = 1.1;
+      ctx.moveTo(x + tileW, yo + rowH * 0.45);
+      ctx.lineTo(x + tileW, yo + rowH);
+      ctx.stroke();
+      // Bottom seam in dark
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, yo + rowH);
+      ctx.lineTo(x + tileW, yo + rowH);
       ctx.stroke();
     }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(3, 3);
+  tex.repeat.set(4, 4);
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -254,11 +321,13 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   }
   g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
-  // Per-finish neon material: distinct hue, strong emissive glow.
+  // Blueprint-engineering aesthetic: DARK interior fill, neon detail lines self-illuminate.
+  // baseColor stays near-black so the dark canvas of each texture remains dark;
+  // emissiveMap (same texture) lifts ONLY the painted line work to neon glow.
   const finishConfig = {
-    shingle: { tex: finishTex("shingle"), baseColor: NEON_MAGENTA, emissive: NEON_MAGENTA, metalness: 0.15, roughness: 0.55, opacity: 0.96, emissiveIntensity: 0.75 },
-    metal:   { tex: finishTex("metal"),   baseColor: NEON_AMBER,   emissive: NEON_AMBER,   metalness: 0.90, roughness: 0.20, opacity: 0.97, emissiveIntensity: 0.70 },
-    slate:   { tex: finishTex("slate"),   baseColor: NEON_VIOLET,  emissive: NEON_VIOLET,  metalness: 0.30, roughness: 0.55, opacity: 0.95, emissiveIntensity: 0.65 },
+    shingle: { tex: finishTex("shingle"), baseColor: 0x0a1322, emissive: 0xffffff, accentHex: NEON_BLUE,   metalness: 0.30, roughness: 0.50, opacity: 0.99, emissiveIntensity: 1.45 },
+    metal:   { tex: finishTex("metal"),   baseColor: 0x14060a, emissive: 0xffffff, accentHex: NEON_RED,    metalness: 0.85, roughness: 0.28, opacity: 0.99, emissiveIntensity: 1.55 },
+    slate:   { tex: finishTex("slate"),   baseColor: 0x0c0524, emissive: 0xffffff, accentHex: NEON_VIOLET, metalness: 0.30, roughness: 0.55, opacity: 0.99, emissiveIntensity: 1.35 },
   };
   const cfg = finishConfig[finishKind] || finishConfig.shingle;
   const mat = new THREE.MeshStandardMaterial({
@@ -271,16 +340,25 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
     side: THREE.DoubleSide,
     emissive: new THREE.Color(cfg.emissive),
     emissiveIntensity: cfg.emissiveIntensity,
+    emissiveMap: cfg.tex,
   });
   const mesh = new THREE.Mesh(g, mat);
 
-  // soft outline highlight — orange perimeter (like the reference frames)
-  const wf = new THREE.LineSegments(
-    new THREE.EdgesGeometry(g, 1),
-    new THREE.LineBasicMaterial({ color: ORANGE, transparent: true, opacity: 0.65 }),
+  // Bright neon perimeter outline in the layer's accent color — variable thickness
+  // simulated via two stacked LineSegments (inner thin + outer wider feathered glow).
+  const edgeGeo = new THREE.EdgesGeometry(g, 1);
+  const accent = new THREE.Color(cfg.accentHex);
+  const wfInner = new THREE.LineSegments(
+    edgeGeo,
+    new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.95 }),
   );
+  const wfGlow = new THREE.LineSegments(
+    edgeGeo,
+    new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  wfGlow.scale.setScalar(1.004);
   const group = new THREE.Group();
-  group.add(mesh); group.add(wf);
+  group.add(mesh); group.add(wfInner); group.add(wfGlow);
   group.userData.facet = facet;
   group.userData.finishKind = finishKind;
   return group;
@@ -461,62 +539,108 @@ export default function RoofModel3D({
       const g = buildAnomalyPatch(a, f); scene.add(g); return g;
     }).filter(Boolean);
 
-    // -------- FRAMING LAYER (neon-green matrix wireframe) --------
+    // -------- FRAMING LAYER — NEON YELLOW wireframe, variable line thickness --------
     const framingGroup = new THREE.Group();
     framingGroup.visible = resolvedPrimary === "framing";
     const tele = telemetry || {};
     const framing = tele.framing || {};
-    // Rafters
-    (framing.rafters || []).forEach((r) => {
-      const geom = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(...r.a), new THREE.Vector3(...r.b),
-      ]);
-      const mat = new THREE.LineBasicMaterial({ color: MATRIX, transparent: true, opacity: 0.78 });
-      framingGroup.add(new THREE.Line(geom, mat));
+    const yellowCore  = new THREE.Color(NEON_YELLOW);
+    const yellowGlow  = new THREE.Color(0xfff79a);
+    // Major rafters: render as thin tubes for true thickness (THREE LineWidth is unreliable in WebGL)
+    (framing.rafters || []).forEach((r, idx) => {
+      const a = new THREE.Vector3(...r.a);
+      const b = new THREE.Vector3(...r.b);
+      const path = new THREE.LineCurve3(a, b);
+      // Every 3rd rafter is a heavier load-bearing member → thicker tube
+      const heavy = idx % 3 === 0;
+      const radius = heavy ? 0.085 : 0.045;
+      const tube = new THREE.TubeGeometry(path, 1, radius, 6, false);
+      const mat = new THREE.MeshStandardMaterial({
+        color: yellowCore, emissive: yellowCore,
+        emissiveIntensity: heavy ? 0.95 : 0.75,
+        metalness: 0.3, roughness: 0.4,
+        transparent: true, opacity: 0.95,
+      });
+      framingGroup.add(new THREE.Mesh(tube, mat));
+      // Additive feathered glow line over the tube
+      const glowGeom = new THREE.BufferGeometry().setFromPoints([a, b]);
+      framingGroup.add(new THREE.Line(glowGeom, new THREE.LineBasicMaterial({
+        color: yellowGlow, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false,
+      })));
     });
-    // Sub-fascia (slightly below + along each eave)
+    // Sub-fascia: heavy tubes along each eave — primary structural edge
     (framing.sub_fascia || []).forEach((s) => {
       const a = new THREE.Vector3(s.a[0], s.a[1] - 0.5, s.a[2]);
       const b = new THREE.Vector3(s.b[0], s.b[1] - 0.5, s.b[2]);
-      const geom = new THREE.BufferGeometry().setFromPoints([a, b]);
-      framingGroup.add(new THREE.Line(geom, new THREE.LineBasicMaterial({ color: MATRIX, transparent: true, opacity: 0.95, linewidth: 3 })));
+      const path = new THREE.LineCurve3(a, b);
+      const tube = new THREE.TubeGeometry(path, 1, 0.12, 8, false);
+      framingGroup.add(new THREE.Mesh(tube, new THREE.MeshStandardMaterial({
+        color: yellowCore, emissive: yellowCore, emissiveIntensity: 1.0,
+        metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.97,
+      })));
     });
     scene.add(framingGroup);
 
-    // -------- GUTTERS LAYER (neon-cyan extruded tube along eaves + downspouts) --------
+    // -------- GUTTERS LAYER — NEON ORANGE thick tube + bright downspouts --------
     const gutterGroup = new THREE.Group();
     gutterGroup.visible = !!resolvedGutters;
     const gutters = tele.gutters || {};
+    const orangeCore = new THREE.Color(NEON_ORANGE);
+    const orangeHot  = new THREE.Color(0xffa64d);
     (gutters.polylines || []).forEach((p) => {
       const a = new THREE.Vector3(p.a[0], p.a[1] - 0.6, p.a[2]);
       const b = new THREE.Vector3(p.b[0], p.b[1] - 0.6, p.b[2]);
       const path = new THREE.LineCurve3(a, b);
-      const tube = new THREE.TubeGeometry(path, 1, 0.22, 8, false);
+      // Thick orange gutter
+      const tube = new THREE.TubeGeometry(path, 1, 0.32, 10, false);
       const mat = new THREE.MeshStandardMaterial({
-        color: ELECTRIC, emissive: ELECTRIC, emissiveIntensity: 0.55,
-        transparent: true, opacity: 0.9, metalness: 0.4, roughness: 0.35,
+        color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.95,
+        metalness: 0.55, roughness: 0.25,
+        transparent: true, opacity: 0.97,
       });
       gutterGroup.add(new THREE.Mesh(tube, mat));
-      // hangers — small node points every 2 ft along the segment
+      // Additive feathered glow on top
+      const glowGeom = new THREE.BufferGeometry().setFromPoints([a, b]);
+      gutterGroup.add(new THREE.Line(glowGeom, new THREE.LineBasicMaterial({
+        color: orangeHot, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false,
+      })));
+      // Hanger studs every ~2 ft
       const len = a.distanceTo(b);
       const n = Math.max(2, Math.floor(len / 2));
       for (let i = 0; i <= n; i++) {
         const t = i / n;
         const pos = a.clone().lerp(b, t);
-        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6),
-          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
-        dot.position.copy(pos); gutterGroup.add(dot);
+        const dot = new THREE.Mesh(
+          new THREE.SphereGeometry(0.14, 8, 8),
+          new THREE.MeshStandardMaterial({
+            color: 0xfff0d6, emissive: 0xffb877, emissiveIntensity: 1.0,
+            transparent: true, opacity: 0.95,
+          }),
+        );
+        dot.position.copy(pos);
+        gutterGroup.add(dot);
       }
     });
     (gutters.downspouts || []).forEach((d) => {
       const top = new THREE.Vector3(d.drop[0], d.drop[1] - 0.6, d.drop[2]);
       const bot = new THREE.Vector3(d.ground[0], d.ground[1], d.ground[2]);
       const path = new THREE.LineCurve3(top, bot);
-      const tube = new THREE.TubeGeometry(path, 1, 0.16, 6, false);
+      const tube = new THREE.TubeGeometry(path, 1, 0.22, 8, false);
       gutterGroup.add(new THREE.Mesh(tube, new THREE.MeshStandardMaterial({
-        color: ELECTRIC, emissive: ELECTRIC, emissiveIntensity: 0.5,
-        transparent: true, opacity: 0.85, metalness: 0.4, roughness: 0.35,
+        color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.9,
+        metalness: 0.55, roughness: 0.3, transparent: true, opacity: 0.95,
       })));
+      // Splash elbow at the bottom
+      const elbow = new THREE.Mesh(
+        new THREE.TorusGeometry(0.28, 0.1, 6, 12, Math.PI),
+        new THREE.MeshStandardMaterial({
+          color: orangeCore, emissive: orangeCore, emissiveIntensity: 0.9,
+          metalness: 0.55, roughness: 0.3, transparent: true, opacity: 0.95,
+        }),
+      );
+      elbow.position.copy(bot);
+      elbow.rotation.x = Math.PI / 2;
+      gutterGroup.add(elbow);
     });
     scene.add(gutterGroup);
 
