@@ -168,6 +168,32 @@ export function OperatorJobDetail() {
         </HudCard>
       )}
 
+      {/* LIVE WEATHER PULSE — refresh every 30s; visible during PENDING_FIELD_CAPTURE or IN_FLIGHT */}
+      {weather && weather.available && (job.status === "PENDING_FIELD_CAPTURE" || job.status === "IN_FLIGHT") && (
+        <HudCard scanline alert={!!weather.abort_recommended} className="p-4 mb-3" data-testid="op-weather-monitor-card">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
+              <Activity size={13} className={weather.abort_recommended ? "text-plasma pulse-alert" : "text-volt pulse-glow"}/>
+              Live Weather Pulse · Polled every 30s
+            </div>
+            {weather.abort_recommended ? (
+              <span data-testid="op-weather-abort-badge" className="font-mono text-[10px] uppercase tracking-widest text-plasma border border-[#FF5500]/40 px-2 py-0.5 flex items-center gap-1">
+                <CloudRain size={11}/> ABORT RECOMMENDED
+              </span>
+            ) : (
+              <span className="font-mono text-[10px] uppercase tracking-widest text-volt border border-[#39FF14]/40 px-2 py-0.5">NOMINAL</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+            <div>Past 24h precip: <span className="text-silver">{weather.past_24h_precip_in}"</span></div>
+            <div>Cloud 12h: <span className="text-silver">{weather.avg_cloud_12h_pct}%</span></div>
+            <div>Next 2h precip prob: <span className="text-silver">{weather.next2h_precip_prob_pct}%</span></div>
+            <div>Wind: <span className="text-silver">{weather.current_wind_mph} mph</span></div>
+          </div>
+          <div className="text-[10px] font-mono text-muted-hud uppercase tracking-widest mt-2">as of {weather.as_of} · ASTM C1153</div>
+        </HudCard>
+      )}
+
       {job.status === "PENDING_FIELD_CAPTURE" && (
         <>
           <HudCard className="p-3 mb-4">
@@ -183,32 +209,6 @@ export function OperatorJobDetail() {
             </div>
             <div className="mt-2 font-mono text-[10px] text-muted-hud">TARGET: <span className="text-teal">{job.lat?.toFixed?.(5)}, {job.lon?.toFixed?.(5)}</span> • RTK acquisition will resolve to centimeter precision on launch.</div>
           </HudCard>
-
-          {/* LIVE WEATHER PULSE — refresh every 30s, abort badge if any ASTM gate breaks */}
-          {weather && weather.available && (
-            <HudCard scanline alert={!!weather.abort_recommended} className="p-4 mb-3" data-testid="op-weather-monitor-card">
-              <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
-                <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
-                  <Activity size={13} className={weather.abort_recommended ? "text-plasma pulse-alert" : "text-volt pulse-glow"}/>
-                  Live Weather Pulse · Polled every 30s
-                </div>
-                {weather.abort_recommended ? (
-                  <span data-testid="op-weather-abort-badge" className="font-mono text-[10px] uppercase tracking-widest text-plasma border border-[#FF5500]/40 px-2 py-0.5 flex items-center gap-1">
-                    <CloudRain size={11}/> ABORT RECOMMENDED
-                  </span>
-                ) : (
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-volt border border-[#39FF14]/40 px-2 py-0.5">NOMINAL</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
-                <div>Past 24h precip: <span className="text-silver">{weather.past_24h_precip_in}"</span></div>
-                <div>Cloud 12h: <span className="text-silver">{weather.avg_cloud_12h_pct}%</span></div>
-                <div>Next 2h precip prob: <span className="text-silver">{weather.next2h_precip_prob_pct}%</span></div>
-                <div>Wind: <span className="text-silver">{weather.current_wind_mph} mph</span></div>
-              </div>
-              <div className="text-[10px] font-mono text-muted-hud uppercase tracking-widest mt-2">as of {weather.as_of} · ASTM C1153</div>
-            </HudCard>
-          )}
 
           {/* PHASE 2 — On-Site Physical Safety */}
           <HudCard scanline className="p-5 mb-3" data-testid="phase2-card">

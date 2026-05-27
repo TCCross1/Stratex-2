@@ -101,7 +101,7 @@ class TestPhase1:
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["overall"] in ("PASS", "FAIL")
-        assert len(body["checks"]) == 3
+        assert len(body["checks"]) >= 3  # v2.3 now emits 6 (FAA + 4 ASTM weather sub-gates + GIS)
         names = [c["name"] for c in body["checks"]]
         assert any("FAA" in n for n in names)
         assert any("Weather" in n for n in names)

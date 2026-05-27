@@ -25,6 +25,11 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v2.5.0 — Phase 1 Email Notify + Operator Weather Pulse)
+- ✅ **📧 Automated Phase 1 ASTM Weather-Abort Email** — when `POST /api/contractor/jobs/{id}/run-phase1` returns `overall=FAIL`, the backend now auto-fires a Resend email to the contractor with the failing gates + the next 3 ASTM-compliant launch windows. Audit log captures a `PHASE1_FAIL_EMAIL_SENT` event (with `mocked: true/false`). RESEND_API_KEY unset → email gracefully mocked but audit row still written. New helpers: `_phase1_fail_email_html`, `_safe_reschedule_windows`, `_live_weather_pulse`.
+- ✅ **🛰️ Operator-side Live Weather Pulse** — new endpoint `GET /api/operator/jobs/{id}/weather-monitor` (operator_only, returns same payload as contractor variant). New `op-weather-monitor-card` on `/operator/jobs/:id` renders for jobs in `PENDING_FIELD_CAPTURE` or `IN_FLIGHT` status; polls every 30s with abort badge (`op-weather-abort-badge`) when any ASTM gate breaches.
+- ✅ **🧪 iteration_13 testing agent**: backend 6/6 (v2.3) + frontend 100% + v2.2 regression suite green after stale assertion fix.
+
 ## What's Been Implemented (2026-02-27 — v2.4.0 — STRATEX™ Vision UI Upgrade)
 - ✅ **🎨 Tactical Cyber-Industrial Console aesthetic** — `#0B0F19` ambient backdrop, frosted-glass overlay cards (`backdrop-blur: 16-18px`), thin neon teal/orange borders with inset glow.
 - ✅ **🧊 Color-coded geometry** — Ridges (cyan), Valleys (plasma orange), Hips (mid-teal), Eaves (silver). Edge opacity tuned per classification (valleys most visible).
