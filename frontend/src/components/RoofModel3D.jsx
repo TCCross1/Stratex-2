@@ -539,6 +539,8 @@ export default function RoofModel3D({
   const resolvedGutters = layers ? !!layers.gutters : !!showGutters;
   const mountRef = useRef(null);
   const stateRef = useRef({});
+  // Layer-switch wipe transition state: { active, startTime, duration, fromKey, toKey }
+  const wipeRef = useRef({ active: false });
   const [labelPositions, setLabelPositions] = useState([]);
   const [dimensionPositions, setDimensionPositions] = useState([]);
 
@@ -780,6 +782,51 @@ export default function RoofModel3D({
     scanner.visible = scanning;
     scene.add(scanner);
 
+    // -------- LAYER-SWITCH WIPE PLANE (electric-teal cinematic transition) --------
+    // A wide glowing teal vertical plane that sweeps across the bbox X-axis whenever
+    // the BEES primary layer changes. Additive blended for hot-edge HUD aesthetic.
+    // The plane is rebillboarded toward the camera each frame so its face is always
+    // maximally visible regardless of viewer angle. Driven entirely by
+    // `wipeRef.current.active` in the tick loop below.
+    const wipeCanvas = document.createElement("canvas");
+    wipeCanvas.width = 256; wipeCanvas.height = 512;
+    const wctx = wipeCanvas.getContext("2d");
+    // Horizontal gradient: edges transparent, center razor-bright white core flanked
+    // by saturated electric teal halos.
+    const wgrad = wctx.createLinearGradient(0, 0, wipeCanvas.width, 0);
+    wgrad.addColorStop(0.00, "rgba(0,245,212,0)");
+    wgrad.addColorStop(0.30, "rgba(0,245,212,0.35)");
+    wgrad.addColorStop(0.44, "rgba(80,255,235,0.95)");
+    wgrad.addColorStop(0.50, "rgba(255,255,255,1.0)");   // razor-bright core
+    wgrad.addColorStop(0.56, "rgba(80,255,235,0.95)");
+    wgrad.addColorStop(0.70, "rgba(0,245,212,0.35)");
+    wgrad.addColorStop(1.00, "rgba(0,245,212,0)");
+    wctx.fillStyle = wgrad; wctx.fillRect(0, 0, wipeCanvas.width, wipeCanvas.height);
+    // Vertical HUD scanline streaks on the core
+    wctx.fillStyle = "rgba(255,255,255,0.30)";
+    for (let y = 0; y < wipeCanvas.height; y += 6) wctx.fillRect(124, y, 8, 2);
+    // Faint horizontal data ticks for HUD texture
+    wctx.fillStyle = "rgba(0,245,212,0.45)";
+    for (let y = 0; y < wipeCanvas.height; y += 18) wctx.fillRect(96, y, 64, 1);
+    const wipeTex = new THREE.CanvasTexture(wipeCanvas);
+    const wipePlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(span * 1.2, span * 2.6),
+      new THREE.MeshBasicMaterial({
+        map: wipeTex,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+      }),
+    );
+    wipePlane.position.set(centre.x, centre.y, centre.z);
+    wipePlane.visible = false;
+    wipePlane.renderOrder = 999;
+    scene.add(wipePlane);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(centre);
     controls.enableDamping = true;
@@ -800,6 +847,20 @@ export default function RoofModel3D({
     let introActive = true;
     controls.enabled = false;
 
+    // ===== Render gating: pause heavy rendering when canvas is off-screen =====
+    // Multiple RoofModel3D instances on the same page each run their own WebGL
+    // context + composer + RAF. Browsers do NOT throttle off-screen elements'
+    // RAFs the way they throttle off-screen tabs, so 7 active scenes can drop
+    // frame-rate to ~0.7 fps each. We gate `composer.render()` on visibility:
+    // ticks still run (so opacity animations stay accurate when scrolled back)
+    // but the expensive composer.render() is skipped while hidden.
+    let isVisible = true;
+    const io = new IntersectionObserver(
+      (entries) => { isVisible = entries[0]?.isIntersecting ?? true; },
+      { threshold: 0.01 },
+    );
+    io.observe(mount);
+
     const tick = () => {
       const t = (performance.now() - start) / 1000;
       anomalyGroups.forEach((g) => {
@@ -813,6 +874,108 @@ export default function RoofModel3D({
         scanner.position.y = bbox.min.y - 1 + cycle * (span * 1.5);
         scanner.material.opacity = 0.42 * (1 - cycle);
       } else { scanner.visible = false; }
+
+      // === LAYER-SWITCH WIPE TRANSITION ===
+      // Drives the electric-teal sweep plane + cross-fades the from/to primary
+      // mesh group opacities. Anomaly meshes, gutters, ground and grid are NOT
+      // affected (they stay anchored as the wipe passes through).
+      if (wipeRef.current.active) {
+        const { startTime, duration, fromKey, toKey } = wipeRef.current;
+        const u = Math.min(1, (performance.now() - startTime) / duration);
+        // Sweep position: -1.5 → +1.5 span around centre (full bbox traversal)
+        const sweepX = centre.x + (u * 2 - 1) * span * 1.5;
+        wipePlane.position.x = sweepX;
+        wipePlane.position.y = centre.y + span * 0.15;
+        wipePlane.position.z = centre.z;
+        // Billboard the plane toward the camera so the bright core face is always visible.
+        wipePlane.lookAt(camera.position);
+        wipePlane.visible = true;
+        // Pulse: ramps fast, holds through mid-sweep, snaps off
+        const pulse = Math.sin(u * Math.PI);
+        const corePulse = Math.pow(pulse, 0.45);
+        wipePlane.material.opacity = corePulse;             // max ~1.0 at u=0.5
+        wipePlane.scale.set(1.0, 1.0 + 0.08 * Math.sin(u * 14), 1.0);
+
+        // Cross-fade group opacities. We DELAY the destination layer until after the
+        // wipe edge passes (u > 0.35) so the sweep visibly REVEALS the new finish,
+        // matching the user's "wipe transition" mental model.
+        const fadeOut = Math.max(0, 1 - u * 1.6);            // source fades 0..0.63
+        const fadeIn  = Math.min(1, Math.max(0, (u - 0.35) * 1.8));  // dest emerges 0.35..0.91
+
+        const applyFade = (key, op) => {
+          if (!key) return;
+          if (key === "framing") {
+            if (framingGroup) {
+              framingGroup.visible = true;
+              framingGroup.traverse((o) => {
+                if (o.material) {
+                  o.material.opacity = op;
+                  // Damp emissive contribution during the wipe so opacity reads honestly
+                  if (o.material.emissiveIntensity !== undefined) {
+                    if (o.userData._origEmissive === undefined) {
+                      o.userData._origEmissive = o.material.emissiveIntensity;
+                    }
+                    o.material.emissiveIntensity = o.userData._origEmissive * op;
+                  }
+                }
+              });
+            }
+          } else if (finishLayerGroups[key]) {
+            finishLayerGroups[key].visible = true;
+            finishLayerGroups[key].children.forEach((g) => {
+              const mesh = g.children[0]; const wf = g.children[1];
+              if (mesh?.material) {
+                mesh.material.opacity = op;
+                if (mesh.userData._origEmissive === undefined) {
+                  mesh.userData._origEmissive = mesh.material.emissiveIntensity ?? 0;
+                }
+                mesh.material.emissiveIntensity = mesh.userData._origEmissive * op;
+              }
+              if (wf?.material) wf.material.opacity = Math.max(0.05, op) * 0.95;
+            });
+          }
+        };
+        applyFade(fromKey, fadeOut);
+        applyFade(toKey, fadeIn);
+
+        if (u >= 1) {
+          // Wipe complete: hide source layer entirely + restore destination to full opacity
+          const restore = (key, visible) => {
+            if (!key) return;
+            if (key === "framing") {
+              if (framingGroup) {
+                framingGroup.visible = visible;
+                framingGroup.traverse((o) => {
+                  if (o.material) {
+                    o.material.opacity = visible ? 1.0 : 0;
+                    if (o.userData._origEmissive !== undefined) {
+                      o.material.emissiveIntensity = o.userData._origEmissive;
+                    }
+                  }
+                });
+              }
+            } else if (finishLayerGroups[key]) {
+              finishLayerGroups[key].visible = visible;
+              finishLayerGroups[key].children.forEach((g) => {
+                const mesh = g.children[0]; const wf = g.children[1];
+                if (mesh?.material) {
+                  mesh.material.opacity = visible ? 1.0 : 0;
+                  if (mesh.userData._origEmissive !== undefined) {
+                    mesh.material.emissiveIntensity = mesh.userData._origEmissive;
+                  }
+                }
+                if (wf?.material)   wf.material.opacity   = visible ? 0.95 : 0;
+              });
+            }
+          };
+          restore(fromKey, false);
+          restore(toKey, true);
+          wipePlane.visible = false;
+          wipePlane.material.opacity = 0;
+          wipeRef.current.active = false;
+        }
+      }
+      // === end wipe ===
       // === intro camera sweep ===
       if (introActive) {
         const elapsed = performance.now() - start;
@@ -834,7 +997,10 @@ export default function RoofModel3D({
       } else {
         controls.update();
       }
-      composer.render();
+      // Skip the heavy composer.render() when the canvas is off-screen.
+      // The wipe state is still advancing via wall-clock time so when the user
+      // scrolls back the scene is in the correct visual state.
+      if (isVisible) composer.render();
 
       // Update HTML overlay positions every ~3 frames
       if (Math.floor(t * 20) % 2 === 0) {
@@ -894,10 +1060,11 @@ export default function RoofModel3D({
     };
     renderer.domElement.addEventListener("click", onClick);
 
-    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, finishLayerGroups, framingGroup, gutterGroup };
+    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, finishLayerGroups, framingGroup, gutterGroup, wipePlane, bbox, span, centre, lastPrimary: resolvedPrimary };
 
     return () => {
       cancelAnimationFrame(raf);
+      io.disconnect();
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("click", onClick);
       controls.dispose();
@@ -919,30 +1086,41 @@ export default function RoofModel3D({
   }, [scanning, autoRotate]);
 
   useEffect(() => {
-    // ===== BEES Layer Visibility Controller =====
+    // ===== BEES Layer Visibility Controller + Wipe Transition =====
     // STRICT XOR between primary structural/finish layers:
-    //   ALLOWED  (1-Packs):  framing | shingle | metal | slate              (alone)
-    //   ALLOWED  (2-Packs):  any one primary  +  gutters                    (overlay)
+    //   ALLOWED  (1-Packs):  framing | shingle | dimensional | metal | slate     (alone)
+    //   ALLOWED  (2-Packs):  any one primary  +  gutters                          (overlay)
     //   FORBIDDEN:           framing + any finish, OR multiple finishes co-rendered
-    // Implementation:
-    //   - Exactly ONE entry in {framing, shingle, metal, slate} is visible at a time.
-    //   - layer_gutters is an independent secondary overlay anchored to whichever
-    //     primary is currently active. Visibility is preserved across primary toggles.
-    const { framingGroup, gutterGroup, finishLayerGroups } = stateRef.current;
+    //
+    // When the primary layer CHANGES, we trigger an electric-teal "wipe" transition
+    // (tick loop handles the actual sweep + cross-fade). Initial mount + gutter-only
+    // toggles bypass the wipe and apply instant visibility.
+    const { framingGroup, gutterGroup, finishLayerGroups, lastPrimary } = stateRef.current;
     if (!finishLayerGroups) return;
 
     const VALID_PRIMARIES = ["framing", "shingle", "dimensional", "metal", "slate"];
     const primary = VALID_PRIMARIES.includes(resolvedPrimary) ? resolvedPrimary : "shingle";
 
-    // Hard-reset: explicitly hide ALL primaries first, then show ONLY the active one.
-    if (framingGroup) framingGroup.visible = false;
-    Object.values(finishLayerGroups).forEach((g) => { g.visible = false; });
-
-    if (primary === "framing") {
-      if (framingGroup) framingGroup.visible = true;
-    } else if (finishLayerGroups[primary]) {
-      finishLayerGroups[primary].visible = true;
+    if (lastPrimary && lastPrimary !== primary) {
+      // Kick off cinematic wipe — tick() owns the actual visibility transition.
+      wipeRef.current = {
+        active: true,
+        startTime: performance.now(),
+        duration: 1000,       // 1.00s cinematic sweep
+        fromKey: lastPrimary,
+        toKey: primary,
+      };
+    } else {
+      // No primary change (initial mount OR same key) → hard-reset XOR visibility instantly.
+      if (framingGroup) framingGroup.visible = false;
+      Object.values(finishLayerGroups).forEach((g) => { g.visible = false; });
+      if (primary === "framing") {
+        if (framingGroup) framingGroup.visible = true;
+      } else if (finishLayerGroups[primary]) {
+        finishLayerGroups[primary].visible = true;
+      }
     }
+    stateRef.current.lastPrimary = primary;
 
     // Gutter overlay — independent secondary, user preference preserved
     if (gutterGroup) gutterGroup.visible = !!resolvedGutters;

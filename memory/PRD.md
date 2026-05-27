@@ -1,5 +1,16 @@
 # STRATEX™ — PRD & Build Log
 
+## What's Been Implemented (2026-02-27 — v3.5.0 — Cinematic Wipe Transition + BEES Live Switcher)
+- ✅ **Electric-teal layer-switch wipe transition** in `RoofModel3D.jsx`:
+  - Wide bloom-friendly canvas-textured plane (1.2× × 2.6× span) with razor-bright white core flanked by saturated electric-teal halos + HUD scanline streaks.
+  - Always billboards toward the camera (`lookAt(camera.position)`) so the bright core face is maximally visible regardless of orbit angle.
+  - Additive blending + `depthTest: false` + `renderOrder: 999` so the sweep punches through bloom and renders on top.
+  - 1-second cinematic sweep across the X-axis from `centre - 1.5*span` to `centre + 1.5*span`, with sine-curve brightness pulse (peak at u=0.5).
+  - Source-layer fades out 0..0.63, destination-layer is REVEALED behind the wipe (delayed cross-fade emerges 0.35..0.91) — matches the "wipe transition" mental model.
+  - On wipe complete: source layer is fully hidden, destination layer restored to full opacity + original emissive intensity, wipe plane invisible.
+- ✅ **`/_neon-preview` redesigned as a Live Switcher demo** — single RoofModel3D instance + interactive BEES toggle bar (FRAMING / 3-TAB / DIMENSIONAL / METAL / SLATE / GUTTERS overlay). Each click triggers the cinematic wipe. Comment in the file documents that the gallery layout was removed to avoid multi-WebGL-context rAF throttling.
+- ✅ **Performance optimizations**: removed per-frame `material.transparent = true` flips (already set at construction); cached `_origEmissive` per material in userData to restore after the wipe; IntersectionObserver gates `composer.render()` for off-screen canvases.
+
 ## What's Been Implemented (2026-02-27 — v3.4.0 — BEES XOR Layer Controller + PBR Pivot Hardening)
 - ✅ **BEES Layer Visibility Controller** — `RoofModel3D.jsx` now pre-builds all primary layer mesh groups at mount (framing, shingle/3-tab, dimensional, metal, slate) + secondary gutter overlay. Switching primary layers is now instant visibility toggling (no full scene remount); `resolvedPrimary` removed from useEffect mount-deps.
 - ✅ **Hard-reset XOR enforcement** — explicit `VALID_PRIMARIES = ["framing","shingle","dimensional","metal","slate"]` + a hard-reset pass that hides ALL primaries before showing only the active one. Forbidden states (framing + finish, multiple finishes overlapping) are unreachable by construction.
