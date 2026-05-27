@@ -209,6 +209,16 @@ export function NewJob() {
           <div><label className="hud-label">Property Address</label><input data-testid="job-address" className="hud-input" value={form.property_address} onChange={(e)=>setForm({...form, property_address: e.target.value})}/></div>
           <div><label className="hud-label">Homeowner Name</label><input data-testid="job-homeowner" className="hud-input" value={form.homeowner_name} onChange={(e)=>setForm({...form, homeowner_name: e.target.value})}/></div>
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="hud-label">Homeowner Email <span className="text-muted-hud">(optional)</span></label>
+              <input data-testid="job-homeowner-email" className="hud-input" type="email" placeholder="homeowner@example.com" value={form.homeowner_email} onChange={(e)=>setForm({...form, homeowner_email: e.target.value})}/>
+            </div>
+            <div>
+              <label className="hud-label">Homeowner Phone <span className="text-muted-hud">(E.164, optional)</span></label>
+              <input data-testid="job-homeowner-phone" className="hud-input" type="tel" placeholder="+14155551234" value={form.homeowner_phone} onChange={(e)=>setForm({...form, homeowner_phone: e.target.value})}/>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div><label className="hud-label">Project Type</label>
               <select data-testid="job-type" className="hud-input" value={form.project_type} onChange={(e)=>setForm({...form, project_type:e.target.value})}>
                 <option>Insurance Claim</option><option>Private Cash Pay</option>
@@ -382,26 +392,31 @@ export function JobDetail() {
               </div>
               <button
                 onClick={async () => {
-                  if (!job.homeowner_email) { toast.error("Homeowner email missing on this job"); return; }
+                  if (!job.homeowner_email && !job.homeowner_phone) {
+                    toast.error("Add a homeowner email or phone number to this job first");
+                    return;
+                  }
                   setNotifyBusy(true);
                   try {
-                    const r = await notifyHomeownerDelay(id, job.homeowner_email);
-                    toast.success(r.mocked
-                      ? `EMAIL LOGGED — set RESEND_API_KEY to deliver to ${r.to}`
-                      : `Sent to ${r.to} · ${r.windows_count} window${r.windows_count===1?"":"s"} proposed`);
+                    const r = await notifyHomeownerDelay(id, job.homeowner_email || null, job.homeowner_phone || null);
+                    const parts = [];
+                    if (r.to_email) parts.push(r.email?.mocked ? `email LOGGED (${r.to_email})` : `email sent to ${r.to_email}`);
+                    if (r.to_phone) parts.push(r.sms?.mocked ? `SMS LOGGED (${r.to_phone})` : `SMS sent to ${r.to_phone}`);
+                    toast.success(`${parts.join(" · ")} · ${r.windows_count} window${r.windows_count===1?"":"s"}`);
+                    await load();
                   } catch (e) {
                     toast.error(e.response?.data?.detail || e.message);
                   } finally { setNotifyBusy(false); }
                 }}
-                disabled={notifyBusy || job.delay_notified_to}
+                disabled={notifyBusy || (job.delay_notified_to && job.delay_notified_sms)}
                 className="btn-hud btn-hud-ghost text-[10px]"
                 data-testid="notify-homeowner-delay-btn"
-                title={job.delay_notified_to ? `Already sent to ${job.delay_notified_to}` : "Email the homeowner the next safe launch window"}
+                title={job.delay_notified_to || job.delay_notified_sms ? "Already notified" : "Email + SMS the homeowner the next safe launch window"}
               >
                 {notifyBusy
                   ? <><Loader2 size={12} className="animate-spin"/> SENDING…</>
-                  : job.delay_notified_to
-                    ? <><CheckCircle2 size={12}/> NOTIFIED {job.delay_notified_to.split("@")[0]}</>
+                  : (job.delay_notified_to || job.delay_notified_sms)
+                    ? <><CheckCircle2 size={12}/> NOTIFIED</>
                     : <><Mail size={12}/> Notify Homeowner of Delay</>}
               </button>
             </div>

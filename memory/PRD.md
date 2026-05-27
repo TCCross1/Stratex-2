@@ -25,6 +25,12 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v2.6.0 — Twilio SMS Homeowner Delay Notify)
+- ✅ **📲 Twilio SMS channel** layered on top of the email Phase-1-delay notification. `POST /api/contractor/jobs/{id}/notify-homeowner-delay` now accepts `homeowner_email` AND/OR `homeowner_phone` and fans out to both Resend (email) and Twilio (SMS). Either channel mocks gracefully when its credential env (`RESEND_API_KEY` / `TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM`) is absent. E.164 validation (`^\+[1-9]\d{6,14}$`) on phone — invalid → mock+skip without erroring the whole call. `twilio==9.10.9` added to requirements.txt.
+- ✅ **🆕 Homeowner phone field** on the New Job form (`data-testid="job-homeowner-phone"`), separate email field (`data-testid="job-homeowner-email"`). Both optional; backend already supported them.
+- ✅ Audit log event `HOMEOWNER_DELAY_NOTIFIED` now records BOTH `email_mocked` and `sms_mocked` flags (or `null` for skipped channel). New job fields `delay_notified_sms` for idempotency tracking.
+- ✅ Notify button toast now shows per-channel status: "email LOGGED · SMS LOGGED · 1 window" (mocked) vs "email sent to X · SMS sent to +Y" (live).
+
 ## What's Been Implemented (2026-02-28 — v2.5.1 — Homeowner Weather-Delay Notification)
 - ✅ **🤝 One-click "Notify Homeowner of Delay"** — new `POST /api/contractor/jobs/{id}/notify-homeowner-delay` endpoint. Visible as a button on the `reschedule-card` of any `PHASE1_BLOCKED` job in the contractor portal. Pulls the next 3 ASTM-compliant launch windows and emails the homeowner in friendly, non-technical language (Helvetica white-glove template, NOT cyber-industrial). Records `HOMEOWNER_DELAY_NOTIFIED` audit event with `mocked` flag + window count. Button shows persistent ✓ checkmark with truncated email once notified. Helper: `_homeowner_delay_email_html`.
 - ✅ Frontend `notify-homeowner-delay-btn` (data-testid'd) with idempotency UX (disabled after first notification using `job.delay_notified_to`).

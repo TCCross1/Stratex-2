@@ -1525,6 +1525,50 @@ def _resend_ready() -> bool:
     return bool(os.environ.get("RESEND_API_KEY"))
 
 
+def _twilio_ready() -> bool:
+    return bool(os.environ.get("TWILIO_ACCOUNT_SID")
+                and os.environ.get("TWILIO_AUTH_TOKEN")
+                and os.environ.get("TWILIO_FROM"))
+
+
+_E164_RE = __import__("re").compile(r"^\+[1-9]\d{6,14}$")
+
+
+def _valid_e164(s: Optional[str]) -> bool:
+    return bool(s) and bool(_E164_RE.match(s.strip()))
+
+
+async def _send_sms(to: str, body: str) -> Dict[str, Any]:
+    """Async-safe Twilio SMS send with graceful mock when env vars missing or number invalid."""
+    if not _valid_e164(to):
+        return {"mocked": True, "to": to, "note": "Invalid or missing E.164 phone — SMS skipped"}
+    if not _twilio_ready():
+        return {"mocked": True, "to": to, "body_preview": body[:60], "note": "TWILIO_* env not configured — SMS logged but not sent"}
+    from twilio.rest import Client as _TwClient
+
+    def _send():
+        cli = _TwClient(os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"])
+        msg = cli.messages.create(from_=os.environ["TWILIO_FROM"], to=to, body=body[:1500])
+        return {"sid": msg.sid, "status": msg.status}
+
+    try:
+        result = await asyncio.to_thread(_send)
+        return {"mocked": False, "to": to, **result}
+    except Exception as e:
+        logger.warning("twilio send failed to %s: %s", to, e)
+        return {"mocked": True, "to": to, "error": str(e)[:140], "note": "Twilio API error — fell back to mock"}
+
+
+def _homeowner_delay_sms_body(job: Dict[str, Any], windows: List[Dict[str, Any]], contractor_name: str) -> str:
+    homeowner = (job.get("homeowner_name") or "there").split()[0]
+    next_w = windows[0]["label"] if windows else "TBD (extended forecast review)"
+    return (
+        f"Hi {homeowner}, {contractor_name} here — weather isn't meeting our roof-scan standards today, "
+        f"so we're rescheduling your inspection. Next safe window: {next_w}. "
+        f"No action needed — we'll confirm 24h prior. Powered by STRATEX."
+    )
+
+
 async def _send_email(to: str, subject: str, html: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     if not _resend_ready():
         return {"mocked": True, "to": to, "subject": subject, "note": "RESEND_API_KEY not configured — email logged but not sent"}
@@ -1659,34 +1703,60 @@ async def email_proposal(job_id: str, body: EmailProposalBody, user=Depends(cont
 
 class NotifyHomeownerDelayBody(BaseModel):
     homeowner_email: Optional[EmailStr] = None
+    homeowner_phone: Optional[str] = None
 
 
 @api.post("/contractor/jobs/{job_id}/notify-homeowner-delay")
 async def notify_homeowner_delay(job_id: str, body: NotifyHomeownerDelayBody, user=Depends(contractor_only)):
     """One-click homeowner weather-delay notification. Pulls the next 3 ASTM-compliant
-    launch windows from Open-Meteo and emails them to the homeowner in friendly,
-    non-technical language. Only valid while the job is PHASE1_BLOCKED."""
+    launch windows from Open-Meteo and pushes them via EMAIL (Resend) and SMS (Twilio).
+    Only valid while the job is PHASE1_BLOCKED. Either channel may be mocked when the
+    upstream credential is missing — the audit row still gets written."""
     job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
     if not job:
         raise HTTPException(404, "Job not found")
     if job.get("status") != "PHASE1_BLOCKED":
         raise HTTPException(400, "Notify-delay is only available while the job is PHASE1_BLOCKED")
     to_email = (body.homeowner_email or job.get("homeowner_email") or "").strip()
-    if not to_email:
-        raise HTTPException(400, "Homeowner email required (no homeowner_email on file)")
+    to_phone = (body.homeowner_phone or job.get("homeowner_phone") or "").strip()
+    if not to_email and not to_phone:
+        raise HTTPException(400, "Either homeowner email or homeowner phone (E.164) is required")
+
     windows = await _safe_reschedule_windows(job)
     contractor_name = user.get("company_name") or user.get("legal_name") or "your roofing contractor"
-    html = _homeowner_delay_email_html(job, windows, contractor_name)
-    subject = "Weather update on your roof inspection · STRATEX"
-    result = await _send_email(to_email, subject, html)
-    await db.jobs.update_one(
-        {"id": job_id},
-        {"$set": {"delay_notified_to": to_email, "delay_notified_at": now_iso()}},
-    )
+
+    email_result: Dict[str, Any] = {"skipped": True}
+    sms_result: Dict[str, Any] = {"skipped": True}
+
+    if to_email:
+        html = _homeowner_delay_email_html(job, windows, contractor_name)
+        email_result = await _send_email(to_email, "Weather update on your roof inspection · STRATEX", html)
+    if to_phone:
+        sms_body = _homeowner_delay_sms_body(job, windows, contractor_name)
+        sms_result = await _send_sms(to_phone, sms_body)
+
+    update_set: Dict[str, Any] = {"delay_notified_at": now_iso()}
+    if to_email and not email_result.get("skipped"):
+        update_set["delay_notified_to"] = to_email
+    if to_phone and not sms_result.get("skipped"):
+        update_set["delay_notified_sms"] = to_phone
+    await db.jobs.update_one({"id": job_id}, {"$set": update_set})
+
     await _record_audit(job_id, user["id"], "HOMEOWNER_DELAY_NOTIFIED", {
-        "to": to_email, "mocked": result.get("mocked", False), "windows_count": len(windows),
+        "to_email": to_email or None,
+        "to_phone": to_phone or None,
+        "email_mocked": email_result.get("mocked", False) if not email_result.get("skipped") else None,
+        "sms_mocked": sms_result.get("mocked", False) if not sms_result.get("skipped") else None,
+        "windows_count": len(windows),
     })
-    return {"ok": True, "to": to_email, "mocked": result.get("mocked", False), "windows_count": len(windows)}
+    return {
+        "ok": True,
+        "to_email": to_email or None,
+        "to_phone": to_phone or None,
+        "email": email_result,
+        "sms": sms_result,
+        "windows_count": len(windows),
+    }
 
 
 @auth_r.post("/email-nda")

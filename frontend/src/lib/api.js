@@ -61,7 +61,7 @@ export const operatorDryRun = (id, reason, notes) => inst.post(`/operator/jobs/$
 export const getBillingMeter = () => inst.get("/contractor/billing/meter").then(r => r.data);
 export const rescheduleSuggestions = (id) => inst.get(`/contractor/jobs/${id}/reschedule-suggestions`).then(r => r.data);
 export const weatherMonitor = (id) => inst.get(`/contractor/jobs/${id}/weather-monitor`).then(r => r.data);
-export const notifyHomeownerDelay = (id, homeowner_email) => inst.post(`/contractor/jobs/${id}/notify-homeowner-delay`, { homeowner_email }).then(r => r.data);
+export const notifyHomeownerDelay = (id, homeowner_email, homeowner_phone) => inst.post(`/contractor/jobs/${id}/notify-homeowner-delay`, { homeowner_email, homeowner_phone }).then(r => r.data);
 
 // ---------- Email ----------
 export const emailNda = () => inst.post("/auth/email-nda").then(r => r.data);
