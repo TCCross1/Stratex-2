@@ -1,5 +1,12 @@
 # STRATEX™ — PRD & Build Log
 
+## What's Been Implemented (2026-02-27 — v3.4.0 — BEES XOR Layer Controller + PBR Pivot Hardening)
+- ✅ **BEES Layer Visibility Controller** — `RoofModel3D.jsx` now pre-builds all primary layer mesh groups at mount (framing, shingle/3-tab, dimensional, metal, slate) + secondary gutter overlay. Switching primary layers is now instant visibility toggling (no full scene remount); `resolvedPrimary` removed from useEffect mount-deps.
+- ✅ **Hard-reset XOR enforcement** — explicit `VALID_PRIMARIES = ["framing","shingle","dimensional","metal","slate"]` + a hard-reset pass that hides ALL primaries before showing only the active one. Forbidden states (framing + finish, multiple finishes overlapping) are unreachable by construction.
+- ✅ **Secondary gutter overlay** — independent visibility preserved across primary toggles, anchored to whichever primary is active.
+- ✅ Visually verified all 5 primary panels render distinct textures + the bottom "Gutters OFF" reference panel confirms secondary overlay is properly independent (screenshot capture at `/_neon-preview`).
+- ✅ Backward compatibility preserved: legacy `layers={roofing,framing,gutters}` prop shim still works; existing data-testids untouched.
+
 ## Original Problem Statement
 STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof inspections + automated quoting. Two roles (Contractor / Operator) with isolated views, NDA-gated onboarding, JWT+TOTP MFA, AES-256 encrypted "Business Brain", interactive map dispatch, and forensic 3D mesh + multi-agent narrative post-flight processing.
 

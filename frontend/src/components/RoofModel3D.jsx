@@ -632,15 +632,36 @@ export default function RoofModel3D({
     grid.position.set(centre.x, bbox.min.y - 0.78, centre.z);
     scene.add(grid);
 
-    // -------- facets --------
-    const facetGroups = facets.map((f) => {
-      const finishKind = resolvedPrimary === "framing" ? "shingle" : resolvedPrimary;
-      const g = buildFacetMesh(f, anomalyFacetSet.has(f.id), finishKind);
-      // Framing-mode hides finish meshes entirely
-      g.visible = resolvedPrimary !== "framing";
-      scene.add(g);
-      return g;
+    // -------- BEES PRIMARY LAYERS — pre-build all finish meshes per facet --------
+    // Per BEES contract, primary layers are: framing | finish_shingle | finish_metal | finish_slate
+    // We expose TWO shingle variants (`shingle` = 3-tab, `dimensional` = laminated)
+    // for internal palette comparison, both falling under `layer_finish_shingle`.
+    // Visibility is toggled later (no remount) so flipping between finishes is instant.
+    const FINISH_FOR_LAYER = {
+      shingle:     "shingle",      // 3-tab asphalt
+      dimensional: "dimensional",  // laminated/architectural (BEES layer_finish_shingle)
+      metal:       "metal",
+      slate:       "slate",
+    };
+    // finishLayerGroups: keyed THREE.Group per finish variant (one facet mesh each)
+    const finishLayerGroups = {
+      shingle:     new THREE.Group(),
+      dimensional: new THREE.Group(),
+      metal:       new THREE.Group(),
+      slate:       new THREE.Group(),
+    };
+    Object.keys(finishLayerGroups).forEach((layerKey) => {
+      const finishKind = FINISH_FOR_LAYER[layerKey];
+      facets.forEach((f) => {
+        const g = buildFacetMesh(f, anomalyFacetSet.has(f.id), finishKind);
+        finishLayerGroups[layerKey].add(g);
+      });
+      finishLayerGroups[layerKey].visible = resolvedPrimary === layerKey;
+      scene.add(finishLayerGroups[layerKey]);
     });
+    // Legacy alias kept for raycast click resolution + back-compat with consumers
+    // that previously expected `facetGroups` to be the visible finish set.
+    const facetGroups = finishLayerGroups[resolvedPrimary] ? finishLayerGroups[resolvedPrimary].children : [];
 
     // -------- classified edges (drawn ABOVE facets) --------
     const edgeGroups = edges.map((e) => {
@@ -873,7 +894,7 @@ export default function RoofModel3D({
     };
     renderer.domElement.addEventListener("click", onClick);
 
-    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, framingGroup, gutterGroup };
+    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, finishLayerGroups, framingGroup, gutterGroup };
 
     return () => {
       cancelAnimationFrame(raf);
@@ -889,7 +910,7 @@ export default function RoofModel3D({
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [telemetry?.style, telemetry?.scale, anomalies.length, height, resolvedPrimary]);
+  }, [telemetry?.style, telemetry?.scale, anomalies.length, height]);
 
   useEffect(() => {
     const { controls, scanner } = stateRef.current;
@@ -898,16 +919,33 @@ export default function RoofModel3D({
   }, [scanning, autoRotate]);
 
   useEffect(() => {
-    const { framingGroup, gutterGroup, facetGroups } = stateRef.current;
-    // BEES Layer Visibility Rules:
-    //   - resolvedPrimary === "framing":  facets HIDDEN, framing visible
-    //   - resolvedPrimary === any finish: facets VISIBLE (texture chosen at mount), framing HIDDEN
-    //   - gutters: independent secondary
-    if (framingGroup) framingGroup.visible = resolvedPrimary === "framing";
-    if (gutterGroup)  gutterGroup.visible  = !!resolvedGutters;
-    if (facetGroups)  facetGroups.forEach((g) => {
-      g.visible = resolvedPrimary !== "framing";
-    });
+    // ===== BEES Layer Visibility Controller =====
+    // STRICT XOR between primary structural/finish layers:
+    //   ALLOWED  (1-Packs):  framing | shingle | metal | slate              (alone)
+    //   ALLOWED  (2-Packs):  any one primary  +  gutters                    (overlay)
+    //   FORBIDDEN:           framing + any finish, OR multiple finishes co-rendered
+    // Implementation:
+    //   - Exactly ONE entry in {framing, shingle, metal, slate} is visible at a time.
+    //   - layer_gutters is an independent secondary overlay anchored to whichever
+    //     primary is currently active. Visibility is preserved across primary toggles.
+    const { framingGroup, gutterGroup, finishLayerGroups } = stateRef.current;
+    if (!finishLayerGroups) return;
+
+    const VALID_PRIMARIES = ["framing", "shingle", "dimensional", "metal", "slate"];
+    const primary = VALID_PRIMARIES.includes(resolvedPrimary) ? resolvedPrimary : "shingle";
+
+    // Hard-reset: explicitly hide ALL primaries first, then show ONLY the active one.
+    if (framingGroup) framingGroup.visible = false;
+    Object.values(finishLayerGroups).forEach((g) => { g.visible = false; });
+
+    if (primary === "framing") {
+      if (framingGroup) framingGroup.visible = true;
+    } else if (finishLayerGroups[primary]) {
+      finishLayerGroups[primary].visible = true;
+    }
+
+    // Gutter overlay — independent secondary, user preference preserved
+    if (gutterGroup) gutterGroup.visible = !!resolvedGutters;
   }, [resolvedPrimary, resolvedGutters]);
 
   useEffect(() => {
