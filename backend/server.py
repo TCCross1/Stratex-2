@@ -2353,16 +2353,6 @@ async def stripe_webhook(request: Request):
 app.include_router(auth_r)
 app.include_router(api)
 
-# ---------------------------------------------------------------------------
-# HYDRA Core™ Phase 3 — versioned routers (health + orchestration)
-# Mounted under /api so the existing ingress rules forward them correctly.
-# ---------------------------------------------------------------------------
-from app.api.v1 import health_router as _hydra_health_router  # noqa: E402
-from app.api.v1 import orchestration_router as _hydra_orch_router  # noqa: E402
-
-app.include_router(_hydra_health_router, prefix="/api")
-app.include_router(_hydra_orch_router, prefix="/api")
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=False,
