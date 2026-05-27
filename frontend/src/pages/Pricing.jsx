@@ -45,8 +45,8 @@ export default function Pricing() {
           Every drop runs through a mandatory 3-phase Risk Engine before the trailer hatch opens. Locked under AES-256 — STRATEX™ never touches your business multipliers.
         </p>
         {me?.subscription_tier && (
-          <div className="mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-volt border border-[#39FF14]/40 px-3 py-1">
-            <Check size={11}/> ACTIVE: {plans.tiers[me.subscription_tier]?.name || me.subscription_tier} — {me.subscription_status}
+          <div className="mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-teal border border-[#00F5D4]/40 px-3 py-1">
+            <Check size={11}/> ACTIVE: {plans.tiers[me.subscription_tier]?.name || me.subscription_status}
           </div>
         )}
       </div>
@@ -57,7 +57,7 @@ export default function Pricing() {
           if (!t) return null;
           const Icon = TIER_ICONS[k];
           const accent = TIER_ACCENT[k];
-          const accentColor = accent === "orange" ? "#FF5500" : "#00F0FF";
+          const accentColor = accent === "orange" ? "#FF5400" : "#00F5D4";
           const isCurrent = me?.subscription_tier === k && me?.subscription_status === "active";
           const isPro = t.popular;
           return (

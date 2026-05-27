@@ -1,5 +1,24 @@
 # STRATEX™ — PRD & Build Log
 
+## What's Been Implemented (2026-02-27 — v3.7.0 — Luxury-Corporate QC Pass)
+- ✅ **Brand consistency** — `STRATEX™` + `Strategic Thermal Reconnaissance` subtitle locked across hero, scientific-rigor section, fleet command, footer; legacy "Cyber-Shield" branding fully purged.
+- ✅ **Hero value-prop rewritten** with explicit scientific rigor: sub-surface analytics + localized weather telemetry + thermal capacitance modeling → true moisture volume and depth beneath the membrane (cubic-inch precision).
+- ✅ **Three required technical-language quotes** injected verbatim into a new `[data-testid=scientific-rigor-section]` (Sub-Surface Moisture Quantization, Absolute Mathematical Accuracy, Precision Edge-Mapping). String-audited via playwright — all 3 match exactly.
+- ✅ **Strict 3-color palette enforced**:
+  - `--electric-teal: #00F5D4`, `--neon-orange: #FF5400`, `--metallic-nickel: #3A4350` locked as single source of truth in `index.css`
+  - Legacy `--cyber-teal`, `--volt-green`, `--plasma-orange` re-aliased to the strict palette so existing components keep working while honoring the brand
+  - Palette swatch UI on Landing updated to the strict 3 swatches with shadow glow (was 4 mismatched colors)
+  - Pricing.jsx off-palette `#39FF14` lime and `#FF5500` orange swapped to `#00F5D4` / `#FF5400`
+  - RoofModel3D legend Valley swatch fixed `#FF5500 → #FF5400`
+- ✅ **3D viewport caption upgraded** to "Razor-sharp point clouds + high-contrast volumetric mesh overlays. Moisture boundaries pulse Neon Orange against a Metallic Nickel substrate, with Electric Teal vector edges mathematically locked to the exact square inch" — replaces previous generic "orbital photogrammetry" copy.
+- ✅ **Module 02 (STRATEX Thermal™) blurb upgraded** to scientific rigor — "Sub-surface radiometric mass quantization. Cross-references diurnal temperature shift cycles with thermal capacitance modeling to isolate true moisture entrapment from surface reflectivity."
+
+## Deferred (carried over from prior directive, not cancelled)
+- **P1 — ContractorPortal Business Brain integration** of MaterialConfigurator (currently lives standalone)
+- **P1 — CRM stubs** (outreach_notes, call_logs, communication_templates schemas + endpoints)
+- **P1 — Competitive-intel widget** on /onboard ("you'd save more than Burnett reclaims in a year")
+- **P1 — Dynamic Telemetry Anomaly Halting** loop with Overseer dispatch
+
 ## What's Been Implemented (2026-02-27 — v3.6.0 — Onboarding ROI Funnel + Sales Hub + Materials Expert)
 
 ### Section 1 — `/onboard` Onboarding & ROI Funnel

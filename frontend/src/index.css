@@ -11,9 +11,21 @@
   --obsidian: #06080B;
   --deep-charcoal: #10141D;
   --hud-panel: rgba(16, 20, 29, 0.78);
-  --cyber-teal: #00F0FF;
-  --volt-green: #39FF14;
-  --plasma-orange: #FF5500;
+
+  /* ============ STRATEX™ LUXURY-CORPORATE PALETTE — SINGLE SOURCE OF TRUTH ============
+     Mandatory 3-color palette per Strategic Thermal Reconnaissance brand spec.
+     All UI highlights, active states, data streams, and 3-D canvas vectors MUST
+     resolve to one of these three values. */
+  --electric-teal:    #00F5D4;
+  --neon-orange:      #FF5400;
+  --metallic-nickel:  #3A4350;
+
+  /* Legacy semantic aliases (status indicators) — retuned to the strict palette
+     so existing components keep working while honoring the brand. */
+  --cyber-teal: var(--electric-teal);   /* used by HUD accents, LEDs, focus rings */
+  --volt-green: var(--electric-teal);   /* legacy "OK/STANDBY" semantic → now teal */
+  --plasma-orange: var(--neon-orange);  /* legacy "ALERT/ABORT" semantic → exact neon */
+
   --silver-white: #E2E8F0;
   --muted: #94A3B8;
 

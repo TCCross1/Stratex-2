@@ -34,7 +34,7 @@ export default function Landing() {
           <div className="min-w-0">
             <div className="flex items-center gap-3 mb-4 md:mb-6">
               <span className="led led-teal" />
-              <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">SYSTEM ONLINE • RECON GRID v1.2.0</span>
+              <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">STRATEX™ • STRATEGIC THERMAL RECONNAISSANCE • v1.2.0</span>
             </div>
             <h1 className="font-display text-[1.75rem] leading-[1.04] sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.02em] sm:tracking-[0.06em] sm:leading-[0.95] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
               <span className="block">STRATEGIC</span>
@@ -42,7 +42,10 @@ export default function Landing() {
               <span className="block text-teal glow-teal">RECONNAISSANCE</span>
             </h1>
             <p className="mt-5 md:mt-6 max-w-xl text-sm md:text-lg text-muted-hud font-body leading-relaxed">
-              STRATEX™ is the world's first autonomous, solar-powered roofing recon platform — pairing radiometric thermal mapping with a multi-agent actuarial engine to deliver insurance-grade estimates without a human ever climbing a ladder.
+              STRATEX™ does not display surface anomalies — it <span className="text-teal">quantifies them</span>.
+              Radiometric drone telemetry is cross-referenced with localized weather data and a proprietary thermal
+              capacitance model to calculate the <span className="text-silver">true moisture volume and depth beneath the roof membrane</span> —
+              not what reflects off the surface, but the actual sub-surface mass entrapment, measured to the cubic inch.
             </p>
             <div className="mt-8 md:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 md:gap-4">
               <Link to="/onboard" data-testid="hero-launch-cta" className="btn-hud pulse-glow w-full sm:w-auto justify-center">
@@ -66,12 +69,11 @@ export default function Landing() {
             </HudCard>
             <div className="absolute -bottom-6 -left-6 hidden md:block">
               <HudCard className="px-4 py-3">
-                <span className="font-mono text-[11px] text-muted-hud tracking-widest uppercase">Cyber-Shield Theme</span>
-                <div className="flex gap-2 mt-2">
-                  <span className="w-6 h-6 bg-[#00F0FF]" />
-                  <span className="w-6 h-6 bg-[#39FF14]" />
-                  <span className="w-6 h-6 bg-[#FF5500]" />
-                  <span className="w-6 h-6 bg-[#10141D] border border-[#00F0FF]/30" />
+                <span className="font-mono text-[11px] text-muted-hud tracking-widest uppercase">Luxury-Corporate Palette</span>
+                <div className="flex gap-2 mt-2" data-testid="palette-swatches">
+                  <span className="w-6 h-6" style={{background:"#00F5D4", boxShadow:"0 0 8px #00F5D4"}} title="Electric Teal" data-testid="swatch-electric-teal" />
+                  <span className="w-6 h-6" style={{background:"#FF5400", boxShadow:"0 0 8px #FF5400"}} title="Neon Orange" data-testid="swatch-neon-orange" />
+                  <span className="w-6 h-6" style={{background:"#3A4350", border:"1px solid rgba(0,245,212,0.35)"}} title="Metallic Nickel" data-testid="swatch-metallic-nickel" />
                 </div>
               </HudCard>
             </div>
@@ -88,11 +90,66 @@ export default function Landing() {
               blurb="3D spatial photogrammetry & live mesh engine. Drone-captured orthomosaics stitched into millimeter-accurate roof topology."
               testid="pillar-vision" />
             <Pillar tag="MODULE 02" accent="orange" icon={Activity} title="STRATEX Thermal™"
-              blurb="Subsurface radiometric moisture mapping. Detects wet decking, hidden rot, and adhesion failures invisible to RGB capture."
+              blurb="Sub-surface radiometric mass quantization. Cross-references diurnal temperature shift cycles with thermal capacitance modeling to isolate true moisture entrapment from surface reflectivity — eliminating false positives at the substrate."
               testid="pillar-thermal" />
             <Pillar tag="MODULE 03" accent="teal" icon={Cpu} title="STRATEX Quant™"
               blurb="Multi-agent actuarial estimating engine. Auto-maps every line-item to Xactimate tags under a locked 20/25 O&P envelope."
               testid="pillar-quant" />
+          </div>
+        </div>
+      </section>
+
+      {/* SCIENTIFIC RIGOR — Sub-Surface Quantization · Mathematical Accuracy · Precision Edge-Mapping */}
+      <section className="px-6 md:px-12 py-16 relative" data-testid="scientific-rigor-section">
+        <div className="max-w-[1500px] mx-auto">
+          <SectionTitle eyebrow="// ABSOLUTE SCIENTIFIC RIGOR" title="Quantitative Sub-Surface Analytics" />
+          <p className="text-sm md:text-base text-muted-hud font-body leading-relaxed max-w-3xl mb-10">
+            Every STRATEX™ scan is a mathematical instrument. Radiometric drone telemetry is fused with localized
+            diurnal weather data and a proprietary thermal-capacitance model to compute the actual moisture volume
+            and depth beneath the membrane — never a generic heat-map approximation.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6" data-testid="rigor-tiles">
+            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-quantization">
+              <div className="flex items-center gap-3 mb-4 text-teal">
+                <Activity size={18} strokeWidth={1.5} />
+                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// SUB-SURFACE QUANTIZATION</span>
+              </div>
+              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
+                Sub-Surface Moisture Quantization
+              </h3>
+              <p className="text-sm text-muted-hud leading-relaxed font-body">
+                Calculates true thermodynamic mass anomalies beneath the roof substrate, isolating actual
+                moisture entrapment from simple surface reflectivity.
+              </p>
+            </HudCard>
+
+            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-accuracy">
+              <div className="flex items-center gap-3 mb-4" style={{ color: "#FF5400" }}>
+                <Crosshair size={18} strokeWidth={1.5} />
+                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// MATHEMATICAL ACCURACY</span>
+              </div>
+              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
+                Absolute Mathematical Accuracy
+              </h3>
+              <p className="text-sm text-muted-hud leading-relaxed font-body">
+                Cross-references radiometric drone telemetry with localized diurnal temperature shift cycles
+                to eliminate false positives.
+              </p>
+            </HudCard>
+
+            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-edge-mapping">
+              <div className="flex items-center gap-3 mb-4 text-teal">
+                <Box size={18} strokeWidth={1.5} />
+                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// EDGE PRECISION</span>
+              </div>
+              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
+                Precision Edge-Mapping
+              </h3>
+              <p className="text-sm text-muted-hud leading-relaxed font-body">
+                High-contrast vector detailing ensures that moisture boundaries are calculated down to the
+                exact square inch, giving field crews flawless repair lines.
+              </p>
+            </HudCard>
           </div>
         </div>
       </section>
@@ -121,7 +178,7 @@ export default function Landing() {
       {/* DASHBOARD MONTAGE */}
       <section className="px-6 md:px-12 py-16">
         <div className="max-w-[1500px] mx-auto">
-          <SectionTitle eyebrow="// SPATIAL MODEL LIVE" title="STRATEX Vision™ — Photogrammetry Mesh"/>
+          <SectionTitle eyebrow="// VOLUMETRIC LAYERING ENGINE" title="STRATEX Vision™ — Sub-Surface Mesh"/>
           <HudCard scanline className="p-2">
             <RoofModel3D
               telemetry={demo || {
@@ -137,7 +194,9 @@ export default function Landing() {
             />
           </HudCard>
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">
-            Every Quant™ calculation is locked to the geometry of this mesh. Drag to orbit, scroll to zoom — anomalies pulse plasma orange on the exact roof facet where the drone detected them.
+            Razor-sharp point clouds + high-contrast volumetric mesh overlays. Moisture boundaries pulse Neon
+            Orange against a Metallic Nickel substrate, with Electric Teal vector edges mathematically locked to
+            the exact square inch — the same geometry the Quant™ engine uses to lock every Xactimate line-item.
           </p>
           {demo?.validation && (
             <div className="mt-6 max-w-2xl">
@@ -176,8 +235,8 @@ export default function Landing() {
       {/* FOOTER */}
       <footer className="border-t border-[#00F0FF]/15 px-6 py-6 mt-8">
         <div className="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono uppercase tracking-widest text-muted-hud">
-          <span>STRATEX™ 2026 • All Telemetry Locked</span>
-          <span className="text-teal">v1.0.0 • CYBER-SHIELD BUILD</span>
+          <span>STRATEX™ 2026 • Strategic Thermal Reconnaissance</span>
+          <span className="text-teal">v3.7.0 • LUXURY-CORPORATE BUILD</span>
         </div>
       </footer>
     </div>
