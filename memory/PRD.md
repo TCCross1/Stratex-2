@@ -38,6 +38,18 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
 - ✅ **UI**: 4-button radio group + visual divider + persistent gutters secondary toggle on both `ContractorPortal.jsx` and `Landing.jsx`. `aria-pressed` set correctly. Existing data-testids preserved (`layer-toggle-framing/shingle/metal/slate/gutters`).
 - ✅ Visually verified all 4 states + gutter toggle via screenshot cycle on the demo job.
 
+## What's Been Implemented (2026-02-28 — v3.1.1 — Neon Layer Palette)
+- ✅ **Each visibility layer is now a distinct neon color** per user request "All layers should be neon on their own distinguishable colors":
+  - **Shingle** → Neon Magenta `#ff1ec8` (texture + emissive @ 0.75)
+  - **Metal**   → Neon Amber/Gold `#ffb300` (texture + emissive @ 0.70, metalness 0.90)
+  - **Slate**   → Neon Violet `#9d3cff` (texture + emissive @ 0.65)
+  - **Framing** → Neon Green `#00ff66` (unchanged — already neon)
+  - **Gutters** → Neon Cyan  `#00f0ff` (unchanged — already neon)
+- ✅ Procedural CanvasTextures repainted: shingle tabs in magenta/violet gradient w/ glowing seams, metal seams in gold w/ bright raised highlights, slate scallops in violet/indigo w/ lavender edge highlights.
+- ✅ Constants `NEON_MAGENTA`, `NEON_AMBER`, `NEON_VIOLET` added at top of `RoofModel3D.jsx` for easy reference.
+- ✅ Visually verified on Landing `/` (shingle neon magenta with cyan gutter strip clearly distinct at the eave).
+
+
 ## What's Been Implemented (2026-02-28 — v3.0.1 — Landing Page Demo Mesh Uplift)
 - ✅ **🌐 New public endpoint** `GET /api/public/demo-topology` (no auth) — returns the full `stratex_demo` compound topology (17 facets + 40 edges + framing rafters + gutter polylines + 4 sample anomalies) keyed off a deterministic `LANDING_DEMO_v1` seed so the marketing page is reproducible.
 - ✅ **🖼️ Landing page mesh swapped** — `Landing.jsx` previously hardcoded a 4-facet cross-hip mesh (the cause of the "still looks the same" report). Now fetches from `/api/public/demo-topology` on mount and renders the compound roof with all 3 tri-layer toggles (roofing + framing + gutters) ON by default.

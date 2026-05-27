@@ -20,8 +20,11 @@ const SAND    = 0xc99a5e;
 const STEEL   = 0x8fb8c6;
 const SILVER  = 0xc7d4dd;
 const BG      = 0x0b0f19;
-const MATRIX  = 0x00ff66;     // framing layer neon green
-const ELECTRIC = 0x00f0ff;    // gutter layer electric cyan
+const MATRIX   = 0x00ff66;    // framing layer — neon green
+const ELECTRIC = 0x00f0ff;    // gutter layer — neon cyan
+const NEON_MAGENTA = 0xff1ec8; // shingle layer — neon magenta
+const NEON_AMBER   = 0xffb300; // metal layer   — neon amber/gold
+const NEON_VIOLET  = 0x9d3cff; // slate layer   — neon violet
 
 const EDGE_COLOR = {
   ridge:  TEAL,
@@ -117,11 +120,11 @@ function blueprintTex(tintHex) {
 // Each generator returns a CanvasTexture sized 256x256 for tiled mapping on facets.
 
 function makeShingleTexture() {
+  // NEON MAGENTA — staggered architectural shingle tabs glowing on near-black ground
   const size = 256;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#2c2333"; ctx.fillRect(0, 0, size, size);
-  // Staggered architectural shingle tabs — 8 rows × ~5 tabs offset every other row
+  ctx.fillStyle = "#1a0414"; ctx.fillRect(0, 0, size, size);
   const rowH = size / 8;
   const tabW = size / 4;
   for (let r = 0; r < 8; r++) {
@@ -129,19 +132,19 @@ function makeShingleTexture() {
     for (let cIdx = -1; cIdx <= 4; cIdx++) {
       const x = cIdx * tabW + offset;
       const y = r * rowH;
-      // Tab body
       const grad = ctx.createLinearGradient(x, y, x, y + rowH);
-      grad.addColorStop(0, "#6b5783");
-      grad.addColorStop(0.6, "#473860");
-      grad.addColorStop(1, "#2a1f3d");
+      grad.addColorStop(0,   "#ff5fd8");
+      grad.addColorStop(0.55,"#ff1ec8");
+      grad.addColorStop(1,   "#7a0760");
       ctx.fillStyle = grad;
       ctx.fillRect(x + 1, y + 1, tabW - 2, rowH - 2);
-      // Tab divider (vertical cuts)
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.lineWidth = 1.2;
+      // Neon vertical seam glow
+      ctx.strokeStyle = "rgba(255,120,225,0.85)";
+      ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.moveTo(x + tabW / 2, y); ctx.lineTo(x + tabW / 2, y + rowH); ctx.stroke();
-      // Row separator
-      ctx.strokeStyle = "rgba(0,0,0,0.65)";
+      // Dark row separator
+      ctx.strokeStyle = "rgba(0,0,0,0.75)";
+      ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(x, y + rowH); ctx.lineTo(x + tabW, y + rowH); ctx.stroke();
     }
   }
@@ -152,23 +155,22 @@ function makeShingleTexture() {
 }
 
 function makeMetalTexture() {
+  // NEON AMBER/GOLD — vertical standing-seam panels with hot edge glow
   const size = 256;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  // Vertical standing-seam panels: alternating clean stripe + thin raised seam
   const panelW = size / 6;
   for (let i = 0; i < 6; i++) {
     const x = i * panelW;
-    // Panel surface — cool steel-blue gradient
     const grad = ctx.createLinearGradient(x, 0, x + panelW, 0);
-    grad.addColorStop(0,   "#1a3a52");
-    grad.addColorStop(0.5, "#3e7396");
-    grad.addColorStop(1,   "#1a3a52");
+    grad.addColorStop(0,   "#3a2105");
+    grad.addColorStop(0.5, "#ffb300");
+    grad.addColorStop(1,   "#3a2105");
     ctx.fillStyle = grad; ctx.fillRect(x, 0, panelW, size);
-    // Raised seam at the right edge of each panel
-    ctx.fillStyle = "#5fa0c9";
+    // Bright raised seam
+    ctx.fillStyle = "#fff0a8";
     ctx.fillRect(x + panelW - 2, 0, 2, size);
-    ctx.fillStyle = "rgba(120,180,210,0.5)";
+    ctx.fillStyle = "rgba(255,220,120,0.65)";
     ctx.fillRect(x + panelW - 4, 0, 1, size);
   }
   const tex = new THREE.CanvasTexture(c);
@@ -178,11 +180,11 @@ function makeMetalTexture() {
 }
 
 function makeSlateTexture() {
+  // NEON VIOLET — staggered slate tiles glowing on deep indigo ground
   const size = 256;
   const c = document.createElement("canvas"); c.width = c.height = size;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#1a2733"; ctx.fillRect(0, 0, size, size);
-  // Diamond/scallop slate tiles — staggered hexagonal grid
+  ctx.fillStyle = "#10041f"; ctx.fillRect(0, 0, size, size);
   const rowH = size / 10;
   const tileW = size / 6;
   for (let r = 0; r < 12; r++) {
@@ -190,9 +192,11 @@ function makeSlateTexture() {
     const offset = (r % 2) * (tileW / 2);
     for (let cIdx = -1; cIdx <= 6; cIdx++) {
       const x = cIdx * tileW + offset;
-      const grey = 60 + Math.floor(Math.sin(r * 1.7 + cIdx * 1.3) * 18 + 18);
-      // Slate body — subtle variation
-      ctx.fillStyle = `rgb(${grey},${grey+8},${grey+20})`;
+      const wobble = Math.sin(r * 1.7 + cIdx * 1.3) * 18;
+      const rC = 130 + Math.floor(wobble);
+      const gC = 50  + Math.floor(wobble * 0.5);
+      const bC = 240 + Math.floor(wobble * 0.6);
+      ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
       ctx.beginPath();
       ctx.moveTo(x + tileW / 2, yo);
       ctx.lineTo(x + tileW, yo + rowH * 0.45);
@@ -201,9 +205,9 @@ function makeSlateTexture() {
       ctx.lineTo(x, yo + rowH * 0.45);
       ctx.closePath();
       ctx.fill();
-      // Edge highlight
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.lineWidth = 1;
+      // Bright violet edge highlight
+      ctx.strokeStyle = "rgba(220,160,255,0.75)";
+      ctx.lineWidth = 1.1;
       ctx.stroke();
     }
   }
@@ -250,11 +254,11 @@ function buildFacetMesh(facet, hasAnomaly = false, finishKind = "shingle") {
   }
   g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
-  // Choose material per finish kind. Each gets a distinct base color + texture.
+  // Per-finish neon material: distinct hue, strong emissive glow.
   const finishConfig = {
-    shingle: { tex: finishTex("shingle"), baseColor: 0x7a5fa0, emissive: 0x301f4a, metalness: 0.05, roughness: 0.85, opacity: 0.95, emissiveIntensity: 0.35 },
-    metal:   { tex: finishTex("metal"),   baseColor: 0x5fa0c9, emissive: 0x1a4a6e, metalness: 0.85, roughness: 0.25, opacity: 0.96, emissiveIntensity: 0.30 },
-    slate:   { tex: finishTex("slate"),   baseColor: 0x6e7e8f, emissive: 0x1e2a36, metalness: 0.20, roughness: 0.70, opacity: 0.94, emissiveIntensity: 0.25 },
+    shingle: { tex: finishTex("shingle"), baseColor: NEON_MAGENTA, emissive: NEON_MAGENTA, metalness: 0.15, roughness: 0.55, opacity: 0.96, emissiveIntensity: 0.75 },
+    metal:   { tex: finishTex("metal"),   baseColor: NEON_AMBER,   emissive: NEON_AMBER,   metalness: 0.90, roughness: 0.20, opacity: 0.97, emissiveIntensity: 0.70 },
+    slate:   { tex: finishTex("slate"),   baseColor: NEON_VIOLET,  emissive: NEON_VIOLET,  metalness: 0.30, roughness: 0.55, opacity: 0.95, emissiveIntensity: 0.65 },
   };
   const cfg = finishConfig[finishKind] || finishConfig.shingle;
   const mat = new THREE.MeshStandardMaterial({
