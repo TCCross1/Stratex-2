@@ -113,6 +113,21 @@ class MaterialsConfig(BaseModel):
     labor_rate_per_square: float = 0.0  # if set, used instead of hourly
     insurance_supplement_multiplier_pct: float = 12.0  # applied to insurance jobs
 
+    # Gutter Add-On — toggled per-quote; merged into the master proposal as line items
+    gutter_addon_enabled: bool = True
+    gutter_5in_kstyle_lf_price: float = 8.50
+    gutter_6in_kstyle_lf_price: float = 11.75
+    downspout_drop_price: float = 78.00          # per drop (incl. bracket + strap)
+    elbow_price: float = 8.50                    # per A/B-style elbow
+    miter_price: float = 32.00                   # per box or strip miter corner
+    end_cap_price: float = 6.50
+    conductor_head_price: float = 64.00
+    hidden_hanger_each_price: float = 4.25
+    gutter_labor_per_lf: float = 6.50
+    # Sub-fascia / framing line-items
+    sub_fascia_lf_price: float = 4.75
+    rafter_replacement_each_price: float = 145.00  # per deflected rafter section
+
     @field_validator(
         "shingle_bundle_price", "underlayment_square_price", "ice_water_roll_price",
         "ridge_cap_bundle_price", "starter_bundle_price", "drip_edge_lf_price",
@@ -677,6 +692,35 @@ def _reconcile(job: Dict[str, Any], mat: Dict[str, Any]) -> Dict[str, Any]:
     li(f"Labor — {'per Square' if labor_unit == 'SQ' else 'per Man-Hour'}", labor_qty, labor_unit, labor_unit_price, XACTIMATE_TAGS["labor"])
     li("Disposal — Tear-Off Debris", disposal_tons, "TON", 95.00, XACTIMATE_TAGS["disposal"])
 
+    # ===== SEAMLESS GUTTER ADD-ON — merged into the master quote =====
+    gutters = tele.get("gutters") or {}
+    framing = tele.get("framing") or {}
+    if mat.get("gutter_addon_enabled", True) and gutters.get("total_lf"):
+        is_heavy = gutters.get("profile", "").startswith("6")
+        lf_price = mat["gutter_6in_kstyle_lf_price"] if is_heavy else mat["gutter_5in_kstyle_lf_price"]
+        g_lf = gutters["total_lf"]
+        li(f"Seamless Gutter — {gutters['profile']}", round(g_lf, 1), "LF", lf_price, "RFG GUTTER")
+        li("Hidden Hangers (24\" O.C.)", gutters["hangers"]["count"], "EA", mat["hidden_hanger_each_price"], "RFG HNG")
+        li("Downspout Drop (with bracket + strap)", gutters["downspouts_count"], "EA", mat["downspout_drop_price"], "RFG DSPT")
+        if gutters.get("elbow_count"):
+            li("Downspout Elbow (A/B-style)", gutters["elbow_count"], "EA", mat["elbow_price"], "RFG ELB")
+        if gutters.get("miter_count"):
+            li("Strip / Box Miter Corner", gutters["miter_count"], "EA", mat["miter_price"], "RFG MITER")
+        if gutters.get("end_cap_count"):
+            li("End Caps", gutters["end_cap_count"], "EA", mat["end_cap_price"], "RFG CAP")
+        if gutters.get("conductor_head_count"):
+            li("Conductor Head", gutters["conductor_head_count"], "EA", mat["conductor_head_price"], "RFG COND")
+        li("Gutter Installation Labor", round(g_lf, 1), "LF", mat["gutter_labor_per_lf"], XACTIMATE_TAGS["labor"])
+
+    # ===== SUB-FASCIA / FRAMING REPAIRS — driven by detected anomalies =====
+    anomalies_list = job.get("mission", {}).get("anomalies") or job.get("anomalies") or []
+    gutter_rot_lf = sum(a.get("length_affected_ft", 0) for a in anomalies_list if a.get("code") == "gutter_board_rot")
+    rafter_def_count = sum(1 for a in anomalies_list if a.get("code") == "rafter_deflection")
+    if gutter_rot_lf > 0:
+        li("Sub-Fascia Board Replacement", round(gutter_rot_lf, 1), "LF", mat["sub_fascia_lf_price"], "RFG FASCIA")
+    if rafter_def_count > 0:
+        li("Rafter Section Sister/Replacement", rafter_def_count, "EA", mat["rafter_replacement_each_price"], "FRM RAFTER")
+
     subtotal = round(sum(i["total"] for i in items), 2)
     overhead_rate = mat["overhead_pct"] / 100.0
     profit_rate = mat["profit_margin_pct"] / 100.0
@@ -1071,7 +1115,174 @@ async def run_phase1(job_id: str, user=Depends(contractor_only)):
         {"$set": {"phase1_status": phase1_status, "phase1_completed_at": now_iso(), "status": new_status}},
     )
     await _record_audit(job_id, user["id"], f"PHASE1_{overall}", {"checks": phase1_status["checks"]})
+
+    # 🚨 ASTM C1153 Weather Abort — push contractor notification email + reschedule windows
+    if overall == "FAIL" and user.get("email"):
+        try:
+            windows_payload = await _safe_reschedule_windows(job)
+            html = _phase1_fail_email_html(job, phase1_status["checks"], windows_payload)
+            subject = f"STRATEX™ Dispatch Delayed — Phase 1 ASTM Lock · {job.get('property_address','')[:40]}"
+            email_result = await _send_email(user["email"], subject, html)
+            await _record_audit(job_id, user["id"], "PHASE1_FAIL_EMAIL_SENT", {
+                "to": user["email"], "mocked": email_result.get("mocked", False),
+                "windows_count": len(windows_payload),
+            })
+        except Exception as e:
+            logger.warning("phase1 fail email push failed for job %s: %s", job_id, e)
+
     return phase1_status
+
+
+# ---------------------------------------------------------------------------
+# WEATHER — 7-day forecast (reschedule suggestion) + mid-mission live monitor
+# ---------------------------------------------------------------------------
+
+async def _fetch_openmeteo_forecast_7d(lat: float, lon: float) -> Optional[Dict[str, Any]]:
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        "&hourly=precipitation,precipitation_probability,wind_speed_10m,cloud_cover"
+        "&past_hours=24&forecast_days=7"
+        "&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto"
+    )
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10) as cli:
+            r = await cli.get(url); r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        logger.warning("open-meteo 7d fetch failed: %s", e); return None
+
+
+@api.get("/contractor/jobs/{job_id}/reschedule-suggestions")
+async def reschedule_suggestions(job_id: str, user=Depends(contractor_only)):
+    """Scan the next 7 days of Open-Meteo data for windows that satisfy all 4 ASTM gates.
+
+    Returns the top 3 evening (sunset → 10pm local) slots where:
+      • past 24h precip ≤ 0.05"
+      • forecast 2h precip prob ≤ 30%
+      • day cloud cover ≤ 70%
+      • wind ≤ 5 mph
+    """
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    om = await _fetch_openmeteo_forecast_7d(job.get("lat", 38.04), job.get("lon", -84.5))
+    if not om:
+        return {"available": False, "reason": "Open-Meteo unavailable", "windows": []}
+    h = om.get("hourly") or {}
+    times = h.get("time") or []
+    precip = h.get("precipitation") or []
+    prob = h.get("precipitation_probability") or []
+    wind = h.get("wind_speed_10m") or []
+    clouds = h.get("cloud_cover") or []
+    # past_hours=24 → first 24 entries are past
+    PAST = 24
+    windows = []
+    # Walk forward 1 hour at a time and treat index i as candidate launch slot
+    for i in range(PAST + 2, min(len(times), PAST + 24 * 7)):
+        # eligibility window: prefer 19:00-22:00 local (drone night scan)
+        hour_local = int(times[i].split("T")[1].split(":")[0]) if "T" in times[i] else 0
+        if hour_local < 19 or hour_local > 22:
+            continue
+        past24_precip = sum(precip[max(0, i - 24):i]) if precip[:i] else 0
+        next2_prob = max(prob[i:i + 2]) if len(prob) > i + 1 else 0
+        next2_precip = sum(precip[i:i + 2]) if len(precip) > i + 1 else 0
+        # previous-12h cloud (daytime preceding the night slot)
+        day_clouds = clouds[max(0, i - 12):i] if clouds[:i] else []
+        avg_clouds = (sum(day_clouds) / len(day_clouds)) if day_clouds else 0
+        cur_wind = wind[i] if i < len(wind) else 0
+        ok = (past24_precip <= 0.05 and next2_prob <= 30 and next2_precip <= 0.01
+              and avg_clouds <= 70 and cur_wind <= 5.0)
+        if ok:
+            windows.append({
+                "iso": times[i],
+                "past_24h_precip_in": round(past24_precip, 2),
+                "avg_cloud_12h_pct": round(avg_clouds, 0),
+                "next_2h_precip_prob_pct": next2_prob,
+                "wind_mph": round(cur_wind, 1),
+                "label": f"{times[i].split('T')[0]} · {times[i].split('T')[1]}",
+            })
+        if len(windows) >= 3:
+            break
+    return {"available": True, "windows": windows}
+
+
+@api.get("/contractor/jobs/{job_id}/weather-monitor")
+async def weather_monitor(job_id: str, user=Depends(contractor_only)):
+    """Live weather pulse — re-fetches Open-Meteo for the job's coordinates so the
+    contractor sees mid-mission wind / precip / cloud changes without re-running Phase 1."""
+    job = await db.jobs.find_one({"id": job_id, "contractor_id": user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return await _live_weather_pulse(job)
+
+
+@api.get("/operator/jobs/{job_id}/weather-monitor")
+async def operator_weather_monitor(job_id: str, user=Depends(operator_only)):
+    """Operator-side live weather pulse — same payload as contractor weather-monitor, but
+    accessible by operators on jobs assigned (or pickable) by them. No financial data leaks
+    here since the payload is pure atmospherics."""
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return await _live_weather_pulse(job)
+
+
+async def _live_weather_pulse(job: Dict[str, Any]) -> Dict[str, Any]:
+    om = await _fetch_openmeteo(job.get("lat", 38.04), job.get("lon", -84.5))
+    if not om:
+        return {"available": False}
+    m = _classify_open_meteo(om)
+    abort = (m["past_24h_precip_in"] > 0.05
+             or m["avg_cloud_12h_pct"] > 70
+             or m["next2h_precip_prob_pct"] > 30
+             or m["next2h_precip_in"] > 0.01
+             or m["current_wind_mph"] > 8.0)
+    return {"available": True, **m, "abort_recommended": abort, "as_of": now_iso()}
+
+
+async def _safe_reschedule_windows(job: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Helper used by both the reschedule endpoint and the Phase 1 fail email — fetches
+    next 3 ASTM-compliant evening launch windows for this job. Returns [] on any failure."""
+    try:
+        om = await _fetch_openmeteo_forecast_7d(job.get("lat", 38.04), job.get("lon", -84.5))
+        if not om:
+            return []
+        h = om.get("hourly") or {}
+        times = h.get("time") or []
+        precip = h.get("precipitation") or []
+        prob = h.get("precipitation_probability") or []
+        wind = h.get("wind_speed_10m") or []
+        clouds = h.get("cloud_cover") or []
+        PAST = 24
+        out: List[Dict[str, Any]] = []
+        for i in range(PAST + 2, min(len(times), PAST + 24 * 7)):
+            hour_local = int(times[i].split("T")[1].split(":")[0]) if "T" in times[i] else 0
+            if hour_local < 19 or hour_local > 22:
+                continue
+            past24_precip = sum(precip[max(0, i - 24):i]) if precip[:i] else 0
+            next2_prob = max(prob[i:i + 2]) if len(prob) > i + 1 else 0
+            next2_precip = sum(precip[i:i + 2]) if len(precip) > i + 1 else 0
+            day_clouds = clouds[max(0, i - 12):i] if clouds[:i] else []
+            avg_clouds = (sum(day_clouds) / len(day_clouds)) if day_clouds else 0
+            cur_wind = wind[i] if i < len(wind) else 0
+            if (past24_precip <= 0.05 and next2_prob <= 30 and next2_precip <= 0.01
+                    and avg_clouds <= 70 and cur_wind <= 5.0):
+                out.append({
+                    "iso": times[i],
+                    "past_24h_precip_in": round(past24_precip, 2),
+                    "avg_cloud_12h_pct": round(avg_clouds, 0),
+                    "next_2h_precip_prob_pct": next2_prob,
+                    "wind_mph": round(cur_wind, 1),
+                    "label": f"{times[i].split('T')[0]} · {times[i].split('T')[1]}",
+                })
+            if len(out) >= 3:
+                break
+        return out
+    except Exception as e:
+        logger.warning("safe reschedule windows failed: %s", e)
+        return []
 
 
 @api.post("/operator/jobs/{job_id}/dry-run")
@@ -1343,6 +1554,35 @@ def _proposal_email_html(job: Dict[str, Any]) -> str:
     </table>
     <p style="color:#94A3B8;line-height:1.6;font-size:13px;">Your full forensic supplement, anomaly catalog, and Xactimate-tagged line-items are attached as a PDF. Please review and reach out to {job.get('contractor_company','your contractor')} with any questions.</p>
     <div style="margin-top:24px;color:#00F0FF;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;">STRATEX&trade; Autonomous Recon Network</div>
+  </td></tr>
+</table>"""
+
+
+def _phase1_fail_email_html(job: Dict[str, Any], checks: List[Dict[str, Any]], windows: List[Dict[str, Any]]) -> str:
+    """ASTM C1153 weather-abort notification to the contractor."""
+    fail_rows = "".join(
+        f"<tr><td style='color:#FF5500;font-family:monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid #1A2230;text-transform:uppercase;letter-spacing:0.12em;'>{c['name']}</td>"
+        f"<td style='color:#FF5500;font-family:monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid #1A2230;'>{c['status']}</td>"
+        f"<td style='color:#94A3B8;font-size:11px;padding:6px 8px;border-bottom:1px solid #1A2230;line-height:1.5;'>{c.get('details','')}</td></tr>"
+        for c in checks if c.get("status") in ("FAIL", "WARN")
+    ) or "<tr><td colspan='3' style='color:#94A3B8;padding:6px 8px;'>—</td></tr>"
+    window_rows = "".join(
+        f"<tr><td style='color:#39FF14;font-family:monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid #1A2230;letter-spacing:0.12em;'>{w['label']}</td>"
+        f"<td style='color:#94A3B8;font-size:11px;padding:6px 8px;border-bottom:1px solid #1A2230;'>precip 24h {w['past_24h_precip_in']}\" · clouds {w['avg_cloud_12h_pct']}% · wind {w['wind_mph']}mph</td></tr>"
+        for w in (windows or [])
+    ) or "<tr><td colspan='2' style='color:#94A3B8;padding:6px 8px;font-size:11px;'>No ASTM-compliant launch windows in the next 7 days — extended forecast review required.</td></tr>"
+    return f"""
+<table cellpadding="0" cellspacing="0" style="background:#06080B;color:#E2E8F0;font-family:Helvetica,Arial,sans-serif;width:100%;max-width:680px;padding:24px;border:1px solid #FF5500;">
+  <tr><td>
+    <div style="color:#FF5500;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;">// STRATEX&trade; · DISPATCH DELAYED</div>
+    <h1 style="color:#E2E8F0;letter-spacing:0.06em;text-transform:uppercase;margin:8px 0 4px;font-size:22px;">Phase 1 Gatekeeping · Software Lock Engaged</h1>
+    <div style="color:#94A3B8;font-size:12px;margin-bottom:18px;">{job.get('property_address','')} &middot; Job {job['id'][:8]}</div>
+    <p style="color:#E2E8F0;font-size:13px;line-height:1.6;margin:0 0 14px;">ASTM C1153 thermographic survey conditions are not met for this property right now. The autonomous launch is locked until atmospherics clear. Failing gates:</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border:1px solid #FF550044;margin-bottom:18px;">{fail_rows}</table>
+    <p style="color:#39FF14;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;margin:0 0 8px;">// Next ASTM-COMPLIANT WINDOWS (LOCAL TIME)</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border:1px solid #39FF1444;margin-bottom:14px;">{window_rows}</table>
+    <p style="color:#94A3B8;line-height:1.6;font-size:12px;">The system will auto-re-run Phase 1 against live Open-Meteo telemetry; you can also retry manually from the contractor portal. The dispatch will resume the moment all 4 weather gates pass.</p>
+    <div style="margin-top:24px;color:#FF5500;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;">STRATEX&trade; Autonomous Recon Network &middot; Fleet Safety Protocol</div>
   </td></tr>
 </table>"""
 

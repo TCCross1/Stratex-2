@@ -49,6 +49,7 @@ export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf
 export const listOperatorJobs = () => inst.get("/operator/jobs").then(r => r.data);
 export const getOperatorJob = (id) => inst.get(`/operator/jobs/${id}`).then(r => r.data);
 export const operatorLaunch = (id, preflight) => inst.post(`/operator/jobs/${id}/launch`, preflight).then(r => r.data);
+export const operatorWeatherMonitor = (id) => inst.get(`/operator/jobs/${id}/weather-monitor`).then(r => r.data);
 
 // ---------- Fleet ----------
 export const fleetStatus = () => inst.get("/fleet/status").then(r => r.data);
@@ -58,6 +59,8 @@ export const runPhase1 = (id) => inst.post(`/contractor/jobs/${id}/run-phase1`).
 export const getJobAuditLog = (id) => inst.get(`/contractor/jobs/${id}/audit-log`).then(r => r.data);
 export const operatorDryRun = (id, reason, notes) => inst.post(`/operator/jobs/${id}/dry-run`, { reason, notes }).then(r => r.data);
 export const getBillingMeter = () => inst.get("/contractor/billing/meter").then(r => r.data);
+export const rescheduleSuggestions = (id) => inst.get(`/contractor/jobs/${id}/reschedule-suggestions`).then(r => r.data);
+export const weatherMonitor = (id) => inst.get(`/contractor/jobs/${id}/weather-monitor`).then(r => r.data);
 
 // ---------- Email ----------
 export const emailNda = () => inst.post("/auth/email-nda").then(r => r.data);

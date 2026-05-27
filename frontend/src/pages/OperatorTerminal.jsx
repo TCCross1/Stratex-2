@@ -3,8 +3,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
 import useIsMobile from "@/hooks/use-is-mobile";
-import { listOperatorJobs, getOperatorJob, operatorLaunch, operatorDryRun } from "@/lib/api";
-import { Radar, Rocket, MapPin, AlertTriangle, CheckCircle2, ChevronRight, Shield, Wind, Radio, Zap, UserCheck, Eye, PawPrint, Battery, Lock, XCircle } from "lucide-react";
+import { listOperatorJobs, getOperatorJob, operatorLaunch, operatorDryRun, operatorWeatherMonitor } from "@/lib/api";
+import { Radar, Rocket, MapPin, AlertTriangle, CheckCircle2, ChevronRight, Shield, Wind, Radio, Zap, UserCheck, Eye, PawPrint, Battery, Lock, XCircle, Activity, CloudRain } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -76,9 +76,23 @@ export function OperatorJobDetail() {
   const [dryRunOpen, setDryRunOpen] = useState(false);
   const [dryRunReason, setDryRunReason] = useState("locked_gate");
   const [dryRunNotes, setDryRunNotes] = useState("");
+  const [weather, setWeather] = useState(null);
 
   const load = async () => { setJob(await getOperatorJob(id)); };
   useEffect(()=>{ load().catch(()=>{}); }, [id]);
+
+  // Live weather pulse — poll every 30s while job is awaiting capture so the operator
+  // sees real-time wind / cloud / precip changes that may trigger an abort recommendation
+  useEffect(() => {
+    if (!job || (job.status !== "PENDING_FIELD_CAPTURE" && job.status !== "IN_FLIGHT")) {
+      setWeather(null); return;
+    }
+    let stopped = false;
+    const fetchIt = () => operatorWeatherMonitor(id).then((w)=>{ if(!stopped) setWeather(w); }).catch(()=>{});
+    fetchIt();
+    const t = setInterval(fetchIt, 30000);
+    return () => { stopped = true; clearInterval(t); };
+  }, [job?.status, id]);
 
   if (!job) return <div className="p-10 text-muted-hud font-mono">Loading…</div>;
   const tele = job.roof_telemetry || {};
@@ -169,6 +183,32 @@ export function OperatorJobDetail() {
             </div>
             <div className="mt-2 font-mono text-[10px] text-muted-hud">TARGET: <span className="text-teal">{job.lat?.toFixed?.(5)}, {job.lon?.toFixed?.(5)}</span> • RTK acquisition will resolve to centimeter precision on launch.</div>
           </HudCard>
+
+          {/* LIVE WEATHER PULSE — refresh every 30s, abort badge if any ASTM gate breaks */}
+          {weather && weather.available && (
+            <HudCard scanline alert={!!weather.abort_recommended} className="p-4 mb-3" data-testid="op-weather-monitor-card">
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+                <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
+                  <Activity size={13} className={weather.abort_recommended ? "text-plasma pulse-alert" : "text-volt pulse-glow"}/>
+                  Live Weather Pulse · Polled every 30s
+                </div>
+                {weather.abort_recommended ? (
+                  <span data-testid="op-weather-abort-badge" className="font-mono text-[10px] uppercase tracking-widest text-plasma border border-[#FF5500]/40 px-2 py-0.5 flex items-center gap-1">
+                    <CloudRain size={11}/> ABORT RECOMMENDED
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-volt border border-[#39FF14]/40 px-2 py-0.5">NOMINAL</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+                <div>Past 24h precip: <span className="text-silver">{weather.past_24h_precip_in}"</span></div>
+                <div>Cloud 12h: <span className="text-silver">{weather.avg_cloud_12h_pct}%</span></div>
+                <div>Next 2h precip prob: <span className="text-silver">{weather.next2h_precip_prob_pct}%</span></div>
+                <div>Wind: <span className="text-silver">{weather.current_wind_mph} mph</span></div>
+              </div>
+              <div className="text-[10px] font-mono text-muted-hud uppercase tracking-widest mt-2">as of {weather.as_of} · ASTM C1153</div>
+            </HudCard>
+          )}
 
           {/* PHASE 2 — On-Site Physical Safety */}
           <HudCard scanline className="p-5 mb-3" data-testid="phase2-card">

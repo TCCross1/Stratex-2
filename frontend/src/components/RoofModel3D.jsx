@@ -16,10 +16,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const TEAL    = 0x00f0ff;
 const ORANGE  = 0xff5500;
-const SAND    = 0xc99a5e;     // rear-facing warm bronze
-const STEEL   = 0x8fb8c6;     // side-facing teal-grey
+const SAND    = 0xc99a5e;
+const STEEL   = 0x8fb8c6;
 const SILVER  = 0xc7d4dd;
 const BG      = 0x0b0f19;
+const MATRIX  = 0x00ff66;     // framing layer neon green
+const ELECTRIC = 0x00f0ff;    // gutter layer electric cyan
 
 const EDGE_COLOR = {
   ridge:  TEAL,
@@ -234,6 +236,7 @@ export default function RoofModel3D({
   onSelectAnomaly,
   showLabels = true,
   showDimensions = true,
+  layers = { roofing: true, framing: false, gutters: false },
 }) {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -330,6 +333,65 @@ export default function RoofModel3D({
       const g = buildAnomalyPatch(a, f); scene.add(g); return g;
     }).filter(Boolean);
 
+    // -------- FRAMING LAYER (neon-green matrix wireframe) --------
+    const framingGroup = new THREE.Group();
+    framingGroup.visible = !!layers.framing;
+    const tele = telemetry || {};
+    const framing = tele.framing || {};
+    // Rafters
+    (framing.rafters || []).forEach((r) => {
+      const geom = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(...r.a), new THREE.Vector3(...r.b),
+      ]);
+      const mat = new THREE.LineBasicMaterial({ color: MATRIX, transparent: true, opacity: 0.78 });
+      framingGroup.add(new THREE.Line(geom, mat));
+    });
+    // Sub-fascia (slightly below + along each eave)
+    (framing.sub_fascia || []).forEach((s) => {
+      const a = new THREE.Vector3(s.a[0], s.a[1] - 0.5, s.a[2]);
+      const b = new THREE.Vector3(s.b[0], s.b[1] - 0.5, s.b[2]);
+      const geom = new THREE.BufferGeometry().setFromPoints([a, b]);
+      framingGroup.add(new THREE.Line(geom, new THREE.LineBasicMaterial({ color: MATRIX, transparent: true, opacity: 0.95, linewidth: 3 })));
+    });
+    scene.add(framingGroup);
+
+    // -------- GUTTERS LAYER (neon-cyan extruded tube along eaves + downspouts) --------
+    const gutterGroup = new THREE.Group();
+    gutterGroup.visible = !!layers.gutters;
+    const gutters = tele.gutters || {};
+    (gutters.polylines || []).forEach((p) => {
+      const a = new THREE.Vector3(p.a[0], p.a[1] - 0.6, p.a[2]);
+      const b = new THREE.Vector3(p.b[0], p.b[1] - 0.6, p.b[2]);
+      const path = new THREE.LineCurve3(a, b);
+      const tube = new THREE.TubeGeometry(path, 1, 0.22, 8, false);
+      const mat = new THREE.MeshStandardMaterial({
+        color: ELECTRIC, emissive: ELECTRIC, emissiveIntensity: 0.55,
+        transparent: true, opacity: 0.9, metalness: 0.4, roughness: 0.35,
+      });
+      gutterGroup.add(new THREE.Mesh(tube, mat));
+      // hangers — small node points every 2 ft along the segment
+      const len = a.distanceTo(b);
+      const n = Math.max(2, Math.floor(len / 2));
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        const pos = a.clone().lerp(b, t);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+        dot.position.copy(pos); gutterGroup.add(dot);
+      }
+    });
+    (gutters.downspouts || []).forEach((d) => {
+      const top = new THREE.Vector3(d.drop[0], d.drop[1] - 0.6, d.drop[2]);
+      const bot = new THREE.Vector3(d.ground[0], d.ground[1], d.ground[2]);
+      const path = new THREE.LineCurve3(top, bot);
+      const tube = new THREE.TubeGeometry(path, 1, 0.16, 6, false);
+      gutterGroup.add(new THREE.Mesh(tube, new THREE.MeshStandardMaterial({
+        color: ELECTRIC, emissive: ELECTRIC, emissiveIntensity: 0.5,
+        transparent: true, opacity: 0.85, metalness: 0.4, roughness: 0.35,
+      })));
+    });
+    scene.add(gutterGroup);
+
     // -------- scanner sweep --------
     const scanner = new THREE.Mesh(
       new THREE.PlaneGeometry(span * 3, span * 3),
@@ -352,6 +414,14 @@ export default function RoofModel3D({
 
     let raf;
     const start = performance.now();
+    // Camera intro — 5s slow recon sweep before user-control resumes
+    const introDuration = 5000;
+    const introStartAngle = Math.atan2(camera.position.x - centre.x, camera.position.z - centre.z);
+    const introRadius = Math.hypot(camera.position.x - centre.x, camera.position.z - centre.z);
+    const introY = camera.position.y;
+    let introActive = true;
+    controls.enabled = false;
+
     const tick = () => {
       const t = (performance.now() - start) / 1000;
       anomalyGroups.forEach((g) => {
@@ -365,7 +435,27 @@ export default function RoofModel3D({
         scanner.position.y = bbox.min.y - 1 + cycle * (span * 1.5);
         scanner.material.opacity = 0.42 * (1 - cycle);
       } else { scanner.visible = false; }
-      controls.update();
+      // === intro camera sweep ===
+      if (introActive) {
+        const elapsed = performance.now() - start;
+        const u = Math.min(1, elapsed / introDuration);
+        const ease = 1 - Math.pow(1 - u, 3); // ease-out cubic
+        const sweep = ease * Math.PI * 1.4;  // ~250° arc
+        const angle = introStartAngle + sweep;
+        camera.position.set(
+          centre.x + Math.sin(angle) * introRadius,
+          introY + Math.sin(u * Math.PI) * span * 0.35,  // gentle vertical arc
+          centre.z + Math.cos(angle) * introRadius,
+        );
+        camera.lookAt(centre);
+        if (u >= 1) {
+          introActive = false;
+          controls.enabled = true;
+          controls.update();
+        }
+      } else {
+        controls.update();
+      }
       renderer.render(scene, camera);
 
       // Update HTML overlay positions every ~3 frames
@@ -424,7 +514,7 @@ export default function RoofModel3D({
     };
     renderer.domElement.addEventListener("click", onClick);
 
-    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups };
+    stateRef.current = { scene, renderer, controls, scanner, anomalyGroups, facetGroups, framingGroup, gutterGroup };
 
     return () => {
       cancelAnimationFrame(raf);
@@ -447,6 +537,15 @@ export default function RoofModel3D({
     if (controls) controls.autoRotate = autoRotate && !scanning;
     if (scanner) scanner.visible = scanning;
   }, [scanning, autoRotate]);
+
+  useEffect(() => {
+    const { framingGroup, gutterGroup, facetGroups } = stateRef.current;
+    if (framingGroup) framingGroup.visible = !!layers.framing;
+    if (gutterGroup)  gutterGroup.visible  = !!layers.gutters;
+    if (facetGroups) facetGroups.forEach((g) => {
+      g.visible = !!layers.roofing;
+    });
+  }, [layers.roofing, layers.framing, layers.gutters]);
 
   useEffect(() => {
     const { anomalyGroups } = stateRef.current; if (!anomalyGroups) return;

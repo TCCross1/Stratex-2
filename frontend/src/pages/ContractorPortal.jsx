@@ -9,10 +9,10 @@ import {
   listContractorJobs, createJob, getContractorJob, computeProposal, auditApprove, markSent, contractorPdfUrl,
   getMaterials, saveMaterials,
 } from "@/lib/api";
-import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2, AlertTriangle, Wind, Cloud, Radio, Zap, ScrollText } from "lucide-react";
+import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2, AlertTriangle, Wind, Cloud, Radio, Zap, ScrollText, Home, Activity, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
-import { emailProposal, runPhase1, getJobAuditLog } from "@/lib/api";
+import { emailProposal, runPhase1, getJobAuditLog, rescheduleSuggestions, weatherMonitor } from "@/lib/api";
 
 const STATUS_LABEL = {
   DRAFT: "Draft", PENDING_PHASE1: "Phase 1 Pending", PHASE1_BLOCKED: "Phase 1 Blocked",
@@ -267,13 +267,32 @@ export function JobDetail() {
   const [job, setJob] = useState(null);
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [streamPhase, setStreamPhase] = useState(-1); // -1 idle, 0..4 phases, 4 = done
+  const [streamPhase, setStreamPhase] = useState(-1);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
+  const [layers, setLayers] = useState({ roofing: true, framing: false, gutters: false });
+  const [reschedule, setReschedule] = useState(null);
+  const [weather, setWeather] = useState(null);
 
   const load = async () => { const j = await getContractorJob(id); setJob(j); const an=(j.mission?.anomalies||j.anomalies||[]); if(an[0]) setSelectedAnomaly(an[0]); };
   useEffect(()=>{ load().catch(()=>{}); }, [id]);
+
+  // Auto-fetch reschedule suggestions when Phase 1 is blocked
+  useEffect(() => {
+    if (job?.status === "PHASE1_BLOCKED" && !reschedule) {
+      rescheduleSuggestions(id).then(setReschedule).catch(()=>{});
+    }
+  }, [job?.status, id, reschedule]);
+
+  // Mid-mission live weather pulse (poll every 30s while IN_FLIGHT)
+  useEffect(() => {
+    if (job?.status !== "IN_FLIGHT") { setWeather(null); return; }
+    const fetchIt = () => weatherMonitor(id).then(setWeather).catch(()=>{});
+    fetchIt();
+    const t = setInterval(fetchIt, 30000);
+    return () => clearInterval(t);
+  }, [job?.status, id]);
 
   if (!job) return <><SecurityBanner/><div className="p-10 text-muted-hud font-mono">Loading…</div></>;
 
@@ -353,6 +372,56 @@ export function JobDetail() {
           }}/>
         )}
 
+        {/* RESCHEDULE — when Phase 1 blocked on weather */}
+        {job.status === "PHASE1_BLOCKED" && reschedule && (
+          <HudCard scanline className="p-5 mb-4" data-testid="reschedule-card">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal mb-3">
+              <Calendar size={13}/> Auto-Reschedule · Open-Meteo 7-day Forecast
+            </div>
+            {reschedule.windows.length === 0 ? (
+              <div className="font-mono text-[12px] text-plasma">No safe ASTM-compliant launch windows detected in the next 7 days for this property. Manual override or extended forecast review required.</div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[12px] text-muted-hud mb-2">The system identified the next {reschedule.windows.length} evening slots (19:00–22:00 local) where all 4 ASTM gates pass:</p>
+                {reschedule.windows.map((w, i) => (
+                  <div key={i} data-testid={`reschedule-window-${i}`} className="hud-card p-3 flex items-center justify-between gap-3">
+                    <span className="corner-bl"/><span className="corner-br"/>
+                    <div>
+                      <div className="font-display text-sm uppercase tracking-widest text-volt">{w.label}</div>
+                      <div className="font-mono text-[10px] text-muted-hud mt-0.5">
+                        precip 24h: <span className="text-silver">{w.past_24h_precip_in}"</span> · clouds 12h: <span className="text-silver">{w.avg_cloud_12h_pct}%</span> · wind: <span className="text-silver">{w.wind_mph}mph</span>
+                      </div>
+                    </div>
+                    <Calendar size={16} className="text-volt"/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </HudCard>
+        )}
+
+        {/* MID-MISSION LIVE WEATHER MONITOR — while IN_FLIGHT */}
+        {weather && job.status === "IN_FLIGHT" && (
+          <HudCard scanline alert={weather.abort_recommended} className="p-4 mb-4" data-testid="weather-monitor-card">
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-teal">
+                <Activity size={13} className={weather.abort_recommended ? "text-plasma pulse-alert" : "text-volt pulse-glow"}/>
+                Live Weather Monitor · Polled every 30s
+              </div>
+              {weather.abort_recommended && (
+                <span className="font-mono text-[10px] uppercase tracking-widest text-plasma border border-[#FF5500]/40 px-2 py-0.5">ABORT RECOMMENDED</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+              <div>Past 24h precip: <span className="text-silver">{weather.past_24h_precip_in}"</span></div>
+              <div>Cloud 12h: <span className="text-silver">{weather.avg_cloud_12h_pct}%</span></div>
+              <div>Next 2h precip prob: <span className="text-silver">{weather.next2h_precip_prob_pct}%</span></div>
+              <div>Wind: <span className="text-silver">{weather.current_wind_mph} mph</span></div>
+            </div>
+            <div className="text-[10px] font-mono text-muted-hud uppercase tracking-widest mt-2">as of {weather.as_of}</div>
+          </HudCard>
+        )}
+
         {/* Dry-run penalty banner */}
         {job.status === "DRY_RUN_PENALTY" && job.dry_run && (
           <HudCard alert className="p-5 mb-4" data-testid="dry-run-banner">
@@ -396,7 +465,35 @@ export function JobDetail() {
                   height={isMobile ? 520 : 620}
                   showLabels={!isMobile}
                   showDimensions={!isMobile}
+                  layers={layers}
                 />
+
+                {/* Tri-Layer Toggle bar — top-right under SAT title */}
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 mt-12 pointer-events-auto" data-testid="layer-toggle-bar">
+                  {[
+                    { k: "roofing",  label: "ROOFING",  color: "#FF5722" },
+                    { k: "framing",  label: "FRAMING",  color: "#00FF66" },
+                    { k: "gutters",  label: "GUTTERS",  color: "#00F0FF" },
+                  ].map((t) => (
+                    <button
+                      key={t.k}
+                      data-testid={`layer-toggle-${t.k}`}
+                      onClick={() => setLayers((l) => ({ ...l, [t.k]: !l[t.k] }))}
+                      className="px-2 py-1 font-mono text-[10px] uppercase tracking-widest border transition-all"
+                      style={{
+                        background: layers[t.k] ? `${t.color}22` : "rgba(11,15,25,0.85)",
+                        color: layers[t.k] ? t.color : "#94A3B8",
+                        borderColor: layers[t.k] ? t.color : "rgba(0,240,255,0.25)",
+                        boxShadow: layers[t.k] ? `0 0 10px ${t.color}66, inset 0 0 6px ${t.color}33` : "none",
+                        textShadow: layers[t.k] ? `0 0 6px ${t.color}` : "none",
+                        backdropFilter: "blur(8px)",
+                      }}
+                    >
+                      <span className="w-1.5 h-1.5 inline-block mr-1 align-middle" style={{ background: t.color, boxShadow: `0 0 4px ${t.color}` }}/>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Top-left: Project Identity card */}
                 <div className="absolute top-14 left-4 z-10 pointer-events-none">
