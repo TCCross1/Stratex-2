@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
 import useIsMobile from "@/hooks/use-is-mobile";
+import { api } from "@/lib/api";
 import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
 
 const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
@@ -19,6 +20,10 @@ const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
 
 export default function Landing() {
   const isMobile = useIsMobile(900);
+  const [demo, setDemo] = useState(null);
+  useEffect(() => {
+    api.get("/public/demo-topology").then((r) => setDemo(r.data)).catch(() => setDemo(null));
+  }, []);
   return (
     <div data-testid="landing-page">
       {/* HERO */}
@@ -118,33 +123,14 @@ export default function Landing() {
           <SectionTitle eyebrow="// SPATIAL MODEL LIVE" title="STRATEX Vision™ — Photogrammetry Mesh"/>
           <HudCard scanline className="p-2">
             <RoofModel3D
-              telemetry={{
-                style: "cross_hip",
-                scale: 1.0,
-                facets: [
-                  {id:"A1", vertices:[[-23,0,-13],[23,0,-13],[12,7.5,0],[-12,7.5,0]], normal:[0,0.83,-0.55], area_planar_sf:600, area_true_sf:660, pitch:8, color_tag:"#FF8A60"},
-                  {id:"A2", vertices:[[23,0,-13],[23,0,13],[12,7.5,0]], normal:[0.83,0.55,0], area_planar_sf:170, area_true_sf:200, pitch:8, color_tag:"#FFB87A"},
-                  {id:"A3", vertices:[[23,0,13],[-23,0,13],[-12,7.5,0],[12,7.5,0]], normal:[0,0.83,0.55], area_planar_sf:600, area_true_sf:660, pitch:8, color_tag:"#7BB7C6"},
-                  {id:"A4", vertices:[[-23,0,13],[-23,0,-13],[-12,7.5,0]], normal:[-0.83,0.55,0], area_planar_sf:170, area_true_sf:200, pitch:8, color_tag:"#6FA3B5"},
-                ],
-                edges: [
-                  {a:[-23,0,-13],b:[23,0,-13],length_ft:46,classification:"eave"},
-                  {a:[23,0,-13],b:[23,0,13],length_ft:26,classification:"eave"},
-                  {a:[23,0,13],b:[-23,0,13],length_ft:46,classification:"eave"},
-                  {a:[-23,0,13],b:[-23,0,-13],length_ft:26,classification:"eave"},
-                  {a:[-23,0,-13],b:[-12,7.5,0],length_ft:18,classification:"hip"},
-                  {a:[23,0,-13],b:[12,7.5,0],length_ft:18,classification:"hip"},
-                  {a:[23,0,13],b:[12,7.5,0],length_ft:18,classification:"hip"},
-                  {a:[-23,0,13],b:[-12,7.5,0],length_ft:18,classification:"hip"},
-                  {a:[-12,7.5,0],b:[12,7.5,0],length_ft:24,classification:"ridge"},
-                ],
+              telemetry={demo || {
+                style: "stratex_demo", scale: 1.0,
+                facets: [], edges: [], framing: { rafters: [], sub_fascia: [] }, gutters: { polylines: [], downspouts: [] },
               }}
-              anomalies={[
-                {id:"AD-KY041-001", diagnosis:"Trapped Moisture", facet_id:"A1", severity:"CRITICAL", thermal_delta:"+7.2°F", confidence:0.92, area_affected_sf:96, lat:38.0406, lon:-84.5037},
-                {id:"AD-KY041-002", diagnosis:"CDX Deck Rot", facet_id:"A3", severity:"HIGH", thermal_delta:"+9.6°F", confidence:0.94, area_affected_sf:140, lat:38.0406, lon:-84.5037},
-              ]}
+              anomalies={demo?.anomalies || []}
               height={isMobile ? 360 : 560}
               showLabels={!isMobile}
+              layers={{ roofing: true, framing: true, gutters: true }}
             />
           </HudCard>
           <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">

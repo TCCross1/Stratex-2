@@ -25,6 +25,11 @@ STRATEX™ — dual-sided, hyper-secure B2B SaaS platform for drone-based roof i
   - `/contractor`, `/contractor/jobs/new`, `/contractor/jobs/:id`, `/contractor/materials`
   - `/operator`, `/operator/jobs/:id`
 
+## What's Been Implemented (2026-02-28 — v3.0.1 — Landing Page Demo Mesh Uplift)
+- ✅ **🌐 New public endpoint** `GET /api/public/demo-topology` (no auth) — returns the full `stratex_demo` compound topology (17 facets + 40 edges + framing rafters + gutter polylines + 4 sample anomalies) keyed off a deterministic `LANDING_DEMO_v1` seed so the marketing page is reproducible.
+- ✅ **🖼️ Landing page mesh swapped** — `Landing.jsx` previously hardcoded a 4-facet cross-hip mesh (the cause of the "still looks the same" report). Now fetches from `/api/public/demo-topology` on mount and renders the compound roof with all 3 tri-layer toggles (roofing + framing + gutters) ON by default.
+- ✅ Visually confirmed: landing page Photogrammetry Mesh section now shows the main hip body + 2 hip wings + chimney prism + green rafters + cyan gutters + labeled anomaly callouts, matching reference image 2's structural complexity.
+
 ## What's Been Implemented (2026-02-28 — v3.0.0 — Compound Demo Topology + Default-On Tri-Layer)
 - ✅ **🏘️ New `stratex_demo` roof preset** — compound L-shape that mirrors the marketing reference render:
   - **Main body**: 16 × 10 hip volume, pitch 9/12 (dominates the silhouette)

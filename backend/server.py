@@ -415,6 +415,29 @@ async def save_materials(body: MaterialsConfig, user=Depends(contractor_only)):
 
 
 # ---------------------------------------------------------------------------
+# PUBLIC — landing page demo topology (no auth)
+# ---------------------------------------------------------------------------
+
+@api.get("/public/demo-topology")
+async def public_demo_topology():
+    """Returns the stratex_demo compound roof topology + framing + gutters + sample anomalies
+    for the landing-page 3D mesh preview. Cached server-side via deterministic seed."""
+    topo = build_topology(style="stratex_demo", project_seed="LANDING_DEMO_v1")
+    # Trim a couple anomalies for the landing demo so the canvas isn't overcrowded
+    anomalies = topo["anomalies"][:4]
+    return {
+        "style": topo["style"],
+        "scale": topo["scale"],
+        "facets": topo["facets"],
+        "edges": topo["edges"],
+        "framing": topo["framing"],
+        "gutters": topo["gutters"],
+        "anomalies": anomalies,
+        "totals": topo["totals"],
+    }
+
+
+# ---------------------------------------------------------------------------
 # CONTRACTOR — Jobs
 # ---------------------------------------------------------------------------
 
