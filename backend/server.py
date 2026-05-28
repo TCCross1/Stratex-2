@@ -1588,6 +1588,16 @@ async def on_startup():
     await seed("SEED_CONTRACTOR_EMAIL", "SEED_CONTRACTOR_PASSWORD", "contractor", "Anthony Cross", "Apex Roofing Co.")
     await seed("SEED_OPERATOR_EMAIL", "SEED_OPERATOR_PASSWORD", "operator", "Ramon Field", "STRATEX Fleet Ops")
 
+    # Idempotent upsert of the 7 Central-Kentucky sales targets into Mongo so the
+    # P3 Competitive-Intel Onboarding Mapping can JOIN against `db.sales_targets`
+    # without relying on the in-code constant.
+    for t in KY_SALES_TARGETS_SEED:
+        await db.sales_targets.update_one(
+            {"id": t["id"]},
+            {"$set": {**t, "seeded_at": now_iso(), "seed_source": "KY_SALES_TARGETS_SEED"}},
+            upsert=True,
+        )
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())

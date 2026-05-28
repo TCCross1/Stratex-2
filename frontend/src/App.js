@@ -17,6 +17,7 @@ import OnboardingROI from "@/pages/OnboardingROI";
 import AdminSalesHub from "@/pages/AdminSalesHub";
 import OverseerQueue from "@/pages/OverseerQueue";
 import FleetLaunch from "@/pages/FleetLaunch";
+import FlightAudit from "@/pages/FlightAudit";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ function AppShell() {
 
         <Route path="/admin/sales" element={<Protected role="admin"><AdminSalesHub/></Protected>}/>
         <Route path="/admin/overseer" element={<Protected role="admin"><OverseerQueue/></Protected>}/>
+        <Route path="/admin/flight-audit" element={<Protected role="admin"><FlightAudit/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

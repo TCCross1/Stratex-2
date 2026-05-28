@@ -86,6 +86,17 @@ export default function OverseerQueue() {
         </p>
 
         {/* Filter chips */}
+        <div className="flex items-center gap-3 mb-3">
+          <a
+            href="/admin/flight-audit"
+            data-testid="overseer-link-flight-audit"
+            className="font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 hover:bg-[#00F5D4]/10"
+            style={{ borderColor: "rgba(0,245,212,0.35)", color: "#00F5D4" }}
+          >
+            Flight Authorization Audit →
+          </a>
+        </div>
+
         <div className="flex flex-wrap gap-2 mb-5">
           {["open", "reviewed", "dismissed", "all"].map((s) => {
             const active = filter === s;
