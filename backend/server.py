@@ -2498,32 +2498,173 @@ KY_SALES_TARGETS_SEED = [
     {"id": "ale-roofing",     "name": "ALE Roofing LLC", "aka": "Formerly Atlas Contracting / Elleman Contracting",
      "base": "Lexington, KY", "phone": "859-402-5211",
      "focus": "Historic Preservation, Slate, Copper, Custom Internal Box Gutters, Residential/Commercial Replacements",
-     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted"},
+     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted",
+     "est_annual_revenue_usd": 4_800_000, "est_overhead_leak_pct": 0.18, "hook_archetype": "specialty_slate_copper"},
     {"id": "burnett-roofing", "name": "Burnett Roofing",
      "base": "656 Bizzell Drive, Lexington, KY 40510", "phone": "859-253-0116",
      "focus": "Tier 1 Commercial Manufacturing, Single-Ply Membranes (EPDM/TPO/PVC), Modified Bitumen, Architectural Sheet Metal",
-     "lat": 38.0739, "lng": -84.5494, "status": "uncontacted"},
+     "lat": 38.0739, "lng": -84.5494, "status": "uncontacted",
+     "est_annual_revenue_usd": 14_500_000, "est_overhead_leak_pct": 0.22, "hook_archetype": "commercial_membrane"},
     {"id": "centimark",       "name": "CentiMark Corporation",
      "base": "260 Crossfield Dr, Unit 4, Versailles, KY 40383", "phone": "502-716-5777",
      "focus": "Large-Scale Industrial, Thermal Shock Inspections, Commercial Property Maintenance Assets",
-     "lat": 38.0530, "lng": -84.7286, "status": "uncontacted"},
+     "lat": 38.0530, "lng": -84.7286, "status": "uncontacted",
+     "est_annual_revenue_usd": 22_000_000, "est_overhead_leak_pct": 0.24, "hook_archetype": "industrial_pm_assets"},
     {"id": "big-league",      "name": "Big League Roofers",
      "base": "3022 Lexington Road, Nicholasville, KY 40356 · 2901 Richmond Road, Lexington, KY 40509", "phone": "859-693-7663",
      "focus": "High-Volume GAF Master Elite Residential, Hail/Storm Insurance Adjuster Coordination",
-     "lat": 37.8806, "lng": -84.5728, "status": "uncontacted"},
+     "lat": 37.8806, "lng": -84.5728, "status": "uncontacted",
+     "est_annual_revenue_usd": 9_200_000, "est_overhead_leak_pct": 0.27, "hook_archetype": "high_volume_storm"},
     {"id": "godsend",         "name": "A Godsend Roofing LLC",
      "base": "380 E Main St, Lexington, KY 40507", "phone": "859-432-7663",
      "focus": "Commercial/Residential Master Applicators, Complex Custom Step Flashing, Storm Repair Logistics",
-     "lat": 38.0457, "lng": -84.4906, "status": "uncontacted"},
+     "lat": 38.0457, "lng": -84.4906, "status": "uncontacted",
+     "est_annual_revenue_usd": 6_400_000, "est_overhead_leak_pct": 0.21, "hook_archetype": "mixed_master_applicator"},
     {"id": "odessa",          "name": "Odessa Roofing, Inc.",
      "base": "232 Gold Rush Road, Suite 110, Lexington, KY 40503", "phone": "859-271-0524",
      "focus": "KRCA/NRCA Members, Custom Copper Flashing, Synthetic Slate, High-End Residential Architecture",
-     "lat": 38.0019, "lng": -84.5310, "status": "uncontacted"},
+     "lat": 38.0019, "lng": -84.5310, "status": "uncontacted",
+     "est_annual_revenue_usd": 5_600_000, "est_overhead_leak_pct": 0.19, "hook_archetype": "high_end_residential"},
     {"id": "barrier",         "name": "Barrier Roofs",
      "base": "Lexington, KY", "phone": "859-251-5119",
      "focus": "High-Volume Owens Corning Platinum Dealer, Insurance Claims Supplementing",
-     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted"},
+     "lat": 38.0406, "lng": -84.5037, "status": "uncontacted",
+     "est_annual_revenue_usd": 7_800_000, "est_overhead_leak_pct": 0.26, "hook_archetype": "high_volume_storm"},
 ]
+
+
+# ---------------------------------------------------------------------------
+# COMPETITIVE INTEL — onboarding hook generator
+#
+# Maps the prospect's annualized 2-year book against the seeded KY targets and
+# returns ranked dynamic outreach copy. The math:
+#   user_annual_sales      = historical_sales_2_years / 2
+#   user_estimated_leak    = user_annual_sales * BLENDED_LEAK_PCT
+#   stratex_reclaim_annual = user_estimated_leak * STRATEX_RECLAIM_FRACTION
+#   target_annual_leak     = target.est_annual_revenue_usd * target.est_overhead_leak_pct
+# A target is "beatable" if stratex_reclaim_annual >= target_annual_leak.
+# ---------------------------------------------------------------------------
+BLENDED_LEAK_PCT = 0.22          # mid-point of the 5-overhead leakage band
+STRATEX_RECLAIM_FRACTION = 0.65  # share of the bleed STRATEX captures back
+
+HOOK_TEMPLATES: Dict[str, Dict[str, str]] = {
+    "specialty_slate_copper": {
+        "headline": "Out-reclaim {name} on every slate/copper callback",
+        "body": "{name}'s specialty book bleeds about ${target_leak} per year to callback measurements and custom-fab waste. STRATEX'd hand you back ${user_reclaim}/yr from the same overhead category — {delta_text}.",
+    },
+    "commercial_membrane": {
+        "headline": "Beat {name}'s membrane-callback overhead",
+        "body": "{name} loses an estimated ${target_leak}/yr to membrane recall trips, photo-rework, and adjuster delay. STRATEX puts ${user_reclaim}/yr back on your line — {delta_text}.",
+    },
+    "industrial_pm_assets": {
+        "headline": "Reclaim more than {name}'s entire PM-asset bleed",
+        "body": "Industrial PM portfolios like {name}'s leak around ${target_leak}/yr to inspection scheduling friction and thermal-survey rework. STRATEX recovers ${user_reclaim}/yr in your operation — {delta_text}.",
+    },
+    "high_volume_storm": {
+        "headline": "Out-pace {name} on storm-cycle margin",
+        "body": "{name}'s storm-cycle business absorbs ~${target_leak}/yr in adjuster supplementing, return-trip mileage, and ladder-safety overhead. STRATEX clawback for you: ${user_reclaim}/yr — {delta_text}.",
+    },
+    "mixed_master_applicator": {
+        "headline": "Out-margin {name} on every mixed-scope job",
+        "body": "{name}'s step-flash and storm-logistics overhead runs about ${target_leak}/yr. STRATEX hands you ${user_reclaim}/yr back from the same leak pattern — {delta_text}.",
+    },
+    "high_end_residential": {
+        "headline": "Match {name}'s margin without the artisan overhead",
+        "body": "{name}'s NRCA-grade residential book loses ~${target_leak}/yr to custom-flash callbacks and synthetic-slate cut-waste. STRATEX recovers ${user_reclaim}/yr from your overhead band — {delta_text}.",
+    },
+}
+
+DEFAULT_HOOK = {
+    "headline": "Out-reclaim {name}'s overhead bleed",
+    "body": "{name} loses approximately ${target_leak}/yr to the 5-overhead leak pattern (callbacks, mileage, ladder safety, adjuster delay, blended labor). STRATEX'd hand you back ${user_reclaim}/yr — {delta_text}.",
+}
+
+
+def _money(n: float) -> str:
+    n = max(0.0, float(n))
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}K"
+    return f"{n:.0f}"
+
+
+class CompetitiveIntelBody(BaseModel):
+    historical_sales_2_years: float
+    leads_per_month: Optional[int] = 0
+
+
+@api.post("/onboarding/competitive-intel")
+async def onboarding_competitive_intel(body: CompetitiveIntelBody):
+    """Return ranked outreach hooks comparing the prospect to the 7 KY targets.
+
+    PUBLIC by design — the /onboard funnel runs anonymously. No PII is read; the
+    only input is the prospect's self-reported 2-year sales volume.
+    """
+    user_2yr = max(0.0, float(body.historical_sales_2_years))
+    user_annual = user_2yr / 2.0
+    user_leak = user_annual * BLENDED_LEAK_PCT
+    user_reclaim = user_leak * STRATEX_RECLAIM_FRACTION
+
+    targets = await db.sales_targets.find({}, {"_id": 0}).to_list(length=50)
+    if not targets:
+        targets = KY_SALES_TARGETS_SEED
+
+    rows = []
+    for t in targets:
+        rev = float(t.get("est_annual_revenue_usd", 0) or 0)
+        leak_pct = float(t.get("est_overhead_leak_pct", 0) or 0)
+        if rev <= 0 or leak_pct <= 0:
+            continue
+        target_leak = rev * leak_pct
+        delta = user_reclaim - target_leak
+        beat = delta >= 0
+        if beat:
+            delta_text = f"you'd reclaim ${_money(abs(delta))}/yr MORE than {t['name']} loses to that pattern"
+        else:
+            shortfall_pct = (user_reclaim / target_leak) if target_leak > 0 else 0
+            delta_text = f"that's {shortfall_pct * 100:.0f}% of their estimated bleed — you'd close the gap fast"
+
+        archetype = t.get("hook_archetype", "")
+        tmpl = HOOK_TEMPLATES.get(archetype, DEFAULT_HOOK)
+        fmt = {
+            "name": t["name"],
+            "target_leak": _money(target_leak),
+            "user_reclaim": _money(user_reclaim),
+            "delta_text": delta_text,
+        }
+        rows.append({
+            "id": t["id"],
+            "name": t["name"],
+            "focus": t.get("focus", ""),
+            "phone": t.get("phone", ""),
+            "archetype": archetype,
+            "target_annual_revenue_usd": rev,
+            "target_overhead_leak_pct": leak_pct,
+            "target_annual_leak_usd": round(target_leak, 2),
+            "user_reclaim_usd": round(user_reclaim, 2),
+            "delta_usd": round(delta, 2),
+            "user_beats_target": beat,
+            "headline": tmpl["headline"].format(**fmt),
+            "body": tmpl["body"].format(**fmt),
+        })
+
+    # Rank: targets the user already beats come first (largest delta first),
+    # then close-but-not-yet targets ordered by smallest shortfall.
+    rows.sort(key=lambda r: (not r["user_beats_target"], -r["delta_usd"]))
+
+    return {
+        "user": {
+            "annual_sales_usd": round(user_annual, 2),
+            "estimated_overhead_leak_usd": round(user_leak, 2),
+            "stratex_annual_reclaim_usd": round(user_reclaim, 2),
+            "blended_leak_pct": BLENDED_LEAK_PCT,
+            "stratex_reclaim_fraction": STRATEX_RECLAIM_FRACTION,
+        },
+        "targets_count": len(rows),
+        "targets_user_beats": sum(1 for r in rows if r["user_beats_target"]),
+        "rows": rows,
+    }
 
 
 @api.get("/admin/sales-targets")
