@@ -1,6 +1,18 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.8.1 — P1 Regression PASS + Flight Audit + KY Targets Mongo Seed)
+- ✅ **`testing_agent_v3_fork` iteration_15**: Backend 14/14 pytest green, 5 of 6 UI batches fully driven (AdminSalesHub CRM, Overseer, FlightAudit, FleetLaunch all green; Business Brain + OnboardingROI pages rendered cleanly but full input-fill not driven — Playwright script aborted on non-product Python issue). **Zero critical or minor backend/frontend bugs found.**
+- ✅ **`/admin/flight-audit`** — new admin page (`/app/frontend/src/pages/FlightAudit.jsx`) renders authorization rows from `/api/flight-authorizations/recent` with six-check MicroCheck telemetry snapshot grid + meta blocks + cross-link from `/admin/overseer`.
+- ✅ **7 Central-Kentucky competitor targets** now upserted to `db.sales_targets` on backend startup (ALE Roofing, Burnett, CentiMark, Big League, A Godsend, Odessa, Barrier) — `/api/admin/sales-targets` now returns `source: "mongo"` not the in-code seed, unblocking the P3 Competitive-Intel JOIN.
+- ✅ **`OnboardingMetrics`** schema confirmed in DB to include `historical_sales_2_years: float` — ready for the P3 competitive-intel mapping layer.
+- ✅ Added `data-testid="material-configurator"` wrapper on the embedded MaterialConfigurator inside ContractorPortal Business Brain tab (testing-agent action item).
+
+### Carry-forward
+- **P3 Competitive Intel Onboarding Mapping** — UI/copy layer: map `historical_sales_2_years` against the now-seeded 7 KY competitors to generate dynamic "you'd reclaim more than Burnett does in a year" outreach hooks on `/onboard`.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.8.0 — Fleet Launch Authorization + WS Telemetry Bridge)
 - ✅ **Step 5 Fleet Launch Authorization dashboard** (`/launch` standalone + `/operator/launch/:jobId` operator-bound) — `/app/frontend/src/pages/FleetLaunch.jsx`. Six live checks (Trailer Hatch, Battery, RTK GPS, Comm Uplink, Weather, Perimeter) drive an Authorize button gated by all-green telemetry. Strict PBR Luxury-Corporate palette (Electric Teal `#00F5D4`, Neon Orange `#FF5400`, Metallic Nickel `#3A4350`), lucide-react icons, full `data-testid` coverage.
 - ✅ **Cloud telemetry simulator** at `wss://<host>/api/ws/stratex/core?token=<jwt>` — emits 4 Hz frames matching the on-site hardware-gateway wire schema verbatim. Converges to flight-ready state in ~10 s. Accepts `AUTHORIZE_FLEET_LAUNCH`, gates against snapshot, persists `flight_authorizations` doc, optionally transitions tied operator job → IN_FLIGHT.

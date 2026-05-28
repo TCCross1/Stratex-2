@@ -767,10 +767,12 @@ export function MaterialsConfig() {
         {/* ============ TAB 1 — EXPERT CONFIGURATOR ============ */}
         {tab === "expert" && (
           <div data-testid="bb-tab-content-expert">
-            <MaterialConfigurator
-              initialSelection={matSelection}
-              onChange={(sel) => set("materials_selection", sel)}
-            />
+            <div data-testid="material-configurator">
+              <MaterialConfigurator
+                initialSelection={matSelection}
+                onChange={(sel) => set("materials_selection", sel)}
+              />
+            </div>
             <div className="mt-4">
               <CaliperUpload onReading={(r) => set("measured_thickness_mm", r.thickness_mm)} />
             </div>
