@@ -7,6 +7,7 @@ import {
   computeROI,
   recommendTier,
 } from "@/lib/roiPricing";
+import CompetitiveIntelSection from "@/components/CompetitiveIntelSection";
 
 /**
  * /onboard — STRATEX™ ROI Onboarding & Pricing Funnel
@@ -291,6 +292,8 @@ export default function OnboardingROI() {
             • All financials AES-256 isolated · admin profiles return {"{}"} on financial reads
           </p>
         </div>
+
+        <CompetitiveIntelSection historicalSales2y={historical2y} leadsPerMonth={leadsMonth}/>
       </div>
     </div>
   );

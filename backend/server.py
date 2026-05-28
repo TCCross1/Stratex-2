@@ -3226,6 +3226,75 @@ async def get_recent_flight_authorizations(limit: int = 25, user=Depends(current
 
 
 # ---------------------------------------------------------------------------
+# CV PIPELINE — Sub-Surface Ice & Water Shield Detection (roof valleys)
+# Strict-typed pipeline in /app/backend/roof_cv_ice_shield.py. If composite
+# confidence falls below 0.90 the frame is auto-halted and routed into the
+# existing telemetry_halts queue surfaced by /admin/overseer.
+# ---------------------------------------------------------------------------
+from roof_cv_ice_shield import (  # noqa: E402
+    ValleyFrame,
+    IceShieldAnalysis,
+    analyze_valley_frame,
+)
+
+
+@api.post("/cv/ice-shield/analyze", response_model=IceShieldAnalysis)
+async def cv_ice_shield_analyze(frame: ValleyFrame, user=Depends(current_user)):
+    if user.get("role") not in ("operator", "admin", "contractor"):
+        raise HTTPException(403, "role not permitted")
+
+    result = analyze_valley_frame(frame)
+
+    # Persist the analysis (audit trail + estimation pipeline consumer).
+    await db.cv_ice_shield_analyses.insert_one({
+        "id": str(uuid.uuid4()),
+        "submitted_by": user["id"],
+        "submitted_role": user["role"],
+        "frame_id": frame.frame_id,
+        "contractor_id": frame.contractor_id,
+        "job_id": frame.job_id,
+        "valley_track_id": frame.valley_track_id,
+        "analysis": result.model_dump(),
+        "created_at": now_iso(),
+    })
+
+    # P1 halting hook — wire-compatible with the existing Overseer queue.
+    if result.halted and result.halt_payload:
+        await db.telemetry_halts.insert_one({
+            "id": str(uuid.uuid4()),
+            "status": "open",
+            "created_at": now_iso(),
+            **result.halt_payload,
+        })
+
+    # If the frame indicates moisture, set a flag on the job so the Estimation
+    # Controller (Section 3.2) picks it up on its next pass.
+    if result.flag_for_estimation_pipeline:
+        await db.jobs.update_one(
+            {"id": frame.job_id},
+            {"$set": {
+                "moisture_anomaly_flagged": True,
+                "moisture_anomaly_last_frame_id": frame.frame_id,
+                "moisture_anomaly_flagged_at": now_iso(),
+            }},
+        )
+
+    # If I&WS is confirmed, persist on the job for downstream code-compliance reports.
+    if result.has_ice_and_water_shield:
+        await db.jobs.update_one(
+            {"id": frame.job_id},
+            {"$set": {
+                "has_ice_and_water_shield": True,
+                "code_compliant_underlayment": True,
+                "ice_shield_confirmed_frame_id": frame.frame_id,
+                "ice_shield_confirmed_at": now_iso(),
+            }},
+        )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # INVESTOR / TOUR AI ASSISTANT — Claude Haiku 4.5 via EMERGENT_LLM_KEY
 # Greets the investor on first login, then follows them across routes with
 # tailored briefings. Persists each session's history in db.assistant_conversations.

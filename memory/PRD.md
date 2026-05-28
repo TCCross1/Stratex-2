@@ -1,6 +1,13 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.10.0 — P3 Competitive Intel UI + Ice & Water Shield CV Pipeline)
+- ✅ **`CompetitiveIntelSection` mounted on `/onboard`** — full-width below the tier picker. Live-debounced POST to `/api/onboarding/competitive-intel`, renders 7-target ranked list with archetype-keyed hook copy, summary strip (reclaim/yr, targets-you-beat, est. overhead leak), tap-to-call buttons.
+- ✅ **Sub-Surface Ice & Water Shield CV Pipeline** — `/app/backend/roof_cv_ice_shield.py` (pure-function strict-typed Pydantic module) + `POST /api/cv/ice-shield/analyze`. Enforces ε=0.92, ΔT∈[0.5,1.5]°C, post-sunset window (T+2h…T+6h), VALLEY_MASK 36"±2" centered. Shape discrimination: linear edge + roll-width tolerance + no-gravity-bleed ⇒ `Ice_Water_Shield_Present`; amorphous gravity-following ⇒ `Moisture_Anomaly` routed to Estimation Controller; composite confidence < 0.90 ⇒ `Unverified_Halt` auto-emitted to `db.telemetry_halts` for Overseer review.
+- ✅ Tests: `/app/backend/tests/smoke_ice_shield.py` — 4 cases (confirmed I&WS · routed moisture · halted to Overseer · capture-window violation) all pass.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.9.0 — Investor Tour Mode + AI Walkthrough Guide)
 - ✅ **Investor login**: `john@crownroofing.com` / `unstoppable` — admin role + `tour_mode: true`, MFA bypassed, NDA pre-accepted. Admin role now passes ALL role gates (`Protected` widened), so John sees contractor, operator, admin, and fleet portals seamlessly with one login.
 - ✅ **AI tour-guide (`InvestorAssistant.jsx`)** mounted globally in `AppShell`:
