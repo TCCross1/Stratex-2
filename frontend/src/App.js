@@ -24,7 +24,10 @@ function Protected({ role, children }) {
   const loc = useLocation();
   if (user === undefined) return <div className="p-10 text-muted-hud font-mono uppercase tracking-widest">Authenticating…</div>;
   if (user === null) return <Navigate to="/auth" state={{ from: loc }} replace/>;
-  if (role && user.role !== role) return <Navigate to={user.role === "operator" ? "/operator" : "/contractor"} replace/>;
+  if (role && user.role !== role) {
+    const home = user.role === "admin" ? "/admin/sales" : user.role === "operator" ? "/operator" : "/contractor";
+    return <Navigate to={home} replace/>;
+  }
   if (user.role === "contractor" && !user.nda_accepted && loc.pathname !== "/nda") return <Navigate to="/nda" replace/>;
   return children;
 }

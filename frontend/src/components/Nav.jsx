@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
-import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard } from "lucide-react";
+import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard, Target, Activity, Plane } from "lucide-react";
 
 const NavLink = ({ to, label, icon: Icon, testid, onClick }) => {
   const loc = useLocation();
@@ -35,6 +35,12 @@ const OPERATOR_ITEMS = [
   { to: "/operator", label: "Job Board", icon: ClipboardList, testid: "nav-operator-board" },
   { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-operator-fleet" },
 ];
+const ADMIN_ITEMS = [
+  { to: "/admin/sales", label: "Sales Hub", icon: Target, testid: "nav-admin-sales" },
+  { to: "/admin/overseer", label: "Overseer", icon: Activity, testid: "nav-admin-overseer" },
+  { to: "/admin/flight-audit", label: "Flight Audit", icon: Plane, testid: "nav-admin-flight-audit" },
+  { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-admin-fleet" },
+];
 const ANON_ITEMS = [
   { to: "/", label: "Command", icon: Radar, testid: "nav-command" },
 ];
@@ -44,7 +50,7 @@ export default function Nav({ role }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const items = role === "contractor" ? CONTRACTOR_ITEMS : role === "operator" ? OPERATOR_ITEMS : ANON_ITEMS;
+  const items = role === "contractor" ? CONTRACTOR_ITEMS : role === "operator" ? OPERATOR_ITEMS : role === "admin" ? ADMIN_ITEMS : ANON_ITEMS;
 
   const doLogout = () => {
     logout();
@@ -55,7 +61,7 @@ export default function Nav({ role }) {
   return (
     <nav data-testid="primary-nav" className="sticky top-0 z-50 backdrop-blur-md bg-[#06080B]/85 border-b border-[#00F0FF]/15 safe-top">
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-3">
-        <Link to={user ? (user.role === "operator" ? "/operator" : "/contractor") : "/"} data-testid="nav-home-logo" className="flex items-center gap-3 min-w-0" onClick={()=>setOpen(false)}>
+        <Link to={user ? (user.role === "admin" ? "/admin/sales" : user.role === "operator" ? "/operator" : "/contractor") : "/"} data-testid="nav-home-logo" className="flex items-center gap-3 min-w-0" onClick={()=>setOpen(false)}>
           <img src={ASSETS.logo} alt="STRATEX" className="h-8 md:h-9 w-auto"/>
           <div className="hidden sm:flex flex-col leading-tight min-w-0">
             <span className="font-display text-[10px] tracking-[0.34em] text-muted-hud truncate">STRATEGIC THERMAL RECON</span>
