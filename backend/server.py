@@ -14,7 +14,8 @@ Job lifecycle:
 - AUDIT_APPROVED          (contractor signed off)
 - SENT_TO_HOMEOWNER       (contractor recorded delivery)
 """
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect, Query
+import json as _json
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -2825,6 +2826,211 @@ async def put_materials_config(body: MaterialsConfigBody, user=Depends(contracto
         {"user_id": user["id"]}, {"$set": payload}, upsert=True,
     )
     return {"ok": True, "system": payload["system"], "pick_count": len(payload["picks"])}
+
+
+# ---------------------------------------------------------------------------
+# FLEET LAUNCH WEBSOCKET — wire-compatible with /app/hardware-gateway/stratex-gateway.js
+# Streams simulated dock+drone+environment telemetry at 4 Hz and accepts the
+# AUTHORIZE_FLEET_LAUNCH command. On valid authorization a flight_authorizations
+# document is persisted. If a job_id is supplied AND the user is an operator,
+# the existing operator/launch transition pipeline is invoked.
+# ---------------------------------------------------------------------------
+
+async def _ws_auth(token: Optional[str]):
+    """Decode JWT from WS query param. Returns user doc or None."""
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return None
+    sub = payload.get("sub")
+    if not sub:
+        return None
+    user = await db.users.find_one({"id": sub}, {"_id": 0, "password_hash": 0, "totp_secret_enc": 0})
+    return user
+
+
+def _simulator_step(t: float) -> Dict[str, Any]:
+    """Pure function: returns a telemetry frame for tick t (seconds since connect).
+
+    Converges to a fully-green flight-ready state by ~t=10s so the demo is snappy.
+    Schema MUST mirror /app/hardware-gateway/stratex-gateway.js verbatim.
+    """
+    # ramp: 0 → 100 over 10s
+    ramp = min(1.0, t / 10.0)
+
+    battery = int(round(72 + 28 * ramp))                          # 72 → 100
+    rssi = int(round(38 + 56 * ramp))                             # 38 → 94
+    wind = round(9.2 - 5.8 * ramp + random.uniform(-0.3, 0.3), 2) # 9.2 → 3.4
+    temp = round(20.4 + random.uniform(-0.4, 0.6), 2)
+
+    # discrete state transitions
+    raining = ramp < 0.45                                         # rain stops ~4.5s
+    perimeter_clear = ramp >= 0.30                                # ~3s
+    gps = "POSITION_OK_FIXED" if ramp >= 0.55 else "ACQUIRING_SATELLITES"
+    hatch = "OPEN" if ramp >= 0.75 else "CLOSED"                  # hatch retracts last
+
+    return {
+        "dock": {
+            "hatch_status": hatch,
+            "perimeter_clear": perimeter_clear,
+            "internal_temp_c": temp,
+        },
+        "drone": {
+            "battery_percent": battery,
+            "gps_status": gps,
+            "signal_rssi": rssi,
+        },
+        "environment": {
+            "wind_speed_mph": max(0.4, wind),
+            "is_raining": raining,
+        },
+    }
+
+
+@app.websocket("/api/ws/stratex/core")
+async def ws_stratex_core(websocket: WebSocket, token: Optional[str] = Query(default=None)):
+    await websocket.accept()
+    user = await _ws_auth(token)
+    if not user:
+        await websocket.send_text(_json.dumps({"event": "AUTH_FAIL", "detail": "missing or invalid token"}))
+        await websocket.close(code=4401)
+        return
+
+    await websocket.send_text(_json.dumps({
+        "event": "HELLO",
+        "source": "cloud_simulator",
+        "schema_version": "1.0",
+        "user_role": user.get("role"),
+        "server_timestamp": now_iso(),
+    }))
+
+    t0 = asyncio.get_event_loop().time()
+    streamer_task: Optional[asyncio.Task] = None
+    stop = asyncio.Event()
+
+    async def streamer():
+        try:
+            while not stop.is_set():
+                t = asyncio.get_event_loop().time() - t0
+                frame = _simulator_step(t)
+                await websocket.send_text(_json.dumps(frame))
+                await asyncio.sleep(0.25)  # 4 Hz to match the on-site gateway
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+
+    streamer_task = asyncio.create_task(streamer())
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                msg = _json.loads(raw)
+            except Exception:
+                await websocket.send_text(_json.dumps({"event": "ERROR", "detail": "bad json"}))
+                continue
+
+            cmd = msg.get("command")
+            if cmd == "PING":
+                await websocket.send_text(_json.dumps({"event": "PONG", "server_timestamp": now_iso()}))
+                continue
+
+            if cmd != "AUTHORIZE_FLEET_LAUNCH":
+                await websocket.send_text(_json.dumps({"event": "ERROR", "detail": f"unknown command {cmd!r}"}))
+                continue
+
+            payload = msg.get("payload") or {}
+            t = asyncio.get_event_loop().time() - t0
+            snapshot = _simulator_step(t)
+
+            # gate against snapshot — refuse if not flight-ready
+            ready = (
+                snapshot["dock"]["hatch_status"] == "OPEN"
+                and snapshot["dock"]["perimeter_clear"] is True
+                and snapshot["drone"]["battery_percent"] >= 100
+                and snapshot["drone"]["gps_status"] == "POSITION_OK_FIXED"
+                and snapshot["drone"]["signal_rssi"] >= 75
+                and snapshot["environment"]["wind_speed_mph"] < 5
+                and not snapshot["environment"]["is_raining"]
+            )
+            if not ready:
+                await websocket.send_text(_json.dumps({
+                    "event": "AUTH_REJECTED",
+                    "detail": "pre-flight hold — telemetry not green",
+                    "snapshot": snapshot,
+                }))
+                continue
+
+            auth_id = str(uuid.uuid4())
+            job_id = (payload.get("job_id") or "").strip() or None
+            record = {
+                "id": auth_id,
+                "job_id": job_id,
+                "project_id": payload.get("project_id"),
+                "approved_value": payload.get("approved_value"),
+                "operator_id": user["id"],
+                "operator_email": user["email"],
+                "operator_role": user["role"],
+                "telemetry_snapshot": snapshot,
+                "source": "cloud_simulator",
+                "server_timestamp": now_iso(),
+            }
+
+            # If job tied + operator → flip status to IN_FLIGHT (lightweight; the
+            # heavy /operator/jobs/{id}/launch path still owns the canonical pipeline).
+            launched_job = False
+            if job_id and user.get("role") == "operator":
+                job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+                if job and job.get("status") == "PENDING_FIELD_CAPTURE":
+                    await db.jobs.update_one(
+                        {"id": job_id},
+                        {"$set": {
+                            "status": "IN_FLIGHT",
+                            "launched_at": record["server_timestamp"],
+                            "operator_id": user["id"],
+                            "fleet_launch_authorization_id": auth_id,
+                        }},
+                    )
+                    launched_job = True
+
+            await db.flight_authorizations.insert_one(record)
+            record.pop("_id", None)
+
+            await websocket.send_text(_json.dumps({
+                "event": "MISSION_LAUNCHED",
+                "authorization_id": auth_id,
+                "job_id": job_id,
+                "job_status_updated": launched_job,
+                "server_timestamp": record["server_timestamp"],
+            }))
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.warning(f"ws_stratex_core error: {e!r}")
+    finally:
+        stop.set()
+        if streamer_task and not streamer_task.done():
+            streamer_task.cancel()
+            try:
+                await streamer_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+
+@api.get("/flight-authorizations/recent")
+async def get_recent_flight_authorizations(limit: int = 25, user=Depends(current_user)):
+    """Returns recent authorizations. Admins see all; operators see only their own."""
+    q: Dict[str, Any] = {}
+    if user.get("role") == "operator":
+        q["operator_id"] = user["id"]
+    elif user.get("role") != "admin":
+        # contractors see authorizations tied to their jobs only
+        my_job_ids = [j["id"] async for j in db.jobs.find({"contractor_id": user["id"]}, {"_id": 0, "id": 1})]
+        q["job_id"] = {"$in": my_job_ids}
+    docs = await db.flight_authorizations.find(q, {"_id": 0}).sort("server_timestamp", -1).to_list(length=max(1, min(limit, 200)))
+    return {"count": len(docs), "items": docs}
 
 
 # ---------------------------------------------------------------------------

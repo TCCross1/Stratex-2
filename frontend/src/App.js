@@ -16,6 +16,7 @@ import RoofAuditHarness from "@/pages/RoofAuditHarness";
 import OnboardingROI from "@/pages/OnboardingROI";
 import AdminSalesHub from "@/pages/AdminSalesHub";
 import OverseerQueue from "@/pages/OverseerQueue";
+import FleetLaunch from "@/pages/FleetLaunch";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -36,7 +37,7 @@ function AppShell() {
     return <AuthCallback/>;
   }
 
-  const hideNav = ["/auth", "/nda", "/onboard"].includes(loc.pathname);
+  const hideNav = ["/auth", "/nda", "/onboard", "/launch"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/");
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
@@ -55,6 +56,9 @@ function AppShell() {
 
         <Route path="/operator" element={<Protected role="operator"><OperatorBoard/></Protected>}/>
         <Route path="/operator/jobs/:id" element={<Protected role="operator"><OperatorJobDetail/></Protected>}/>
+        <Route path="/operator/launch/:jobId" element={<Protected role="operator"><FleetLaunch/></Protected>}/>
+
+        <Route path="/launch" element={<Protected><FleetLaunch/></Protected>}/>
 
         <Route path="/admin/sales" element={<Protected role="admin"><AdminSalesHub/></Protected>}/>
         <Route path="/admin/overseer" element={<Protected role="admin"><OverseerQueue/></Protected>}/>

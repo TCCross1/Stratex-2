@@ -1,5 +1,15 @@
 # STRATEX™ — PRD & Build Log
 
+
+## What's Been Implemented (2026-02-28 — v3.8.0 — Fleet Launch Authorization + WS Telemetry Bridge)
+- ✅ **Step 5 Fleet Launch Authorization dashboard** (`/launch` standalone + `/operator/launch/:jobId` operator-bound) — `/app/frontend/src/pages/FleetLaunch.jsx`. Six live checks (Trailer Hatch, Battery, RTK GPS, Comm Uplink, Weather, Perimeter) drive an Authorize button gated by all-green telemetry. Strict PBR Luxury-Corporate palette (Electric Teal `#00F5D4`, Neon Orange `#FF5400`, Metallic Nickel `#3A4350`), lucide-react icons, full `data-testid` coverage.
+- ✅ **Cloud telemetry simulator** at `wss://<host>/api/ws/stratex/core?token=<jwt>` — emits 4 Hz frames matching the on-site hardware-gateway wire schema verbatim. Converges to flight-ready state in ~10 s. Accepts `AUTHORIZE_FLEET_LAUNCH`, gates against snapshot, persists `flight_authorizations` doc, optionally transitions tied operator job → IN_FLIGHT.
+- ✅ **On-site hardware gateway reference** preserved at `/app/hardware-gateway/stratex-gateway.js` + `README.md` — Node + SerialPort/ReadlineParser process for the tablet/dock controller. UI is wire-compatible with both cloud-sim and on-site gateway, zero client change.
+- ✅ **HTTP audit endpoint** `GET /api/flight-authorizations/recent` — admin sees all, operator sees own, contractor sees their job-bound authorizations only.
+- ✅ **Smoke test** `/app/backend/tests/smoke_fleet_launch.py` validates the full chain (login → WS handshake → telemetry convergence → AUTHORIZE → MISSION_LAUNCHED → persistence read-back). PASSES.
+- ✅ E2E verified in browser: WS LIVE · 4 Hz, all checks Nominal, `MISSION AUTHORIZED · <auth_id>` confirmation rendered.
+
+
 ## What's Been Implemented (2026-02-27 — v3.7.0 — Luxury-Corporate QC Pass)
 - ✅ **Brand consistency** — `STRATEX™` + `Strategic Thermal Reconnaissance` subtitle locked across hero, scientific-rigor section, fleet command, footer; legacy "Cyber-Shield" branding fully purged.
 - ✅ **Hero value-prop rewritten** with explicit scientific rigor: sub-surface analytics + localized weather telemetry + thermal capacitance modeling → true moisture volume and depth beneath the membrane (cubic-inch precision).
