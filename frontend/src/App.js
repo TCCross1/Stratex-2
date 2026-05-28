@@ -18,6 +18,7 @@ import AdminSalesHub from "@/pages/AdminSalesHub";
 import OverseerQueue from "@/pages/OverseerQueue";
 import FleetLaunch from "@/pages/FleetLaunch";
 import FlightAudit from "@/pages/FlightAudit";
+import CVIceShield from "@/pages/CVIceShield";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -70,6 +71,7 @@ function AppShell() {
         <Route path="/admin/sales" element={<Protected role="admin"><AdminSalesHub/></Protected>}/>
         <Route path="/admin/overseer" element={<Protected role="admin"><OverseerQueue/></Protected>}/>
         <Route path="/admin/flight-audit" element={<Protected role="admin"><FlightAudit/></Protected>}/>
+        <Route path="/admin/cv-ice-shield" element={<Protected role="admin"><CVIceShield/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

@@ -3294,6 +3294,42 @@ async def cv_ice_shield_analyze(frame: ValleyFrame, user=Depends(current_user)):
     return result
 
 
+@api.get("/cv/ice-shield/recent")
+async def cv_ice_shield_recent(limit: int = 50, user=Depends(current_user)):
+    """List recent CV analyses with cross-referenced halt status for /admin/cv-ice-shield."""
+    q: Dict[str, Any] = {}
+    if user.get("role") == "operator":
+        q["submitted_by"] = user["id"]
+    elif user.get("role") != "admin":
+        my_job_ids = [j["id"] async for j in db.jobs.find({"contractor_id": user["id"]}, {"_id": 0, "id": 1})]
+        q["job_id"] = {"$in": my_job_ids}
+
+    docs = (
+        await db.cv_ice_shield_analyses.find(q, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(length=max(1, min(limit, 200)))
+    )
+
+    halt_frame_ids = [d["frame_id"] for d in docs if d["analysis"].get("halted")]
+    halts_by_frame: Dict[str, Dict[str, Any]] = {}
+    if halt_frame_ids:
+        async for h in db.telemetry_halts.find(
+            {"source": "ice_shield_cv", "frame_id": {"$in": halt_frame_ids}},
+            {"_id": 0},
+        ):
+            halts_by_frame[h["frame_id"]] = h
+
+    for d in docs:
+        d["halt_record"] = halts_by_frame.get(d["frame_id"])
+
+    counts = {
+        "ice_water_shield_present": sum(1 for d in docs if d["analysis"]["classification"] == "Ice_Water_Shield_Present"),
+        "moisture_anomaly":         sum(1 for d in docs if d["analysis"]["classification"] == "Moisture_Anomaly"),
+        "unverified_halt":          sum(1 for d in docs if d["analysis"]["classification"] == "Unverified_Halt"),
+    }
+    return {"count": len(docs), "counts": counts, "items": docs}
+
+
 # ---------------------------------------------------------------------------
 # INVESTOR / TOUR AI ASSISTANT — Claude Haiku 4.5 via EMERGENT_LLM_KEY
 # Greets the investor on first login, then follows them across routes with

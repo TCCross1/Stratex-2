@@ -90,6 +90,11 @@ const ROUTE_BRIEFINGS = [
     intro: "Compliance trail. Every AUTHORIZE_FLEET_LAUNCH command — cloud or on-site — with the telemetry snapshot at the moment of authorization, the operator identity, and the job linkage. Click a row to expand.",
   },
   {
+    match: (p) => p === "/admin/cv-ice-shield",
+    title: "CV · Sub-Surface Ice & Water Shield",
+    intro: "Every parsed valley frame our CV pipeline classifies — Ice & Water Shield confirmed, latent moisture, or low-confidence halt. The pipeline enforces ε=0.92, ΔT∈[0.5°C,1.5°C], a 36\"±2\" valley mask, and a post-sunset capture window. Anything below 0.90 composite confidence auto-routes to the Overseer queue for human review.",
+  },
+  {
     match: (p) => p === "/fleet",
     title: "Fleet Board",
     intro: "Real-time grid of every STRATEX drone unit — status, last-known location, current job. Shared between admin and the operations team.",
