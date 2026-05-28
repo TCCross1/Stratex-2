@@ -1,6 +1,20 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.9.0 — Investor Tour Mode + AI Walkthrough Guide)
+- ✅ **Investor login**: `john@crownroofing.com` / `unstoppable` — admin role + `tour_mode: true`, MFA bypassed, NDA pre-accepted. Admin role now passes ALL role gates (`Protected` widened), so John sees contractor, operator, admin, and fleet portals seamlessly with one login.
+- ✅ **AI tour-guide (`InvestorAssistant.jsx`)** mounted globally in `AppShell`:
+  - First-login centered greeting modal: *"Hi John, it's so good to meet you. I'm here if you have any questions."* with **Start the Tour** / **Explore Alone** buttons.
+  - Collapses to floating pulsing teal orb (lower-right) on dismiss.
+  - Click orb → side chat panel with route-aware briefings (15 routes catalogued in `ROUTE_BRIEFINGS`).
+  - Each new route auto-posts a one-time briefing summary (seen-set memo).
+  - Chat backed by `POST /api/assistant/chat` → Claude Haiku 4.5 via `EMERGENT_LLM_KEY` (emergentintegrations `LlmChat`). System message includes the current route briefing as ground truth.
+  - Conversation persisted in `db.assistant_conversations` (per session).
+- ✅ **Nav admin menu** added (Sales Hub · Overseer · Flight Audit · Fleet) — previously admin role fell through to ANON_ITEMS, exposing nothing.
+- ✅ Logo home destination + Protected redirect both updated to land admins at `/admin/sales`.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.8.1 — P1 Regression PASS + Flight Audit + KY Targets Mongo Seed)
 - ✅ **`testing_agent_v3_fork` iteration_15**: Backend 14/14 pytest green, 5 of 6 UI batches fully driven (AdminSalesHub CRM, Overseer, FlightAudit, FleetLaunch all green; Business Brain + OnboardingROI pages rendered cleanly but full input-fill not driven — Playwright script aborted on non-product Python issue). **Zero critical or minor backend/frontend bugs found.**
 - ✅ **`/admin/flight-audit`** — new admin page (`/app/frontend/src/pages/FlightAudit.jsx`) renders authorization rows from `/api/flight-authorizations/recent` with six-check MicroCheck telemetry snapshot grid + meta blocks + cross-link from `/admin/overseer`.

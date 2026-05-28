@@ -222,8 +222,10 @@ def _public_user(u: Dict[str, Any]) -> Dict[str, Any]:
         "id": u["id"],
         "email": u["email"],
         "legal_name": u.get("legal_name", ""),
+        "first_name": u.get("first_name") or (u.get("legal_name", "").split(" ")[0] if u.get("legal_name") else ""),
         "company_name": u.get("company_name", ""),
         "role": u["role"],
+        "tour_mode": bool(u.get("tour_mode", False)),
         "nda_accepted": u.get("nda_accepted", False),
         "totp_enrolled": u.get("totp_enrolled", False),
         "created_at": u.get("created_at"),
@@ -289,16 +291,19 @@ async def login(body: LoginStartBody, request: Request):
         )
         raise HTTPException(401, "Invalid credentials")
 
-    if not body.totp_code:
+    # Tour-mode (investor walkthrough) users bypass MFA — frictionless demo.
+    is_tour = bool(user.get("tour_mode", False))
+
+    if not body.totp_code and not is_tour:
         return {"mfa_required": True, "issuer": "STRATEX",
                 "totp_enrolled": user.get("totp_enrolled", False)}
 
-    if not verify_totp(user["totp_secret"], body.totp_code):
-        raise HTTPException(401, "Invalid MFA code")
-
-    if not user.get("totp_enrolled"):
-        await db.users.update_one({"id": user["id"]}, {"$set": {"totp_enrolled": True}})
-        user["totp_enrolled"] = True
+    if not is_tour:
+        if not verify_totp(user["totp_secret"], body.totp_code):
+            raise HTTPException(401, "Invalid MFA code")
+        if not user.get("totp_enrolled"):
+            await db.users.update_one({"id": user["id"]}, {"$set": {"totp_enrolled": True}})
+            user["totp_enrolled"] = True
 
     await db.login_attempts.delete_many({"identifier": email})
     access = create_access_token(user["id"], user["role"], user["email"])
@@ -1587,6 +1592,42 @@ async def on_startup():
     await seed("ADMIN_EMAIL", "ADMIN_PASSWORD", "admin", "STRATEX Admin", "STRATEX Technologies Inc.")
     await seed("SEED_CONTRACTOR_EMAIL", "SEED_CONTRACTOR_PASSWORD", "contractor", "Anthony Cross", "Apex Roofing Co.")
     await seed("SEED_OPERATOR_EMAIL", "SEED_OPERATOR_PASSWORD", "operator", "Ramon Field", "STRATEX Fleet Ops")
+
+    # ---- Investor walkthrough account (full-access tour mode) ----
+    # John of Crown Roofing — single login that walks all portals via the AI assistant.
+    INVESTOR_EMAIL = "john@crownroofing.com"
+    INVESTOR_PW = "unstoppable"
+    INVESTOR_LEGAL = "John (Crown Roofing)"
+    INVESTOR_COMPANY = "Crown Roofing"
+    existing_inv = await db.users.find_one({"email": INVESTOR_EMAIL})
+    if existing_inv:
+        # ensure password + tour-mode + MFA disabled (frictionless walkthrough)
+        upd: Dict[str, Any] = {
+            "password_hash": hash_password(INVESTOR_PW),
+            "role": "admin",
+            "tour_mode": True,
+            "first_name": "John",
+            "totp_enrolled": False,
+            "nda_accepted": True,
+            "nda_signed_at": existing_inv.get("nda_signed_at") or now_iso(),
+        }
+        await db.users.update_one({"email": INVESTOR_EMAIL}, {"$set": upd})
+    else:
+        await db.users.insert_one({
+            "id": str(uuid.uuid4()),
+            "email": INVESTOR_EMAIL,
+            "legal_name": INVESTOR_LEGAL,
+            "first_name": "John",
+            "company_name": INVESTOR_COMPANY,
+            "role": "admin",
+            "tour_mode": True,
+            "password_hash": hash_password(INVESTOR_PW),
+            "totp_secret": new_totp_secret(),
+            "totp_enrolled": False,        # MFA off for tour
+            "nda_accepted": True,
+            "nda_signed_at": now_iso(),
+            "created_at": now_iso(),
+        })
 
     # Idempotent upsert of the 7 Central-Kentucky sales targets into Mongo so the
     # P3 Competitive-Intel Onboarding Mapping can JOIN against `db.sales_targets`
@@ -3182,6 +3223,88 @@ async def get_recent_flight_authorizations(limit: int = 25, user=Depends(current
         q["job_id"] = {"$in": my_job_ids}
     docs = await db.flight_authorizations.find(q, {"_id": 0}).sort("server_timestamp", -1).to_list(length=max(1, min(limit, 200)))
     return {"count": len(docs), "items": docs}
+
+
+# ---------------------------------------------------------------------------
+# INVESTOR / TOUR AI ASSISTANT — Claude Haiku 4.5 via EMERGENT_LLM_KEY
+# Greets the investor on first login, then follows them across routes with
+# tailored briefings. Persists each session's history in db.assistant_conversations.
+# ---------------------------------------------------------------------------
+from emergentintegrations.llm.chat import LlmChat, UserMessage  # noqa: E402
+
+
+class AssistantTurn(BaseModel):
+    role: str  # 'user' | 'assistant'
+    content: str
+
+
+class AssistantChatBody(BaseModel):
+    session_id: Optional[str] = None
+    user_message: str
+    route: Optional[str] = "/"
+    route_briefing: Optional[str] = ""   # short ground-truth context for the current screen
+    user_first_name: Optional[str] = "there"
+
+
+ASSISTANT_SYSTEM_TMPL = (
+    "You are the STRATEX™ in-app guide for {first_name}, an investor walking through the "
+    "STRATEX SaaS platform for drone-based roof inspections. Be warm, concise, and concrete — "
+    "two to four short sentences per reply unless asked for depth. Speak in first person ('I'). "
+    "Never invent features. When the current screen has a route briefing, anchor your answer to it. "
+    "If asked about something not on the current screen, briefly explain and suggest the route that "
+    "shows it. Avoid jargon dumps. Always end with an inviting follow-up question when natural."
+)
+
+
+@api.post("/assistant/chat")
+async def assistant_chat(body: AssistantChatBody, user=Depends(current_user)):
+    key = os.environ.get("EMERGENT_LLM_KEY")
+    if not key:
+        raise HTTPException(500, "EMERGENT_LLM_KEY not configured")
+
+    session_id = body.session_id or f"{user['id']}::{uuid.uuid4()}"
+    first_name = (body.user_first_name or user.get("first_name") or "there").strip() or "there"
+
+    system_msg = ASSISTANT_SYSTEM_TMPL.format(first_name=first_name)
+    if body.route_briefing:
+        system_msg += f"\n\nCURRENT_SCREEN ({body.route}):\n{body.route_briefing.strip()}"
+
+    chat = LlmChat(
+        api_key=key,
+        session_id=session_id,
+        system_message=system_msg,
+    ).with_model("anthropic", "claude-haiku-4-5-20251001")
+
+    try:
+        reply = await chat.send_message(UserMessage(text=body.user_message))
+    except Exception as e:
+        logger.warning(f"assistant_chat LLM error: {e!r}")
+        raise HTTPException(502, f"assistant unavailable: {type(e).__name__}")
+
+    now = now_iso()
+    await db.assistant_conversations.update_one(
+        {"session_id": session_id, "user_id": user["id"]},
+        {
+            "$setOnInsert": {
+                "session_id": session_id,
+                "user_id": user["id"],
+                "user_email": user["email"],
+                "started_at": now,
+            },
+            "$set": {"last_route": body.route, "last_active_at": now},
+            "$push": {
+                "messages": {
+                    "$each": [
+                        {"role": "user", "content": body.user_message, "route": body.route, "ts": now},
+                        {"role": "assistant", "content": reply, "route": body.route, "ts": now},
+                    ]
+                }
+            },
+        },
+        upsert=True,
+    )
+
+    return {"session_id": session_id, "reply": reply}
 
 
 # ---------------------------------------------------------------------------

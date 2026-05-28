@@ -18,14 +18,16 @@ import AdminSalesHub from "@/pages/AdminSalesHub";
 import OverseerQueue from "@/pages/OverseerQueue";
 import FleetLaunch from "@/pages/FleetLaunch";
 import FlightAudit from "@/pages/FlightAudit";
+import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
   const loc = useLocation();
   if (user === undefined) return <div className="p-10 text-muted-hud font-mono uppercase tracking-widest">Authenticating…</div>;
   if (user === null) return <Navigate to="/auth" state={{ from: loc }} replace/>;
-  if (role && user.role !== role) {
-    const home = user.role === "admin" ? "/admin/sales" : user.role === "operator" ? "/operator" : "/contractor";
+  // Admin (incl. investor tour-mode) gets full-app access — passes any role gate
+  if (role && user.role !== role && user.role !== "admin") {
+    const home = user.role === "operator" ? "/operator" : "/contractor";
     return <Navigate to={home} replace/>;
   }
   if (user.role === "contractor" && !user.nda_accepted && loc.pathname !== "/nda") return <Navigate to="/nda" replace/>;
@@ -45,6 +47,7 @@ function AppShell() {
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
+      <InvestorAssistant/>
       <Routes>
         <Route path="/" element={<Landing/>}/>
         <Route path="/onboard" element={<OnboardingROI/>}/>
