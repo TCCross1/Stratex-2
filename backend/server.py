@@ -3330,6 +3330,79 @@ async def cv_ice_shield_recent(limit: int = 50, user=Depends(current_user)):
     return {"count": len(docs), "counts": counts, "items": docs}
 
 
+@api.post("/cv/ice-shield/replay/{frame_id}")
+async def cv_ice_shield_replay(frame_id: str, user=Depends(current_user)):
+    """Compliance dry-run: rebuild the synthetic AUTHORIZE_FLEET_LAUNCH manifest
+    that this CV frame would have produced. NO DB writes, NO real launch — pure
+    read-side audit replay for insurer / regulator walkthroughs.
+    """
+    doc = await db.cv_ice_shield_analyses.find_one({"frame_id": frame_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, f"frame {frame_id} not found")
+
+    # Visibility scoping mirrors the recent listing.
+    if user.get("role") == "operator" and doc["submitted_by"] != user["id"]:
+        raise HTTPException(403, "not your frame")
+    if user.get("role") == "contractor":
+        job = await db.jobs.find_one({"id": doc["job_id"]}, {"_id": 0, "contractor_id": 1})
+        if not job or job.get("contractor_id") != user["id"]:
+            raise HTTPException(403, "not your job")
+
+    a = doc["analysis"]
+    halt = await db.telemetry_halts.find_one({"source": "ice_shield_cv", "frame_id": frame_id}, {"_id": 0})
+
+    # Reconstruct the AUTHORIZE_FLEET_LAUNCH-shaped manifest that would have
+    # gated the drone's downstream action, given the recorded CV verdict.
+    would_authorize = (
+        a["classification"] == "Ice_Water_Shield_Present"
+        and not a["halted"]
+        and a["confidence"] >= 0.90
+    )
+
+    return {
+        "replay_id": str(uuid.uuid4()),
+        "dry_run": True,
+        "frame_id": frame_id,
+        "job_id": doc["job_id"],
+        "valley_track_id": doc["valley_track_id"],
+        "recorded_at": doc["created_at"],
+        "verdict": {
+            "would_authorize": would_authorize,
+            "classification": a["classification"],
+            "composite_confidence": a["confidence"],
+            "confidence_threshold": 0.90,
+            "reasoning": a.get("reasoning", ""),
+        },
+        "checks": [
+            {"name": p["name"], "passed": p["passed"], "detail": p["detail"]}
+            for p in a.get("preconditions", [])
+        ],
+        "flags": {
+            "has_ice_and_water_shield": a["has_ice_and_water_shield"],
+            "code_compliant_underlayment": a["code_compliant_underlayment"],
+            "flag_for_estimation_pipeline": a["flag_for_estimation_pipeline"],
+        },
+        "halt_record": halt,
+        "synthetic_command": {
+            "command": "AUTHORIZE_FLEET_LAUNCH",
+            "dry_run": True,
+            "would_emit": would_authorize,
+            "payload": {
+                "project_id": doc["job_id"],
+                "frame_id": frame_id,
+                "valley_track_id": doc["valley_track_id"],
+                "cv_classification": a["classification"],
+                "cv_confidence": a["confidence"],
+            },
+        },
+        "audit": {
+            "replayed_by_user_id": user["id"],
+            "replayed_by_role": user["role"],
+            "replayed_at": now_iso(),
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # INVESTOR / TOUR AI ASSISTANT — Claude Haiku 4.5 via EMERGENT_LLM_KEY
 # Greets the investor on first login, then follows them across routes with
