@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
-import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard, Target, Activity, Plane, Snowflake } from "lucide-react";
+import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard, Target, Activity, Plane, Snowflake, CloudLightning } from "lucide-react";
 
 const NavLink = ({ to, label, icon: Icon, testid, onClick }) => {
   const loc = useLocation();
@@ -40,6 +40,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/overseer", label: "Overseer", icon: Activity, testid: "nav-admin-overseer" },
   { to: "/admin/flight-audit", label: "Flight Audit", icon: Plane, testid: "nav-admin-flight-audit" },
   { to: "/admin/cv-ice-shield", label: "I&W Shield", icon: Snowflake, testid: "nav-admin-cv-ice-shield" },
+  { to: "/admin/weather", label: "Weather", icon: CloudLightning, testid: "nav-admin-weather" },
   { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-admin-fleet" },
 ];
 const ANON_ITEMS = [

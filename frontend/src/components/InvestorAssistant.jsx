@@ -95,6 +95,11 @@ const ROUTE_BRIEFINGS = [
     intro: "Every parsed valley frame our CV pipeline classifies — Ice & Water Shield confirmed, latent moisture, or low-confidence halt. The pipeline enforces ε=0.92, ΔT∈[0.5°C,1.5°C], a 36\"±2\" valley mask, and a post-sunset capture window. Anything below 0.90 composite confidence auto-routes to the Overseer queue for human review.",
   },
   {
+    match: (p) => p === "/admin/weather",
+    title: "Weather Intelligence · Central Kentucky",
+    intro: "Live Doppler radar from RainViewer, a 7-day Open-Meteo forecast, plus two AI agents — a storm-watch agent that scans the forecast for developing systems and a historical analyst comparing today against the last three years. The county-border overlay shows Fayette plus the six surrounding counties STRATEX dispatches into.",
+  },
+  {
     match: (p) => p === "/fleet",
     title: "Fleet Board",
     intro: "Real-time grid of every STRATEX drone unit — status, last-known location, current job. Shared between admin and the operations team.",

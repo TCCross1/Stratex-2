@@ -1,6 +1,15 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.11.0 — Weather Intelligence + Central KY Borders)
+- ✅ **`/admin/weather`** — Doppler radar (RainViewer, animated 4 fps · 13 frames) + 7-day forecast (Open-Meteo) + AI storm-watch agent (Claude Haiku 4.5) + 3-year on-this-day analysis (Claude Haiku 4.5). All upstream services are public/free; both LLM endpoints cached server-side (15 min / 1 h).
+- ✅ **Central KY county-border overlay** on Fleet map AND Weather radar map. GeoJSON ships with Fayette (primary teal) + 6 surrounding counties dashed (Jessamine, Woodford, Scott, Bourbon, Clark, Madison) — coords simplified from US Census TIGER 2024.
+- ✅ Backend endpoints: `GET /api/weather/forecast`, `GET /api/weather/radar`, `GET /api/weather/historical-on-this-day`, `POST /api/weather/storm-watch`, `POST /api/weather/historical-analysis` (audience param toggles admin vs contractor framing).
+- ✅ Admin nav now includes **WEATHER** (cloud-lightning icon); InvestorAssistant briefing added.
+- ⚠️ Still open from prior turn (deferred): John's simulated end-to-end flight (Launch → Capture → Transfer → 4-agent forensic pipeline → 100-check validation → 3D twin → pricing) AND the contractor deliverable packet using IMG_2253/IMG_2254 as canonical assets.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.10.0 — P3 Competitive Intel UI + Ice & Water Shield CV Pipeline)
 - ✅ **`CompetitiveIntelSection` mounted on `/onboard`** — full-width below the tier picker. Live-debounced POST to `/api/onboarding/competitive-intel`, renders 7-target ranked list with archetype-keyed hook copy, summary strip (reclaim/yr, targets-you-beat, est. overhead leak), tap-to-call buttons.
 - ✅ **Sub-Surface Ice & Water Shield CV Pipeline** — `/app/backend/roof_cv_ice_shield.py` (pure-function strict-typed Pydantic module) + `POST /api/cv/ice-shield/analyze`. Enforces ε=0.92, ΔT∈[0.5,1.5]°C, post-sunset window (T+2h…T+6h), VALLEY_MASK 36"±2" centered. Shape discrimination: linear edge + roll-width tolerance + no-gravity-bleed ⇒ `Ice_Water_Shield_Present`; amorphous gravity-following ⇒ `Moisture_Anomaly` routed to Estimation Controller; composite confidence < 0.90 ⇒ `Unverified_Halt` auto-emitted to `db.telemetry_halts` for Overseer review.

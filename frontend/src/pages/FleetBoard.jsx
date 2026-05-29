@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { HudCard, DataReadout } from "@/components/HudCard";
 import { fleetStatus } from "@/lib/api";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Truck, Battery, Satellite, Wrench, Radio, MapPin, Activity, Zap } from "lucide-react";
@@ -75,6 +75,17 @@ export default function FleetBoard() {
             <span className="corner-bl"/><span className="corner-br"/>
             <MapContainer center={center} zoom={5} style={{ height: "100%", width: "100%", background: "#06080B" }} scrollWheelZoom>
               <TileLayer attribution='Imagery &copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19}/>
+              <GeoJSON
+                data={centralKyCounties}
+                style={COUNTY_STYLE}
+                onEachFeature={(feature, layer) => {
+                  const p = feature.properties || {};
+                  layer.bindTooltip(
+                    `<div style="font-family:monospace;font-size:10px;color:#0B0F19;background:#00F5D4;padding:2px 6px;letter-spacing:1px">${(p.city || "").toUpperCase()} · ${p.name || ""}</div>`,
+                    { permanent: false, direction: "center", className: "stratex-county-tip" }
+                  );
+                }}
+              />
               {rigs.map((r) => (
                 <Marker key={r.id} position={[r.lat, r.lon]} icon={rigIcon(r.status)}>
                   <Popup>
