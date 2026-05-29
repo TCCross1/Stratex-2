@@ -1,6 +1,15 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.12.0 — Contractor Deliverable Packet)
+- ✅ **`GET /api/contractor/deliverable/{job_id}`** — assembles the full report payload (platform letterhead, contractor, client/homeowner, site address, flight record with pilot name + timestamps + weather + telemetry, roof composition, anomalies, 3D twin reference, pricing breakdown with overhead/margin). Role-scoped (admin/tour-mode unrestricted, contractor own-jobs only, operator denied).
+- ✅ **Canonical `crown-demo` job** auto-seeded on startup matching IMG_2253/IMG_2254 exactly: Project AD-KY041, Crown Roofing, The Whitaker Family at 1247 Bluegrass Pkwy, Pilot Ramon Field, 1284 frames / 4 passes, ε 0.92 radiometrically corrected, 16.21 squares · 1621 sqft · 148.67 lf valleys, Finished Slate + I&WS, Anomaly AD-KY041-004 Trapped Moisture / CDX Deck Rot @ 92.45% confidence on Facet F2 ($17,645 remediation).
+- ✅ **`/deliverable/demo`** shortcut + **`/contractor/deliverable/:jobId`** parameterized route — print-ready React page (`ContractorDeliverable.jsx`). Uses real STRATEX letterhead logo (custom SVG: teal triangle outline + neon-orange inner triangle + ink dot), nav-hidden, @media print CSS strips toolbar + sets letter size + 0.5in margins. One-click **Print / Save as PDF** button.
+- ✅ **Standard pricing engine** — material $/sq (slate $685, metal $545, asphalt $165), labor $175/sq, tearoff $95/sq, underlayment $28/sq, valley $14.50/lf, permits $285 flat, overhead 18%, margin 22%. Anomaly remediations are flagged in-line in orange. Total $51,854.60 on the demo packet.
+- ✅ Investor-assistant briefing added for the deliverable route. Nav hidden on the page so the contractor sees a clean letterhead.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.11.0 — Weather Intelligence + Central KY Borders)
 - ✅ **`/admin/weather`** — Doppler radar (RainViewer, animated 4 fps · 13 frames) + 7-day forecast (Open-Meteo) + AI storm-watch agent (Claude Haiku 4.5) + 3-year on-this-day analysis (Claude Haiku 4.5). All upstream services are public/free; both LLM endpoints cached server-side (15 min / 1 h).
 - ✅ **Central KY county-border overlay** on Fleet map AND Weather radar map. GeoJSON ships with Fayette (primary teal) + 6 surrounding counties dashed (Jessamine, Woodford, Scott, Bourbon, Clark, Madison) — coords simplified from US Census TIGER 2024.
