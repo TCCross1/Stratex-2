@@ -1,6 +1,17 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.16.0 — Contractor Quote Builder)
+- ✅ **`/contractor/quote-builder`** — contractor-facing surface of the supplier's Material Catalog. Pick line items, set markup %, save the quote. Built as PURE ADDITION — nothing existing was removed or replaced.
+- ✅ **Tier privacy** — the catalog endpoint (`GET /api/contractor/quote-builder/catalog`) returns ONLY the contractor's assigned-tier price per SKU. The other two tier prices are stripped server-side and never travel over the wire.
+- ✅ **Live quote math** — subtotal, editable markup %, grand total all live-update as quantities change. Markup defaults to 30%.
+- ✅ **Saved quotes panel** — list of the contractor's saved quotes with subtotal/markup/total and a portfolio-total badge in the header.
+- ✅ Backend `routes/quote_builder.py` (~150 lines, ruff-clean): 3 endpoints — `GET catalog`, `POST quotes`, `GET quotes`. Server re-resolves each line against the live catalog on save so client-side tampering can't poison the total. New Mongo collection: `db.contractor_quotes`.
+- ✅ Nav: new **"Quote Builder"** (Lucide `Calculator` icon) added to contractor nav between Business Brain and Fleet — all existing items intact, none reordered.
+- ✅ Smoke pass: empty state renders, line items add live, totals reconcile against backend ($705 × 1.30 = $916.50 verified).
+
+
+
 ## What's Been Implemented (2026-05-30 — v3.15.0 — Supplier Ops Command)
 - ✅ **`/admin/ops`** — single admin page with 3 inner tabs for the **roofing-material supplier** (platform tenant) who offers STRATEX to their contractor customers:
   1. **Fleet Allocation** — assign drone hardware nodes (NODE-ALPHA…NODE-EPSILON) to contractor open lead vectors (jobs with status PENDING_FIELD_CAPTURE). Live "available pool" + per-contractor matrix with sales-rep badges + per-node fleet cards.

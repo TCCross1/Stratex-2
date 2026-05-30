@@ -2456,6 +2456,7 @@ from routes import (  # noqa: F401, E402
     deliverable,
     materials_config,
     onboarding,
+    quote_builder,
     sales_hub,
     simulation,
     telemetry_overseer,
