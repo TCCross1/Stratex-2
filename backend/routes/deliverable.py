@@ -85,7 +85,9 @@ async def contractor_deliverable(job_id: str, user=Depends(current_user)):
     role = user.get("role")
     if role == "operator":
         raise HTTPException(403, "operators don't access pricing deliverables")
-    if role == "contractor" and job.get("contractor_id") != user["id"]:
+    # Canonical demo job is open to any authenticated non-operator (investor / showcase).
+    is_demo = job_id in ("crown-demo", "AD-KY041") or job.get("is_public_demo") is True
+    if role == "contractor" and not is_demo and job.get("contractor_id") != user["id"]:
         raise HTTPException(403, "not your job")
 
     pricing = _build_pricing(job)
