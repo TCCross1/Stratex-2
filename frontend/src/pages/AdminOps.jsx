@@ -17,7 +17,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Radar, Layers, Users, Trash2, Pencil, Save, X, Plus, Send, Truck,
-  Lock, ChevronRight, BookOpen,
+  Lock, ChevronRight, BookOpen, TrendingUp, AlertTriangle, BarChart3,
 } from "lucide-react";
 
 const TEAL = "#00F5D4";
@@ -34,6 +34,7 @@ const SECTIONS = [
   { id: "fleet",    label: "Fleet Allocation",   icon: Radar },
   { id: "catalog",  label: "Material Catalog",   icon: Layers },
   { id: "accounts", label: "Account Coverage",   icon: Users },
+  { id: "forecast", label: "SKU Forecast",       icon: BarChart3 },
 ];
 
 const fmtMoney = (n) =>
@@ -634,6 +635,124 @@ function AccountCoverageView({ dashboard, refresh, playbook }) {
 }
 
 // ---------------------------------------------------------------------------
+// Section 4 — SKU Forecast (supplier-side demand intelligence)
+// ---------------------------------------------------------------------------
+function SkuForecastView() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await api.get("/admin/ops/sku-forecast");
+      setData(r.data);
+      setErr("");
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <div className="p-8 text-center text-slate-400 font-mono text-sm">// Computing forecast…</div>;
+  if (err) return <div className="p-8 text-center text-[#FF5400] font-mono text-sm">// {err}</div>;
+
+  const summary = data?.summary || {};
+  const rows = data?.rows || [];
+  const maxValue = Math.max(...rows.map((r) => r.quote_value_usd), 1);
+
+  return (
+    <div className="grid grid-cols-12 gap-6">
+      {/* Stat strip */}
+      <Panel title="Forecast Snapshot" span={12} testid="forecast-snapshot">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Total SKUs",               value: summary.total_skus ?? "—" },
+            { label: "SKUs with demand",         value: summary.skus_with_demand ?? "—", color: TEAL },
+            { label: "Reorder alerts",           value: summary.reorder_alerts ?? 0, color: (summary.reorder_alerts ?? 0) > 0 ? ORANGE : NICKEL },
+            { label: "Forecast Value · 30d",     value: fmtMoney(summary.total_forecast_value_usd || 0), color: TEAL },
+          ].map((s) => (
+            <div key={s.label}
+              style={{ background: "#0A0F12", borderLeft: `3px solid ${s.color || TEAL}`, padding: "1rem", borderRadius: "0 4px 4px 0" }}>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-heading">{s.label}</div>
+              <div className="text-2xl font-bold font-mono text-silver mt-1">{s.value}</div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Per-SKU Demand · Pending Quotes" span={12} testid="forecast-table"
+        right={<Badge color={ORANGE}><TrendingUp size={11} className="inline mr-1"/>Live Aggregation</Badge>}>
+        <p className="text-xs text-slate-400 mb-4 max-w-3xl leading-relaxed">
+          Aggregates every draft + promoted quote across all contractors. The forecast
+          quantity is what's <span className="text-[#00F5D4]">committed but not yet ordered</span> — your forward
+          stock signal. Reorder alert fires when current stock covers less than 14 days
+          at the current burn rate.
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b-2 border-white/5">
+                {["SKU · Material", "Quotes", "Forecast Qty", "Stock", "Days of Supply", "Quote Value", "Demand Distribution", ""]
+                  .map((h, i) => (
+                    <th key={i} className={`px-3 py-3 text-[10px] uppercase tracking-[0.18em] text-slate-500 font-heading ${i === 7 ? "text-right" : ""}`}>{h}</th>
+                  ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const widthPct = Math.min(100, (r.quote_value_usd / maxValue) * 100);
+                const dosColor = r.reorder_signal ? ORANGE : r.days_of_supply == null ? NICKEL : TEAL;
+                return (
+                  <tr key={r.material_id} className="border-b border-white/5 hover:bg-white/[0.02]" data-testid={`forecast-row-${r.material_id}`}>
+                    <td className="px-3 py-3">
+                      <div className="text-silver text-sm font-semibold">{r.name}</div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{r.sku} · {r.category}</div>
+                    </td>
+                    <td className="px-3 py-3"><Badge color={r.quote_count > 0 ? TEAL : NICKEL}>{r.quote_count}</Badge></td>
+                    <td className="px-3 py-3 font-mono text-sm text-[#00F5D4]">{r.qty_demanded}<span className="text-slate-500 text-[10px] ml-1">{r.unit_label}{r.qty_demanded !== 1 ? "s" : ""}</span></td>
+                    <td className="px-3 py-3 font-mono text-sm text-slate-400">{r.stock_units}</td>
+                    <td className="px-3 py-3">
+                      {r.days_of_supply == null
+                        ? <span className="text-slate-500 text-xs">—</span>
+                        : <Badge color={dosColor}>{r.days_of_supply}d</Badge>}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-sm text-silver">{fmtMoney(r.quote_value_usd)}</td>
+                    <td className="px-3 py-3 min-w-[180px]">
+                      <div className="w-full h-1 rounded bg-white/5 overflow-hidden">
+                        <div style={{
+                          width: `${widthPct}%`, height: "100%",
+                          background: r.reorder_signal ? ORANGE : `linear-gradient(90deg, ${NICKEL}, ${TEAL})`,
+                        }}/>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 font-mono">
+                        T1:{r.tier_breakdown.tier1} · T2:{r.tier_breakdown.tier2} · T3:{r.tier_breakdown.tier3}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      {r.reorder_signal && (
+                        <Badge color={ORANGE} testid={`forecast-reorder-${r.material_id}`}>
+                          <AlertTriangle size={10} className="inline mr-1"/>Reorder
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-slate-500 text-sm">No materials in ledger.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page shell
 // ---------------------------------------------------------------------------
 export default function AdminOps() {
@@ -721,6 +840,7 @@ export default function AdminOps() {
         {section === "fleet"    && <FleetAllocationView   dashboard={dashboard} refresh={load}/>}
         {section === "catalog"  && <MaterialCatalogView   dashboard={dashboard} refresh={load}/>}
         {section === "accounts" && <AccountCoverageView   dashboard={dashboard} refresh={load} playbook={playbook}/>}
+        {section === "forecast" && <SkuForecastView/>}
       </div>
     </div>
   );

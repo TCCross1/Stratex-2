@@ -17,7 +17,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Calculator, Plus, Trash2, Save, FileText, Receipt, ShoppingCart,
-  Boxes, TrendingUp, Lock,
+  Boxes, TrendingUp, Lock, ArrowUpRight, CheckCircle2,
 } from "lucide-react";
 
 const TEAL = "#00F5D4";
@@ -88,8 +88,12 @@ const Btn = ({ orange, ghost, disabled, children, ...rest }) => {
 export default function QuoteBuilder() {
   const [catalog, setCatalog] = useState(null);
   const [quotes, setQuotes] = useState([]);
+  const [eligibleJobs, setEligibleJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [promoteForQuoteId, setPromoteForQuoteId] = useState(null);
+  const [promoteJobId, setPromoteJobId] = useState("");
+  const [promoting, setPromoting] = useState(false);
 
   // Quote draft state
   const [title, setTitle] = useState("");
@@ -102,12 +106,14 @@ export default function QuoteBuilder() {
 
   async function load() {
     try {
-      const [c, q] = await Promise.all([
+      const [c, q, j] = await Promise.all([
         api.get("/contractor/quote-builder/catalog"),
         api.get("/contractor/quote-builder/quotes"),
+        api.get("/contractor/quote-builder/eligible-jobs"),
       ]);
       setCatalog(c.data);
       setQuotes(q.data.quotes || []);
+      setEligibleJobs(j.data.jobs || []);
       setErr("");
     } catch (e) {
       setErr(e.response?.data?.detail || e.message);
@@ -116,6 +122,25 @@ export default function QuoteBuilder() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  async function promote(quoteId) {
+    if (!promoteJobId) {
+      toast.error("Pick a job to promote into");
+      return;
+    }
+    setPromoting(true);
+    try {
+      const r = await api.post(`/contractor/quote-builder/quotes/${quoteId}/promote`, { job_id: promoteJobId });
+      toast.success(`Promoted to job · ${fmtMoney(r.data.total_usd)} → ${promoteJobId}`);
+      setPromoteForQuoteId(null);
+      setPromoteJobId("");
+      await load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Promote failed");
+    } finally {
+      setPromoting(false);
+    }
+  }
 
   const materialById = useMemo(() => {
     const m = {};
@@ -351,29 +376,86 @@ export default function QuoteBuilder() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b-2 border-white/5">
-                      {["Title", "Homeowner", "Lines", "Subtotal", "Markup", "Total", "Created"].map((h) => (
+                      {["Title", "Homeowner", "Lines", "Subtotal", "Markup", "Total", "Status", "Action"].map((h) => (
                         <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-slate-500 font-heading">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {quotes.map((q) => (
-                      <tr key={q.id} className="border-b border-white/5 hover:bg-white/[0.02]" data-testid={`qb-saved-row-${q.id}`}>
-                        <td className="px-3 py-3">
-                          <div className="text-silver text-sm font-semibold">{q.title}</div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">{q.id}</div>
-                        </td>
-                        <td className="px-3 py-3 text-silver text-sm">
-                          {q.homeowner_name || "—"}
-                          {q.site_address && <div className="text-[10px] text-slate-500">{q.site_address}</div>}
-                        </td>
-                        <td className="px-3 py-3"><Badge color={NICKEL}>{(q.lines || []).length}</Badge></td>
-                        <td className="px-3 py-3 font-mono text-slate-400 text-sm">{fmtMoney(q.subtotal_usd)}</td>
-                        <td className="px-3 py-3 font-mono text-[#FF5400] text-sm">{(q.markup_pct * 100).toFixed(0)}% · {fmtMoney(q.markup_usd)}</td>
-                        <td className="px-3 py-3 font-mono text-[#00F5D4] text-sm font-bold">{fmtMoney(q.total_usd)}</td>
-                        <td className="px-3 py-3 font-mono text-slate-500 text-[10px]">{(q.created_at || "").slice(0, 16).replace("T", " ")}</td>
-                      </tr>
-                    ))}
+                    {quotes.map((q) => {
+                      const promoted = q.status === "promoted";
+                      const showPromoter = promoteForQuoteId === q.id;
+                      return (
+                        <React.Fragment key={q.id}>
+                          <tr className="border-b border-white/5 hover:bg-white/[0.02]" data-testid={`qb-saved-row-${q.id}`}>
+                            <td className="px-3 py-3">
+                              <div className="text-silver text-sm font-semibold">{q.title}</div>
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">{q.id}</div>
+                            </td>
+                            <td className="px-3 py-3 text-silver text-sm">
+                              {q.homeowner_name || "—"}
+                              {q.site_address && <div className="text-[10px] text-slate-500">{q.site_address}</div>}
+                            </td>
+                            <td className="px-3 py-3"><Badge color={NICKEL}>{(q.lines || []).length}</Badge></td>
+                            <td className="px-3 py-3 font-mono text-slate-400 text-sm">{fmtMoney(q.subtotal_usd)}</td>
+                            <td className="px-3 py-3 font-mono text-[#FF5400] text-sm">{(q.markup_pct * 100).toFixed(0)}% · {fmtMoney(q.markup_usd)}</td>
+                            <td className="px-3 py-3 font-mono text-[#00F5D4] text-sm font-bold">{fmtMoney(q.total_usd)}</td>
+                            <td className="px-3 py-3">
+                              {promoted
+                                ? <Badge color={TEAL} testid={`qb-status-promoted-${q.id}`}><CheckCircle2 size={10} className="inline mr-1"/>Promoted</Badge>
+                                : <Badge color={NICKEL}>Draft</Badge>}
+                            </td>
+                            <td className="px-3 py-3">
+                              {promoted
+                                ? <a href={`/contractor/deliverable/${q.job_id}`}
+                                    className="text-[#00F5D4] text-[10px] uppercase tracking-[0.18em] font-heading font-bold hover:opacity-80"
+                                    data-testid={`qb-view-deliverable-${q.id}`}>
+                                    View Deliverable →
+                                  </a>
+                                : showPromoter
+                                  ? <Btn ghost orange onClick={() => { setPromoteForQuoteId(null); setPromoteJobId(""); }}>
+                                      <X size={11}/>Cancel
+                                    </Btn>
+                                  : <Btn ghost onClick={() => { setPromoteForQuoteId(q.id); setPromoteJobId(""); }}
+                                      data-testid={`qb-promote-toggle-${q.id}`}>
+                                      <ArrowUpRight size={11}/>Promote
+                                    </Btn>}
+                            </td>
+                          </tr>
+                          {showPromoter && (
+                            <tr className="bg-[#00F5D4]/[0.03] border-b border-[#00F5D4]/30" data-testid={`qb-promote-row-${q.id}`}>
+                              <td colSpan={8} className="px-3 py-4">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] uppercase tracking-[0.18em] text-[#00F5D4] font-heading font-bold whitespace-nowrap">
+                                    Promote to job →
+                                  </span>
+                                  <select value={promoteJobId}
+                                    onChange={(e) => setPromoteJobId(e.target.value)}
+                                    className="bg-obsidian/80 border border-[#3A4350]/60 rounded px-3 py-2 text-silver text-sm focus:border-[#00F5D4] outline-none flex-1 font-mono"
+                                    data-testid={`qb-promote-job-select-${q.id}`}>
+                                    <option value="">Select job…</option>
+                                    {eligibleJobs.map((j) => (
+                                      <option key={j.job_id} value={j.job_id}>
+                                        {j.project_code} · {j.site_address} {j.has_pricing ? "(⚠ overwrites existing pricing)" : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Btn onClick={() => promote(q.id)} disabled={promoting || !promoteJobId}
+                                    data-testid={`qb-promote-submit-${q.id}`}>
+                                    <CheckCircle2 size={12}/>{promoting ? "Promoting…" : "Promote"}
+                                  </Btn>
+                                </div>
+                                {eligibleJobs.length === 0 && (
+                                  <div className="text-xs text-slate-400 mt-2">
+                                    You have no jobs yet. Create one from <a href="/contractor/jobs/new" className="text-[#00F5D4]">New Job</a>, then promote this quote.
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

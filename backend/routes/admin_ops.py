@@ -216,6 +216,104 @@ async def admin_ops_dashboard(user=Depends(admin_only)):
 
 
 # ---------------------------------------------------------------------------
+# SKU Forecast — aggregate pending-quote line quantities per material
+# Gives the supplier a forward order-volume signal: which SKUs to stock up on
+# *before* contractors actually place the orders.
+# ---------------------------------------------------------------------------
+@api.get("/admin/ops/sku-forecast")
+async def sku_forecast(user=Depends(admin_only)):
+    """Aggregate every draft quote across every contractor into per-SKU demand:
+      - qty_demanded:   sum of line quantities across all draft quotes
+      - quote_count:    how many distinct quotes reference this SKU
+      - tier_breakdown: qty grouped by the tier each quote was priced at
+      - stock_units:    current on-hand stock from the ledger
+      - days_of_supply: stock_units / (qty_demanded / 30) — simple heuristic
+      - quote_value_usd: sum of line_total across all referencing quotes
+    """
+    pipeline = [
+        {"$match": {"status": {"$in": ["draft", "promoted"]}}},
+        {"$unwind": "$lines"},
+        {"$group": {
+            "_id": "$lines.material_id",
+            "qty_demanded": {"$sum": "$lines.quantity"},
+            "quote_count": {"$addToSet": "$id"},
+            "quote_value_usd": {"$sum": "$lines.line_total_usd"},
+            "tiers_seen": {"$push": {"tier": "$tier_used", "qty": "$lines.quantity"}},
+        }},
+    ]
+    agg = await db.contractor_quotes.aggregate(pipeline).to_list(length=500)
+
+    materials = await db.supplier_material_ledger.find({}, {"_id": 0}).to_list(length=500)
+    mats_by_id = {m["id"]: m for m in materials}
+
+    rows: List[Dict[str, Any]] = []
+    grand_value = 0.0
+    for a in agg:
+        mid = a["_id"]
+        m = mats_by_id.get(mid)
+        if not m:
+            continue
+        qty = float(a.get("qty_demanded", 0) or 0)
+        stock = float(m.get("stock_units", 0) or 0)
+        # Days-of-supply heuristic: assume the demand window is rolling-30-days
+        daily_burn = qty / 30.0 if qty > 0 else 0.0
+        dos = round(stock / daily_burn, 1) if daily_burn > 0 else None
+        tier_breakdown = {"tier1": 0.0, "tier2": 0.0, "tier3": 0.0}
+        for t in a.get("tiers_seen", []):
+            if t.get("tier") in tier_breakdown:
+                tier_breakdown[t["tier"]] += float(t.get("qty", 0) or 0)
+        value = round(float(a.get("quote_value_usd", 0) or 0), 2)
+        grand_value += value
+        rows.append({
+            "material_id": mid,
+            "sku": m["sku"],
+            "name": m["name"],
+            "category": m.get("category", ""),
+            "unit_label": m.get("unit_label", "Each"),
+            "stock_units": int(stock),
+            "qty_demanded": round(qty, 2),
+            "quote_count": len(set(a.get("quote_count", []))),
+            "quote_value_usd": value,
+            "tier_breakdown": {k: round(v, 2) for k, v in tier_breakdown.items()},
+            "days_of_supply": dos,
+            "reorder_signal": (dos is not None and dos < 14),  # < 2 weeks = reorder
+        })
+
+    rows.sort(key=lambda r: r["quote_value_usd"], reverse=True)
+
+    # Pull through SKUs that have ZERO demand so the supplier sees the whole catalog
+    seen = {r["material_id"] for r in rows}
+    for m in materials:
+        if m["id"] in seen:
+            continue
+        rows.append({
+            "material_id": m["id"],
+            "sku": m["sku"],
+            "name": m["name"],
+            "category": m.get("category", ""),
+            "unit_label": m.get("unit_label", "Each"),
+            "stock_units": int(m.get("stock_units", 0) or 0),
+            "qty_demanded": 0,
+            "quote_count": 0,
+            "quote_value_usd": 0,
+            "tier_breakdown": {"tier1": 0, "tier2": 0, "tier3": 0},
+            "days_of_supply": None,
+            "reorder_signal": False,
+        })
+
+    return {
+        "generated_at": now_iso(),
+        "rows": rows,
+        "summary": {
+            "total_skus": len(rows),
+            "skus_with_demand": sum(1 for r in rows if r["qty_demanded"] > 0),
+            "reorder_alerts": sum(1 for r in rows if r["reorder_signal"]),
+            "total_forecast_value_usd": round(grand_value, 2),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Material Ledger — full CRUD
 # ---------------------------------------------------------------------------
 @api.post("/admin/ops/materials")

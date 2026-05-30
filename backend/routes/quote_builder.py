@@ -154,3 +154,109 @@ async def list_quotes(user=Depends(contractor_only)):
         "total_value_usd": total_value,
         "quotes": docs,
     }
+
+
+@api.get("/contractor/quote-builder/eligible-jobs")
+async def list_eligible_jobs(user=Depends(contractor_only)):
+    """Jobs this contractor owns that a saved quote can be promoted to.
+    Promoting a quote writes its line-items + total into the job's `pricing`
+    field — the same shape the deliverable + simulation pipelines read from.
+    """
+    jobs = await db.jobs.find(
+        {"contractor_id": user["id"]},
+        {"_id": 0, "id": 1, "project_code": 1, "site_address": 1, "client_name": 1,
+         "status": 1, "pricing": 1, "promoted_from_quote_id": 1},
+    ).sort("created_at", -1).to_list(length=200)
+    return {
+        "count": len(jobs),
+        "jobs": [{
+            "job_id": j["id"],
+            "project_code": j.get("project_code") or j["id"],
+            "site_address": j.get("site_address") or "—",
+            "client_name": j.get("client_name") or "—",
+            "status": j.get("status"),
+            "has_pricing": bool(j.get("pricing")),
+            "promoted_from_quote_id": j.get("promoted_from_quote_id"),
+        } for j in jobs],
+    }
+
+
+class PromoteQuoteBody(BaseModel):
+    job_id: str
+
+
+@api.post("/contractor/quote-builder/quotes/{quote_id}/promote")
+async def promote_quote_to_job(quote_id: str, body: PromoteQuoteBody, user=Depends(contractor_only)):
+    """Promote a saved quote into a job's pricing payload.
+
+    Writes the quote's line items + subtotal + markup + total into
+    `job.pricing` (matching the shape produced by /api/contractor/deliverable
+    and the simulation pipeline). Marks the quote as `promoted` and bi-directionally
+    links it to the job (`quote.job_id` + `job.promoted_from_quote_id`).
+    """
+    quote = await db.contractor_quotes.find_one(
+        {"id": quote_id, "contractor_id": user["id"]}, {"_id": 0},
+    )
+    if not quote:
+        raise HTTPException(404, f"Quote {quote_id} not found in your portfolio.")
+    if quote.get("status") == "promoted" and quote.get("job_id") == body.job_id:
+        return {"ok": True, "already_promoted": True, "quote_id": quote_id, "job_id": body.job_id}
+
+    job = await db.jobs.find_one(
+        {"id": body.job_id, "contractor_id": user["id"]}, {"_id": 0, "id": 1, "pricing": 1},
+    )
+    if not job:
+        raise HTTPException(404, f"Job {body.job_id} not found in your portfolio.")
+
+    # Build the pricing payload — matches the shape produced by routes/deliverable._build_pricing
+    pricing_payload = {
+        "currency": "USD",
+        "source": "quote_builder",
+        "source_quote_id": quote_id,
+        "source_quote_title": quote.get("title", ""),
+        "tier_used": quote.get("tier_used"),
+        "line_items": [
+            {"label": f"{ln['name']} ({ln['quantity']} × {ln['unit_label']} @ ${ln['unit_price_usd']:.2f})",
+             "amount": float(ln.get("line_total_usd", 0)),
+             "sku": ln.get("sku"),
+             "material_id": ln.get("material_id"),
+             "quantity": float(ln.get("quantity", 0))}
+            for ln in quote.get("lines", [])
+        ],
+        "anomaly_remediations": [],
+        "subtotal_usd": float(quote.get("subtotal_usd", 0)),
+        "overhead_pct": 0,
+        "overhead_usd": 0,
+        "margin_pct": float(quote.get("markup_pct", 0)),
+        "margin_usd": float(quote.get("markup_usd", 0)),
+        "total_usd": float(quote.get("total_usd", 0)),
+        "valid_for_days": 30,
+        "promoted_at": now_iso(),
+    }
+
+    await db.jobs.update_one(
+        {"id": body.job_id},
+        {"$set": {
+            "pricing": pricing_payload,
+            "promoted_from_quote_id": quote_id,
+            "promoted_at": now_iso(),
+            "promoted_by_email": user["email"],
+            "status": "PROPOSAL_READY",
+        }},
+    )
+    await db.contractor_quotes.update_one(
+        {"id": quote_id},
+        {"$set": {
+            "status": "promoted",
+            "job_id": body.job_id,
+            "promoted_at": now_iso(),
+        }},
+    )
+
+    return {
+        "ok": True,
+        "quote_id": quote_id,
+        "job_id": body.job_id,
+        "total_usd": pricing_payload["total_usd"],
+        "next_route": f"/contractor/deliverable/{body.job_id}",
+    }
