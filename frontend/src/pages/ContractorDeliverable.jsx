@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Printer, MapPin, User, CalendarClock, Wind, ShieldCheck, Plane, FileText, Layers, AlertTriangle, RotateCw, Award, Grid3X3, Droplets, Hammer, Wrench, Trash, Ruler } from "lucide-react";
+import { Printer, MapPin, User, CalendarClock, Wind, ShieldCheck, Plane, FileText, Layers, AlertTriangle, RotateCw, Award, Grid3X3, Droplets, Hammer, Wrench, Trash, Ruler, Presentation } from "lucide-react";
 import { api } from "@/lib/api";
 
 const TEAL = "#00F5D4";
@@ -74,6 +74,12 @@ export default function ContractorDeliverable() {
             data-testid="deliverable-refresh">
             <RotateCw size={11}/> Refresh
           </button>
+          <a href={`${window.location.pathname.replace(/\/$/, "")}${window.location.pathname.endsWith("/deck") ? "" : "/deck"}`.replace("/deliverable/demo/deck", "/deck/demo")}
+            className="no-print font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 inline-flex items-center gap-2"
+            style={{ borderColor: `${ORANGE}88`, color: ORANGE }}
+            data-testid="deliverable-view-deck">
+            <Presentation size={11}/> View as Deck
+          </a>
           <button onClick={() => window.print()}
             className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5 inline-flex items-center gap-2"
             style={{ background: TEAL, color: PAPER_INK }}

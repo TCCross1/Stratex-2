@@ -24,6 +24,7 @@ import AdminOps from "@/pages/AdminOps";
 import QuoteBuilder from "@/pages/QuoteBuilder";
 import BranchConsole from "@/pages/BranchConsole";
 import ContractorDeliverable from "@/pages/ContractorDeliverable";
+import DeliverableDeck from "@/pages/DeliverableDeck";
 import SimulationRun from "@/pages/SimulationRun";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
@@ -50,7 +51,7 @@ function AppShell() {
     return <AuthCallback/>;
   }
 
-  const hideNav = ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/");
+  const hideNav = ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck");
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
@@ -68,7 +69,9 @@ function AppShell() {
         <Route path="/contractor/jobs/:id" element={<Protected role="contractor"><JobDetail/></Protected>}/>
         <Route path="/contractor/materials" element={<Protected role="contractor"><MaterialsConfig/></Protected>}/>
         <Route path="/contractor/deliverable/:jobId" element={<Protected><ContractorDeliverable/></Protected>}/>
+        <Route path="/contractor/deliverable/:jobId/deck" element={<Protected><DeliverableDeck/></Protected>}/>
         <Route path="/deliverable/demo" element={<Protected><ContractorDeliverable/></Protected>}/>
+        <Route path="/deck/demo" element={<Protected><DeliverableDeck/></Protected>}/>
         <Route path="/simulation/:jobId" element={<Protected><SimulationRun/></Protected>}/>
         <Route path="/simulation/demo" element={<Protected><SimulationRun/></Protected>}/>
 

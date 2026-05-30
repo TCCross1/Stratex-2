@@ -1,6 +1,28 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.19.0 — Drone-Scan Report Deck + One-Click PDF)
+- ✅ **`/contractor/deliverable/:jobId/deck` + `/deck/demo`** — companion slideshow view of the comprehensive deliverable. **10 slides**, each a self-contained section translating one class of drone-scan data:
+  1. **Cover** — deliverable ID, project code, pilot, client, address (hero slide w/ STRATEX glyph)
+  2. **Flight Record** — pilot, started/completed UTC, weather, calibration ε, frames/passes/RTK/uplink
+  3. **Roof Composition · Digital Twin** — total squares/sqft/valley lf, facet roll-up table, 3D twin reference image
+  4. **Quantified Geometry** — net squares, valley LF, rake/gable LF, wall siding ft² (4-card neon grid)
+  5. **Sub-Surface Moisture Diagnostics** — grid ID, concern code, probability %, severity band, field note
+  6. **Anomaly Findings** — 3-up card grid: severity, facet, kind, area/depth, remediation, confidence %, remediation $
+  7. **Project Phase Breakdown** — Framing/Roofing/Gutters/Siding with icon tiles, scope, man-hours, % of total, phase $
+  8. **Standard Pricing** — full line-item table + glowing teal Total Estimate hero ($51,854.60 in demo)
+  9. **Disposal · Overall Project Value** — Dumpster flat fee + combined man-hours + glowing Overall Value
+  10. **Acceptance & Sign-off** — authorized-by / accepted-by signature block with license & footer
+- ✅ **One-click PDF export** — "Download PDF" button → `window.print()` with `@page letter landscape` + `page-break-after: always` between every slide. Verified output = **10-page PDF, 792×612pt (Letter landscape)**, ~3 MB with full backgrounds.
+- ✅ **Navigation** — keyboard (←/→/Space), Prev/Next buttons, clickable dot-nav for jump-to-slide, slide counter (1/10 ... 10/10).
+- ✅ **"View as Deck" button** added to existing `ContractorDeliverable` toolbar (pure addition — print/refresh untouched).
+- ✅ All slides auto-skip when their data block is empty (geometrics / moisture / anomalies / phases / disposal), so older jobs without the luxury schema still render a clean reduced deck.
+- ✅ Routes:
+  - `/contractor/deliverable/:jobId/deck` (protected — owns-or-admin guard inherits from existing deliverable endpoint)
+  - `/deck/demo` (admin/investor shortcut)
+- ✅ File: `/app/frontend/src/pages/DeliverableDeck.jsx` (single new component, ~700 lines, lint-clean).
+
+
 ## What's Been Implemented (2026-05-30 — v3.18.0 — Branch Console + Multi-AI Consensus + Dark Deliverable)
 - ✅ **Multi-Agent Consensus Pipeline** (`POST /api/branch/quantify`) — drone telemetry payload runs through:
   - 1 deterministic 4-stage computation (geometry · materials · labor · finance)
