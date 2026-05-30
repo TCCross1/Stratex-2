@@ -95,6 +95,8 @@ async def contractor_deliverable(job_id: str, user=Depends(current_user)):
         "platform": {"name": "STRATEX™", "tagline": "Strategic Thermal Reconnaissance", "report_version": "1.2.0"},
         "contractor": {
             "company": job.get("contractor_company") or "—",
+            "professional_name": job.get("professional_name") or "",
+            "license_number": job.get("contractor_license") or "",
             "address": "Lexington, KY · Central Kentucky Service Region",
         },
         "client": {
@@ -120,6 +122,10 @@ async def contractor_deliverable(job_id: str, user=Depends(current_user)):
             "facets": job.get("facets") or [],
         },
         "anomalies": job.get("anomalies") or [],
+        "moisture_diagnostics": job.get("moisture_diagnostics") or [],
+        "geometrics_extended": job.get("geometrics_extended") or {},
+        "financial_phases": job.get("financial_phases") or {},
+        "disposal_logistics": job.get("disposal_logistics") or {},
         "twin_reference_url": job.get("twin_reference_url"),
         "frames_thumbs": job.get("frames_thumbs") or [],
         "pricing": pricing,

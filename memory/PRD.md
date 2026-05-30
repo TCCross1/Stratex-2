@@ -1,6 +1,27 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.17.0 — Luxury Deliverable Schema + SKU Forecast + Promote-to-Job)
+- ✅ **Contractor Deliverable — luxury schema expansion (pure addition)**
+  - 4 new top-shelf sections rendered in `ContractorDeliverable.jsx` between the existing roof composition and pricing table:
+    - `QUANTIFIED GEOMETRY` — 4 cards (Net Squares · Valley LF · Rake/Gable LF · Wall Siding ft²) with accent rails (teal/orange/violet/copper) and 6% opacity background icons.
+    - `SUB-SURFACE MOISTURE DIAGNOSTICS` — Diagnostic Grid · Concern Code · Probability bar · Severity chip · Field Note per row. Severity tones for CRITICAL/ELEVATED/MILD/LOW.
+    - `PROJECT PHASE BREAKDOWN` — Framing (violet) · Roofing (orange) · Gutters (teal) · Siding (copper). Each row has icon tile, scope description, man-hours, % of total, progress bar, phase total. Trailing dark stat strip with combined man-hours + phase subtotal.
+    - `DISPOSAL & OVERALL PROJECT VALUE` — Dumpster Flat Fee · Combined Man-Hours · Overall Project Value (glowing teal hero card).
+  - Letterhead enriched with Project Lead (Tony Cross) + License No. (LIC-KY-99214X).
+  - Backend `routes/deliverable.py` passes through new fields (`geometrics_extended`, `moisture_diagnostics`, `financial_phases`, `disposal_logistics`, contractor `professional_name` + `license_number`). All gracefully absent for old jobs — guards via `(pkt.field || {}).length === 0` short-circuits.
+  - Crown-demo seed extended with canonical AD-KY041 schema → $203,080 Overall Project Value, 640 combined man-hours.
+- ✅ **SKU Forecast Dashboard** (`/admin/ops` 4th tab)
+  - `GET /api/admin/ops/sku-forecast` aggregates every draft+promoted contractor quote into per-SKU forward demand (Mongo `$unwind` + `$group`).
+  - Returns: qty_demanded · quote_count · quote_value_usd · tier_breakdown · days_of_supply · reorder_signal (DOS < 14d).
+  - Frontend: stat strip (Total SKUs · SKUs with Demand · Reorder Alerts · 30-Day Forecast Value) + per-SKU table with progress bars colored by reorder urgency.
+- ✅ **Promote Quote → Job Pricing** (one-click)
+  - `POST /api/contractor/quote-builder/quotes/{quote_id}/promote` writes the quote's line items + total into `job.pricing` (same shape as deliverable's `_build_pricing`), marks quote `status=promoted`, sets `job.status=PROPOSAL_READY`, and returns `next_route=/contractor/deliverable/{job_id}`.
+  - `GET /api/contractor/quote-builder/eligible-jobs` lists the contractor's jobs with `has_pricing` flag so the UI can warn before overwriting.
+  - Frontend: inline promote selector on each saved-quote row + "View Deliverable →" link after promotion. Status badge flips to teal "Promoted".
+
+
+
 ## What's Been Implemented (2026-05-30 — v3.16.0 — Contractor Quote Builder)
 - ✅ **`/contractor/quote-builder`** — contractor-facing surface of the supplier's Material Catalog. Pick line items, set markup %, save the quote. Built as PURE ADDITION — nothing existing was removed or replaced.
 - ✅ **Tier privacy** — the catalog endpoint (`GET /api/contractor/quote-builder/catalog`) returns ONLY the contractor's assigned-tier price per SKU. The other two tier prices are stripped server-side and never travel over the wire.

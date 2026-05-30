@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Printer, MapPin, User, CalendarClock, Wind, ShieldCheck, Plane, FileText, Layers, AlertTriangle, RotateCw } from "lucide-react";
+import { Printer, MapPin, User, CalendarClock, Wind, ShieldCheck, Plane, FileText, Layers, AlertTriangle, RotateCw, Award, Grid3X3, Droplets, Hammer, Wrench, Trash, Ruler } from "lucide-react";
 import { api } from "@/lib/api";
 
 const TEAL = "#00F5D4";
@@ -86,8 +86,12 @@ export default function ContractorDeliverable() {
         <Letterhead pkt={pkt}/>
         <ClientFlightBlock pkt={pkt}/>
         <RoofComposition pkt={pkt}/>
+        <GeometricsExtended pkt={pkt}/>
+        <MoistureDiagnostics pkt={pkt}/>
         <AnomalyFindings pkt={pkt}/>
+        <FinancialPhases pkt={pkt}/>
         <PricingTable pkt={pkt}/>
+        <DisposalLogistics pkt={pkt}/>
         <SignatureBlock pkt={pkt}/>
         <Footer pkt={pkt}/>
       </article>
@@ -139,6 +143,12 @@ function ClientFlightBlock({ pkt }) {
       </Block>
       <Block title="PREPARED BY">
         <Row label="Contractor" value={pkt.contractor.company} bold/>
+        {pkt.contractor.professional_name && (
+          <Row icon={User} label="Project Lead" value={pkt.contractor.professional_name}/>
+        )}
+        {pkt.contractor.license_number && (
+          <Row icon={Award} label="License No." value={pkt.contractor.license_number}/>
+        )}
         <Row label="Region" value={pkt.contractor.address}/>
       </Block>
 
@@ -264,6 +274,224 @@ function AnomalyFindings({ pkt }) {
     </section>
   );
 }
+
+/* ===== LUXURY ADDITIONS — Geometrics · Diagnostics · Phases · Disposal ===== */
+
+const PHASE_META = {
+  framing: { label: "Framing",  Icon: Wrench, accent: "#7C3AED" },  // royal violet — structural authority
+  roofing: { label: "Roofing",  Icon: Hammer, accent: ORANGE     },
+  gutters: { label: "Gutters",  Icon: Droplets, accent: TEAL    },
+  siding:  { label: "Siding",   Icon: Layers, accent: "#B8865B" }, // brushed copper
+};
+
+const SEVERITY_TONE = {
+  CRITICAL: { fg: "#7F1D1D", bg: "#FEE2E2", chip: "#DC2626", label: "Critical" },
+  ELEVATED: { fg: "#9A3412", bg: "#FFEDD5", chip: ORANGE,    label: "Elevated" },
+  MILD:     { fg: "#854D0E", bg: "#FEF3C7", chip: "#CA8A04", label: "Mild"     },
+  LOW:      { fg: "#14532D", bg: "#DCFCE7", chip: "#16A34A", label: "Low"      },
+};
+
+function GeometricsExtended({ pkt }) {
+  const g = pkt.geometrics_extended;
+  if (!g || Object.keys(g).length === 0) return null;
+  const items = [
+    { label: "Roof · Net Squares",      value: g.total_squares_net,         unit: "sq",  Icon: Layers, accent: TEAL },
+    { label: "Valley · Linear Feet",    value: g.valley_linear_feet,        unit: "lf",  Icon: Ruler,  accent: ORANGE },
+    { label: "Rake & Gable · Linear",   value: g.rake_gable_linear_feet,    unit: "lf",  Icon: Ruler,  accent: "#7C3AED" },
+    { label: "Wall Siding · Net Area",  value: g.net_wall_siding_area_sqft, unit: "ft²", Icon: Layers, accent: "#B8865B" },
+  ];
+  return (
+    <section className="mb-6" data-testid="deliverable-geometrics-extended">
+      <SectionTitle icon={Ruler} label="QUANTIFIED GEOMETRY"/>
+      <div className="grid grid-cols-4 gap-3">
+        {items.map((it) => (
+          <div key={it.label}
+            className="relative overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #FFFFFF 0%, #F1F2F6 100%)",
+              border: `1px solid ${NICKEL}55`,
+              padding: "14px 16px",
+              borderRadius: 2,
+            }}>
+            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: it.accent }}/>
+            <div className="absolute -right-3 -top-3 opacity-[0.06]">
+              <it.Icon size={64} color={it.accent}/>
+            </div>
+            <div className="relative">
+              <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>{it.label}</div>
+              <div className="font-mono mt-2" style={{ color: INK }}>
+                <span className="text-2xl font-bold tabular-nums">
+                  {Number(it.value || 0).toLocaleString("en-US", { minimumFractionDigits: it.value % 1 ? 2 : 0, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-[11px] ml-1.5" style={{ color: NICKEL }}>{it.unit}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MoistureDiagnostics({ pkt }) {
+  const rows = pkt.moisture_diagnostics || [];
+  if (rows.length === 0) return null;
+  return (
+    <section className="mb-6" data-testid="deliverable-moisture-diagnostics">
+      <SectionTitle icon={Droplets} label="SUB-SURFACE MOISTURE DIAGNOSTICS"/>
+      <div className="space-y-3">
+        {rows.map((d, i) => {
+          const tone = SEVERITY_TONE[d.severity] || SEVERITY_TONE.MILD;
+          return (
+            <article key={i}
+              className="grid grid-cols-12 gap-4 relative"
+              style={{
+                background: "#FFFFFF",
+                border: `1px solid ${NICKEL}55`,
+                borderLeft: `4px solid ${tone.chip}`,
+                padding: "16px 20px",
+                borderRadius: 2,
+              }}
+              data-testid={`deliverable-moisture-${i}`}>
+              <div className="col-span-3">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Diagnostic Grid</div>
+                <div className="font-mono font-bold text-[13px] mt-1" style={{ color: INK }}>{d.grid_id}</div>
+                <div className="text-[11px] mt-0.5" style={{ color: NICKEL }}>{d.location}</div>
+              </div>
+              <div className="col-span-3">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Concern Code</div>
+                <div className="font-mono text-[11px] mt-1" style={{ color: INK }}>{d.concern_code}</div>
+                <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-[2px]"
+                  style={{ background: tone.bg, color: tone.fg, border: `1px solid ${tone.chip}` }}>
+                  <AlertTriangle size={9}/>
+                  <span className="text-[9px] font-mono tracking-[0.2em] uppercase font-bold">{tone.label}</span>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Probability</div>
+                <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: tone.chip }}>
+                  {d.probability_pct}<span className="text-[12px]" style={{ color: NICKEL }}>%</span>
+                </div>
+                <div className="mt-1 h-[3px] rounded overflow-hidden" style={{ background: `${tone.chip}22` }}>
+                  <div style={{ width: `${d.probability_pct}%`, height: "100%", background: tone.chip }}/>
+                </div>
+              </div>
+              <div className="col-span-4">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Field Note</div>
+                <div className="text-[11px] mt-1 leading-snug" style={{ color: INK }}>{d.notes}</div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function FinancialPhases({ pkt }) {
+  const phases = pkt.financial_phases || {};
+  const keys = Object.keys(phases);
+  if (keys.length === 0) return null;
+  const total = keys.reduce((s, k) => s + (Number(phases[k]?.total_price_usd) || 0), 0);
+  const totalHours = keys.reduce((s, k) => s + (Number(phases[k]?.estimated_man_hours) || 0), 0);
+  return (
+    <section className="mb-6" data-testid="deliverable-financial-phases">
+      <SectionTitle icon={Hammer} label="PROJECT PHASE BREAKDOWN"/>
+      <div className="space-y-2">
+        {keys.map((k) => {
+          const ph = phases[k] || {};
+          const meta = PHASE_META[k] || { label: k, Icon: Wrench, accent: NICKEL };
+          const pct = total > 0 ? (Number(ph.total_price_usd) / total) * 100 : 0;
+          return (
+            <article key={k}
+              className="grid grid-cols-12 gap-4 relative items-center"
+              style={{
+                background: "linear-gradient(90deg, #FFFFFF 0%, #FAFAFC 100%)",
+                border: `1px solid ${NICKEL}55`,
+                padding: "14px 18px",
+                borderRadius: 2,
+              }}
+              data-testid={`deliverable-phase-${k}`}>
+              <div className="col-span-3 flex items-center gap-3">
+                <div className="flex items-center justify-center" style={{
+                  width: 38, height: 38, borderRadius: 2,
+                  background: `${meta.accent}14`, border: `1px solid ${meta.accent}55`,
+                }}>
+                  <meta.Icon size={18} color={meta.accent}/>
+                </div>
+                <div>
+                  <div className="text-[9px] font-mono tracking-[0.28em] uppercase" style={{ color: NICKEL }}>Phase</div>
+                  <div className="font-bold text-[14px] tracking-wide" style={{ color: INK }}>{meta.label}</div>
+                </div>
+              </div>
+              <div className="col-span-5">
+                <div className="text-[11px] leading-snug" style={{ color: INK }}>{ph.scope || "—"}</div>
+                <div className="mt-1.5 flex items-center gap-3 text-[10px] font-mono tabular-nums" style={{ color: NICKEL }}>
+                  <span>{ph.estimated_man_hours} man-hours</span>
+                  <span>·</span>
+                  <span>{pct.toFixed(1)}% of total</span>
+                </div>
+                <div className="mt-1 h-[3px] rounded overflow-hidden" style={{ background: `${meta.accent}1F` }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: meta.accent }}/>
+                </div>
+              </div>
+              <div className="col-span-4 text-right">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Phase Total</div>
+                <div className="font-mono font-bold text-[22px] tabular-nums mt-0.5" style={{ color: meta.accent }}>
+                  {USD(ph.total_price_usd)}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div style={{ background: INK, color: TEAL, padding: "10px 16px", borderRadius: 2 }}>
+          <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: `${TEAL}99` }}>Combined Man-Hours</div>
+          <div className="font-mono text-[18px] font-bold tabular-nums">{totalHours.toLocaleString()}</div>
+        </div>
+        <div style={{ background: INK, color: ORANGE, padding: "10px 16px", borderRadius: 2 }} className="text-right">
+          <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: `${ORANGE}99` }}>Phase Subtotal</div>
+          <div className="font-mono text-[18px] font-bold tabular-nums">{USD(total)}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DisposalLogistics({ pkt }) {
+  const d = pkt.disposal_logistics;
+  if (!d || Object.keys(d).length === 0) return null;
+  return (
+    <section className="mb-6" data-testid="deliverable-disposal">
+      <SectionTitle icon={Trash} label="DISPOSAL & OVERALL PROJECT VALUE"/>
+      <div className="grid grid-cols-3 gap-3">
+        <div style={{ background: "#FFFFFF", border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
+          <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Dumpster · Flat Fee</div>
+          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: INK }}>{USD(d.dumpster_flat_fee_usd)}</div>
+        </div>
+        <div style={{ background: "#FFFFFF", border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
+          <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Combined Man-Hours</div>
+          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: INK }}>{Number(d.total_combined_man_hours || 0).toLocaleString()}</div>
+        </div>
+        <div style={{
+          background: `linear-gradient(135deg, ${INK} 0%, #1B2233 100%)`,
+          border: `1px solid ${TEAL}`,
+          padding: "14px 18px",
+          borderRadius: 2,
+          boxShadow: `0 0 24px ${TEAL}22, inset 0 0 0 1px ${TEAL}33`,
+        }}>
+          <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: `${TEAL}AA` }}>Overall Project Value</div>
+          <div className="font-mono font-bold text-[22px] mt-1 tabular-nums" style={{ color: TEAL, textShadow: `0 0 8px ${TEAL}55` }}>
+            {USD(d.overall_total_project_value_usd)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ===== END LUXURY ADDITIONS ===== */
 
 function PricingTable({ pkt }) {
   const p = pkt.pricing || {};
