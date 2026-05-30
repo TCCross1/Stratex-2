@@ -1,6 +1,25 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.14.0 — P2 Backend Modular Refactor)
+- ✅ **server.py reduced 42%** (4310 → **2481** lines) without behavior changes — extracted 10 focused route modules to `/app/backend/routes/`.
+- ✅ **New `core.py` (82 lines)** — single source of truth for `app`, `db`, `client`, `api`/`auth_r` routers, `get_db`, `now_iso`, `logger`, dep singletons (`current_user`, `contractor_only`, `operator_only`, `admin_only`, `contractor_ndaed`), and shared shapers (`_public_user`, `_strip_pricing`).
+- ✅ **10 route modules** (1827 lines total) under `/app/backend/routes/`:
+  - `assistant.py` — Investor / Tour AI Assistant (Claude Haiku 4.5)
+  - `billing.py` — Stripe checkout / status / webhook + `PRICING_TIERS`, `DRY_RUN_PENALTY`
+  - `cv_ice_shield.py` — Ice & Water Shield analyze / recent / replay
+  - `deliverable.py` — Contractor Deliverable + shared `_build_pricing`
+  - `materials_config.py` — v2 materials configurator
+  - `onboarding.py` — `/onboarding/signup` + `/onboarding/stripe-checkout`
+  - `sales_hub.py` — KY sales targets seed + competitive-intel + CRM (notes/calls/templates)
+  - `simulation.py` — 7-stage `/simulation/run` with 4-agent `asyncio.gather` + 100 deterministic checks
+  - `telemetry_overseer.py` — anomaly halt + overseer queue + financial blocker
+  - `weather.py` — Open-Meteo forecast/radar/archive + Claude storm-watch + historical-analysis
+- ✅ **Regression: 25/25 backend pytest PASS + 5/5 frontend routes PASS — zero issues** (`/app/test_reports/iteration_16.json`, pytest suite at `/app/backend/tests/test_p2_refactor_regression.py`).
+- ✅ Still in `server.py` (heavier interdependencies, deferred to P3 refactor sweep): auth + jobs lifecycle + email/SMS (Resend/Twilio) + Google OAuth + materials configurator v1 (encrypted) + Phase-1 ASTM C1153 weather gate + 24h reminder background sweep + Fleet WebSocket `/api/ws/stratex/core` + on-startup seed.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.13.0 — Full Simulated Flight Journey)
 - ✅ **`POST /api/simulation/run`** — assembles the full 7-stage simulation in one call. Runs the 4 Claude Haiku 4.5 agents in **parallel** via `asyncio.gather` (~16s wall-time vs ~60s sequential), then 100 deterministic validation checks. Cached 1h per `job_id`. Returns flight summary + agent verdicts + check list + 3D twin + pricing + `deliverable_route`.
 - ✅ **4 AI Agents** with distinct system prompts:
