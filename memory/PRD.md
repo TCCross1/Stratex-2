@@ -1,6 +1,19 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-02-28 — v3.13.0 — Full Simulated Flight Journey)
+- ✅ **`POST /api/simulation/run`** — assembles the full 7-stage simulation in one call. Runs the 4 Claude Haiku 4.5 agents in **parallel** via `asyncio.gather` (~16s wall-time vs ~60s sequential), then 100 deterministic validation checks. Cached 1h per `job_id`. Returns flight summary + agent verdicts + check list + 3D twin + pricing + `deliverable_route`.
+- ✅ **4 AI Agents** with distinct system prompts:
+  1. **Perception** — facet inventory + material classification verdict
+  2. **Measurement** — geometric closure (areas/pitches/valleys)
+  3. **Forensics** — anomaly confidence + edge classification + remediation review
+  4. **Pricing** — line-item math + market alignment check (Central KY slate)
+- ✅ **100 deterministic checks** across 5 categories (30 geometric / 20 thermal / 20 photogrammetric / 15 forensic / 15 pricing). On canonical `crown-demo` data: **100/100 pass**.
+- ✅ **`/simulation/:jobId` + `/simulation/demo` shortcut** — `SimulationRun.jsx` cinematic page. Stage rail with active/done states, animated stage transitions (launch checks ramp green, frame counter, transfer Mb counter, agent verdicts stream in, 100-check progress bar + tail stream, 3D twin reveal). Final CTA → `/contractor/deliverable/:jobId`.
+- ✅ Investor-assistant briefing added for the simulation route.
+
+
+
 ## What's Been Implemented (2026-02-28 — v3.12.0 — Contractor Deliverable Packet)
 - ✅ **`GET /api/contractor/deliverable/{job_id}`** — assembles the full report payload (platform letterhead, contractor, client/homeowner, site address, flight record with pilot name + timestamps + weather + telemetry, roof composition, anomalies, 3D twin reference, pricing breakdown with overhead/margin). Role-scoped (admin/tour-mode unrestricted, contractor own-jobs only, operator denied).
 - ✅ **Canonical `crown-demo` job** auto-seeded on startup matching IMG_2253/IMG_2254 exactly: Project AD-KY041, Crown Roofing, The Whitaker Family at 1247 Bluegrass Pkwy, Pilot Ramon Field, 1284 frames / 4 passes, ε 0.92 radiometrically corrected, 16.21 squares · 1621 sqft · 148.67 lf valleys, Finished Slate + I&WS, Anomaly AD-KY041-004 Trapped Moisture / CDX Deck Rot @ 92.45% confidence on Facet F2 ($17,645 remediation).

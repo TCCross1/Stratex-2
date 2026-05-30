@@ -95,6 +95,11 @@ const ROUTE_BRIEFINGS = [
     intro: "Every parsed valley frame our CV pipeline classifies — Ice & Water Shield confirmed, latent moisture, or low-confidence halt. The pipeline enforces ε=0.92, ΔT∈[0.5°C,1.5°C], a 36\"±2\" valley mask, and a post-sunset capture window. Anything below 0.90 composite confidence auto-routes to the Overseer queue for human review.",
   },
   {
+    match: (p) => p.startsWith("/simulation"),
+    title: "End-to-End Simulation · Live",
+    intro: "This is the full journey: pre-flight authorization, aerial capture, data transfer, four parallel AI agents validating the result, 100 deterministic consistency checks, the 3D digital twin, and the final estimate. At the end you can jump straight into the deliverable packet — exactly what the contractor hands to the homeowner.",
+  },
+  {
     match: (p) => p === "/deliverable/demo" || p.startsWith("/contractor/deliverable/"),
     title: "Contractor Deliverable Packet",
     intro: "This is exactly what the contractor hands to the homeowner — STRATEX letterhead, pilot name, flight date/time, address, the 3D digital twin reference, anomaly findings with thermal capture thumbnails, and a complete standard-pricing breakdown. The Print/Save-as-PDF button on the screen toolbar turns it into a print-ready report instantly.",

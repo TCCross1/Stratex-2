@@ -21,6 +21,7 @@ import FlightAudit from "@/pages/FlightAudit";
 import CVIceShield from "@/pages/CVIceShield";
 import AdminWeather from "@/pages/AdminWeather";
 import ContractorDeliverable from "@/pages/ContractorDeliverable";
+import SimulationRun from "@/pages/SimulationRun";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -65,6 +66,8 @@ function AppShell() {
         <Route path="/contractor/materials" element={<Protected role="contractor"><MaterialsConfig/></Protected>}/>
         <Route path="/contractor/deliverable/:jobId" element={<Protected><ContractorDeliverable/></Protected>}/>
         <Route path="/deliverable/demo" element={<Protected><ContractorDeliverable/></Protected>}/>
+        <Route path="/simulation/:jobId" element={<Protected><SimulationRun/></Protected>}/>
+        <Route path="/simulation/demo" element={<Protected><SimulationRun/></Protected>}/>
 
         <Route path="/operator" element={<Protected role="operator"><OperatorBoard/></Protected>}/>
         <Route path="/operator/jobs/:id" element={<Protected role="operator"><OperatorJobDetail/></Protected>}/>
