@@ -15,8 +15,12 @@ const TEAL = "#00F5D4";
 const ORANGE = "#FF5400";
 const NICKEL = "#3A4350";
 const INK = "#0B0F19";
-const PAPER = "#F7F8FA";
-const PAPER_INK = "#0F141C";
+// Dark-on-screen, light-on-print via CSS variables — see PrintCSS().
+const PAPER = "var(--stratex-paper)";
+const PAPER_INK = "var(--stratex-paper-ink)";
+const CARD_BG = "var(--stratex-card-bg)";
+const CARD_BORDER = "var(--stratex-card-border)";
+const SUBTLE_BG = "var(--stratex-subtle-bg)";
 
 const USD = (n) =>
   Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
@@ -72,7 +76,7 @@ export default function ContractorDeliverable() {
           </button>
           <button onClick={() => window.print()}
             className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5 inline-flex items-center gap-2"
-            style={{ background: TEAL, color: INK }}
+            style={{ background: TEAL, color: PAPER_INK }}
             data-testid="deliverable-print">
             <Printer size={12}/> Print / Save as PDF
           </button>
@@ -112,7 +116,7 @@ function Letterhead({ pkt }) {
           <circle cx="50" cy="60" r="6" fill={INK}/>
         </svg>
         <div>
-          <div className="text-2xl font-bold tracking-[0.18em]" style={{ color: INK, fontFamily: "'JetBrains Mono', monospace" }}>STRATEX™</div>
+          <div className="text-2xl font-bold tracking-[0.18em]" style={{ color: PAPER_INK, fontFamily: "'JetBrains Mono', monospace" }}>STRATEX™</div>
           <div className="text-[10px] tracking-[0.32em] uppercase" style={{ color: NICKEL }}>
             {pkt.platform.tagline}
           </div>
@@ -120,7 +124,7 @@ function Letterhead({ pkt }) {
       </div>
       <div className="text-right">
         <div className="text-[10px] tracking-[0.28em] uppercase font-mono" style={{ color: NICKEL }}>Deliverable</div>
-        <div className="text-sm font-mono mt-0.5" style={{ color: INK }}>{pkt.deliverable_id}</div>
+        <div className="text-sm font-mono mt-0.5" style={{ color: PAPER_INK }}>{pkt.deliverable_id}</div>
         <div className="text-[10px] font-mono mt-1" style={{ color: NICKEL }}>
           Generated · {new Date(pkt.generated_at).toLocaleDateString()}
         </div>
@@ -185,7 +189,7 @@ function RoofComposition({ pkt }) {
       </div>
 
       <div className="mt-4 grid grid-cols-[1.2fr_1fr] gap-3">
-        <table className="w-full border" style={{ borderColor: NICKEL, background: "#fff" }}>
+        <table className="w-full border" style={{ borderColor: NICKEL, background: CARD_BG }}>
           <thead>
             <tr style={{ background: INK, color: TEAL }}>
               <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest font-mono">Facet</th>
@@ -197,7 +201,7 @@ function RoofComposition({ pkt }) {
           </thead>
           <tbody>
             {(r.facets || []).map((f) => (
-              <tr key={f.id} className="border-t" style={{ borderColor: "#E4E7EC" }}>
+              <tr key={f.id} className="border-t" style={{ borderColor: CARD_BORDER }}>
                 <td className="px-3 py-2 font-mono text-[11px]">{f.id}</td>
                 <td className="px-3 py-2 text-[12px]">{f.label}</td>
                 <td className="px-3 py-2 font-mono text-[11px] text-right">{f.sqft}</td>
@@ -231,13 +235,13 @@ function AnomalyFindings({ pkt }) {
       <div className="space-y-3">
         {anomalies.map((a) => (
           <article key={a.id} className="border-l-4 p-3"
-                   style={{ borderLeftColor: ORANGE, background: "#FFF7F2", borderColor: NICKEL }}>
+                   style={{ borderLeftColor: ORANGE, background: SUBTLE_BG, borderColor: NICKEL }}>
             <div className="flex items-start justify-between gap-3 mb-2">
               <div>
                 <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: ORANGE }}>
                   // {a.severity || "P1"} · {a.id} · Facet {a.facet}
                 </div>
-                <div className="text-[14px] font-semibold mt-0.5" style={{ color: INK }}>
+                <div className="text-[14px] font-semibold mt-0.5" style={{ color: PAPER_INK }}>
                   {a.kind}
                 </div>
               </div>
@@ -308,7 +312,7 @@ function GeometricsExtended({ pkt }) {
           <div key={it.label}
             className="relative overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #FFFFFF 0%, #F1F2F6 100%)",
+              background: `linear-gradient(135deg, ${CARD_BG} 0%, var(--stratex-card-grad, #11181C) 100%)`,
               border: `1px solid ${NICKEL}55`,
               padding: "14px 16px",
               borderRadius: 2,
@@ -319,7 +323,7 @@ function GeometricsExtended({ pkt }) {
             </div>
             <div className="relative">
               <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>{it.label}</div>
-              <div className="font-mono mt-2" style={{ color: INK }}>
+              <div className="font-mono mt-2" style={{ color: PAPER_INK }}>
                 <span className="text-2xl font-bold tabular-nums">
                   {Number(it.value || 0).toLocaleString("en-US", { minimumFractionDigits: it.value % 1 ? 2 : 0, maximumFractionDigits: 2 })}
                 </span>
@@ -346,7 +350,7 @@ function MoistureDiagnostics({ pkt }) {
             <article key={i}
               className="grid grid-cols-12 gap-4 relative"
               style={{
-                background: "#FFFFFF",
+                background: CARD_BG,
                 border: `1px solid ${NICKEL}55`,
                 borderLeft: `4px solid ${tone.chip}`,
                 padding: "16px 20px",
@@ -355,12 +359,12 @@ function MoistureDiagnostics({ pkt }) {
               data-testid={`deliverable-moisture-${i}`}>
               <div className="col-span-3">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Diagnostic Grid</div>
-                <div className="font-mono font-bold text-[13px] mt-1" style={{ color: INK }}>{d.grid_id}</div>
+                <div className="font-mono font-bold text-[13px] mt-1" style={{ color: PAPER_INK }}>{d.grid_id}</div>
                 <div className="text-[11px] mt-0.5" style={{ color: NICKEL }}>{d.location}</div>
               </div>
               <div className="col-span-3">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Concern Code</div>
-                <div className="font-mono text-[11px] mt-1" style={{ color: INK }}>{d.concern_code}</div>
+                <div className="font-mono text-[11px] mt-1" style={{ color: PAPER_INK }}>{d.concern_code}</div>
                 <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-[2px]"
                   style={{ background: tone.bg, color: tone.fg, border: `1px solid ${tone.chip}` }}>
                   <AlertTriangle size={9}/>
@@ -378,7 +382,7 @@ function MoistureDiagnostics({ pkt }) {
               </div>
               <div className="col-span-4">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Field Note</div>
-                <div className="text-[11px] mt-1 leading-snug" style={{ color: INK }}>{d.notes}</div>
+                <div className="text-[11px] mt-1 leading-snug" style={{ color: PAPER_INK }}>{d.notes}</div>
               </div>
             </article>
           );
@@ -406,7 +410,7 @@ function FinancialPhases({ pkt }) {
             <article key={k}
               className="grid grid-cols-12 gap-4 relative items-center"
               style={{
-                background: "linear-gradient(90deg, #FFFFFF 0%, #FAFAFC 100%)",
+                background: `linear-gradient(90deg, ${CARD_BG} 0%, var(--stratex-card-grad, #11181C) 100%)`,
                 border: `1px solid ${NICKEL}55`,
                 padding: "14px 18px",
                 borderRadius: 2,
@@ -421,11 +425,11 @@ function FinancialPhases({ pkt }) {
                 </div>
                 <div>
                   <div className="text-[9px] font-mono tracking-[0.28em] uppercase" style={{ color: NICKEL }}>Phase</div>
-                  <div className="font-bold text-[14px] tracking-wide" style={{ color: INK }}>{meta.label}</div>
+                  <div className="font-bold text-[14px] tracking-wide" style={{ color: PAPER_INK }}>{meta.label}</div>
                 </div>
               </div>
               <div className="col-span-5">
-                <div className="text-[11px] leading-snug" style={{ color: INK }}>{ph.scope || "—"}</div>
+                <div className="text-[11px] leading-snug" style={{ color: PAPER_INK }}>{ph.scope || "—"}</div>
                 <div className="mt-1.5 flex items-center gap-3 text-[10px] font-mono tabular-nums" style={{ color: NICKEL }}>
                   <span>{ph.estimated_man_hours} man-hours</span>
                   <span>·</span>
@@ -466,13 +470,13 @@ function DisposalLogistics({ pkt }) {
     <section className="mb-6" data-testid="deliverable-disposal">
       <SectionTitle icon={Trash} label="DISPOSAL & OVERALL PROJECT VALUE"/>
       <div className="grid grid-cols-3 gap-3">
-        <div style={{ background: "#FFFFFF", border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
           <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Dumpster · Flat Fee</div>
-          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: INK }}>{USD(d.dumpster_flat_fee_usd)}</div>
+          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: PAPER_INK }}>{USD(d.dumpster_flat_fee_usd)}</div>
         </div>
-        <div style={{ background: "#FFFFFF", border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
           <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Combined Man-Hours</div>
-          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: INK }}>{Number(d.total_combined_man_hours || 0).toLocaleString()}</div>
+          <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: PAPER_INK }}>{Number(d.total_combined_man_hours || 0).toLocaleString()}</div>
         </div>
         <div style={{
           background: `linear-gradient(135deg, ${INK} 0%, #1B2233 100%)`,
@@ -498,7 +502,7 @@ function PricingTable({ pkt }) {
   return (
     <section className="mb-6" data-testid="deliverable-pricing">
       <SectionTitle icon={FileText} label="STANDARD PRICING"/>
-      <table className="w-full" style={{ background: "#fff", border: `1px solid ${NICKEL}` }}>
+      <table className="w-full" style={{ background: CARD_BG, border: `1px solid ${NICKEL}` }}>
         <thead>
           <tr style={{ background: INK, color: TEAL }}>
             <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest font-mono">Line item</th>
@@ -507,13 +511,13 @@ function PricingTable({ pkt }) {
         </thead>
         <tbody>
           {(p.line_items || []).map((li, i) => (
-            <tr key={i} className="border-t" style={{ borderColor: "#E4E7EC" }}>
+            <tr key={i} className="border-t" style={{ borderColor: CARD_BORDER }}>
               <td className="px-3 py-2 text-[12px]">{li.label}</td>
               <td className="px-3 py-2 font-mono text-[12px] text-right tabular-nums">{USD(li.amount)}</td>
             </tr>
           ))}
           {(p.anomaly_remediations || []).map((li, i) => (
-            <tr key={`a${i}`} className="border-t" style={{ borderColor: "#E4E7EC", background: "#FFF7F2" }}>
+            <tr key={`a${i}`} className="border-t" style={{ borderColor: CARD_BORDER, background: SUBTLE_BG }}>
               <td className="px-3 py-2 text-[12px]" style={{ color: ORANGE }}>{li.label}</td>
               <td className="px-3 py-2 font-mono text-[12px] text-right tabular-nums" style={{ color: ORANGE }}>{USD(li.amount)}</td>
             </tr>
@@ -548,15 +552,15 @@ function SignatureBlock({ pkt }) {
     <section className="grid grid-cols-2 gap-6 mt-6">
       <div>
         <div className="text-[10px] font-mono tracking-widest uppercase" style={{ color: NICKEL }}>Authorized by</div>
-        <div className="h-12 border-b" style={{ borderColor: INK }}/>
-        <div className="text-[11px] mt-1" style={{ color: INK }}>
+        <div className="h-12 border-b" style={{ borderColor: PAPER_INK }}/>
+        <div className="text-[11px] mt-1" style={{ color: PAPER_INK }}>
           <strong>{pkt.contractor.company}</strong> — Project Lead
         </div>
       </div>
       <div>
         <div className="text-[10px] font-mono tracking-widest uppercase" style={{ color: NICKEL }}>Accepted by</div>
-        <div className="h-12 border-b" style={{ borderColor: INK }}/>
-        <div className="text-[11px] mt-1" style={{ color: INK }}>
+        <div className="h-12 border-b" style={{ borderColor: PAPER_INK }}/>
+        <div className="text-[11px] mt-1" style={{ color: PAPER_INK }}>
           {pkt.client.name} — Homeowner / Property Owner
         </div>
       </div>
@@ -600,7 +604,7 @@ function SectionTitle({ icon: Icon, label }) {
   return (
     <div className="flex items-center gap-2 mb-2 pb-1" style={{ borderBottom: `1px solid ${INK}` }}>
       <Icon size={14} style={{ color: ORANGE }}/>
-      <h2 className="text-[12px] font-bold tracking-[0.2em] uppercase" style={{ color: INK, fontFamily: "'JetBrains Mono', monospace" }}>
+      <h2 className="text-[12px] font-bold tracking-[0.2em] uppercase" style={{ color: PAPER_INK, fontFamily: "'JetBrains Mono', monospace" }}>
         {label}
       </h2>
     </div>
@@ -609,9 +613,9 @@ function SectionTitle({ icon: Icon, label }) {
 
 function Metric({ label, value, wide }) {
   return (
-    <div className={`border p-2 ${wide ? "col-span-3" : ""}`} style={{ borderColor: NICKEL, background: "#fff" }}>
+    <div className={`border p-2 ${wide ? "col-span-3" : ""}`} style={{ borderColor: NICKEL, background: CARD_BG }}>
       <div className="text-[9px] font-mono tracking-widest uppercase" style={{ color: NICKEL }}>{label}</div>
-      <div className="text-[14px] font-semibold mt-0.5" style={{ color: INK }}>{value ?? "—"}</div>
+      <div className="text-[14px] font-semibold mt-0.5" style={{ color: PAPER_INK }}>{value ?? "—"}</div>
     </div>
   );
 }
@@ -630,11 +634,35 @@ function FailPanel({ err }) {
 function PrintCSS() {
   return (
     <style>{`
+      :root {
+        /* On-screen: dark neon */
+        --stratex-paper: #0B0F19;
+        --stratex-paper-ink: #E2E8F0;
+        --stratex-card-bg: #11181C;
+        --stratex-card-grad: #0E141A;
+        --stratex-card-border: rgba(0, 245, 212, 0.18);
+        --stratex-subtle-bg: rgba(255, 84, 0, 0.06);
+      }
       @media print {
+        /* On-paper: classic light deliverable */
+        :root {
+          --stratex-paper: #F7F8FA;
+          --stratex-paper-ink: #0F141C;
+          --stratex-card-bg: #FFFFFF;
+          --stratex-card-grad: #F1F2F6;
+          --stratex-card-border: #E4E7EC;
+          --stratex-subtle-bg: #FFF7F2;
+        }
         .no-print { display: none !important; }
         body { background: #fff !important; }
         article { box-shadow: none !important; margin: 0 !important; }
         @page { size: letter; margin: 0.5in; }
+      }
+      /* Image / figure neon framing on screen */
+      @media screen {
+        [data-testid="deliverable-paper"] figure {
+          box-shadow: 0 0 18px rgba(0, 245, 212, 0.12);
+        }
       }
     `}</style>
   );

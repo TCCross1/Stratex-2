@@ -1,6 +1,20 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.18.0 — Branch Console + Multi-AI Consensus + Dark Deliverable)
+- ✅ **Multi-Agent Consensus Pipeline** (`POST /api/branch/quantify`) — drone telemetry payload runs through:
+  - 1 deterministic 4-stage computation (geometry · materials · labor · finance)
+  - 3 parallel Claude Haiku 4.5 verifiers (geometry / materials / financial) via `asyncio.gather`
+  - 1 Claude Sonnet 4.5 senior reviewer that synthesizes the 3 verifier reports and issues final ruling: REGISTER | REGISTER_WITH_FLAGS | HALT
+  - Only commits to `db.jobs` when `register=true` AND ruling is REGISTER/REGISTER_WITH_FLAGS. HALT rulings post to `db.telemetry_halts` and never touch the job record.
+  - Every run persists to `db.branch_consensus_runs` for audit.
+- ✅ **Branch Manager Master Price Index v2.6** — canonical 10 SKUs (`shingles_sq`, `felt_roll`, `ice_water_roll`, `drip_edge_ft`, `flashing_ft`, `chimney_kit`, `boot_2in`, `boot_3in`, `nails_box`, `caps_box`) replace the legacy 6-SKU seed. `seed_branch_materials()` is called from on_startup and **purges any non-canonical SKUs** so the ledger is exactly the 10.
+- ✅ **Branch Console UI** (`/admin/branch-console`) — dark `#05080E` background with neon `#00F0FF` + `#FF7B00` accents. Sections: Master Price Index ledger snapshot · Drone Telemetry Payload editor (12 fields + tier toggle) · Multi-Agent Consensus Verdict (senior ruling card + 3 verifier cards with confidence + verdict + narrative + discrepancies) · Deterministic Computation Report (neon stat strip + 6-line financial breakdown + collapsible line-item table) · Recent Consensus Runs table.
+- ✅ **Dark Deliverable** (`/contractor/deliverable/:jobId`) — switched to CSS-variable theming. `--stratex-paper` = `#0B0F19` on screen, `#F7F8FA` on print. All inner card backgrounds (`#fff`, `#FFFFFF`, `#FFF7F2`) and border colors (`#E4E7EC`) converted to variables → automatically light on print, dark + neon on screen. Cmd-P → Save as PDF still produces the classic light deliverable.
+- ✅ Nav: new **"Branch Console"** admin item (Lucide `Atom` icon) between Ops Command and Sales Hub.
+
+
+
 ## What's Been Implemented (2026-05-30 — v3.17.0 — Luxury Deliverable Schema + SKU Forecast + Promote-to-Job)
 - ✅ **Contractor Deliverable — luxury schema expansion (pure addition)**
   - 4 new top-shelf sections rendered in `ContractorDeliverable.jsx` between the existing roof composition and pricing table:

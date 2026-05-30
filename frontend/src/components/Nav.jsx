@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
-import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard, Target, Activity, Plane, Snowflake, CloudLightning, Command, Calculator } from "lucide-react";
+import { Radar, Plus, Layers, Lock, FileText, Menu, X, LogOut, LogIn, Shield, ClipboardList, Truck, CreditCard, Target, Activity, Plane, Snowflake, CloudLightning, Command, Calculator, Atom } from "lucide-react";
 
 const NavLink = ({ to, label, icon: Icon, testid, onClick }) => {
   const loc = useLocation();
@@ -38,6 +38,7 @@ const OPERATOR_ITEMS = [
 ];
 const ADMIN_ITEMS = [
   { to: "/admin/ops", label: "Ops Command", icon: Command, testid: "nav-admin-ops" },
+  { to: "/admin/branch-console", label: "Branch Console", icon: Atom, testid: "nav-admin-branch" },
   { to: "/admin/sales", label: "Sales Hub", icon: Target, testid: "nav-admin-sales" },
   { to: "/admin/overseer", label: "Overseer", icon: Activity, testid: "nav-admin-overseer" },
   { to: "/admin/flight-audit", label: "Flight Audit", icon: Plane, testid: "nav-admin-flight-audit" },

@@ -1691,6 +1691,10 @@ async def on_startup():
     from routes.admin_ops import seed_admin_ops
     await seed_admin_ops()
 
+    # Branch Manager Master Price Index — v2.6 canonical 10 SKUs (overrides admin_ops legacy seed)
+    from routes.branch_console import seed_branch_materials
+    await seed_branch_materials()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2493,6 +2497,7 @@ from routes import (  # noqa: F401, E402
     admin_ops,
     assistant,
     billing,
+    branch_console,
     cv_ice_shield,
     deliverable,
     materials_config,
