@@ -92,35 +92,41 @@ export default function DeliverableDeck() {
       <DeckCSS/>
 
       {/* Screen-only toolbar */}
-      <div className="no-print sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b backdrop-blur"
+      <div className="no-print sticky top-0 z-40 flex flex-wrap items-center justify-between gap-2 px-3 py-3 border-b backdrop-blur"
            style={{ background: "rgba(11,15,25,0.9)", borderColor: NICKEL }}>
-        <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: TEAL }}>
-          // STRATEX™ DRONE-SCAN REPORT DECK · {pkt.deliverable_id}
+        <div className="font-mono text-[10px] tracking-widest uppercase truncate min-w-0 max-w-full sm:max-w-none" style={{ color: TEAL }}>
+          // STRATEX™ DECK · {pkt.deliverable_id}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: NICKEL }} data-testid="deck-progress">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden sm:block font-mono text-[10px] uppercase tracking-widest" style={{ color: NICKEL }} data-testid="deck-progress">
             Slide <span style={{ color: SILVER }}>{idx + 1}</span> / {slides.length}
           </div>
           <button onClick={() => setIdx(Math.max(0, idx - 1))}
             disabled={idx === 0}
             className="font-mono text-[10px] uppercase tracking-widest border px-2.5 py-1.5 inline-flex items-center gap-1 disabled:opacity-40"
-            style={{ borderColor: `${NICKEL}`, color: SILVER }}
-            data-testid="deck-prev">
-            <ChevronLeft size={12}/> Prev
+            style={{ borderColor: NICKEL, color: SILVER }}
+            data-testid="deck-prev"
+            aria-label="Previous slide">
+            <ChevronLeft size={12}/><span className="hidden sm:inline">Prev</span>
           </button>
           <button onClick={() => setIdx(Math.min(slides.length - 1, idx + 1))}
             disabled={idx === slides.length - 1}
             className="font-mono text-[10px] uppercase tracking-widest border px-2.5 py-1.5 inline-flex items-center gap-1 disabled:opacity-40"
             style={{ borderColor: NICKEL, color: SILVER }}
-            data-testid="deck-next">
-            Next <ChevronRight size={12}/>
+            data-testid="deck-next"
+            aria-label="Next slide">
+            <span className="hidden sm:inline">Next</span> <ChevronRight size={12}/>
           </button>
           <button onClick={() => window.print()}
-            className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5 inline-flex items-center gap-2"
+            className="font-mono text-[10px] uppercase tracking-widest px-3 sm:px-4 py-1.5 inline-flex items-center gap-2"
             style={{ background: TEAL, color: INK }}
             data-testid="deck-download-pdf">
-            <Printer size={12}/> Download PDF
+            <Printer size={12}/><span className="hidden sm:inline">Download </span>PDF
           </button>
+        </div>
+        {/* Mobile slide counter — wraps below toolbar */}
+        <div className="sm:hidden w-full font-mono text-[9px] uppercase tracking-widest text-center" style={{ color: NICKEL }} data-testid="deck-progress-mobile">
+          Slide <span style={{ color: SILVER }}>{idx + 1}</span> / {slides.length}
         </div>
       </div>
 
@@ -883,6 +889,47 @@ function DeckCSS() {
       .screen-deck { display: block; }
       .print-deck  { display: none; }
 
+      /* Mobile (<= 768px): drop 16:9, become tall scrollable cards */
+      @media (max-width: 768px) {
+        .screen-deck {
+          align-items: flex-start !important;
+          min-height: 0 !important;
+        }
+        .deck-slide {
+          width: 100%;
+          aspect-ratio: auto;
+          min-height: calc(100vh - 88px);
+          padding: 20px 16px 16px 16px;
+          margin: 0 auto;
+        }
+        .deck-slide [class*="text-[40px]"] { font-size: 28px !important; }
+        .deck-slide [class*="text-[52px]"] { font-size: 30px !important; line-height: 1.1 !important; }
+        .deck-slide [class*="text-[44px]"] { font-size: 32px !important; }
+        .deck-slide [class*="text-[36px]"] { font-size: 28px !important; }
+        .deck-slide [class*="text-[34px]"] { font-size: 26px !important; }
+        .deck-slide [class*="text-[22px]"] { font-size: 18px !important; }
+        .deck-slide [class*="text-[20px]"] { font-size: 16px !important; }
+        /* Collapse all multi-column grids to single column on phones */
+        .deck-slide .grid.grid-cols-2,
+        .deck-slide .grid.grid-cols-3,
+        .deck-slide .grid.grid-cols-4,
+        .deck-slide .grid.grid-cols-12 {
+          grid-template-columns: 1fr !important;
+        }
+        /* Inside 12-col rows (moisture, phases), let children span full width */
+        .deck-slide [class*="col-span-"] {
+          grid-column: 1 / -1 !important;
+        }
+        /* Pricing table column needs horizontal scroll */
+        [data-testid="deck-pricing"] table { min-width: 420px; }
+        [data-testid="deck-pricing"] > div:first-child {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        /* Roof facet table */
+        [data-testid="deck-roof"] table { font-size: 10px; }
+      }
+
       @media print {
         @page { size: letter landscape; margin: 0; }
         body { background: #0B0F19 !important; }
@@ -892,6 +939,7 @@ function DeckCSS() {
           width: 11in;
           height: 8.5in;
           aspect-ratio: auto;
+          min-height: 0 !important;
           margin: 0;
           page-break-after: always;
           break-after: page;

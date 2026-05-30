@@ -62,9 +62,9 @@ export default function ContractorDeliverable() {
       <PrintCSS/>
 
       {/* Screen-only toolbar */}
-      <div className="no-print sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b backdrop-blur"
+      <div className="no-print sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 px-3 py-3 border-b backdrop-blur"
            style={{ background: "rgba(11,15,25,0.85)", borderColor: NICKEL }}>
-        <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: TEAL }}>
+        <div className="font-mono text-[10px] tracking-widest uppercase truncate max-w-full" style={{ color: TEAL }}>
           // STRATEX™ DELIVERABLE · {pkt.deliverable_id}
         </div>
         <div className="flex gap-2">
@@ -90,8 +90,8 @@ export default function ContractorDeliverable() {
       </div>
 
       {/* Paper sheet */}
-      <article className="mx-auto my-6 print:my-0 shadow-2xl print:shadow-none" style={{
-        background: PAPER, color: PAPER_INK, width: "min(900px, 100%)", padding: "44px 56px",
+      <article className="deliverable-paper mx-auto my-6 print:my-0 shadow-2xl print:shadow-none" style={{
+        background: PAPER, color: PAPER_INK,
       }} data-testid="deliverable-paper">
         <Letterhead pkt={pkt}/>
         <ClientFlightBlock pkt={pkt}/>
@@ -113,7 +113,7 @@ export default function ContractorDeliverable() {
 
 function Letterhead({ pkt }) {
   return (
-    <header className="flex items-start justify-between pb-5 mb-5"
+    <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-5 mb-5"
             style={{ borderBottom: `2px solid ${INK}` }}>
       <div className="flex items-center gap-3">
         <svg width="58" height="58" viewBox="0 0 100 100" style={{ filter: "drop-shadow(0 0 6px rgba(0,245,212,0.4))" }}>
@@ -128,7 +128,7 @@ function Letterhead({ pkt }) {
           </div>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right sm:text-right text-left">
         <div className="text-[10px] tracking-[0.28em] uppercase font-mono" style={{ color: NICKEL }}>Deliverable</div>
         <div className="text-sm font-mono mt-0.5" style={{ color: PAPER_INK }}>{pkt.deliverable_id}</div>
         <div className="text-[10px] font-mono mt-1" style={{ color: NICKEL }}>
@@ -144,7 +144,7 @@ function Letterhead({ pkt }) {
 
 function ClientFlightBlock({ pkt }) {
   return (
-    <section className="grid grid-cols-2 gap-6 mb-6" data-testid="deliverable-client-flight">
+    <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" data-testid="deliverable-client-flight">
       <Block title="PREPARED FOR" testid="deliverable-client">
         <Row icon={User} label="Client" value={pkt.client.name}/>
         <Row icon={MapPin} label="Property" value={pkt.site.address}/>
@@ -163,7 +163,7 @@ function ClientFlightBlock({ pkt }) {
       </Block>
 
       <Block title="FLIGHT RECORD" wide testid="deliverable-flight">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
           <Row icon={Plane} label="Project Code" value={pkt.flight.project_code} bold/>
           <Row icon={User} label="Pilot in Command" value={pkt.flight.pilot_name}/>
           <Row icon={CalendarClock} label="Flight Started" value={fmtDT(pkt.flight.started_at)}/>
@@ -186,7 +186,7 @@ function RoofComposition({ pkt }) {
   return (
     <section className="mb-6" data-testid="deliverable-roof">
       <SectionTitle icon={Layers} label="ROOF COMPOSITION · DIGITAL TWIN"/>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Metric label="Total Squares" value={r.total_squares?.toFixed(2)}/>
         <Metric label="Total Sq Ft" value={r.total_sqft?.toLocaleString()}/>
         <Metric label="Valley Linear Ft" value={r.valleys_lf_total ? `${r.valleys_lf_total.toFixed(2)} lf` : "—"}/>
@@ -194,7 +194,7 @@ function RoofComposition({ pkt }) {
         <Metric label="Sub-Layer" value={r.sub_layer_material} wide/>
       </div>
 
-      <div className="mt-4 grid grid-cols-[1.2fr_1fr] gap-3">
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-3">
         <table className="w-full border" style={{ borderColor: NICKEL, background: CARD_BG }}>
           <thead>
             <tr style={{ background: INK, color: TEAL }}>
@@ -256,7 +256,7 @@ function AnomalyFindings({ pkt }) {
                 Confidence {Number(a.confidence_pct).toFixed(2)}%
               </span>
             </div>
-            <div className="grid grid-cols-[1.2fr_1fr] gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-3">
               <div>
                 <div className="text-[12px] leading-relaxed" style={{ color: PAPER_INK }}>
                   <strong>Affected area:</strong> {a.area_sqft} sq ft · depth {a.depth_in}″
@@ -313,7 +313,7 @@ function GeometricsExtended({ pkt }) {
   return (
     <section className="mb-6" data-testid="deliverable-geometrics-extended">
       <SectionTitle icon={Ruler} label="QUANTIFIED GEOMETRY"/>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {items.map((it) => (
           <div key={it.label}
             className="relative overflow-hidden"
@@ -354,7 +354,7 @@ function MoistureDiagnostics({ pkt }) {
           const tone = SEVERITY_TONE[d.severity] || SEVERITY_TONE.MILD;
           return (
             <article key={i}
-              className="grid grid-cols-12 gap-4 relative"
+              className="moist-row grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-4 relative"
               style={{
                 background: CARD_BG,
                 border: `1px solid ${NICKEL}55`,
@@ -363,12 +363,12 @@ function MoistureDiagnostics({ pkt }) {
                 borderRadius: 2,
               }}
               data-testid={`deliverable-moisture-${i}`}>
-              <div className="col-span-3">
+              <div className="md:col-span-3">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Diagnostic Grid</div>
                 <div className="font-mono font-bold text-[13px] mt-1" style={{ color: PAPER_INK }}>{d.grid_id}</div>
                 <div className="text-[11px] mt-0.5" style={{ color: NICKEL }}>{d.location}</div>
               </div>
-              <div className="col-span-3">
+              <div className="md:col-span-3">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Concern Code</div>
                 <div className="font-mono text-[11px] mt-1" style={{ color: PAPER_INK }}>{d.concern_code}</div>
                 <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-[2px]"
@@ -377,7 +377,7 @@ function MoistureDiagnostics({ pkt }) {
                   <span className="text-[9px] font-mono tracking-[0.2em] uppercase font-bold">{tone.label}</span>
                 </div>
               </div>
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Probability</div>
                 <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: tone.chip }}>
                   {d.probability_pct}<span className="text-[12px]" style={{ color: NICKEL }}>%</span>
@@ -386,7 +386,7 @@ function MoistureDiagnostics({ pkt }) {
                   <div style={{ width: `${d.probability_pct}%`, height: "100%", background: tone.chip }}/>
                 </div>
               </div>
-              <div className="col-span-4">
+              <div className="col-span-2 md:col-span-4">
                 <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Field Note</div>
                 <div className="text-[11px] mt-1 leading-snug" style={{ color: PAPER_INK }}>{d.notes}</div>
               </div>
@@ -414,7 +414,7 @@ function FinancialPhases({ pkt }) {
           const pct = total > 0 ? (Number(ph.total_price_usd) / total) * 100 : 0;
           return (
             <article key={k}
-              className="grid grid-cols-12 gap-4 relative items-center"
+              className="grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-4 relative items-center"
               style={{
                 background: `linear-gradient(90deg, ${CARD_BG} 0%, var(--stratex-card-grad, #11181C) 100%)`,
                 border: `1px solid ${NICKEL}55`,
@@ -422,7 +422,7 @@ function FinancialPhases({ pkt }) {
                 borderRadius: 2,
               }}
               data-testid={`deliverable-phase-${k}`}>
-              <div className="col-span-3 flex items-center gap-3">
+              <div className="md:col-span-3 flex items-center gap-3">
                 <div className="flex items-center justify-center" style={{
                   width: 38, height: 38, borderRadius: 2,
                   background: `${meta.accent}14`, border: `1px solid ${meta.accent}55`,
@@ -434,7 +434,13 @@ function FinancialPhases({ pkt }) {
                   <div className="font-bold text-[14px] tracking-wide" style={{ color: PAPER_INK }}>{meta.label}</div>
                 </div>
               </div>
-              <div className="col-span-5">
+              <div className="md:col-span-4 text-right md:order-3">
+                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Phase Total</div>
+                <div className="font-mono font-bold text-[20px] md:text-[22px] tabular-nums mt-0.5" style={{ color: meta.accent }}>
+                  {USD(ph.total_price_usd)}
+                </div>
+              </div>
+              <div className="col-span-2 md:col-span-5 md:order-2">
                 <div className="text-[11px] leading-snug" style={{ color: PAPER_INK }}>{ph.scope || "—"}</div>
                 <div className="mt-1.5 flex items-center gap-3 text-[10px] font-mono tabular-nums" style={{ color: NICKEL }}>
                   <span>{ph.estimated_man_hours} man-hours</span>
@@ -443,12 +449,6 @@ function FinancialPhases({ pkt }) {
                 </div>
                 <div className="mt-1 h-[3px] rounded overflow-hidden" style={{ background: `${meta.accent}1F` }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: meta.accent }}/>
-                </div>
-              </div>
-              <div className="col-span-4 text-right">
-                <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Phase Total</div>
-                <div className="font-mono font-bold text-[22px] tabular-nums mt-0.5" style={{ color: meta.accent }}>
-                  {USD(ph.total_price_usd)}
                 </div>
               </div>
             </article>
@@ -475,7 +475,7 @@ function DisposalLogistics({ pkt }) {
   return (
     <section className="mb-6" data-testid="deliverable-disposal">
       <SectionTitle icon={Trash} label="DISPOSAL & OVERALL PROJECT VALUE"/>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div style={{ background: CARD_BG, border: `1px solid ${NICKEL}55`, padding: "14px 18px", borderRadius: 2 }}>
           <div className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: NICKEL }}>Dumpster · Flat Fee</div>
           <div className="font-mono font-bold text-[20px] mt-1 tabular-nums" style={{ color: PAPER_INK }}>{USD(d.dumpster_flat_fee_usd)}</div>
@@ -555,7 +555,7 @@ function PricingTable({ pkt }) {
 
 function SignatureBlock({ pkt }) {
   return (
-    <section className="grid grid-cols-2 gap-6 mt-6">
+    <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
       <div>
         <div className="text-[10px] font-mono tracking-widest uppercase" style={{ color: NICKEL }}>Authorized by</div>
         <div className="h-12 border-b" style={{ borderColor: PAPER_INK }}/>
@@ -587,7 +587,9 @@ function Footer({ pkt }) {
 
 function Block({ title, children, wide, testid }) {
   return (
-    <div className={wide ? "col-span-2" : ""} data-testid={testid}>
+    <div
+      data-testid={testid}
+      style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <div className="text-[10px] font-mono tracking-widest uppercase mb-1.5" style={{ color: NICKEL }}>
         {title}
       </div>
@@ -619,7 +621,9 @@ function SectionTitle({ icon: Icon, label }) {
 
 function Metric({ label, value, wide }) {
   return (
-    <div className={`border p-2 ${wide ? "col-span-3" : ""}`} style={{ borderColor: NICKEL, background: CARD_BG }}>
+    <div
+      className="border p-2"
+      style={{ borderColor: NICKEL, background: CARD_BG, ...(wide ? { gridColumn: "1 / -1" } : null) }}>
       <div className="text-[9px] font-mono tracking-widest uppercase" style={{ color: NICKEL }}>{label}</div>
       <div className="text-[14px] font-semibold mt-0.5" style={{ color: PAPER_INK }}>{value ?? "—"}</div>
     </div>
@@ -649,6 +653,33 @@ function PrintCSS() {
         --stratex-card-border: rgba(0, 245, 212, 0.18);
         --stratex-subtle-bg: rgba(255, 84, 0, 0.06);
       }
+      /* Default desktop paper sizing */
+      .deliverable-paper {
+        width: min(900px, 100%);
+        padding: 44px 56px;
+      }
+      /* Mobile (<= 640px): edge-to-edge paper, compact padding */
+      @media (max-width: 640px) {
+        .deliverable-paper {
+          width: 100%;
+          padding: 20px 16px;
+          margin-top: 0;
+          margin-bottom: 0;
+        }
+        /* Tables become horizontally scrollable on mobile */
+        [data-testid="deliverable-paper"] table {
+          font-size: 11px;
+        }
+        [data-testid="deliverable-roof"] > div:nth-child(2) {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        [data-testid="deliverable-pricing"] {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        [data-testid="deliverable-pricing"] table { min-width: 480px; }
+      }
       @media print {
         /* On-paper: classic light deliverable */
         :root {
@@ -658,6 +689,10 @@ function PrintCSS() {
           --stratex-card-grad: #F1F2F6;
           --stratex-card-border: #E4E7EC;
           --stratex-subtle-bg: #FFF7F2;
+        }
+        .deliverable-paper {
+          width: min(900px, 100%);
+          padding: 44px 56px;
         }
         .no-print { display: none !important; }
         body { background: #fff !important; }

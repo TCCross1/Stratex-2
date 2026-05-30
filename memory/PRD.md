@@ -1,6 +1,25 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.19.1 — Mobile-Responsive Comprehensive Report)
+- ✅ **Deliverable page (`/deliverable/demo`, `/contractor/deliverable/:jobId`)** — full mobile layout:
+  - Paper: `width 100%`, `padding 20px 16px` on ≤640px (was fixed 900px × 44/56px desktop)
+  - All multi-column grids made responsive: `grid-cols-1 md:grid-cols-2`, `grid-cols-2 md:grid-cols-3`, `grid-cols-2 md:grid-cols-4`
+  - 12-col moisture-diagnostic + financial-phase rows reflow to vertical stacked cards on mobile
+  - Letterhead stacks (`flex-col sm:flex-row`); toolbar wraps with `flex-wrap`
+  - Tables (roof facet, pricing) horizontal-scroll inside their containers
+  - Anomaly cards use `grid-cols-1 md:grid-cols-[1.2fr_1fr]` (image/text reflow)
+- ✅ **Slideshow Deck (`/deck/demo`, `/contractor/deliverable/:jobId/deck`)** — mobile-first:
+  - Dropped `aspect-ratio: 16/9` and `width: min(1180px, 96vw)` on phones — slides become `100%` width, `min-height: 100vh - 88px`, scroll vertically
+  - All internal `grid-cols-2/3/4/12` collapse to single column via media query
+  - All `col-span-*` children promoted to full-width (`grid-column: 1 / -1`)
+  - Toolbar: Prev/Next buttons become icon-only on mobile (label hidden), "Download" label hidden so button reads just "PDF", slide counter wraps below as a centered subline
+  - Hero typography auto-shrinks (`text-[52px]` → 30px, `text-[44px]` → 32px, etc.)
+- ✅ **Bug fix:** `Block` and `Metric` components were using `col-span-2`/`col-span-3` which caused the browser to auto-create implicit grid columns even on `grid-cols-1`. Switched to inline `gridColumn: "1 / -1"` so wide blocks span all columns regardless of layout breakpoint.
+- ✅ Print/PDF layout unchanged — `@media print` block preserves 8.5×11 portrait deliverable + landscape letter deck PDF behavior. Verified Save-as-PDF still emits 10-page deck.
+- ✅ Verified at iPhone-class viewport (390×844): `window.matchMedia('(max-width: 768px)').matches = true`, `gridTemplateColumns: 358px` on the client/flight section (single column).
+
+
 ## What's Been Implemented (2026-05-30 — v3.19.0 — Drone-Scan Report Deck + One-Click PDF)
 - ✅ **`/contractor/deliverable/:jobId/deck` + `/deck/demo`** — companion slideshow view of the comprehensive deliverable. **10 slides**, each a self-contained section translating one class of drone-scan data:
   1. **Cover** — deliverable ID, project code, pilot, client, address (hero slide w/ STRATEX glyph)
