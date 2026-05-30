@@ -265,37 +265,97 @@ def _deterministic_quantify(body: QuantifyBody, prices: Dict[str, float]) -> Dic
 # ---------------------------------------------------------------------------
 _VERIFIER_PROMPTS = {
     "geometry": (
-        "You are STRATEX™ Verifier-G (Geometry). You will be given drone telemetry and the "
-        "platform's deterministic geometry calculations. Independently re-compute net wall area "
-        "(gross − windows − doors) and adjusted roof area (raw × pitch multiplier). "
-        "Confirm or dispute the numbers. Reply STRICTLY as JSON: "
-        "{verdict ('confirmed'|'flagged'|'rejected'), confidence_pct (0-100), "
-        "narrative (≤2 sentences with the actual numbers you computed), discrepancies (array)}."
+        "You are STRATEX™ Verifier-G (Geometry).\n\n"
+        "The platform computed geometric values using these EXACT formulas:\n"
+        "  1. net_wall_sqft       = wallAreaGross_sqft − windowOpenings_sqft − doorOpenings_sqft\n"
+        "  2. roof_total_sqft_adjusted = roofArea_sqft × pitchMultiplier\n"
+        "  3. roof_squares_net    = roof_total_sqft_adjusted / 100\n"
+        "  4. roof_squares_with_waste = roof_squares_net × 1.10   (mandatory 10% waste factor)\n\n"
+        "YOUR JOB: Apply each formula to the raw_input numbers, then compare your result to "
+        "the platform_computed value.\n\n"
+        "DECISION RULES — follow these literally:\n"
+        "  • If ALL 4 values match platform_computed within ±0.05 → verdict='confirmed', "
+        "confidence_pct 95-100, discrepancies=[].\n"
+        "  • If exactly 1 value is off by more than ±0.05 → verdict='flagged', "
+        "confidence_pct 70-85, list it in discrepancies.\n"
+        "  • If 2+ values are wrong OR a formula was clearly misapplied → verdict='rejected', "
+        "confidence_pct < 60.\n\n"
+        "You are NOT judging whether the methodology is optimal — only whether the arithmetic "
+        "executed the stated formulas correctly. The 10% waste factor and the pitch multiplier "
+        "are FIXED rules; do not dispute them.\n\n"
+        "Reply STRICTLY as JSON: {verdict, confidence_pct, narrative (≤2 sentences citing the "
+        "numbers you computed), discrepancies (array of strings)}."
     ),
     "materials": (
-        "You are STRATEX™ Verifier-M (Materials). Given the roof squares (with 10% waste), valley "
-        "linear feet, perimeter, and material conversion rules (felt: 1 roll = 4 sq, IWS: 1 roll "
-        "= 75 lf, drip edge: 1 piece = 10 lf), verify the quantity counts. Reply STRICTLY as JSON: "
-        "{verdict, confidence_pct, narrative, discrepancies}."
+        "You are STRATEX™ Verifier-M (Materials Quantities).\n\n"
+        "Conversion rules (FIXED — apply exactly):\n"
+        "  • shingles_squares  = ceil(roof_squares_with_waste)\n"
+        "  • felt_rolls        = ceil(roof_total_sqft_adjusted / 400)   (1 roll = 4 sq = 400 sqft)\n"
+        "  • ice_water_rolls   = ceil(valleys_ft / 75)                  (1 roll = 75 linear ft)\n"
+        "  • drip_edge_pieces  = ceil(roof_perimeter_ft / 10)           (1 piece = 10 linear ft)\n\n"
+        "YOUR JOB: Apply each formula and compare to platform_computed_quantities EXACTLY.\n\n"
+        "DECISION RULES — follow these literally:\n"
+        "  • All quantities match exactly → verdict='confirmed', confidence_pct 95-100, "
+        "discrepancies=[].\n"
+        "  • 1 quantity off by exactly 1 unit (ceil edge case) → verdict='flagged', "
+        "confidence_pct 75-88, list it.\n"
+        "  • 2+ quantities wrong OR a formula was clearly misapplied → verdict='rejected', "
+        "confidence_pct < 60.\n\n"
+        "The 10% waste factor is already baked into roof_squares_with_waste — do NOT apply "
+        "waste again. Do not invent new conversion rules; use exactly the four above.\n\n"
+        "Reply STRICTLY as JSON: {verdict, confidence_pct, narrative (state each number you "
+        "computed and that you compared), discrepancies (array)}."
     ),
     "financial": (
-        "You are STRATEX™ Verifier-F (Financial). Given materials cost, labor (man-hours × "
-        "$200/hr), insurance multiplier, and overhead+profit %, confirm the gross total math. "
+        "You are STRATEX™ Verifier-F (Financial Layers).\n\n"
+        "The platform computed financials using these EXACT formulas:\n"
+        "  1. labor_cost            = estimated_man_hours × labor_rate_per_hour\n"
+        "  2. mechanical_subtotal   = materials_cost + labor_cost\n"
+        "  3. insurance_markup      = mechanical_subtotal × (insurance_multiplier − 1.0)\n"
+        "                             (= 0 if NOT an insurance job)\n"
+        "  4. after_insurance       = mechanical_subtotal + insurance_markup\n"
+        "  5. op_pct                = (overhead_pct + profit_pct) / 100\n"
+        "  6. overhead_profit_usd   = after_insurance × op_pct\n"
+        "  7. gross_total_usd       = after_insurance + overhead_profit_usd\n\n"
+        "YOUR JOB: Re-compute each numbered layer and compare to platform_computed numerically.\n\n"
+        "DECISION RULES — follow these literally:\n"
+        "  • All values within ±$0.50 of platform_computed → verdict='confirmed', "
+        "confidence_pct 95-100, discrepancies=[].\n"
+        "  • 1 layer differs by more than ±$0.50 → verdict='flagged', confidence_pct 70-85.\n"
+        "  • 2+ layers wrong OR formula clearly misapplied → verdict='rejected', "
+        "confidence_pct < 60.\n\n"
+        "SCOPE: The estimated_man_hours value is a given INPUT to your computation (computed "
+        "elsewhere). Do NOT question how man-hours were derived — only check that "
+        "labor_cost = man_hours × rate is correct. The $200/hour labor rate is the platform "
+        "standard; do not dispute it.\n\n"
         "Reply STRICTLY as JSON: {verdict, confidence_pct, narrative, discrepancies}."
     ),
 }
 
 _SENIOR_REVIEWER_PROMPT = (
-    "You are STRATEX™ Senior Reviewer (model: Claude Sonnet 4.5). You have read three independent "
-    "verifier reports (geometry, materials, financial) and the underlying deterministic computation. "
-    "Your job: issue the FINAL CONSENSUS RULING that determines whether the drone payload may be "
-    "REGISTERED onto the job record. Reply STRICTLY as JSON: "
-    "{ruling ('REGISTER'|'REGISTER_WITH_FLAGS'|'HALT'), consensus_score (0-100), "
-    "reasoning (3-4 sentences citing specific numbers), agreements (array of short strings), "
-    "dissents (array of short strings)}. "
-    "Issue HALT if any verifier rejected or if confidence_pct < 80. "
-    "Issue REGISTER_WITH_FLAGS if all verifiers confirmed but at least one flagged a discrepancy. "
-    "Issue REGISTER only if all three verifiers confirmed with confidence_pct ≥ 90."
+    "You are STRATEX™ Senior Reviewer (Claude Sonnet 4.5). You read three verifier reports "
+    "(geometry / materials / financial) + the underlying deterministic computation, and you "
+    "issue the FINAL CONSENSUS RULING.\n\n"
+    "DECISION TABLE — apply literally:\n"
+    "  • All 3 verifiers verdict='confirmed' AND all confidence_pct ≥ 90  → ruling='REGISTER',  "
+    "consensus_score = average of the 3 confidence_pct values.\n"
+    "  • All 3 verifiers verdict='confirmed' but at least one confidence_pct < 90  → "
+    "ruling='REGISTER_WITH_FLAGS', consensus_score = average.\n"
+    "  • At least one verifier 'flagged' AND none 'rejected' AND every confidence_pct ≥ 60  → "
+    "ruling='REGISTER_WITH_FLAGS' if the discrepancies are minor (off-by-one ceil, ±$1 rounding, "
+    "etc.). Otherwise 'HALT'. consensus_score = the lowest confidence_pct among the three.\n"
+    "  • Any verifier verdict='rejected' OR any confidence_pct < 50  → ruling='HALT', "
+    "consensus_score = the lowest confidence_pct.\n\n"
+    "IMPORTANT — what NOT to do:\n"
+    "  • Do NOT halt because methodology could be 'more optimal'. Only halt on real arithmetic errors.\n"
+    "  • Do NOT halt for stylistic concerns or because a verifier voiced a preference.\n"
+    "  • The 10% waste factor, $200/hr labor rate, and pitch multiplier are PLATFORM "
+    "STANDARDS — do not treat them as discrepancies.\n"
+    "  • The platform's ceil()-based rounding for material quantities is correct — a verifier "
+    "calculating, say, 6.85 rolls and the platform ordering 7 is a CONFIRMED match (not a discrepancy).\n\n"
+    "Reply STRICTLY as JSON: {ruling ('REGISTER'|'REGISTER_WITH_FLAGS'|'HALT'), "
+    "consensus_score (0-100), reasoning (3-4 sentences citing specific numbers), "
+    "agreements (array of short strings), dissents (array of short strings)}."
 )
 
 
@@ -381,20 +441,57 @@ async def branch_quantify(body: QuantifyBody, user=Depends(current_user)):
     deterministic = _deterministic_quantify(body, prices)
 
     geom_brief = {
-        "raw_input": body.measurements.model_dump(),
-        "platform_computed": deterministic["geometry"],
+        "raw_input": {
+            "wallAreaGross_sqft":   body.measurements.wallAreaGross_sqft,
+            "windowOpenings_sqft":  body.measurements.windowOpenings_sqft,
+            "doorOpenings_sqft":    body.measurements.doorOpenings_sqft,
+            "roofArea_sqft":        body.measurements.roofArea_sqft,
+            "pitchMultiplier":      body.measurements.pitchMultiplier,
+        },
+        "platform_computed": {
+            "net_wall_sqft":              deterministic["geometry"]["net_wall_sqft"],
+            "roof_total_sqft_adjusted":   deterministic["geometry"]["roof_total_sqft_adjusted"],
+            "roof_squares_net":           deterministic["geometry"]["roof_squares_net"],
+            "roof_squares_with_waste":    deterministic["geometry"]["roof_squares_with_waste"],
+        },
+        "waste_factor": WASTE_MULTIPLIER,
     }
     materials_brief = {
-        "roof_squares_with_waste": deterministic["geometry"]["roof_squares_with_waste"],
-        "valleys_ft": body.measurements.valleys_ft,
-        "perimeter_ft": body.measurements.roofPerimeter_ft,
-        "platform_computed_quantities": deterministic["quantities"],
+        "raw_input": {
+            "roof_squares_with_waste":   deterministic["geometry"]["roof_squares_with_waste"],
+            "roof_total_sqft_adjusted":  deterministic["geometry"]["roof_total_sqft_adjusted"],
+            "valleys_ft":                body.measurements.valleys_ft,
+            "roof_perimeter_ft":         body.measurements.roofPerimeter_ft,
+        },
+        "platform_computed_quantities": {
+            "shingles_squares":  deterministic["quantities"]["shingles_squares"],
+            "felt_rolls":        deterministic["quantities"]["felt_rolls"],
+            "ice_water_rolls":   deterministic["quantities"]["ice_water_rolls"],
+            "drip_edge_pieces":  deterministic["quantities"]["drip_edge_pieces"],
+        },
+        "conversion_rules": {
+            "felt_sqft_per_roll":          SQ_PER_FELT_ROLL * 100,
+            "ice_water_lf_per_roll":       LINEAR_FT_PER_IWS_ROLL,
+            "drip_edge_lf_per_piece":      LINEAR_FT_PER_DRIP_PIECE,
+        },
     }
     financial_brief = {
-        "tier": body.assigned_tier,
-        "platform_computed": deterministic["financial_summary"],
-        "labor_rate_per_hour": LABOR_RATE_PER_HOUR_USD,
-        "estimated_man_hours": deterministic["labor"]["estimated_man_hours"],
+        "raw_input": {
+            "materials_cost":         deterministic["financial_summary"]["materials_cost_usd"],
+            "estimated_man_hours":    deterministic["labor"]["estimated_man_hours"],
+            "labor_rate_per_hour":    LABOR_RATE_PER_HOUR_USD,
+            "is_insurance_job":       body.financials.isInsuranceJob,
+            "insurance_multiplier":   body.financials.insuranceMultiplier,
+            "overhead_pct":           body.financials.overheadPercent,
+            "profit_pct":             body.financials.profitPercent,
+        },
+        "platform_computed": {
+            "labor_cost_usd":          deterministic["financial_summary"]["labor_cost_usd"],
+            "mechanical_subtotal_usd": deterministic["financial_summary"]["mechanical_subtotal_usd"],
+            "insurance_markup_usd":    deterministic["financial_summary"]["insurance_markup_usd"],
+            "overhead_profit_usd":     deterministic["financial_summary"]["overhead_profit_usd"],
+            "gross_total_usd":         deterministic["financial_summary"]["gross_total_usd"],
+        },
     }
 
     verifier_reports = await asyncio.gather(

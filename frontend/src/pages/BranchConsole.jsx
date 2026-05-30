@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
   CheckCircle2, AlertTriangle, Lock, PlayCircle, Cpu, Award,
-  Activity, ShieldCheck, FileWarning, Atom, Zap,
+  Activity, ShieldCheck, FileWarning, Atom, Zap, ExternalLink,
 } from "lucide-react";
 
 const TEAL = "#00F0FF";
@@ -175,7 +175,22 @@ export default function BranchConsole() {
               Haiku verifiers and a Senior Sonnet 4.5 reviewer before any data is registered to a job.
             </p>
           </div>
-          <Badge color={TEAL}><Atom size={10} className="inline mr-1"/>v2.6 Live</Badge>
+          <div className="flex items-center gap-3">
+            <a href="/admin/overseer"
+              data-testid="branch-view-halts-link"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "0.45rem 0.9rem", borderRadius: 4,
+                background: `${RED}12`, border: `1px solid ${RED}55`, color: RED,
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.2em",
+                textTransform: "uppercase", fontFamily: "monospace",
+                textDecoration: "none", textShadow: `0 0 4px ${RED}55`,
+              }}>
+              <FileWarning size={11}/> View Halts · Overseer
+              <ExternalLink size={9}/>
+            </a>
+            <Badge color={TEAL}><Atom size={10} className="inline mr-1"/>v2.6 Live</Badge>
+          </div>
         </div>
 
         {/* Branch Manager Materials Ledger snapshot */}
@@ -275,6 +290,20 @@ export default function BranchConsole() {
               <div className="flex items-center gap-2">
                 <Badge color={tone.color}><tone.icon size={11} className="inline mr-1"/>{tone.label}</Badge>
                 {result.registered && <Badge color={TEAL}>WRITTEN TO JOB</Badge>}
+                {!result.registered && result.ruling === "HALT" && (
+                  <a href="/admin/overseer"
+                    data-testid="consensus-view-halt-link"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "0.2rem 0.55rem", borderRadius: 3,
+                      background: `${RED}1A`, border: `1px solid ${RED}55`, color: RED,
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.18em",
+                      textTransform: "uppercase", fontFamily: "monospace",
+                      textDecoration: "none",
+                    }}>
+                    Inspect in Overseer <ExternalLink size={9}/>
+                  </a>
+                )}
               </div>
             }>
             <div style={{
