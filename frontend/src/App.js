@@ -20,6 +20,7 @@ import FleetLaunch from "@/pages/FleetLaunch";
 import FlightAudit from "@/pages/FlightAudit";
 import CVIceShield from "@/pages/CVIceShield";
 import AdminWeather from "@/pages/AdminWeather";
+import AdminOps from "@/pages/AdminOps";
 import ContractorDeliverable from "@/pages/ContractorDeliverable";
 import SimulationRun from "@/pages/SimulationRun";
 import InvestorAssistant from "@/components/InvestorAssistant";
@@ -80,6 +81,7 @@ function AppShell() {
         <Route path="/admin/flight-audit" element={<Protected role="admin"><FlightAudit/></Protected>}/>
         <Route path="/admin/cv-ice-shield" element={<Protected role="admin"><CVIceShield/></Protected>}/>
         <Route path="/admin/weather" element={<Protected role="admin"><AdminWeather/></Protected>}/>
+        <Route path="/admin/ops" element={<Protected role="admin"><AdminOps/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

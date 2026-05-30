@@ -1,6 +1,18 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-30 — v3.15.0 — Supplier Ops Command)
+- ✅ **`/admin/ops`** — single admin page with 3 inner tabs for the **roofing-material supplier** (platform tenant) who offers STRATEX to their contractor customers:
+  1. **Fleet Allocation** — assign drone hardware nodes (NODE-ALPHA…NODE-EPSILON) to contractor open lead vectors (jobs with status PENDING_FIELD_CAPTURE). Live "available pool" + per-contractor matrix with sales-rep badges + per-node fleet cards.
+  2. **Material Catalog** — supplier-owned wholesale SKU ledger with **Tier 1 / Tier 2 / Tier 3** pricing per row. Inline edit, add line item, purge. Contractors see only the tier the supplier assigns to them.
+  3. **Account Coverage** — softened **Sales Strategy Playbook** (4 phases: Free First-Scan Anchoring · Estimation Quality Differentiation · Material Verification & Lot Discipline · Tier Alignment & Margin Expansion), Sales Force telemetry (velocity bars vs monthly quota), and per-contractor tier+rep configuration.
+- ✅ Backend `routes/admin_ops.py` (~360 lines, ruff-clean): 11 endpoints — `dashboard`, `playbook`, materials CRUD (POST/PUT/DELETE), `sales-reps` POST, `hardware-nodes/assign` + `/release`, `contractors/{id}/tier` + `/rep`. Plus `seed_admin_ops()` called from startup with 5 nodes + 6 material SKUs + 3 sales reps + initial contractor → tier/rep map.
+- ✅ New Mongo collections: `db.hardware_nodes`, `db.supplier_material_ledger`, `db.sales_reps`. New `assigned_tier`, `assigned_rep_id`, `assigned_node_id` fields on existing `users` and `jobs` docs.
+- ✅ Nav: new **OPS COMMAND** item (Lucide `Command` icon) added to admin nav as the first item — landing destination for admin logins.
+- ✅ Frontend smoke pass — all 3 tabs render, palette locked to PBR Luxury-Corporate, all interactive elements carry `data-testid`.
+
+
+
 ## What's Been Implemented (2026-05-30 — v3.14.0 — P2 Backend Modular Refactor)
 - ✅ **server.py reduced 42%** (4310 → **2481** lines) without behavior changes — extracted 10 focused route modules to `/app/backend/routes/`.
 - ✅ **New `core.py` (82 lines)** — single source of truth for `app`, `db`, `client`, `api`/`auth_r` routers, `get_db`, `now_iso`, `logger`, dep singletons (`current_user`, `contractor_only`, `operator_only`, `admin_only`, `contractor_ndaed`), and shared shapers (`_public_user`, `_strip_pricing`).

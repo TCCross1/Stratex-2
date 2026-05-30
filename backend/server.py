@@ -1646,6 +1646,10 @@ async def on_startup():
             upsert=True,
         )
 
+    # Admin Ops Command seed (hardware nodes + supplier material ledger + sales reps)
+    from routes.admin_ops import seed_admin_ops
+    await seed_admin_ops()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2445,6 +2449,7 @@ async def get_recent_flight_authorizations(limit: int = 25, user=Depends(current
 
 # Import route modules so their @api.* decorators register on the shared router.
 from routes import (  # noqa: F401, E402
+    admin_ops,
     assistant,
     billing,
     cv_ice_shield,
