@@ -367,6 +367,11 @@ export default function CeoCommandCenter() {
                 style={{ borderColor: FN.cyan, color: FN.cyan }}>
           <Plane size={12}/> Live Theater · Fleet Tracking <ChevronRight size={12}/>
         </button>
+        <button onClick={() => nav("/ceo/regional")}
+                className="ceo-dock-btn" data-testid="dock-regional"
+                style={{ borderColor: FN.purple, color: FN.purple }}>
+          <Box size={12}/> Regional Switchboard · National Rollup <ChevronRight size={12}/>
+        </button>
       </footer>
 
       {showRotate && (

@@ -1,6 +1,33 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.28.0 — Regional Switchboard · National Rollup)
+**National multi-store fleet rollup with strict local-first sorting.**
+
+**Backend (`regional_switchboard.py` + `routes/regional.py`):**
+- User's `RegionalSwitchboard` class verbatim + process-local `SWITCHBOARD` singleton
+- Cold-boot seed: 4 states · 8 stores · 15 units · 121 lifetime scans
+  - KY (local): Lexington-FLAGSHIP (3 units, 50 scans), Louisville (2 units, 11 scans), Bowling Green (1 unit, 3 scans — pending)
+  - OH: Cincinnati (2/17), Columbus (2/7)
+  - TN: Nashville (2/14), Knoxville (1/3 — pending)
+  - IN: Indianapolis (2/16)
+- Endpoints:
+  - `GET /api/regional/switchboard?local_state=KY` — full national rollup with per-store metrics + national totals (units, scans, gross pipeline, projected MRR, ROI saturation %)
+  - `GET /api/regional/state/{state}` — drilldown to a single state
+  - `POST /api/regional/seed` — idempotent reseed
+- Pricing model from spec: **$1500 license baseline + $200/scan** → drives operational_expense_cost (= projected MRR for STRATEX)
+- ROI saturation: gross_pipeline_sales (scans × $18,410) ≥ $110,000
+
+**Frontend (`pages/RegionalSwitchboard.jsx` mounted at `/ceo/regional`):**
+- 5 hero KPI tiles: ACTIVE UNITS · ACCUMULATED SCANS · GROSS PIPELINE · PROJECTED MRR · ROI SATURATION
+- Per-state accordion (KY pinned first with green ● LOCAL HQ badge); collapsed states show inline ROI ratio + gross summary
+- Expanded states show per-store cards: city + store_id, ROI MET/PENDING pill, 4-stat grid (UNITS · SCANS · GROSS · OPEX-MRR), neon callsign chips at the bottom
+- Future-Noire aesthetic throughout (deep dark gradients, neon cyan/emerald/amber/purple accents, monospace HUD)
+- New bottom-dock button on CEO Command Center: "🌎 Regional Switchboard · National Rollup" (purple)
+
+**Verified:** Backend curl returns correct sort order [KY, IN, OH, TN] with 6/8 ROI saturation; Playwright shows all 5 KPI tiles, 4 state accordions, KY auto-expanded with 3 store cards, OH on-click expansion working. All lint green.
+
+
 ## What's Been Implemented (2026-05-31 — v3.27.0 — Black Box · Flight Replay)
 **Post-mortem flight replay for any audit row on `/admin/consensus`.**
 

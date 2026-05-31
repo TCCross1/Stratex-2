@@ -35,6 +35,7 @@ import PilotDashboard from "@/pages/PilotDashboard";
 import PilotJobSheet from "@/pages/PilotJobSheet";
 import PilotPreflight from "@/pages/PilotPreflight";
 import FleetLiveMap from "@/pages/FleetLiveMap";
+import RegionalSwitchboard from "@/pages/RegionalSwitchboard";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -128,6 +129,7 @@ function AppShell() {
         <Route path="/pilot/preflight/:jobId" element={<Protected role="operator"><PilotPreflight/></Protected>}/>
         <Route path="/fleet/live-map" element={<Protected><FleetLiveMap/></Protected>}/>
         <Route path="/ceo/live-map" element={<Protected role="ceo"><FleetLiveMap/></Protected>}/>
+        <Route path="/ceo/regional" element={<Protected role="ceo"><RegionalSwitchboard/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>

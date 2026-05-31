@@ -1723,6 +1723,10 @@ async def on_startup():
     await seed_demo_live_unit()
     start_drift_loop()
 
+    # Regional Switchboard — national multi-store rollup
+    from regional_switchboard import seed_regional_demo
+    seed_regional_demo()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2535,6 +2539,7 @@ from routes import (  # noqa: F401, E402
     pdf,
     pilot,
     quote_builder,
+    regional,
     sales_hub,
     simulation,
     supply_chain,
