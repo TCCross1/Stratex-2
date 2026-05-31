@@ -348,3 +348,121 @@ async def revert_siding_prices(snapshot_id: str, user=Depends(_admin_only)) -> D
         "pre_revert_snapshot_id": pre_revert_snapshot_id,
         "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
     }
+
+
+
+# ---------------------------------------------------------------------------
+# v3.36.0 — Roofing/Gutter (contractor MaterialsConfig) audit ledger + revert.
+# Snapshot is written by server.py:PUT /api/contractor/materials (pure
+# additive hook). These endpoints expose the ledger + revert flow.
+#
+# Scope rules:
+#   • Contractor: sees & reverts ONLY their own history (filter by user_id).
+#   • Admin: sees & reverts ANY contractor's history (?user_id=... filter
+#     optional; omit to see all contractors).
+# ---------------------------------------------------------------------------
+@api.get("/contractor/materials-brain/contractor-prices/history")
+async def get_contractor_prices_history(
+    limit: int = 50,
+    user_id: Optional[str] = None,
+    user=Depends(_contractor_or_admin),
+) -> Dict[str, Any]:
+    """Return the audit ledger of past PUT /api/contractor/materials writes.
+
+    Contractor scope is auto-clamped to their own user_id. Admin can pass an
+    optional `?user_id=...` to scope a single contractor (omit to see all).
+    Decrypts each prior `_encrypted` blob server-side for diff rendering.
+    """
+    limit = max(1, min(int(limit or 50), 200))
+    role = (user.get("role") or "").lower()
+    if role == "contractor":
+        query: Dict[str, Any] = {"user_id": user["id"]}
+    else:  # admin
+        query = {"user_id": user_id} if user_id else {}
+
+    cursor = db.contractor_pricing_history.find(query, {"_id": 0}).sort("snapshotted_at", -1).limit(limit)
+    rows: List[Dict[str, Any]] = []
+    async for doc in cursor:
+        prices: Optional[Dict[str, Any]] = None
+        try:
+            prices = decrypt_value(doc.get("_encrypted")) or None
+        except Exception:
+            prices = None
+        rows.append({
+            "snapshot_id": doc.get("snapshot_id"),
+            "user_id": doc.get("user_id"),
+            "snapshotted_at": doc.get("snapshotted_at"),
+            "snapshotted_from_updated_at": doc.get("snapshotted_from_updated_at"),
+            "triggered_by": doc.get("triggered_by"),
+            "trigger_action": doc.get("trigger_action"),
+            "encrypted_prices": prices,           # decrypted dict (was Fernet at rest)
+            "public_fields": doc.get("public_fields") or {},
+        })
+    return {
+        "history": rows,
+        "count": len(rows),
+        "scope": "self" if role == "contractor" else ("single_user" if user_id else "all_contractors"),
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+    }
+
+
+@api.post("/contractor/materials-brain/contractor-prices/revert/{snapshot_id}")
+async def revert_contractor_prices(snapshot_id: str, user=Depends(_contractor_or_admin)) -> Dict[str, Any]:
+    """Restore a prior MaterialsConfig sealed override as the active book for
+    the snapshot's owning contractor.
+
+    Contractor can revert only their own snapshots; admin can revert anyone's.
+    The current state is snapshotted first (`pre_revert_snapshot` action) so
+    revert is itself revertable — symmetric with the siding ledger.
+    """
+    target = await db.contractor_pricing_history.find_one({"snapshot_id": snapshot_id}, {"_id": 0})
+    if not target or not target.get("_encrypted"):
+        raise HTTPException(404, f"Snapshot '{snapshot_id}' not found or empty")
+
+    target_user_id = target.get("user_id")
+    role = (user.get("role") or "").lower()
+    if role == "contractor" and target_user_id != user["id"]:
+        raise HTTPException(403, "Contractors can only revert their own snapshots")
+
+    # Snapshot current state first (per-contractor isolation preserved).
+    current = await db.materials_configs.find_one({"user_id": target_user_id}, {"_id": 0})
+    pre_revert_snapshot_id: Optional[str] = None
+    if current and current.get("_encrypted"):
+        pre_revert_snapshot_id = str(uuid.uuid4())
+        prior_public = {k: current.get(k) for k in (
+            "shingle_brand", "underlayment_brand", "ice_water_brand",
+            "ridge_vent_brand", "starter_brand", "drip_edge_color",
+            "fastener_type", "measured_thickness_mm",
+        ) if k in current}
+        await db.contractor_pricing_history.insert_one({
+            "snapshot_id": pre_revert_snapshot_id,
+            "user_id": target_user_id,
+            "_encrypted": current["_encrypted"],
+            "public_fields": prior_public,
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": current.get("updated_at"),
+            "triggered_by": user["id"],
+            "trigger_action": "pre_revert_snapshot",
+        })
+
+    # Restore — overlay public fields from snapshot onto active doc.
+    set_doc: Dict[str, Any] = {
+        "user_id": target_user_id,
+        "_encrypted": target["_encrypted"],
+        "updated_at": now_iso(),
+        "reverted_from_snapshot_id": snapshot_id,
+    }
+    public_fields = target.get("public_fields") or {}
+    set_doc.update(public_fields)
+    await db.materials_configs.update_one(
+        {"user_id": target_user_id},
+        {"$set": set_doc},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "restored_snapshot_id": snapshot_id,
+        "restored_for_user_id": target_user_id,
+        "pre_revert_snapshot_id": pre_revert_snapshot_id,
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+    }

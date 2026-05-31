@@ -1,6 +1,42 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.36.0 — Contractor (Roofing/Gutter) Pricing Audit Ledger + Revert)
+**Same snapshot-on-write + history + revert pattern extended to the contractor's primary MaterialsConfig (roofing + gutter prices). Per-contractor isolation; admin sees the union.**
+
+**Backend additions:**
+- New collection: `db.contractor_pricing_history` — append-only per-contractor ledger. Doc shape: `{snapshot_id, user_id, _encrypted (verbatim prior Fernet ciphertext), public_fields, snapshotted_at, snapshotted_from_updated_at, triggered_by, trigger_action: "put_materials" | "pre_revert_snapshot"}`.
+- **`PUT /api/contractor/materials` (extended — small additive hook in `server.py`)** — before overwriting, snapshots the prior `materials_configs` doc (if present) into the new history collection. Response now returns `previous_snapshot_id` (null on first write).
+- **`GET /api/contractor/materials-brain/contractor-prices/history?limit=50&user_id=...`** (NEW)
+  - Contractor scope: auto-clamped to own user_id, scope reported as `self`
+  - Admin scope: optional `?user_id=...` filter; omit to see all contractors (scope `all_contractors` | `single_user`)
+  - Decrypts each prior `_encrypted` blob server-side for diff rendering
+- **`POST /api/contractor/materials-brain/contractor-prices/revert/{snapshot_id}`** (NEW)
+  - Contractor: can revert only own snapshots (403 otherwise)
+  - Admin: can revert any contractor's
+  - **Snapshots current state first** (`pre_revert_snapshot` action) — revert is itself revertable, symmetric with the siding ledger
+  - Restores both `_encrypted` (sealed) + `public_fields` (brand/color metadata)
+
+**Verified live (14/14 cases pass):**
+- A→B→C PUT chain produces correct snapshot chain (each `previous_snapshot_id` links the prior version)
+- Contractor GET sees own history with prices decrypted ($55.55 → $44.44 → $38.50)
+- Admin GET sees union with `scope: all_contractors`
+- Operator GET → 403; revert as operator → 403
+- Revert to snap A → restores $44.44, writes `pre_revert_snapshot` of $66.66 first
+- Revert nonexistent → 404
+- Post-revert history shows 4 entries with the newest tagged `pre_revert_snapshot`
+
+**Symmetry achieved across all 3 scopes:**
+| Scope | Override Collection | History Collection | Owner | Revert Authority |
+|---|---|---|---|---|
+| Siding | `siding_pricing_overrides` (global) | `siding_pricing_history` | Platform admin | Admin only |
+| Roofing/Gutter | `materials_configs` (per-contractor) | `contractor_pricing_history` | Each contractor | Self + Admin |
+
+**Preservation guardrails honored:** Only a small additive snapshot block inserted before the existing `update_one` in `server.py`'s PUT — no existing line removed, no existing behavior changed; the response simply gains one extra field. New endpoints in `routes/materials_brain.py`. No frontend touched. Pre-existing lint findings in `server.py` (14 unrelated style warnings) left as-is per preservation lock.
+
+All lint green on the touched modules.
+
+
 ## What's Been Implemented (2026-05-31 — v3.35.0 — Siding Pricing Audit Ledger + Revert)
 **Every admin price change to the sealed siding book is now snapshotted before overwrite, with admin-only history + one-click revert. Same Fernet/AES-256 channel.**
 

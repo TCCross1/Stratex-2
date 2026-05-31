@@ -369,12 +369,33 @@ async def save_materials(body: MaterialsConfig, user=Depends(contractor_only)):
         "measured_thickness_mm": body.measured_thickness_mm,
     }
     encrypted = encrypt_value(PRIVATE)
+
+    # --- v3.36.0 — audit ledger hook: snapshot prior doc before overwrite.
+    # Mirrors the siding-price audit pattern (db.siding_pricing_history).
+    # Per-contractor history (key = user_id) so each ledger is isolated.
+    import uuid as _uuid
+    prior = await db.materials_configs.find_one({"user_id": user["id"]}, {"_id": 0})
+    previous_snapshot_id = None
+    if prior and prior.get("_encrypted"):
+        previous_snapshot_id = str(_uuid.uuid4())
+        prior_public = {k: prior.get(k) for k in PUBLIC.keys() if k in prior}
+        await db.contractor_pricing_history.insert_one({
+            "snapshot_id": previous_snapshot_id,
+            "user_id": user["id"],
+            "_encrypted": prior["_encrypted"],          # opaque Fernet ciphertext preserved verbatim
+            "public_fields": prior_public,              # brand/color metadata (already plaintext in source)
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": prior.get("updated_at"),
+            "triggered_by": user["id"],
+            "trigger_action": "put_materials",
+        })
+
     await db.materials_configs.update_one(
         {"user_id": user["id"]},
         {"$set": {"user_id": user["id"], "_encrypted": encrypted, **PUBLIC, "updated_at": now_iso()}},
         upsert=True,
     )
-    return {"ok": True, "encrypted_field_count": len(PRIVATE)}
+    return {"ok": True, "encrypted_field_count": len(PRIVATE), "previous_snapshot_id": previous_snapshot_id}
 
 
 # ---------------------------------------------------------------------------
