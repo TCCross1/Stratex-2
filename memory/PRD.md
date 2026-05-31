@@ -1,6 +1,31 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.25.0 — Altitude-Tinted Breadcrumb Trails)
+**Top Gun HUD aesthetic for the Live Theater map.** Pure additions; no existing behavior modified.
+
+**Backend (`routes/pilot.py`):**
+- New altitude model: per-tick sinusoid `8 + 5·sin(tick·0.18)` → drone oscillates between 3m and 13m on a ~4.5 min cycle
+- Per-unit `_TICK` counter drives the sinusoid; `_ALT_BASE_M`, `_ALT_AMP_M`, `_ALT_FREQ` constants for tuning
+- Drift loop now also computes `vertical_speed_mps` (Δ altitude per 8s tick) and `climb_state` (CLIMB > +0.5 / DESCEND < −0.5 / CRUISE)
+- `pilot_locations` doc now carries `altitude_m`, `vertical_speed_mps`, `climb_state` fields
+- Breadcrumb points are now **3-tuples** `[lat, lng, altitude_m]` (cleared old 2-tuple legacy data on deploy)
+- `/api/fleet/live` automatically returns the enriched shape — no schema breaking, frontend tolerates both 2- and 3-element arrays
+
+**Frontend (`FleetLiveMap.jsx`):**
+- New `altSegColor(altA, altB)` helper: delta > +0.5m → emerald, < −0.5m → amber, else → cyan
+- Polyline rendering split: 1 halo polyline (soft glow, phase-colored) + N per-segment polylines (one for each consecutive pair, individually altitude-colored)
+- Active Roster card now shows live altitude indicator (`↑ ALT 12.3m` emerald climbing / `↓ ALT 8.1m` amber descending / `→ ALT 11.6m` cyan cruise)
+- New `<LegendDot/>` component at top of roster: tiny color key for CLIMB / CRUISE / DESCEND
+
+**Verified live:**
+- 70s after deploy, Alpha-08 had 10 fresh 3D breadcrumb points: first @ 8.9m, mid @ 12.4m, last @ 12.87m → visible climb→cruise pattern
+- 13 polyline path elements rendered on Esri tiles (1 halo + 12 segments)
+- Roster altitude HUD reading `↓ ALT 11.6m` in amber (descent phase) ✅
+- Legend dots visible in correct colors ✅
+- All lint green ✅
+
+
 ## What's Been Implemented (2026-05-31 — v3.24.0 — Variance Injection · The Climax Shot)
 **Demo-only safety-net showcase wired into the live Consensus tile.** Pure additions only.
 

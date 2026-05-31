@@ -27,6 +27,15 @@ const phaseColor = (p) => ({
   COMPLETE: FN_GREEN,
 }[p] || FN_DIM);
 
+// Altitude-aware segment coloring for the breadcrumb polyline.
+// Δ > +0.5m → CLIMB (emerald), Δ < −0.5m → DESCEND (amber), else CRUISE (cyan).
+const altSegColor = (a, b) => {
+  const da = (b ?? 0) - (a ?? 0);
+  if (da > 0.5) return FN_GREEN;
+  if (da < -0.5) return FN_AMBER;
+  return FN_TEAL;
+};
+
 /**
  * Build a heading-aware plane icon. The plane SVG points "up" by default
  * (nose at 0°); we rotate the inner wrapper by `heading_deg` so it points
@@ -122,19 +131,26 @@ export default function FleetLiveMap() {
               const trail = Array.isArray(u.trail) ? u.trail : [];
               return (
                 <React.Fragment key={u.unit_id}>
-                  {/* Breadcrumb trail — fades from dim glow to neon at the head */}
+                  {/* Soft halo under the entire breadcrumb path */}
                   {trail.length >= 2 && (
-                    <>
-                      <Polyline
-                        positions={trail}
-                        pathOptions={{ color, weight: 6, opacity: 0.18 }}
-                      />
-                      <Polyline
-                        positions={trail}
-                        pathOptions={{ color, weight: 2.2, opacity: 0.95, dashArray: "1 6" }}
-                      />
-                    </>
+                    <Polyline
+                      positions={trail.map(p => [p[0], p[1]])}
+                      pathOptions={{ color, weight: 6, opacity: 0.16 }}
+                    />
                   )}
+                  {/* Altitude-tinted per-segment trail. Each polyline = one segment,
+                      colored emerald (climb) / cyan (cruise) / amber (descend). */}
+                  {trail.length >= 2 && trail.slice(0, -1).map((pt, i) => {
+                    const nxt = trail[i + 1];
+                    const segColor = altSegColor(pt[2], nxt[2]);
+                    return (
+                      <Polyline
+                        key={`seg-${u.unit_id}-${i}`}
+                        positions={[[pt[0], pt[1]], [nxt[0], nxt[1]]]}
+                        pathOptions={{ color: segColor, weight: 2.4, opacity: 0.95, dashArray: "1 6" }}
+                      />
+                    );
+                  })}
                   <Marker position={[u.lat, u.lng]}
                           icon={buildPlaneIcon(color, u.unit_id, u.heading_deg || 0)}>
                     <Popup>
@@ -152,33 +168,57 @@ export default function FleetLiveMap() {
           border: `1px solid ${FN_TEAL}33`, borderRadius: 8, padding: 14,
         }}>
           <div style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: "0.28em",
-                        color: FN_TEAL, textTransform: "uppercase", marginBottom: 12 }}>
+                        color: FN_TEAL, textTransform: "uppercase", marginBottom: 8 }}>
             // ACTIVE ROSTER
+          </div>
+          {/* Altitude legend — explains the breadcrumb color key */}
+          <div data-testid="fleet-altitude-legend" style={{
+            display: "flex", gap: 8, marginBottom: 12, paddingBottom: 10,
+            borderBottom: `1px dashed ${FN_TEAL}22`,
+            fontFamily: "monospace", fontSize: 8.5, letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}>
+            <LegendDot color={FN_GREEN} label="CLIMB"/>
+            <LegendDot color={FN_TEAL} label="CRUISE"/>
+            <LegendDot color={FN_AMBER} label="DESCEND"/>
           </div>
           {busy && <div style={{ color: FN_DIM, fontFamily: "monospace" }}>LOADING…</div>}
           {err && <div style={{ color: FN_AMBER, fontSize: 11 }}>{err}</div>}
-          {units.map((u) => (
-            <div key={u.unit_id} style={{
-              border: `1px solid ${phaseColor(u.phase)}55`,
-              background: `${phaseColor(u.phase)}10`,
-              borderRadius: 4, padding: 12, marginBottom: 10,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 700, fontSize: 14 }}>{u.unit_id}</span>
-                <span style={{ color: phaseColor(u.phase), fontFamily: "monospace", fontSize: 9,
-                               letterSpacing: "0.2em" }}>● {u.phase}</span>
+          {units.map((u) => {
+            const climb = u.climb_state || "CRUISE";
+            const altColor = climb === "CLIMB" ? FN_GREEN
+                           : climb === "DESCEND" ? FN_AMBER : FN_TEAL;
+            const altArrow = climb === "CLIMB" ? "↑" : climb === "DESCEND" ? "↓" : "→";
+            return (
+              <div key={u.unit_id} style={{
+                border: `1px solid ${phaseColor(u.phase)}55`,
+                background: `${phaseColor(u.phase)}10`,
+                borderRadius: 4, padding: 12, marginBottom: 10,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{u.unit_id}</span>
+                  <span style={{ color: phaseColor(u.phase), fontFamily: "monospace", fontSize: 9,
+                                 letterSpacing: "0.2em" }}>● {u.phase}</span>
+                </div>
+                <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: 11, color: FN_INK }}>
+                  {u.callsign_pilot}
+                </div>
+                {u.job?.client_name && (
+                  <div style={{ marginTop: 2, color: FN_DIM, fontSize: 11 }}>{u.job.client_name}</div>
+                )}
+                <div style={{ marginTop: 6, color: FN_DIM, fontSize: 10, fontFamily: "monospace",
+                              display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>
+                    {u.telemetry?.charge_level?.toFixed?.(0) ?? "100"}% · {u.telemetry?.wifi_signal} · {u.lifetime_scans ?? 0} scans
+                  </span>
+                  <span data-testid={`fleet-altitude-${u.unit_id}`}
+                        style={{ color: altColor, fontWeight: 700, letterSpacing: "0.1em" }}>
+                    {altArrow} ALT {(u.altitude_m ?? 0).toFixed(1)}m
+                  </span>
+                </div>
               </div>
-              <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: 11, color: FN_INK }}>
-                {u.callsign_pilot}
-              </div>
-              {u.job?.client_name && (
-                <div style={{ marginTop: 2, color: FN_DIM, fontSize: 11 }}>{u.job.client_name}</div>
-              )}
-              <div style={{ marginTop: 6, color: FN_DIM, fontSize: 10, fontFamily: "monospace" }}>
-                {u.telemetry?.charge_level?.toFixed?.(0) ?? "100"}% · {u.telemetry?.wifi_signal} · {u.lifetime_scans ?? 0} scans
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </aside>
       </div>
     </PilotShell>
@@ -223,5 +263,15 @@ function Row({ icon, label, value }) {
       <span style={{ color: "#475569" }}>{icon && <span style={{ marginRight: 4 }}>{icon}</span>}{label}</span>
       <span style={{ color: "#0f172a", textAlign: "right", marginLeft: 10 }}>{value}</span>
     </div>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#94a3b8" }}>
+      <span style={{ width: 14, height: 2, background: color, borderRadius: 1,
+                     boxShadow: `0 0 6px ${color}` }}/>
+      {label}
+    </span>
   );
 }

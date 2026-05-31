@@ -475,6 +475,12 @@ _DRIFT_INTERVAL_SEC = 8
 _BEARING_STATE: Dict[str, float] = {}
 _BEARING_TURN_RATE_DEG = 6.0   # how many degrees the bearing rotates each tick
 _STEP_METERS = 14.0            # per-tick advance along bearing (~roof-orbit pace)
+# Per-unit tick counter drives the altitude sinusoid below.
+_TICK: Dict[str, int] = {}
+# Altitude model: drone oscillates between ~3m (low pass) and ~13m (cruise)
+_ALT_BASE_M = 8.0
+_ALT_AMP_M = 5.0
+_ALT_FREQ = 0.18  # radians/tick → full cycle ~ 35 ticks (~4.5 min)
 
 
 def _advance_along_bearing(lat: float, lng: float, bearing_deg: float, meters: float):
@@ -499,6 +505,16 @@ async def _drift_loop() -> None:
                 bearing = (bearing + _BEARING_TURN_RATE_DEG + random.uniform(-2, 2)) % 360
                 _BEARING_STATE[uid] = bearing
 
+                # Altitude sinusoid: smooth climb → cruise → descend cycle
+                tick = _TICK.get(uid, 0) + 1
+                _TICK[uid] = tick
+                prev_alt = float(u.get("altitude_m", _ALT_BASE_M))
+                alt_m = round(_ALT_BASE_M + _ALT_AMP_M * math.sin(tick * _ALT_FREQ), 2)
+                vspeed = round(alt_m - prev_alt, 2)
+                climb_state = (
+                    "CLIMB" if vspeed > 0.5 else "DESCEND" if vspeed < -0.5 else "CRUISE"
+                )
+
                 old_lat, old_lng = u["lat"], u["lng"]
                 new_lat, new_lng = _advance_along_bearing(old_lat, old_lng, bearing, _STEP_METERS)
                 # tiny noise so trail isn't a perfect arc
@@ -512,20 +528,24 @@ async def _drift_loop() -> None:
                         "lat": new_lat,
                         "lng": new_lng,
                         "heading_deg": heading_deg,
+                        "altitude_m": alt_m,
+                        "vertical_speed_mps": vspeed,
+                        "climb_state": climb_state,
                         "updated_at": now_iso(),
                     }},
                 )
-                # Append + cap breadcrumb trail
+                # Append + cap breadcrumb trail (now 3-tuples: [lat, lng, alt_m])
                 await db[PILOT_BREADCRUMBS_COLLECTION].update_one(
                     {"unit_id": uid},
                     {
                         "$push": {
                             "points": {
-                                "$each": [[round(new_lat, 6), round(new_lng, 6)]],
+                                "$each": [[round(new_lat, 6), round(new_lng, 6), alt_m]],
                                 "$slice": -MAX_TRAIL_POINTS,
                             }
                         },
-                        "$set": {"updated_at": now_iso(), "heading_deg": heading_deg},
+                        "$set": {"updated_at": now_iso(), "heading_deg": heading_deg,
+                                 "altitude_m": alt_m, "climb_state": climb_state},
                     },
                     upsert=True,
                 )
