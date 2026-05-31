@@ -1,6 +1,42 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.32.0 — Materials Brain · Locked Coefficients + Envelope BOM)
+**Two upgrades to the Materials Matrix Engine, both pure-additive under preservation lock:**
+
+**1. Locked scaffold coefficients (`_SCAFFOLD_COEFFS` module constant in `materials_brain.py`)**
+- All starter values for composite, wood, gutter, and roofing scaffolds now extracted into a single named dictionary at the top of the file — auditable, swappable, regression-test-friendly.
+- All previously-magic-number coefficients (waste factors, coverage rates, hanger spacing, etc.) now reference the constant.
+- `scaffold:true` flag preserved on every line that uses them, so the UI can render an "Engineering Preview" badge until field data validates them.
+- Values unchanged — this is a "lock in starter coefficients" refactor (per directive), not a re-tune.
+
+**2. New endpoint: `POST /api/contractor/materials-brain/full-envelope-bom`**
+- Single-call Job Wizard rollup. Accepts any combination of `roofing`, `siding`, `gutter` inputs in one request.
+- New roofing scaffold kernel `compute_roofing_bill_of_materials()` (quantities-only — pricing/labor still owned by `branch_console.py`'s 4-agent pipeline).
+- New envelope kernel `compute_envelope_bill_of_materials()` stitches per-scope BOMs into a single response with:
+  - `scopes_included: ["roofing", "siding", "gutter"]`
+  - `sections: { roofing: {...}, siding: {...}, gutter: {...} }`
+  - Flat `envelope_lines: [...]` array, each line tagged with `scope` for easy table rendering
+  - `line_count` + `scaffold_line_count` for the UI status badge
+
+**Verified live (7/7 curl cases pass):**
+1. Full envelope (2800 sqft roof @ 1.15 pitch, 2400 sqft vinyl siding w/ foam+foil, 180ft K-style aluminum gutters) → 19 lines (roofing 8 + siding 5 + gutter 6), 14 scaffolded. Shingles math: 2800 × 1.15 × 1.10 / 100 = 35.42 → 36 squares ✓
+2. Roofing-only → 7 lines
+3. Siding+gutter, no roofing → 11 lines
+4. Empty body → 400
+5. Operator role → 403
+6. No token → 401
+7. Regression: existing `/siding-bom` endpoint → 200 (zero breakage)
+
+**Frontend impact:** None yet. Backend-only ship; Job Wizard UI integration is the next handoff.
+
+All lint green (ruff). Backend hot-reloaded cleanly.
+
+**Explicitly NOT done (per directive):**
+- No P2 work (Resend email, data-testid audit) — deferred per user instruction.
+- Coefficient values unchanged — only their location/naming was locked.
+
+
 ## What's Been Implemented (2026-05-31 — v3.31.0 — Materials Matrix Engine · Siding + Gutter Brain)
 **New contractor Business Brain module (`materials_brain.py`) covering the siding + gutter surface — pure additive, does not touch existing roofing materials config.**
 

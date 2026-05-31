@@ -14,7 +14,7 @@ margin multiplier sliders).
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -50,6 +50,23 @@ class GutterBomBody(BaseModel):
     style: str            # "K_Style" | "Half_Round"
     material_class: str   # "aluminum" | "copper"
     downspout_count: int = Field(..., ge=0, le=200)
+
+
+class RoofingEnvelopeBody(BaseModel):
+    """Quantities-only roofing scaffold inputs (pricing/labor stays in
+    branch_console's full 4-agent pipeline)."""
+    roof_square_footage: float = Field(..., gt=0, le=100_000)
+    valleys_ft: float = Field(0.0, ge=0, le=10_000)
+    perimeter_ft: float = Field(0.0, ge=0, le=10_000)
+    pitch_multiplier: float = Field(1.0, ge=1.0, le=2.5)
+    flashing_ft: float = Field(0.0, ge=0, le=2_000)
+
+
+class FullEnvelopeBomBody(BaseModel):
+    """All three scopes are optional — pass any combination."""
+    roofing: Optional[RoofingEnvelopeBody] = None
+    siding:  Optional[SidingBomBody] = None
+    gutter:  Optional[GutterBomBody] = None
 
 
 # ---------------------------------------------------------------------------
@@ -96,3 +113,27 @@ async def post_gutter_bom(body: GutterBomBody, user=Depends(_contractor_or_admin
         downspout_count=body.downspout_count,
     )
     return result
+
+
+@api.post("/contractor/materials-brain/full-envelope-bom")
+async def post_full_envelope_bom(body: FullEnvelopeBomBody, user=Depends(_contractor_or_admin)) -> Dict[str, Any]:
+    """Single-call Job Wizard rollup. Pass any combination of roofing/siding/
+    gutter inputs and receive one envelope BOM with per-scope sections plus
+    a flat `envelope_lines` list (each line tagged with its scope).
+
+    Roofing scaffold lives here for quantities only — full pricing/labor
+    quantification stays in `/api/branch/quantify` (branch_console).
+    """
+    if body.roofing is None and body.siding is None and body.gutter is None:
+        raise HTTPException(400, "Provide at least one of: roofing, siding, gutter")
+
+    if body.siding and body.siding.material_class not in {"vinyl", "composite", "wood"}:
+        raise HTTPException(400, f"Unsupported siding material_class '{body.siding.material_class}'")
+    if body.gutter and body.gutter.material_class not in {"aluminum", "copper"}:
+        raise HTTPException(400, f"Unsupported gutter material_class '{body.gutter.material_class}'")
+
+    return MATERIALS_BRAIN.compute_envelope_bill_of_materials(
+        roofing=body.roofing.dict() if body.roofing else None,
+        siding=body.siding.dict() if body.siding else None,
+        gutter=body.gutter.dict() if body.gutter else None,
+    )
