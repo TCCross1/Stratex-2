@@ -1,6 +1,21 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.30.0 — Full Regression · iteration_18)
+**Closed P0 (Regional Map Toggle) and P1 (Contractor PDF Endpoint) carryover from previous fork; ran complete `testing_agent_v3_fork` regression on all recent additions.**
+
+- **P0 Verified** — `/ceo/regional` List↔Map toggle works end-to-end. Screenshot confirms both views render; the previous fork's "missing toggle" was a stale test artifact — `data-testid="regional-view-list"` and `regional-view-map` mount correctly inside `PilotShell` `rightSlot`. Leaflet ESRI satellite basemap + 14 glowing pins + click-to-drill all functional.
+- **P1 Verified** — `GET /api/contractor/deliverable/crown-demo/pdf` returns HTTP 200, `application/pdf`, ~4.7MB valid PDF (`%PDF-1.4` header + `%%EOF` trailer). Deck variant returns ~3MB landscape PDF. Role enforcement: no-token=401, operator=403, contractor=200. Playwright Chromium boots cleanly (~5s cold start, subsequent calls fast).
+- **Full regression PASS** (`/app/test_reports/iteration_18.json`):
+  - Backend: 14/14 pytest cases in 13.5s (`/app/backend/tests/test_iter18_new_features.py`)
+  - Coverage: CEO direct-token login, Regional Switchboard rollup w/ KY pinned first, Consensus engine (`/api/ceo/consensus/recent` + `inject-variance`), Pilot routes (`/calendar`, `/jobs/{id}`, `/preflight/{id}`), Fleet Live (`/api/fleet/live` with telemetry), PDF endpoints + role gating.
+  - Frontend: 100% on CEO login → /ceo/command, /ceo/regional LIST+MAP toggle, /ceo/live-map (drone + breadcrumb trail), /admin/consensus (audit ledger + Black Box Replay), Pilot dashboard + preflight. Zero console errors across full E2E.
+- **Spec-vs-implementation notes (LOW priority, deferred):**
+  - `/api/ceo/consensus/audits` is named `/api/ceo/consensus/recent` (alias optional)
+  - `/api/pilot/jobs` flat list is named `/api/pilot/calendar` (grouped by date)
+  - `roi_saturation_pct` is exposed in totals but computed client-side per state (frontend already renders this fine)
+
+
 ## What's Been Implemented (2026-05-31 — v3.29.0 — Regional Switchboard · National Map View)
 **Geographic toggle on `/ceo/regional` — flips list view to an interactive Esri satellite map.**
 
