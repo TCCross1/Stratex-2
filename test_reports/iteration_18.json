@@ -1,0 +1,46 @@
+{
+  "summary": "STRATEX iteration 18 full regression PASS for all P0/P1 features. Backend: 14/14 pytest cases green in 13.5s covering (1) CEO direct-token login Tony@Stratexdrone.com/1111 → role='ceo' + bad-password rejection; (2) Regional Switchboard with KY pinned first, totals (incl. roi_saturation_pct=75.0), 4 states (KY/IN/OH/TN), per-state store_count + scans; (3) Consensus engine — /api/ceo/consensus/recent returns audit list, /inject-variance accepts demo toggle (200); (4) Pilot routes — /api/pilot/calendar lists 4 jobs, /pilot/jobs/{id} returns sheet, /pilot/preflight/{id} returns checklist (200); (5) Fleet Live /api/fleet/live returns drones with lat/lng + altitude + bearing + trail; (6) PDF deliverables — /crown-demo/pdf + /crown-demo/deck.pdf both 200 application/pdf >100KB for contractor token, 401 no-token, 403 for operator role. Frontend (1920x1080): CEO login → /ceo/command works (token persisted to localStorage). /ceo/regional renders both LIST view (KY accordion with BowlingGreen+Lexington+Louisville store cards, IN/OH/TN collapsed) and MAP view (Leaflet ESRI satellite basemap with 14 glowing pins, ROI MET/PENDING legend, size=gross-pipeline), toggle [data-testid=regional-view-list/-map] both work. /ceo/live-map renders Leaflet with active Alpha-08 drone, breadcrumb trail visible on satellite imagery, Active Roster sidebar shows pilot+job context (TRANSIT_TO_JOB, ALT 12.2m, 27 scans). Admin login → /admin/consensus shows Consensus AI Validation Core Audit Trail with 4 authenticated + 6 rejected_variance = 10 total audits, REPLAY (Black Box) buttons on demo rows, filter chips (ALL/AUTHENTICATED/REJECTED_VARIANCE_CRITICAL), trigger action column. Pilot login (pilot@stratex.io) lands on role-aware home with PILOT TABLET/JOB BOARD/FLEET nav. /pilot/preflight/{job_id} renders 'Fleet Autonomous Launch Authorization — STEP 5 — System Pre-Flight Status'. Zero console errors across all flows.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/ceo/consensus/audits", "issue": "Review request referenced /api/ceo/consensus/audits but actual route is /api/ceo/consensus/recent. No alias. Recommend adding /audits alias for spec parity, or update spec."},
+      {"endpoint": "/api/pilot/jobs", "issue": "Review request referenced GET /api/pilot/jobs (list) and /api/pilot/job-sheet/{id} — actual routes are /api/pilot/calendar (list grouped by date) and /api/pilot/jobs/{job_id} (sheet). Functional equivalents exist; only spec wording differs."},
+      {"endpoint": "/api/regional/switchboard", "issue": "Per-state rows expose store_count + stores_at_roi but NOT a precomputed roi_saturation_pct field — it is exposed only in totals. Frontend currently computes per-state pct from stores_at_roi/store_count (visible as '2/3 ROI' badges). Spec said per-state should expose roi_saturation_pct; consider adding for client simplicity."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter18_new_features.py",
+    "/app/test_reports/pytest/iter18_results.xml"
+  ],
+  "action_items": [
+    "(LOW) Optionally add GET /api/ceo/consensus/audits as alias of /recent, and GET /api/pilot/jobs as flat alias of /calendar.flatMap(jobs), so route names match the operator-facing docs.",
+    "(LOW) Optionally expose roi_saturation_pct per state row in /regional/switchboard (currently only in totals)."
+  ],
+  "critical_code_review_comments": [
+    "routes/ceo.py CEO login correctly bypasses MFA path (DEMO_SMS_BYPASS) and issues access+refresh tokens with role='ceo'. must_rotate_password=true is surfaced cleanly so the UI can prompt.",
+    "routes/regional.py KY-first sorting via SWITCHBOARD.get_sorted_jurisdictions(local_state) is deterministic. Totals aggregation iterates state_cards once; complexity is O(stores).",
+    "routes/pilot.py /pilot/preflight/{job_id} returns the checklist + node status — endpoint shape verified. The seeded calendar exposes 4 jobs for pilot@stratex.io.",
+    "routes/pdf.py role enforcement: contractor=200, no-token=401, operator=403 verified end-to-end with live Playwright Chromium boot (~5s cold, fast warm).",
+    "FleetLiveMap.jsx Leaflet renders altitude-tinted breadcrumb trail (cyan→blue gradient) — visible in screenshot for Alpha-08; sidebar bound to drone telemetry correctly.",
+    "AdminConsensus.jsx audit ledger: filter chips work, REPLAY buttons render only on rows with demo=true (inject-variance entries) — matches Black Box Replay design.",
+    "No console errors collected during the full E2E run (CEO login → regional list/map → live map → admin consensus → pilot preflight)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter18_new_features.py (NEW — 14 pytest cases, 100% pass in 13.48s)"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 pytest)",
+    "frontend": "100% on all listed flows: CEO login, /ceo/regional LIST+MAP toggle, /ceo/live-map drone+trail, /admin/consensus audit ledger, pilot dashboard + preflight"
+  },
+  "test_credentials": "CEO: Tony@Stratexdrone.com / 1111 (direct token, no MFA). Admin: admin@stratex.io / StratexAdmin!2026 + TOTP via /api/auth/totp-debug. Pilot: pilot@stratex.io / Operator!2026 + TOTP. Contractor: anthony@apexroofing.com / Contractor!2026 + TOTP. localStorage token key = 'stratex_token' for admin/contractor/pilot; CEO uses 'stratex_ceo_token'.",
+  "seed_data_creation": "None — used existing demo seed (4 pilot jobs, KY/IN/OH/TN regional mesh, 10 consensus audits incl. injected variance).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest /app/backend/tests/test_iter18_new_features.py -v (13.5s, 14 cases). Route corrections vs spec: consensus=/recent (not /audits), pilot list=/calendar (not /jobs flat). For frontend, CEO login uses [data-testid=ceo-email/ceo-password] + button 'ENTER COMMAND CENTER' — token in localStorage as 'stratex_ceo_token'. Regional Switchboard toggles via [data-testid=regional-view-list] / [data-testid=regional-view-map] — map view uses Leaflet ESRI satellite basemap with 14 markers. Live-map shows drone with cyan breadcrumb trail. Admin consensus accessible only with admin token at /admin/consensus. Pilot preflight is at /pilot/preflight/{job_id} where job_id is pulled from /api/pilot/calendar response.",
+  "rca of the issue": "N/A — no bugs found. All P0/P1 features (CEO login, Regional Switchboard list+map+KY-pin, Consensus audit ledger, Pilot dashboard+calendar+preflight, Fleet Live Map with breadcrumb trail, server-side Playwright PDF + role enforcement) are functional. The only findings are spec-vs-implementation route naming differences (consensus/audits vs /recent, pilot/jobs vs /calendar) which are non-blocking."
+}
