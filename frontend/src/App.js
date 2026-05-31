@@ -26,15 +26,25 @@ import BranchConsole from "@/pages/BranchConsole";
 import ContractorDeliverable from "@/pages/ContractorDeliverable";
 import DeliverableDeck from "@/pages/DeliverableDeck";
 import SimulationRun from "@/pages/SimulationRun";
+import CeoLogin from "@/pages/CeoLogin";
+import CeoCommandCenter from "@/pages/CeoCommandCenter";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
   const loc = useLocation();
   if (user === undefined) return <div className="p-10 text-muted-hud font-mono uppercase tracking-widest">Authenticating…</div>;
-  if (user === null) return <Navigate to="/auth" state={{ from: loc }} replace/>;
+  if (user === null) {
+    // CEO routes have their own login page
+    const target = loc.pathname.startsWith("/ceo") ? "/ceo/login" : "/auth";
+    return <Navigate to={target} state={{ from: loc }} replace/>;
+  }
+  // CEO is an isolated portal — only ceo role can enter
+  if (role === "ceo" && user.role !== "ceo") return <Navigate to="/" replace/>;
+  // CEO role accessing non-CEO routes → bounce to /ceo/command (clean isolation)
+  if (user.role === "ceo" && !loc.pathname.startsWith("/ceo")) return <Navigate to="/ceo/command" replace/>;
   // Admin (incl. investor tour-mode) gets full-app access — passes any role gate
-  if (role && user.role !== role && user.role !== "admin") {
+  if (role && role !== "ceo" && user.role !== role && user.role !== "admin") {
     const home = user.role === "operator" ? "/operator" : "/contractor";
     return <Navigate to={home} replace/>;
   }
@@ -51,11 +61,12 @@ function AppShell() {
     return <AuthCallback/>;
   }
 
-  const hideNav = ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck");
+  const isCeoArea = loc.pathname.startsWith("/ceo");
+  const hideNav = ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
-      <InvestorAssistant/>
+      {!isCeoArea && <InvestorAssistant/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
         <Route path="/onboard" element={<OnboardingROI/>}/>
@@ -93,6 +104,10 @@ function AppShell() {
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>
         <Route path="/billing/success" element={<Protected role="contractor"><BillingSuccess/></Protected>}/>
+
+        {/* CEO Portal — isolated, single-tenant access via /ceo/login only */}
+        <Route path="/ceo/login" element={<CeoLogin/>}/>
+        <Route path="/ceo/command" element={<Protected role="ceo"><CeoCommandCenter/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>

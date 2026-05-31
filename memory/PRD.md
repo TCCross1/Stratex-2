@@ -1,6 +1,26 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.20.0 — CEO Portal + BUILD-SUPPLY GM Command Center)
+- ✅ **New role: `ceo`** — added a 4th persona to the existing admin/contractor/operator model. Single seeded account (`Tony@Stratexdrone.com / 1111`); password is **bcrypt-hashed** at rest, plaintext never persisted.
+- ✅ **Isolated portal** — `/ceo/login` is the **ONLY** entry to `/ceo/command`. CEO sessions can't see contractor/admin/operator pages; non-CEO users hitting `/ceo/*` are bounced to `/`; CEO users hitting any non-`/ceo` route are bounced to `/ceo/command`. No NDA gate; no TOTP step (SMS-verified rotation instead).
+- ✅ **Backend module** `routes/ceo.py`:
+  - `POST /api/auth/ceo/login` — bcrypt + JWT (role=`ceo`); identical error for "bad password" and "not CEO" (no enumeration); brute-force tracking via `login_attempts`
+  - `POST /api/auth/ceo/request-sms` — generates 6-digit code (10-min TTL), **MOCKED Twilio** (`_send_sms` is a stub — wire `TWILIO_ACCOUNT_SID` later). `DEMO_SMS_BYPASS=1` surfaces the code in the response for dev.
+  - `POST /api/auth/ceo/change-password` — verifies code + bcrypt-hashes new password
+  - `GET  /api/ceo/command-center` — aggregates KPIs, ROI matrix (top contractors by realized job spend), open jobs, 7-day calendar, material catalog, monthly gross revenue
+  - `POST /api/ceo/pricing/preview` — live slider-driven margin calculator (no persistence)
+  - `require_ceo` guard added to `stratex_auth.py`; bound as `ceo_only` in `core.py`
+  - Idempotent `seed_ceo()` runs at startup; rotates hash to match env on every restart
+- ✅ **Frontend pages** (additive — no existing UI touched):
+  - `/app/frontend/src/pages/CeoLogin.jsx` — Future-Noire login (green lock, "Command Clearance", gradient submit button)
+  - `/app/frontend/src/pages/CeoCommandCenter.jsx` — faithful rebuild of user's HTML mockup: header banner, left-rail navigation with badge counter, 5 KPI cards w/ colored left borders, STRATEX Investment Return Matrix, animated Central-KY Doppler/Fleet map (grid pattern + colored blips), 7-day Predictive Flight Calendar (today highlighted green), KY-SUPPLY-01 Mission Status with 7-segment progress bar (segment 4 glowing), rainbow margin slider with live price preview, bottom action dock (NEW CLIENTS / ORDERS TO BUILD / ORDERS READY / ORDERS SHIPPED / COMPLETE INVENTORY COST)
+  - **SMS-verified Rotate Password modal** auto-opens when the CEO logs in with a weak (numeric/short) password
+  - Full mobile + tablet responsive — phone gets stacked KPIs (2-col), horizontal sidebar strip, single-column meshes, stacked dock; tablet gets 3-col KPIs with last card spanning
+- ✅ **Aesthetic** — distinct Future-Noire palette (cyan #06b6d4, purple #a855f7, green #10b981, magenta #f43f5e, amber #f59e0b) on near-black canvas. Intentionally different from the rest of STRATEX's PBR Luxury-Corporate Electric-Teal palette, per the user's mockup.
+- ✅ Test credentials updated. Verified end-to-end: login → command center → modal auto-opens → close → slider preview returns live `$69.60` for $48 base × +45%.
+
+
 ## What's Been Implemented (2026-05-30 — v3.19.1 — Mobile-Responsive Comprehensive Report)
 - ✅ **Deliverable page (`/deliverable/demo`, `/contractor/deliverable/:jobId`)** — full mobile layout:
   - Paper: `width 100%`, `padding 20px 16px` on ≤640px (was fixed 900px × 44/56px desktop)

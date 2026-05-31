@@ -1695,6 +1695,10 @@ async def on_startup():
     from routes.branch_console import seed_branch_materials
     await seed_branch_materials()
 
+    # CEO command-center account — single seeded super-admin (Tony@Stratexdrone.com)
+    from routes.ceo import seed_ceo
+    await seed_ceo()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2498,6 +2502,7 @@ from routes import (  # noqa: F401, E402
     assistant,
     billing,
     branch_console,
+    ceo,
     cv_ice_shield,
     deliverable,
     materials_config,

@@ -173,6 +173,16 @@ def role_dep(db_getter, *allowed_roles: str):
     return _dep
 
 
+def require_ceo(db_getter):
+    """Strict CEO-only guard. role must equal 'ceo'."""
+    async def _dep(request: Request) -> Dict[str, Any]:
+        user = await _extract_user(request, db_getter())
+        if user.get("role") != "ceo":
+            raise HTTPException(403, "CEO clearance required")
+        return user
+    return _dep
+
+
 def require_nda(db_getter):
     async def _dep(request: Request) -> Dict[str, Any]:
         user = await _extract_user(request, db_getter())

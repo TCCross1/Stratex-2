@@ -19,7 +19,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-from stratex_auth import auth_dep, role_dep, require_nda  # noqa: E402
+from stratex_auth import auth_dep, role_dep, require_nda, require_ceo  # noqa: E402
 
 # --- Mongo --------------------------------------------------------------
 mongo_url = os.environ["MONGO_URL"]
@@ -52,6 +52,7 @@ current_user = auth_dep(get_db)
 contractor_only = role_dep(get_db, "contractor")
 operator_only = role_dep(get_db, "operator")
 admin_only = role_dep(get_db, "admin")
+ceo_only = require_ceo(get_db)
 contractor_ndaed = require_nda(get_db)
 
 
