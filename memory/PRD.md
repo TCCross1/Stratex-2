@@ -1,6 +1,26 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.29.0 — Regional Switchboard · National Map View)
+**Geographic toggle on `/ceo/regional` — flips list view to an interactive Esri satellite map.**
+
+**Frontend (`RegionalSwitchboard.jsx` pure-append):**
+- New `[📋 LIST] [🗺 MAP]` segmented toggle in the page header (top-right, cyan)
+- New `NationalMapView` sub-component:
+  - `react-leaflet` `MapContainer` with Esri World Imagery tiles
+  - One `CircleMarker` pin per store, geocoded via local `CITY_COORDS` lookup (8 cities: Lexington, Louisville, Bowling Green, Cincinnati, Columbus, Nashville, Knoxville, Indianapolis)
+  - **Color:** emerald = ROI met, amber = pending
+  - **Size:** radius scales 10px → 32px proportional to `gross_pipeline_sales`
+  - **Halo:** ROI-met pins get a soft emerald glow ring underneath
+  - **Permanent tooltip** floats above each pin showing `CITY · NU · NS`
+  - **Popup on click:** full intel (units, scans, gross pipeline, OpEx · MRR, ROI status, "OPEN STATE ACCORDION →" link)
+- Click any pin → toggle flips back to LIST view, target state auto-expands, page scrolls to it (`smooth, block: center`)
+- Bottom legend bar: "8 STORES · CLICK PIN TO DRILL INTO STATE" + neon dot legend (ROI MET / PENDING / SIZE = GROSS PIPELINE)
+- AutoBounds fits the viewport to all pins on first render
+
+**Verified live:** 14 SVG path elements rendered (8 main pins + 6 halos for ROI-met stores), 8 permanent tooltips visible; pin click bounces correctly back to LIST view and expands the right accordion; all lint green; preserved every existing view-mode behavior.
+
+
 ## What's Been Implemented (2026-05-31 — v3.28.0 — Regional Switchboard · National Rollup)
 **National multi-store fleet rollup with strict local-first sorting.**
 

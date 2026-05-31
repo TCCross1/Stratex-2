@@ -8,21 +8,37 @@
  */
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { PilotShell, NeonBadge, FN_TEAL, FN_GREEN, FN_AMBER, FN_DIM, FN_INK } from "@/components/PilotShell";
 import {
   Building2, MapPin, TrendingUp, Wallet, Plane,
-  ChevronDown, ChevronRight, ShieldCheck, Star,
+  ChevronDown, ChevronRight, ShieldCheck, Star, List, Map as MapIcon,
 } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const fmtMoney = (n) => "$" + (n ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
+// City coordinates for the seeded stores. Pure visual lookup; backend stays lean.
+const CITY_COORDS = {
+  "Lexington": [38.0406, -84.5037],
+  "Louisville": [38.2527, -85.7585],
+  "BowlingGreen": [36.9685, -86.4808],
+  "Cincinnati": [39.1031, -84.5120],
+  "Columbus": [39.9612, -82.9988],
+  "Nashville": [36.1627, -86.7816],
+  "Knoxville": [35.9606, -83.9207],
+  "Indianapolis": [39.7684, -86.1581],
+};
+
 export default function RegionalSwitchboard() {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState({});
+  const [view, setView] = useState("list"); // "list" | "map"
   const token = typeof window !== "undefined" ? localStorage.getItem("stratex_token") : null;
 
   useEffect(() => {
@@ -50,8 +66,36 @@ export default function RegionalSwitchboard() {
       subtitle="MULTI-STORE FLEET ROLLUP · LOCAL → NATIONAL"
       back="/ceo/command"
       rightSlot={
-        t && <NeonBadge ok={t.roi_saturation_pct >= 50}
-                        value={`${t.stores_at_roi}/${t.stores_total} STORES AT ROI · ${t.roi_saturation_pct}%`}/>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <div data-testid="regional-view-toggle" style={{
+            display: "inline-flex", border: `1px solid ${FN_TEAL}55`, borderRadius: 4, overflow: "hidden",
+          }}>
+            <button onClick={() => setView("list")} data-testid="regional-view-list"
+                    style={{
+                      background: view === "list" ? FN_TEAL : "transparent",
+                      color: view === "list" ? "#020812" : FN_TEAL,
+                      border: "none", padding: "5px 10px", cursor: "pointer",
+                      fontFamily: "monospace", fontSize: 10, letterSpacing: "0.18em",
+                      textTransform: "uppercase", fontWeight: 700,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                    }}>
+              <List size={11}/> LIST
+            </button>
+            <button onClick={() => setView("map")} data-testid="regional-view-map"
+                    style={{
+                      background: view === "map" ? FN_TEAL : "transparent",
+                      color: view === "map" ? "#020812" : FN_TEAL,
+                      border: "none", padding: "5px 10px", cursor: "pointer",
+                      fontFamily: "monospace", fontSize: 10, letterSpacing: "0.18em",
+                      textTransform: "uppercase", fontWeight: 700,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                    }}>
+              <MapIcon size={11}/> MAP
+            </button>
+          </div>
+          {t && <NeonBadge ok={t.roi_saturation_pct >= 50}
+                          value={`${t.stores_at_roi}/${t.stores_total} STORES AT ROI · ${t.roi_saturation_pct}%`}/>}
+        </span>
       }
     >
       <div style={{ maxWidth: 1300, margin: "0 auto" }}>
@@ -76,14 +120,27 @@ export default function RegionalSwitchboard() {
           </div>
         )}
 
-        {/* State accordions */}
-        <div data-testid="regional-state-list">
-          {(data?.states || []).map((s) => (
-            <StateAccordion key={s.state} state={s}
-                            isOpen={!!open[s.state]}
-                            onToggle={() => setOpen((p) => ({ ...p, [s.state]: !p[s.state] }))}/>
-          ))}
-        </div>
+        {/* State accordions OR national map */}
+        {view === "list" && (
+          <div data-testid="regional-state-list">
+            {(data?.states || []).map((s) => (
+              <StateAccordion key={s.state} state={s}
+                              isOpen={!!open[s.state]}
+                              onToggle={() => setOpen((p) => ({ ...p, [s.state]: !p[s.state] }))}/>
+            ))}
+          </div>
+        )}
+        {view === "map" && data && (
+          <NationalMapView states={data.states}
+                           onPinClick={(state) => {
+                             setView("list");
+                             setOpen((p) => ({ ...p, [state]: true }));
+                             setTimeout(() => {
+                               const el = document.querySelector(`[data-testid="regional-state-${state}"]`);
+                               if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                             }, 150);
+                           }}/>
+        )}
       </div>
     </PilotShell>
   );
@@ -237,5 +294,138 @@ function Skeleton() {
                   textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase" }}>
       LOADING REGIONAL MESH…
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MAP VIEW — glowing pins on Esri satellite tiles, sized by gross pipeline
+// ---------------------------------------------------------------------------
+function FitStoresBounds({ pins }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!pins?.length) return;
+    if (pins.length === 1) { map.setView(pins[0].coords, 8); return; }
+    const bounds = L.latLngBounds(pins.map(p => p.coords));
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }, [pins, map]);
+  return null;
+}
+
+function NationalMapView({ states, onPinClick }) {
+  const pins = useMemo(() => {
+    const out = [];
+    for (const s of states) {
+      for (const store of s.stores) {
+        const coords = CITY_COORDS[store.city];
+        if (!coords) continue;
+        out.push({ state: s.state, isLocal: s.is_local, coords, ...store });
+      }
+    }
+    return out;
+  }, [states]);
+
+  const maxGross = useMemo(
+    () => Math.max(1, ...pins.map(p => p.gross_pipeline_sales)),
+    [pins]
+  );
+
+  return (
+    <div data-testid="regional-map-view" style={{
+      border: `1px solid ${FN_TEAL}55`, borderRadius: 8, overflow: "hidden",
+      boxShadow: `0 30px 60px -30px ${FN_TEAL}88`,
+    }}>
+      <MapContainer center={[38, -85]} zoom={6}
+                    style={{ height: 580, width: "100%", background: "#020812" }}>
+        <TileLayer
+          attribution='Esri'
+          url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        />
+        <FitStoresBounds pins={pins}/>
+        {pins.map((p) => {
+          const met = p.roi_target_saturation_met;
+          const color = met ? FN_GREEN : FN_AMBER;
+          const r = 10 + (p.gross_pipeline_sales / maxGross) * 22;
+          return (
+            <React.Fragment key={`${p.state}-${p.store_id}`}>
+              {met && (
+                <CircleMarker center={p.coords} radius={r + 8}
+                              pathOptions={{ color: FN_GREEN, fillColor: FN_GREEN,
+                                             fillOpacity: 0.08, weight: 0 }}/>
+              )}
+              <CircleMarker center={p.coords} radius={r}
+                            eventHandlers={{ click: () => onPinClick && onPinClick(p.state) }}
+                            pathOptions={{ color, fillColor: color, fillOpacity: 0.55, weight: 2 }}>
+                <Tooltip permanent direction="top" offset={[0, -r - 2]} opacity={0.95}
+                         className="stratex-pin-tooltip">
+                  <span style={{
+                    fontFamily: "monospace", fontSize: 9, letterSpacing: "0.12em",
+                    color, fontWeight: 700, textTransform: "uppercase",
+                  }}>{p.city} · {p.combined_units}u · {p.accumulated_scans}s</span>
+                </Tooltip>
+                <Popup>
+                  <div style={{ minWidth: 220, fontFamily: "system-ui, sans-serif" }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 2 }}>
+                      {p.city} · {p.state}
+                      {p.isLocal && <span style={{ marginLeft: 6, color: "#10b981" }}>● LOCAL HQ</span>}
+                    </div>
+                    <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569",
+                                  letterSpacing: "0.16em", textTransform: "uppercase",
+                                  marginBottom: 6 }}>
+                      {p.store_id}
+                    </div>
+                    <PopRow label="Units" value={p.combined_units}/>
+                    <PopRow label="Scans" value={p.accumulated_scans}/>
+                    <PopRow label="Gross Pipeline" value={fmtMoney(p.gross_pipeline_sales)}/>
+                    <PopRow label="OpEx · MRR" value={fmtMoney(p.operational_expense_cost)}/>
+                    <PopRow label="Status" value={met ? "✓ ROI MET" : "○ PENDING"}
+                            color={met ? "#10b981" : "#f59e0b"}/>
+                    <div style={{ marginTop: 6, color: "#06b6d4", fontFamily: "monospace",
+                                  fontSize: 10, letterSpacing: "0.18em", cursor: "pointer",
+                                  textTransform: "uppercase" }}
+                         onClick={() => onPinClick && onPinClick(p.state)}>
+                      → OPEN {p.state} ACCORDION
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </React.Fragment>
+          );
+        })}
+      </MapContainer>
+      <div style={{
+        padding: "10px 16px", borderTop: `1px solid ${FN_TEAL}33`,
+        background: "rgba(8,18,34,0.85)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        fontFamily: "monospace", fontSize: 10, color: FN_DIM, letterSpacing: "0.18em",
+        textTransform: "uppercase",
+      }}>
+        <span>{pins.length} STORES · CLICK PIN TO DRILL INTO STATE</span>
+        <span style={{ display: "inline-flex", gap: 14 }}>
+          <LegendDot color={FN_GREEN} label="ROI MET"/>
+          <LegendDot color={FN_AMBER} label="PENDING"/>
+          <span style={{ color: "#475569" }}>SIZE = GROSS PIPELINE</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PopRow({ label, value, color }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between",
+                  padding: "2px 0", fontSize: 11, borderBottom: "1px dashed #e5e7eb" }}>
+      <span style={{ color: "#475569" }}>{label}</span>
+      <span style={{ color: color || "#0f172a", fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#94a3b8" }}>
+      <span style={{ width: 9, height: 9, borderRadius: "50%", background: color,
+                     boxShadow: `0 0 8px ${color}` }}/>
+      {label}
+    </span>
   );
 }
