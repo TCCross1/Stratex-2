@@ -2534,6 +2534,7 @@ from routes import (  # noqa: F401, E402
     consensus,
     cv_ice_shield,
     deliverable,
+    materials_brain,
     materials_config,
     onboarding,
     pdf,

@@ -1,6 +1,46 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.31.0 — Materials Matrix Engine · Siding + Gutter Brain)
+**New contractor Business Brain module (`materials_brain.py`) covering the siding + gutter surface — pure additive, does not touch existing roofing materials config.**
+
+**Backend (new files only — preservation lock):**
+- `/app/backend/materials_brain.py` — `MaterialsMatrixEngine` class (user spec verbatim) + process-local `MATERIALS_BRAIN` singleton.
+- `/app/backend/routes/materials_brain.py` — REST surface, registered in `server.py`.
+
+**Catalog covered:**
+- Siding: composite (JamesHardie, LP_SmartSide), vinyl (CertainTeed, Mastic + 4 styles + accessories), wood (Millwork_Local)
+- Gutters: aluminum (5"/6", K-Style/Half-Round, White/Bronze), copper (6" Half-Round, Raw)
+
+**BOM kernels:**
+- `compute_siding_bill_of_materials(...)` — vinyl path is user-authored verbatim (foam+foil branch produces OSB + foam board + nails + seam tape + button caps; no-foam path produces OSB + housewrap + nails). Composite + wood stubs added per build directive, marked `scaffold:true` for UI badge.
+- `compute_gutter_bill_of_materials(...)` — new scaffold (sections/hangers/elbows/downspouts/caps/sealant), 5% waste factor.
+
+**Endpoints (contractor + admin scope — combined per build directive):**
+- `GET  /api/contractor/materials-brain/matrix` — returns full siding+gutter catalog
+- `POST /api/contractor/materials-brain/siding-bom` — body: wall_square_footage, style_type, material_class, use_foam_insulation, use_foil_face
+- `POST /api/contractor/materials-brain/gutter-bom` — body: linear_footage, size, style, material_class, downspout_count
+
+**Verified live (10/10 curl cases pass):**
+1. GET matrix as contractor → 200, returns 3 siding classes + 2 gutter classes
+2. GET matrix as admin → 200 (combined scope working)
+3. GET matrix as operator → 403 (denied)
+4. GET matrix no token → 401
+5. POST siding-bom vinyl+foam+foil (2400 sqft) → 5 lines (78 OSB, 76 foam, 9600 nails, 25 seam tape, 4800 button caps)
+6. POST siding-bom composite scaffold → 5 lines all marked `scaffold:true`
+7. POST siding-bom wood scaffold → 5 lines all marked `scaffold:true`
+8. POST gutter-bom aluminum K-Style (180ft, 4 downspouts) → 6 lines, 18 gutter sections + 91 hangers + 8 elbows
+9. Bad material_class (steel) → 400
+10. POST siding-bom as admin → 200 (admin can compute BOM too)
+
+**Explicitly NOT done (preservation lock honored):**
+- Did NOT add alias endpoints for `/api/ceo/consensus/audits` or `/api/pilot/jobs` (rejected per user directive v3.30.1).
+- Did NOT touch `routes/materials_config.py` or `routes/branch_console.py` — roofing config layer is untouched.
+- Frontend untouched — no UI yet (backend-only delivery for this cycle).
+
+All lint green (ruff). Backend hot-reloaded cleanly with the new route module registered alongside the existing 16 modules.
+
+
 ## What's Been Implemented (2026-05-31 — v3.30.1 — Per-State ROI Saturation %)
 **Smart override accept (per Global Preservation directive):** `/api/regional/switchboard` now exposes a precomputed `roi_saturation_pct` on every state card (alongside totals). Pure additive — `RegionalSwitchboard.jsx` retains its client-side computation for backwards compatibility. Spares downstream consumers (mobile dashboards, future BI exports) a divide. Verified: KY=66.7%, IN=100%, OH=100%, TN=50%, totals=75%.
 
