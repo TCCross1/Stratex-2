@@ -7,7 +7,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PilotShell, NeonBadge, FN_TEAL, FN_GREEN, FN_AMBER, FN_DIM, FN_INK } from "@/components/PilotShell";
@@ -27,13 +27,21 @@ const phaseColor = (p) => ({
   COMPLETE: FN_GREEN,
 }[p] || FN_DIM);
 
-const buildPlaneIcon = (color, callsign) => L.divIcon({
+/**
+ * Build a heading-aware plane icon. The plane SVG points "up" by default
+ * (nose at 0°); we rotate the inner wrapper by `heading_deg` so it points
+ * along the unit's current flight bearing. CSS transitions make the rotation
+ * smooth instead of a snap on every poll.
+ */
+const buildPlaneIcon = (color, callsign, headingDeg = 0) => L.divIcon({
   className: "stratex-plane-icon",
   html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;">
     <div style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle, ${color}cc, ${color}33);border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px ${color};">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}" stroke="${color}" stroke-width="1">
-        <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
-      </svg>
+      <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;transform:rotate(${headingDeg}deg);transition:transform 1.2s cubic-bezier(.4,0,.2,1);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}" stroke="${color}" stroke-width="0.5">
+          <path d="M12 2 L14 11 L22 13 L22 15 L14 15 L13 22 L11 22 L10 15 L2 15 L2 13 L10 11 Z"/>
+        </svg>
+      </div>
     </div>
     <div style="margin-top:4px;padding:2px 6px;background:#020812cc;border:1px solid ${color}88;border-radius:3px;font-family:monospace;font-size:9px;letter-spacing:0.16em;color:${color};white-space:nowrap;">${callsign}</div>
   </div>`,
@@ -109,14 +117,33 @@ export default function FleetLiveMap() {
               url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
             />
             <AutoBounds units={units}/>
-            {units.map((u) => (
-              <Marker key={u.unit_id} position={[u.lat, u.lng]}
-                      icon={buildPlaneIcon(phaseColor(u.phase), u.unit_id)}>
-                <Popup>
-                  <UnitPopover u={u}/>
-                </Popup>
-              </Marker>
-            ))}
+            {units.map((u) => {
+              const color = phaseColor(u.phase);
+              const trail = Array.isArray(u.trail) ? u.trail : [];
+              return (
+                <React.Fragment key={u.unit_id}>
+                  {/* Breadcrumb trail — fades from dim glow to neon at the head */}
+                  {trail.length >= 2 && (
+                    <>
+                      <Polyline
+                        positions={trail}
+                        pathOptions={{ color, weight: 6, opacity: 0.18 }}
+                      />
+                      <Polyline
+                        positions={trail}
+                        pathOptions={{ color, weight: 2.2, opacity: 0.95, dashArray: "1 6" }}
+                      />
+                    </>
+                  )}
+                  <Marker position={[u.lat, u.lng]}
+                          icon={buildPlaneIcon(color, u.unit_id, u.heading_deg || 0)}>
+                    <Popup>
+                      <UnitPopover u={u}/>
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              );
+            })}
           </MapContainer>
         </div>
 

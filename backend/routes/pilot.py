@@ -20,6 +20,7 @@ Endpoints (mounted on shared /api router):
 from __future__ import annotations
 
 import asyncio
+import math
 import random
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,17 @@ from fleet_telemetry import REGISTRY
 NODE_LINKS_COLLECTION = "pilot_node_links"
 PILOT_LOCATIONS_COLLECTION = "pilot_locations"
 PILOT_CALENDAR_COLLECTION = "pilot_calendar_jobs"  # demo-seeded jobs
+PILOT_BREADCRUMBS_COLLECTION = "pilot_breadcrumbs"  # trail history per unit
+MAX_TRAIL_POINTS = 60  # ~8 minutes at 8s cadence
+
+
+def _bearing_deg(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Initial bearing from point A → B, in degrees (0=N, 90=E)."""
+    rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
+    dlon = math.radians(lon2 - lon1)
+    y = math.sin(dlon) * math.cos(rlat2)
+    x = math.cos(rlat1) * math.sin(rlat2) - math.sin(rlat1) * math.cos(rlat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
 # Phase → fleet_telemetry mapping
 PHASE_MAP = {
@@ -325,7 +337,21 @@ async def fleet_live(user=Depends(_staff_eyes)):
             )
             if job:
                 u["job"] = job
+        # Breadcrumb trail (last MAX_TRAIL_POINTS points)
+        trail_doc = await db[PILOT_BREADCRUMBS_COLLECTION].find_one(
+            {"unit_id": u["unit_id"]}, {"_id": 0, "points": 1},
+        )
+        u["trail"] = (trail_doc or {}).get("points", [])
     return {"units": units, "count": len(units)}
+
+
+@api.get("/fleet/live/{unit_id}/trail")
+async def fleet_unit_trail(unit_id: str, user=Depends(_staff_eyes)):
+    """Standalone breadcrumb fetch — useful for replay/zoom UIs."""
+    doc = await db[PILOT_BREADCRUMBS_COLLECTION].find_one({"unit_id": unit_id}, {"_id": 0})
+    if not doc:
+        return {"unit_id": unit_id, "points": [], "heading_deg": 0}
+    return doc
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +470,19 @@ async def seed_demo_live_unit() -> Dict[str, Any]:
 
 _drift_task: Optional[asyncio.Task] = None
 _DRIFT_INTERVAL_SEC = 8
+# Per-unit slowly-rotating bearing seed so the trail draws a believable arc,
+# not random noise.
+_BEARING_STATE: Dict[str, float] = {}
+_BEARING_TURN_RATE_DEG = 6.0   # how many degrees the bearing rotates each tick
+_STEP_METERS = 14.0            # per-tick advance along bearing (~roof-orbit pace)
+
+
+def _advance_along_bearing(lat: float, lng: float, bearing_deg: float, meters: float):
+    """Project a small lat/lng step along a bearing. ~1° lat = 111 km."""
+    br = math.radians(bearing_deg)
+    new_lat = lat + (meters * math.cos(br)) / 111000.0
+    new_lng = lng + (meters * math.sin(br)) / (111000.0 * max(0.0001, math.cos(math.radians(lat))))
+    return new_lat, new_lng
 
 
 async def _drift_loop() -> None:
@@ -452,15 +491,43 @@ async def _drift_loop() -> None:
             cursor = db[PILOT_LOCATIONS_COLLECTION].find({}, {"_id": 0})
             units = await cursor.to_list(length=10)
             for u in units:
-                jitter_lat = (random.random() - 0.5) * 0.00018
-                jitter_lng = (random.random() - 0.5) * 0.00018
+                uid = u["unit_id"]
+                # Each unit has a bearing that rotates ~6°/tick so the path arcs.
+                bearing = _BEARING_STATE.get(uid)
+                if bearing is None:
+                    bearing = random.uniform(0, 360)
+                bearing = (bearing + _BEARING_TURN_RATE_DEG + random.uniform(-2, 2)) % 360
+                _BEARING_STATE[uid] = bearing
+
+                old_lat, old_lng = u["lat"], u["lng"]
+                new_lat, new_lng = _advance_along_bearing(old_lat, old_lng, bearing, _STEP_METERS)
+                # tiny noise so trail isn't a perfect arc
+                new_lat += (random.random() - 0.5) * 0.00006
+                new_lng += (random.random() - 0.5) * 0.00006
+                heading_deg = _bearing_deg(old_lat, old_lng, new_lat, new_lng)
+
                 await db[PILOT_LOCATIONS_COLLECTION].update_one(
-                    {"unit_id": u["unit_id"]},
+                    {"unit_id": uid},
                     {"$set": {
-                        "lat": u["lat"] + jitter_lat,
-                        "lng": u["lng"] + jitter_lng,
+                        "lat": new_lat,
+                        "lng": new_lng,
+                        "heading_deg": heading_deg,
                         "updated_at": now_iso(),
                     }},
+                )
+                # Append + cap breadcrumb trail
+                await db[PILOT_BREADCRUMBS_COLLECTION].update_one(
+                    {"unit_id": uid},
+                    {
+                        "$push": {
+                            "points": {
+                                "$each": [[round(new_lat, 6), round(new_lng, 6)]],
+                                "$slice": -MAX_TRAIL_POINTS,
+                            }
+                        },
+                        "$set": {"updated_at": now_iso(), "heading_deg": heading_deg},
+                    },
+                    upsert=True,
                 )
         except Exception as e:
             print(f"[pilot-drift] {e}")
