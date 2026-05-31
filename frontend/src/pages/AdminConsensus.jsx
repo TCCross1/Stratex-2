@@ -5,7 +5,8 @@
  */
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import { ShieldCheck, AlertTriangle, RefreshCw } from "lucide-react";
+import { ShieldCheck, AlertTriangle, RefreshCw, FileSearch } from "lucide-react";
+import BlackBoxReplay from "@/components/BlackBoxReplay";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -20,6 +21,7 @@ export default function AdminConsensus() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [replay, setReplay] = useState(null);
   const token = typeof window !== "undefined" ? localStorage.getItem("stratex_token") : null;
 
   const load = useCallback(async () => {
@@ -115,12 +117,18 @@ export default function AdminConsensus() {
           {items.map((it) => {
             const ok = it.verification_status === "AUTHENTICATED";
             const demo = it.injected_for_demo === true;
+            const hasTrail = Array.isArray(it.flight_trail) && it.flight_trail.length >= 2;
             return (
-              <div key={it.id} data-testid={`admin-consensus-row-${it.id}`} style={{
-                display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 2fr",
-                padding: "10px 12px", borderTop: "1px solid #1e293b",
-                fontFamily: "monospace", fontSize: 11, alignItems: "center",
-              }}>
+              <div key={it.id} data-testid={`admin-consensus-row-${it.id}`}
+                   onClick={() => setReplay(it)}
+                   style={{
+                     display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 2fr",
+                     padding: "10px 12px", borderTop: "1px solid #1e293b",
+                     fontFamily: "monospace", fontSize: 11, alignItems: "center",
+                     cursor: "pointer", transition: "background 120ms",
+                   }}
+                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(6,182,212,0.06)"; }}
+                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                 <span style={{ color: "#06b6d4", display: "flex", alignItems: "center", gap: 8 }}>
                   {it.job_id}
                   {demo && (
@@ -130,6 +138,14 @@ export default function AdminConsensus() {
                       color: "#f472b6", fontSize: 8, letterSpacing: "0.22em",
                       textTransform: "uppercase", fontWeight: 700,
                     }}>DEMO</span>
+                  )}
+                  {hasTrail && (
+                    <span title="Flight trail snapshot available — click row to replay" style={{
+                      display: "inline-flex", alignItems: "center", gap: 3,
+                      color: "#22d3ee", fontSize: 8, letterSpacing: "0.18em",
+                    }}>
+                      <FileSearch size={9}/> REPLAY
+                    </span>
                   )}
                 </span>
                 <span style={{ color: ok ? "#10b981" : "#f59e0b", display: "flex", alignItems: "center", gap: 6 }}>
@@ -144,6 +160,7 @@ export default function AdminConsensus() {
           })}
         </div>
       </div>
+      {replay && <BlackBoxReplay verdict={replay} onClose={() => setReplay(null)}/>}
     </div>
   );
 }

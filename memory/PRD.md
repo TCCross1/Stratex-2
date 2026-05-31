@@ -1,6 +1,32 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.27.0 — Black Box · Flight Replay)
+**Post-mortem flight replay for any audit row on `/admin/consensus`.**
+
+**Backend (`routes/consensus.py`):**
+- `_persist_verdict` now snapshots the unit's current breadcrumb trail at the moment of the verdict and embeds it on the audit doc as immutable evidence:
+  - `flight_trail: [[lat, lng, alt], ...]` — the full 60-point trail
+  - `flight_meta: { unit_id, final_heading_deg, final_altitude_m, final_climb_state }`
+- Pure addition; older verdicts still display normally (modal shows "No flight trail snapshot" message for them)
+
+**Frontend:**
+- New `components/BlackBoxReplay.jsx` modal:
+  - Esri satellite mini-map with multi-segment altitude-tinted polyline (re-uses the Live Theater color system)
+  - Animated cyan playhead `<CircleMarker>` sweeping along the trail
+  - Played segments are bold + bright; future segments are dashed + 45% opacity
+  - 60-bar altitude profile sparkline with played bars solid, future bars 33% opacity, currently-played bar glowing
+  - Right column: ACTION, FINAL ALTITUDE/CLIMB STATE, FINAL HEADING, 4-agent matrix (color-coded for variance), variance log panel for REJECTED rows
+  - Transport controls: Play/Pause, Reset, manual scrubber, `N / TOTAL` frame counter
+  - 320ms tick rate (~19s replay for a 60-point flight) with auto-loop
+- `AdminConsensus.jsx` rows are now clickable (`onClick={() => setReplay(it)}`), hover-highlighted, and show a tiny `📁 REPLAY` chip next to `job_id` when a trail snapshot is available
+
+**Verified live:**
+- curl POST `/inject-variance` and `/verify-job/crown-demo` now embed 60-point flight_trail + flight_meta ✅
+- Playwright: clicking newest audit row opens modal; map+sparkline+details all render; 61 polylines drawn (1 halo + 60 segments); scrubber/play controls visible ✅
+- All lint green ✅
+
+
 ## What's Been Implemented (2026-05-31 — v3.26.0 — Demo Watermark · Compliance Separation)
 **Subtle pink "DEMO" pill on `/admin/consensus` rows where `injected_for_demo: true`.**
 

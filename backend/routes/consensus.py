@@ -98,6 +98,26 @@ def _build_dataset_from_job(job: Dict[str, Any]) -> StructuralMeasurementDataset
 
 async def _persist_verdict(job_id: str, verdict: Dict[str, Any]) -> Dict[str, Any]:
     """Write the verdict to db.consensus_audits + return the stored doc."""
+    # Black Box: snapshot the unit's current breadcrumb trail at this moment so
+    # the verdict carries an immutable flight record for post-mortem replay.
+    flight_trail = []
+    flight_meta = {}
+    try:
+        trail_doc = await db["pilot_breadcrumbs"].find_one(
+            {"unit_id": "Alpha-08"},
+            {"_id": 0, "points": 1, "heading_deg": 1, "altitude_m": 1, "climb_state": 1},
+        )
+        if trail_doc:
+            flight_trail = list(trail_doc.get("points") or [])
+            flight_meta = {
+                "unit_id": "Alpha-08",
+                "final_heading_deg": trail_doc.get("heading_deg"),
+                "final_altitude_m": trail_doc.get("altitude_m"),
+                "final_climb_state": trail_doc.get("climb_state"),
+            }
+    except Exception:
+        pass
+
     doc = {
         "id": str(uuid.uuid4()),
         "job_id": job_id,
@@ -108,6 +128,8 @@ async def _persist_verdict(job_id: str, verdict: Dict[str, Any]) -> Dict[str, An
         "error_logs": verdict.get("error_logs", []),
         "action": verdict.get("action"),
         "injected_for_demo": verdict.get("injected_for_demo", False),
+        "flight_trail": flight_trail,
+        "flight_meta": flight_meta,
         "created_at": now_iso(),
     }
     await db[AUDIT_COLLECTION].insert_one(doc)
