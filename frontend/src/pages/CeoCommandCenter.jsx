@@ -331,19 +331,29 @@ export default function CeoCommandCenter() {
 
       {/* BOTTOM DOCK */}
       <footer className="ceo-dock">
-        <button className="ceo-dock-btn" style={{ borderColor: FN.cyan,    color: FN.cyan }}>
+        <button onClick={() => nav("/ceo/leads")}
+                className="ceo-dock-btn" data-testid="dock-leads"
+                style={{ borderColor: FN.cyan, color: FN.cyan }}>
           <Users size={12}/> New Clients / Sales
         </button>
-        <button className="ceo-dock-btn" style={{ borderColor: FN.purple,  color: FN.purple }}>
+        <button onClick={() => nav("/ceo/orders/build")}
+                className="ceo-dock-btn" data-testid="dock-build"
+                style={{ borderColor: FN.purple, color: FN.purple }}>
           <Box size={12}/> Orders to Build
         </button>
-        <button className="ceo-dock-btn" style={{ borderColor: FN.cyan,    color: FN.cyan }}>
+        <button onClick={() => nav("/ceo/orders/ready")}
+                className="ceo-dock-btn" data-testid="dock-ready"
+                style={{ borderColor: FN.cyan, color: FN.cyan }}>
           <Truck size={12}/> Orders Ready
         </button>
-        <button className="ceo-dock-btn" style={{ borderColor: FN.purple,  color: FN.purple }}>
+        <button onClick={() => nav("/ceo/orders/shipped")}
+                className="ceo-dock-btn" data-testid="dock-shipped"
+                style={{ borderColor: FN.purple, color: FN.purple }}>
           <Send size={12}/> Orders Shipped
         </button>
-        <button className="ceo-dock-btn" style={{ borderColor: FN.green,   color: FN.green }}>
+        <button onClick={() => nav("/ceo/inventory")}
+                className="ceo-dock-btn" data-testid="dock-inventory"
+                style={{ borderColor: FN.green, color: FN.green }}>
           <Briefcase size={12}/> Complete Inventory Cost <ChevronRight size={12}/>
         </button>
       </footer>

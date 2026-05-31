@@ -80,6 +80,28 @@ export default function ContractorDeliverable() {
             data-testid="deliverable-view-deck">
             <Presentation size={11}/> View as Deck
           </a>
+          <button onClick={() => {
+              // Server-side Playwright PDF (better fidelity than browser Print)
+              const m = window.location.pathname.match(/\/deliverable\/(?:demo|([^/]+))/) ||
+                        window.location.pathname.match(/\/contractor\/deliverable\/([^/]+)/);
+              const jobId = (m && (m[1] || "crown-demo")) || "crown-demo";
+              const token = localStorage.getItem("stratex_token") || "";
+              fetch(`${process.env.REACT_APP_BACKEND_URL}/api/contractor/deliverable/${jobId}/pdf`, {
+                headers: { Authorization: `Bearer ${token}` },
+              }).then(async (r) => {
+                if (!r.ok) throw new Error(await r.text());
+                const blob = await r.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = `STRATEX-${jobId}-deliverable.pdf`;
+                a.click(); URL.revokeObjectURL(url);
+              }).catch((e) => alert("PDF download failed: " + e.message));
+            }}
+            className="no-print font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 inline-flex items-center gap-2"
+            style={{ borderColor: `${TEAL}88`, color: TEAL }}
+            data-testid="deliverable-download-pdf">
+            <Printer size={11}/> Download PDF
+          </button>
           <button onClick={() => window.print()}
             className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5 inline-flex items-center gap-2"
             style={{ background: TEAL, color: PAPER_INK }}

@@ -28,6 +28,8 @@ import DeliverableDeck from "@/pages/DeliverableDeck";
 import SimulationRun from "@/pages/SimulationRun";
 import CeoLogin from "@/pages/CeoLogin";
 import CeoCommandCenter from "@/pages/CeoCommandCenter";
+import SupplyPipeline from "@/pages/SupplyPipeline";
+import InventoryCost from "@/pages/InventoryCost";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -108,6 +110,11 @@ function AppShell() {
         {/* CEO Portal — isolated, single-tenant access via /ceo/login only */}
         <Route path="/ceo/login" element={<CeoLogin/>}/>
         <Route path="/ceo/command" element={<Protected role="ceo"><CeoCommandCenter/></Protected>}/>
+        <Route path="/ceo/leads" element={<Protected role="ceo"><SupplyPipeline status="lead"/></Protected>}/>
+        <Route path="/ceo/orders/build" element={<Protected role="ceo"><SupplyPipeline status="to_build"/></Protected>}/>
+        <Route path="/ceo/orders/ready" element={<Protected role="ceo"><SupplyPipeline status="ready"/></Protected>}/>
+        <Route path="/ceo/orders/shipped" element={<Protected role="ceo"><SupplyPipeline status="shipped"/></Protected>}/>
+        <Route path="/ceo/inventory" element={<Protected role="ceo"><InventoryCost/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>

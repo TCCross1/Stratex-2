@@ -1699,6 +1699,10 @@ async def on_startup():
     from routes.ceo import seed_ceo
     await seed_ceo()
 
+    # Supply-chain demo orders — populates the 4 pipeline pages on cold-boot
+    from routes.supply_chain import seed_supply_orders
+    await seed_supply_orders()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2507,9 +2511,11 @@ from routes import (  # noqa: F401, E402
     deliverable,
     materials_config,
     onboarding,
+    pdf,
     quote_builder,
     sales_hub,
     simulation,
+    supply_chain,
     telemetry_overseer,
     weather,
 )

@@ -187,14 +187,36 @@ async def ceo_change_password(body: ChangePasswordBody, user=Depends(ceo_only)):
 
 
 async def _send_sms(phone: str, message: str) -> bool:
-    """Mocked Twilio. Wire a real client (TWILIO_ACCOUNT_SID / AUTH_TOKEN /
-    FROM_NUMBER) here when credentials are supplied."""
+    """Send SMS via Twilio when credentials are configured, else fall back to
+    the mocked stub. The /request-sms response still surfaces the code via
+    `debug_code` when DEMO_SMS_BYPASS=1 — handy for local testing even with
+    real Twilio configured."""
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    if not sid:
+    auth = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_number = os.environ.get("TWILIO_FROM_NUMBER")
+    if not (sid and auth and from_number):
         # MOCKED — never raises, never sends
         return False
-    # Future: client = Client(sid, os.environ["TWILIO_AUTH_TOKEN"]); client.messages.create(...)
-    return False
+    if not phone:
+        return False
+    try:
+        # Twilio's SDK is synchronous; run in a thread so we don't block the
+        # event loop. Keeps the endpoint <100ms even on real send.
+        import asyncio as _asyncio
+        from twilio.rest import Client
+
+        def _do_send():
+            client = Client(sid, auth)
+            client.messages.create(body=message, from_=from_number, to=phone)
+            return True
+
+        return await _asyncio.to_thread(_do_send)
+    except Exception as e:
+        # Don't 500 the password-rotation flow if Twilio is down; surface
+        # the failure as `sent=false`, force the user to use the bypass code.
+        import logging
+        logging.getLogger("stratex.ceo").exception("Twilio send failed: %s", e)
+        return False
 
 
 # ---------------------------------------------------------------------------

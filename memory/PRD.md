@@ -1,6 +1,39 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.21.0 — P1 Closeouts: PDF · Dock Wiring · Live Twilio)
+**Server-side PDF rendering (Playwright)** — `routes/pdf.py`:
+- `GET /api/contractor/deliverable/{job_id}/pdf` → Letter portrait, multi-page deliverable
+- `GET /api/contractor/deliverable/{job_id}/deck.pdf` → Letter landscape, 10-pages-per-deck
+- Singleton headless-Chromium reused across requests (cold start ~9s, warm ~4s)
+- JWT forwarded into the headless context via localStorage `stratex_token`
+- Owner-check delegates to the same `is_demo + contractor_id` rule used by the JSON deliverable
+- "Download PDF" button added to the existing deliverable toolbar (pure addition — print/refresh/view-as-deck untouched)
+- Playwright installed to default `~/.cache/ms-playwright/` (chromium-1223 + headless-shell-1223)
+
+**Supply-Chain Pipeline + Inventory Rollup** — `routes/supply_chain.py` + 2 new frontend pages:
+- New Mongo collection `supply_orders`; 4 statuses: lead → to_build → ready → shipped
+- `GET /api/ceo/orders?status=…` returns rows + totals + counts_by_status
+- `POST /api/ceo/orders/{order_id}/advance` promotes to next status (never rolls back)
+- `GET /api/ceo/inventory/cost-rollup` aggregates supplier_material_ledger × stock_units by category
+- Idempotent `seed_supply_orders()` boots 15 demo orders (4/4/3/4 distribution)
+- Frontend `SupplyPipeline.jsx` — one component serves all 4 stages; sticky 4-stage strip lets you jump between stages without leaving the page; per-row "Advance →" CTA with live count refresh
+- Frontend `InventoryCost.jsx` — KPI strip + stacked Capital-Allocation-by-Category bar + full per-SKU table (sorted by landed cost, critical-reorder pill)
+- Bottom-dock buttons on `/ceo/command` now wired: New Clients → `/ceo/leads`, Orders to Build → `/ceo/orders/build`, Orders Ready → `/ceo/orders/ready`, Orders Shipped → `/ceo/orders/shipped`, Complete Inventory Cost → `/ceo/inventory`
+
+**Twilio live-SMS path** — `routes/ceo.py`:
+- `_send_sms()` now invokes the real Twilio SDK when `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` are set in env
+- Synchronous Twilio call wrapped in `asyncio.to_thread` to keep the event loop unblocked
+- Falls back to the mocked code path when any of the three env vars are missing (current state — **MOCKED**, awaiting customer keys)
+- `DEMO_SMS_BYPASS=1` still surfaces the code in the response for QA convenience, regardless of whether Twilio is live
+
+Verified live:
+- `/api/contractor/deliverable/crown-demo/pdf` → HTTP 200, 4.75 MB, 4-page Letter portrait
+- `/api/contractor/deliverable/crown-demo/deck.pdf` → HTTP 200, 3.08 MB, 10-page Letter landscape
+- `/ceo/leads`, `/ceo/orders/build`, `/ceo/inventory` all render with seeded data
+- Inventory total: **$182,065 landed** across 10 SKUs · category split Underlayment 28.55% / Shingles 26.91% / Accessories 23.98% / Fasteners 20.56%
+
+
 ## What's Been Implemented (2026-05-31 — v3.20.1 — Command-Center Override Pack: Price-Lock + Consensus AI + Blueprints)
 **Backend** `routes/ceo.py` · `GET /api/ceo/command-center` now returns 3 new payload sections + global price-lock constants:
 - `price_lock` → `{ scan_cost_usd: 200, monthly_license_fee_usd: 1500, scan_cost_label: "$200 / Scan", license_label: "MONTHLY LICENSE FEE: $1,500 / Location" }`
