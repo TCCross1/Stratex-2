@@ -40,15 +40,16 @@ from materials_pricing import (
 # ---------------------------------------------------------------------------
 async def _contractor_or_admin(user=Depends(current_user)):
     role = (user.get("role") or "").lower()
-    if role not in {"contractor", "admin"}:
-        raise HTTPException(403, "Contractor or Admin clearance required")
+    if role not in {"contractor", "admin", "ceo"}:
+        raise HTTPException(403, "Contractor, Admin, or CEO clearance required")
     return user
 
 
 async def _admin_only(user=Depends(current_user)):
     role = (user.get("role") or "").lower()
-    if role != "admin":
-        raise HTTPException(403, "Admin clearance required")
+    # CEO has GM oversight and can view/revert the global siding ledger.
+    if role not in {"admin", "ceo"}:
+        raise HTTPException(403, "Admin or CEO clearance required")
     return user
 
 

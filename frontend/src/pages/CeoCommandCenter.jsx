@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import ConsensusValidationCore from "@/components/ConsensusValidationCore";
+import PricingAuditTimeline from "@/components/PricingAuditTimeline";
 import {
   AlertTriangle, Activity, Users, TrendingUp, PackageX, Radio,
   Folder, BarChart3, Settings, Briefcase, HelpCircle, MapPin,
@@ -333,6 +334,10 @@ export default function CeoCommandCenter() {
             </div>
           </div>
         </section>
+
+        {/* PRICING AUDIT LEDGER — v3.37.0 append-only timeline view.
+            Does not alter telemetry cards, KY Doppler map, or return matrices. */}
+        <PricingAuditTimeline FN={FN}/>
       </main>
 
       {/* BOTTOM DOCK */}

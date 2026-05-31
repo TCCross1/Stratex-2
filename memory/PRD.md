@@ -1,6 +1,37 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.37.0 — Admin Price-Board UI · Future-Noire Timeline)
+**Wired the four audit-ledger endpoints into a clean append-only timeline module on the GM Command Center. Strict preservation: no existing telemetry card, KY Doppler map, or return matrix moved, dropped, or altered.**
+
+**Frontend additions:**
+- New component: `/app/frontend/src/components/PricingAuditTimeline.jsx`
+  - Future-Noire styled (magenta accent border, JetBrains Mono, cyan/purple/green/amber palette inherited from parent via `FN` prop)
+  - Two-tab pill switcher: **SIDING BOOK · GLOBAL** (cyan-tinted when active) ↔ **ROOFING / GUTTER · PER-CONTRACTOR** (purple-tinted when active)
+  - Empty state, loading state, error state all handled
+  - Each row: glowing bullet on a vertical timeline rail, tag chip (OVERRIDE/SAVE/PRE-REVERT), short snapshot id, tune_version or contractor id, timestamp, field count, **REVERT** button (amber). Disclosure caret expands to show the decrypted price grid (up to 30 lines + overflow counter).
+  - Confirms on revert click → fires API → toast notification (green success or magenta error) → reloads ledger.
+  - Mobile-friendly (header collapses, tabs full-width).
+  - Lint clean (ESLint).
+- Mounted in `CeoCommandCenter.jsx` as a new `<section>` immediately after the existing pricing slider, ABOVE the bottom dock. Single-line additive insertion: `<PricingAuditTimeline FN={FN}/>`. Zero existing components moved/altered.
+
+**Backend grant (additive):**
+- Extended `_admin_only` → admin OR ceo, and `_contractor_or_admin` → contractor OR admin OR ceo, so the GM/CEO has visibility into both ledgers. Operator role still denied (403). Verified via curl: CEO=200 on both history endpoints, OP=403, ADMIN=200.
+
+**Verified live:**
+- Smoke screenshot: module renders cleanly below the pricing slider with magenta accent and "Fernet/AES-256 sealed at rest" pill. Both tabs functional (clicking ROOFING/GUTTER tab swaps purple highlight). Empty state shows expected copy.
+- Pre-existing modules all confirmed intact: KPI telemetry grid, Thermal/Radiometric/Quantity Estimator cards, Roofing/Gutters/Vinyl Siding return matrix ($183,860), Live Consensus AI Matrix, item pricing slider, bottom dock (`New Clients/Sales · Orders to Build · Orders Ready · Orders Shipped · Complete Inventory Cost · Live Theater Fleet Tracking · Regional Switchboard`).
+- The KY Doppler tracking map (in upper KPI grid) is unaffected since the new section appends below the main grid, not within it.
+
+**Preservation guardrails honored:**
+- No existing component file modified except `CeoCommandCenter.jsx`'s two new lines (1 import + 1 JSX mount).
+- No layout grid changed.
+- No data-testid renamed.
+- All existing routes & behaviors unchanged.
+
+All lint green (ESLint frontend + ruff backend on touched modules). Backend hot-reloaded cleanly.
+
+
 ## What's Been Implemented (2026-05-31 — v3.36.0 — Contractor (Roofing/Gutter) Pricing Audit Ledger + Revert)
 **Same snapshot-on-write + history + revert pattern extended to the contractor's primary MaterialsConfig (roofing + gutter prices). Per-contractor isolation; admin sees the union.**
 
