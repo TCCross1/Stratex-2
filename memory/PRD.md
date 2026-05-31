@@ -1,6 +1,65 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.39.0 — Structural Anomaly Estimator · Multi-Tier Drone-Thermal Ledger)
+**Full spec delivered: compute + tax-table + audit ledger + multi-temporal delta. Pure additive, lint clean, encrypted pricing channel preserved.**
+
+**New modules (preservation lock honored):**
+- `/app/backend/anomaly_estimator.py` — `StructuralAnomalyEngine` with multi-tier RED/ORANGE/YELLOW severity framework. Author's RED path preserved verbatim; YELLOW + ORANGE scaffolds added per directive (marked `scaffold:true`). Ceiling division on all tiers. Decimal precision: 2-decimal rounding at every financial boundary.
+- `/app/backend/routes/anomaly_estimator.py` — 5 endpoints, all gated to contractor + admin + CEO (operator → 403).
+
+**Tier matrix (locked in `ANOMALY_TIERS` constant):**
+| Color | Severity | Item | Coverage | Spec Cost | Labor/Unit | Scaffold |
+|---|---|---|---|---|---|---|
+| YELLOW | VAPOR_BARRIER_INFILTRATION | Breathable Synthetic Vapor Barrier (Roll) | 250 sqft | $45.00 | 0.5h | true |
+| ORANGE | MEMBRANE_COMPROMISE_PATCH | EPDM Self-Adhering Membrane Patch | 15 sqft | $18.50 | 1.0h | true |
+| RED | CRITICAL_ROT_ALERT | CDX Plywood Sheets 4x8 | 32 sqft | $28.50 | 1.5h | false |
+
+**Pricing — encrypted-channel routing (parity with v3.33–v3.36):**
+- RED tier pulls `osb_sheet_price` from the contractor's encrypted MaterialsConfig (Fernet/AES-256). YELLOW/ORANGE use spec defaults (no encrypted-book key mapped yet).
+- Labor rate pulls `labor_rate_per_hour` from same encrypted channel; falls back to $65.00 if unset.
+- Every line carries a `pricing_source: "contractor_encrypted_book" | "spec_default"` marker so the UI can audit which channel priced what.
+
+**Endpoints (mounted on shared /api router):**
+- `POST /api/contractor/anomaly/evaluate` — body: project_id, mission_id, capture_timestamp, home_state, thermal_matrix[] (with optional centroid_lat/lng, altitude_ft, frame_id, 3d_mesh_id). Runs engine, persists immutable doc to `db.anomaly_scans` with `locked:true` + `pricing_version_id` (SHA-256 of the price-bearing subset of the contractor's encrypted book → stable per pricing config). Returns full ledger inline.
+- `GET /api/contractor/anomaly/tax-table` — drives UI state dropdowns; returns tax rates + tier metadata + which encrypted-price keys map to which tier.
+- `GET /api/contractor/anomaly/scans?project_id=…&mission_id=…&limit=50` — replay ledger, newest first. Contractor scope auto-clamped to own scans; admin/CEO see all.
+- `GET /api/contractor/anomaly/scans/{scan_id}` — single-scan replay with full raw_thermal_matrix payload preserved.
+- `GET /api/contractor/anomaly/delta?project_id=…&scan_a=…&scan_b=…` — multi-temporal degradation delta. Compares two scans on the same project, returns per-tier sqft growth + total sqft growth + critical_rot_growth_sqft + gross_cost_delta_usd + `pricing_drift_detected` flag (true if the two scans were priced under different versions).
+
+**Schema (`db.anomaly_scans`):**
+- `scan_id` (uuid PK), `project_id`, `mission_id`, `capture_timestamp`, `processed_timestamp`
+- `home_state`, `pricing_version_id` (locks historical cost)
+- `three_d_mesh_id` (optional ref to deliverable mesh)
+- `raw_thermal_matrix` (full pixel/coord array — immutable)
+- `calculated_ledger`, `tier_counts`, `financial_summary`
+- `evaluated_by`, `evaluated_by_role`, `locked:true`
+
+**Verified live (15/15 cases pass):**
+1. Tax-table returns 4 states + 3 tiers with full metadata
+2. /tax-table operator → 403, CEO → 200
+3. Multi-tier KY scan (1 YELLOW + 2 ORANGE + 2 RED + 1 GREEN-ignored) → ledger correct
+4. **Math: YELLOW 2×$45=$90, ORANGE 5×$18.50=$92.50, RED 6×$38.75=$232.50 (contractor's encrypted price book), labor 15h × $78/hr=$1170, tax 6%×$415=$24.90, gross=$1,609.90 ✓**
+5. RED tier marked `pricing_source: contractor_encrypted_book`; YELLOW/ORANGE marked `spec_default` ✓
+6. GREEN signature skipped (no remediation) ✓
+7. Coordinates (lat/lng/altitude/frame_id) carried through into ledger ✓
+8. /scans (contractor=self, CEO=all) ✓
+9. /scans/{id} returns `locked:true` + full raw_thermal_matrix preserved
+10. **Multi-temporal /delta**: scan A (May 1) vs scan B (May 31) → YELLOW +140 sqft, ORANGE +17.5 sqft, **RED +59.5 sqft critical-rot growth**, +$342.39 cost delta, pricing_drift=false (same encrypted book) ✓
+11. operator → 403 on every write/read
+12. Negative damaged_area → 422 (Pydantic ge=0)
+13. /delta with bad scan_id → 404
+14. State without tax (CA) → 0% rate falls through cleanly, gross still computes
+
+**Downstream-ready:**
+- Output structure cleanly maps to procurement workflows (qty × item × pricing_source) and field scheduling (labor_hours_estimated per anomaly)
+- `scaffold:true` flag isolates non-destructive remediation (YELLOW/ORANGE) from hard structural framing teardowns (RED)
+- `pricing_version_id` protects historical ledger views from future material/labor cost shifts
+- `db.anomaly_scans` ready for GM Multi-Temporal Replay UI (no frontend yet — backend-only ship per current scope)
+
+All lint green (ruff). Backend hot-reloaded cleanly.
+
+
 ## What's Been Implemented (2026-05-31 — v3.38.0 — Live Investor-Demo Walkthrough)
 **One-click 4-step pricing walkthrough that streams real Fernet-sealed audit rows into the GM timeline panel for investor demos. UI files outside the timeline component stay under preservation lock.**
 

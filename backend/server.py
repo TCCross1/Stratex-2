@@ -2557,6 +2557,7 @@ from routes import (  # noqa: F401, E402
     deliverable,
     materials_brain,
     materials_config,
+    anomaly_estimator,
     onboarding,
     pdf,
     pilot,
