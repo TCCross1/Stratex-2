@@ -107,6 +107,7 @@ async def _persist_verdict(job_id: str, verdict: Dict[str, Any]) -> Dict[str, An
         "audit_records": verdict.get("audit_records", []),
         "error_logs": verdict.get("error_logs", []),
         "action": verdict.get("action"),
+        "injected_for_demo": verdict.get("injected_for_demo", False),
         "created_at": now_iso(),
     }
     await db[AUDIT_COLLECTION].insert_one(doc)
@@ -125,6 +126,16 @@ class VerifyDatasetBody(BaseModel):
     moisture_retention_zones_sqft: float = 0.0
     valley_linear_footage: float = 0.0
     calculated_bom_cost: float = 0.0
+
+
+class InjectVarianceBody(BaseModel):
+    """All fields optional — endpoint falls back to crown-demo defaults."""
+    job_id: Optional[str] = None
+    surface_area_sqft: Optional[float] = None
+    pitch_angles_degrees: Optional[List[float]] = None
+    moisture_retention_zones_sqft: Optional[float] = None
+    valley_linear_footage: Optional[float] = None
+    calculated_bom_cost: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +163,62 @@ async def consensus_verify_job(job_id: str, user=Depends(ceo_only)):
         raise HTTPException(404, f"Job {job_id} not found")
     dataset = _build_dataset_from_job(job)
     verdict = PANEL.verify_and_commit_scan_data(dataset)
+    return await _persist_verdict(job_id, verdict)
+
+
+@api.post("/ceo/consensus/inject-variance")
+async def consensus_inject_variance(
+    body: InjectVarianceBody = InjectVarianceBody(),
+    user=Depends(ceo_only),
+):
+    """DEMO-MODE only: fabricate a REJECTED_VARIANCE_CRITICAL verdict so the CEO
+    can showcase the safety net catching a bad scan in front of investors.
+
+    Two of the four AI agents intentionally disagree with the base measurement
+    (V2 sees +12.4 ft² extra moisture; V3 sees +98.6 ft² extra area + $312.50
+    extra BOM cost). Variance logs read identically to a real failure path so
+    the audit trail at /admin/consensus is visually indistinguishable.
+
+    A follow-up call to /api/ceo/consensus/verify or /verify-job/{id} resolves
+    the rejection (re-scan path complete).
+    """
+    job_id = body.job_id or "crown-demo"
+    surface = body.surface_area_sqft if body.surface_area_sqft is not None else 3420.50
+    pitches = body.pitch_angles_degrees or [22.5, 22.5, 22.4, 22.6]
+    moisture = body.moisture_retention_zones_sqft if body.moisture_retention_zones_sqft is not None else 148.20
+    bom = body.calculated_bom_cost if body.calculated_bom_cost is not None else 8742.18
+
+    base = {
+        "agent": "AI_VALIDATOR_1_GEOMETRY",
+        "calculated_area": round(surface, 2),
+        "primary_angle_mean": round(sum(pitches) / len(pitches), 2),
+        "moisture_footprint": round(moisture, 2),
+        "bom_cost_evaluation": round(bom, 2),
+        "status": "COMPLETED",
+    }
+    # Other validators intentionally diverge so consensus fails.
+    v2 = dict(base, agent="AI_VALIDATOR_2_THERMAL_MOISTURE",
+              moisture_footprint=round(moisture + 12.40, 2))
+    v3 = dict(base, agent="AI_VALIDATOR_3_QUANTITY_ESTIMATOR",
+              calculated_area=round(surface + 98.60, 2),
+              bom_cost_evaluation=round(bom + 312.50, 2))
+    v4 = dict(base, agent="AI_VALIDATOR_4_AUDITOR_GENERAL")
+
+    error_logs = [
+        "Variance detected on AI_VALIDATOR_2_THERMAL_MOISTURE: "
+        "moisture footprint delta +12.40 ft² beyond tolerance (0.01)",
+        "Variance detected on AI_VALIDATOR_3_QUANTITY_ESTIMATOR: "
+        "area delta +98.60 ft², BOM cost delta +$312.50 beyond tolerance (0.01)",
+    ]
+    verdict = {
+        "verification_status": "REJECTED_VARIANCE_CRITICAL",
+        "consensus_score": 0.0,
+        "committed_payload": base,
+        "audit_records": [base, v2, v3, v4],
+        "error_logs": error_logs,
+        "action": "TRIGGER_VECTOR_RE_SCAN_LOOP_MAINTAIN_FLIGHT",
+        "injected_for_demo": True,
+    }
     return await _persist_verdict(job_id, verdict)
 
 

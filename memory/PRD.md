@@ -1,6 +1,36 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.24.0 — Variance Injection · The Climax Shot)
+**Demo-only safety-net showcase wired into the live Consensus tile.** Pure additions only.
+
+**Backend (`routes/consensus.py`):**
+- New `InjectVarianceBody` schema (all fields optional, falls back to crown-demo defaults)
+- New endpoint `POST /api/ceo/consensus/inject-variance` — fabricates a `REJECTED_VARIANCE_CRITICAL` verdict where V2 (THERMAL_MOISTURE) and V3 (QUANTITY_ESTIMATOR) intentionally diverge from V1 + V4. Variance logs read identically to a real failure path. Stamped `injected_for_demo: true` for audit-trail filtering.
+- `_persist_verdict` extended to carry the demo flag through to Mongo
+
+**Frontend (`ConsensusValidationCore.jsx`):**
+- New `injectVariance` handler + `INJECT VARIANCE` amber button next to the existing re-run/refresh row
+- Tile chrome dynamically flips on rejection: red left-border, red ring shadow, "VARIANCE CAUGHT" header annotation, pulsing red "REJECTED · RE-SCAN" pill (CSS keyframes `stx-rej-pulse`)
+- 4-agent grid now color-codes divergent agents red (XCircle icon + "VARIANCE" label) vs matching agents green
+- New `data-testid="ceo-consensus-variance-logs"` panel renders the actual error_logs with "⚠ VARIANCE LOG · DRONE HOLD · RE-SCAN LOOP ENGAGED" header
+- Primary action button transforms: "RE-RUN CONSENSUS · crown-demo" → bold pulsing green "RESOLVE · RE-SCAN COMPLETE" when rejected
+- Background flash animation on inject (`stx-flash` keyframe)
+
+**Verified live end-to-end:**
+- curl POST `/inject-variance` with empty body → returns REJECTED_VARIANCE_CRITICAL with 4 audit records (V2 moisture+12.4, V3 area+98.6 / cost+312.5) ✅
+- curl POST `/verify-job/crown-demo` immediately resolves back to AUTHENTICATED 100% ✅
+- Playwright DOM: state pill flips to "REJECTED · RE-SCAN", variance-logs panel visible with both error strings, V2 + V3 grid cells red, V1 + V4 grid cells green ✅
+- All lint green ✅
+
+**Investor demo flow (3 clicks):**
+1. CEO Command Center opens on AUTHENTICATED state (default seed)
+2. Click `INJECT VARIANCE` → red pulse, drone HOLD, V2+V3 disagree, full variance log
+3. Click `RESOLVE · RE-SCAN COMPLETE` → re-scan succeeds, tile flips back to AUTHENTICATED
+
+Files preserved: existing `ConsensusValidationCard` (static), every consensus endpoint, the verbatim `consensus_validation_engine.py` panel.
+
+
 ## What's Been Implemented (2026-05-31 — v3.23.0 — Pilot App · The Full Sortie)
 **THE COMPLETE PILOT JOURNEY — 4 NEW SCREENS, end-to-end.**
 
