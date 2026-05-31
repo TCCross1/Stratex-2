@@ -233,6 +233,13 @@ async def login(body: LoginStartBody, request: Request):
         )
         raise HTTPException(401, "Invalid credentials")
 
+    # CEO accounts use the dedicated /api/auth/ceo/login flow (SMS-based, no TOTP).
+    # Bounce them back to the CEO portal instead of forcing TOTP they don't have.
+    if user.get("role") == "ceo":
+        return {"ceo_redirect": True, "email": user["email"],
+                "portal": "/ceo/login",
+                "message": "CEO accounts must sign in via the secure CEO portal."}
+
     # Tour-mode (investor walkthrough) users bypass MFA — frictionless demo.
     is_tour = bool(user.get("tour_mode", False))
 

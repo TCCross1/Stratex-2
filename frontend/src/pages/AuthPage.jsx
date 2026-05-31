@@ -44,6 +44,11 @@ export default function AuthPage() {
     try {
       if (step === 1) {
         const r = await loginStep1(email.trim().toLowerCase(), password);
+        if (r.ceo_redirect) {
+          toast.message(r.message || "CEO portal sign-in required.");
+          navigate(`/ceo/login?email=${encodeURIComponent(r.email || email.trim().toLowerCase())}`);
+          return;
+        }
         if (r.mfa_required) {
           setStep(2);
           try {

@@ -5,8 +5,8 @@
  * stored in the same `stratex_token` localStorage key as every other portal,
  * so `useAuth()` immediately recognises the user as `role: "ceo"`.
  */
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/lib/auth";
 import { Lock, AlertTriangle, ArrowRight } from "lucide-react";
@@ -16,10 +16,16 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function CeoLogin() {
   const nav = useNavigate();
   const { setUser } = useAuth();
-  const [email, setEmail] = useState("Tony@Stratexdrone.com");
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(searchParams.get("email") || "Tony@Stratexdrone.com");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    const e = searchParams.get("email");
+    if (e) setEmail(e);
+  }, [searchParams]);
 
   const submit = async (e) => {
     e.preventDefault();
