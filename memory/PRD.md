@@ -1,6 +1,54 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.34.0 — Field-Tune v1 + Sealed Swap Mechanism)
+**Plugged in production-grade KY/Midwest 2026 siding pricing AND built the admin-only sealed swap channel — both in one cycle.**
+
+**Part 1 — `field_tune_v1` siding defaults (`/app/backend/materials_pricing.py`)**
+Updated `_SIDING_DEFAULT_PLAINTEXT` (15 line items) to realistic 2026 KY/Midwest supply-house rates:
+| Item | v3.33 | v1 field-tune |
+|---|---|---|
+| 7/16 OSB Sheathing | $38.75 | **$42.00** (post-tariff) |
+| 1" Aluminum-Faced Foam Board | $22.50 | **$24.50** |
+| Standard Housewrap Roll (Tyvek 9'×100') | $168.00 | **$185.00** |
+| Composite Fiber-Cement Lap Board (12ft Hardie/LP) | $9.85 | **$14.50** |
+| T&G Wood Plank (8ft pine/cedar) | $6.40 | **$8.25** |
+| Building Felt Roll (15lb) | $32.00 | **$36.50** |
+| Penetrating Wood Sealer (1gal) | $38.00 | **$44.00** |
+| Seam Tape (3M 8067) | $14.00 | **$18.50** |
+| (and 7 more) | | |
+
+Quantity coefficients (`_SCAFFOLD_COEFFS`) remain unchanged — they're still scaffold-tier. Each priced siding line now carries a **new `pricing_tune` marker** (e.g. `"field_tune_v1"`) so the UI can show **"production pricing · scaffold quantities"** to the contractor.
+
+**Part 2 — Sealed swap mechanism (admin-controlled, transparent)**
+New endpoints (mounted on shared `/api` router):
+- `GET  /api/contractor/materials-brain/siding-prices` — contractor + admin scope. Returns active book + `source` (`module_default` | `admin_override`) + `tune_version` + `known_item_keys` + encryption channel ID.
+- `PUT  /api/contractor/materials-brain/siding-prices` — **admin-only**. Accepts partial price overrides + optional `tune_version` label. Validates keys against whitelist (rejects unknown items with 400). Encrypts via `encrypt_value` (Fernet/AES-256, HKDF-SHA256 from `AES_KEY`), persists to new `db.siding_pricing_overrides` collection as `{key:"global", _encrypted, tune_version, updated_at, updated_by}`.
+
+New collection: `db.siding_pricing_overrides` (single-doc global; per-platform tuning, not per-contractor — by design, since master pricing is admin-controlled).
+
+Resolution order at every envelope call:
+1. `db.siding_pricing_overrides._encrypted` (Fernet) → if present, decrypt & overlay onto v1 defaults
+2. Module v1 sealed defaults (Fernet) → fallback
+
+The swap is **transparent to the envelope endpoint** — `post_full_envelope_bom` just calls `get_active_siding_prices(db)` and stamps the resulting tune version into `pricing_meta.siding_tune_version` + `pricing_meta.siding_book_source`. No deploy needed to change prices.
+
+**Verified live (9/9 test cases pass):**
+1. GET as contractor → v1 defaults, 15 known item keys, `module_default`
+2. GET as operator → 403
+3. PUT as contractor → 403 (admin-only enforced)
+4. PUT with unknown key → 400
+5. PUT $999.99 OSB sentinel + custom tune label → 200, 2 fields sealed
+6. GET post-override → `admin_override`, OSB=$999.99, untouched keys fall back to v1 (partial-update merge works)
+7. Envelope endpoint automatically picks up the override → BOM line shows $999.99 with `pricing_tune: field_tune_v2_KY_test`
+8. Reset (override deleted) → GET returns `module_default` / OSB=$42.00 cleanly
+9. Final v1 envelope: Anthony's standard job → **$11,977.75 grand total** (Roof $2,403 / Siding $6,344.50 / Gutter $3,230.25) — +$590 vs v3.33 due to field-tuned siding rates
+
+**Preservation guardrails honored:** `MaterialsConfig` schema unchanged. `db.materials_configs` schema unchanged. Frontend untouched. `routes/branch_console.py` 4-agent roofing pipeline unchanged.
+
+All lint green (ruff). Backend hot-reloaded cleanly.
+
+
 ## What's Been Implemented (2026-05-31 — v3.33.0 — Encrypted Per-Brand Pricing on Envelope BOM)
 **Single-call `/full-envelope-bom` endpoint now natively attaches encrypted unit prices to every line — same Fernet/AES-256 channel as the primary roofing module.**
 

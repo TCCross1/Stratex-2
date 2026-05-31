@@ -21,9 +21,16 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core import api, current_user, db
+from core import api, current_user, db, now_iso
 from materials_brain import MATERIALS_BRAIN
-from materials_pricing import attach_unit_prices, resolve_unit_price_book
+from materials_pricing import (
+    attach_unit_prices,
+    get_active_siding_prices,
+    known_siding_item_keys,
+    resolve_unit_price_book,
+    seal_siding_override,
+    _SIDING_PRICE_TUNE_VERSION,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -33,6 +40,13 @@ async def _contractor_or_admin(user=Depends(current_user)):
     role = (user.get("role") or "").lower()
     if role not in {"contractor", "admin"}:
         raise HTTPException(403, "Contractor or Admin clearance required")
+    return user
+
+
+async def _admin_only(user=Depends(current_user)):
+    role = (user.get("role") or "").lower()
+    if role != "admin":
+        raise HTTPException(403, "Admin clearance required")
     return user
 
 
@@ -152,6 +166,70 @@ async def post_full_envelope_bom(body: FullEnvelopeBomBody, user=Depends(_contra
     # paths route through the same Fernet/AES-256 channel that the primary
     # roofing module uses.
     price_book = await resolve_unit_price_book(db, user["id"])
-    pricing_summary = attach_unit_prices(envelope["envelope_lines"], price_book)
+    # Resolve active siding book — admin override (if present) or v1 defaults.
+    siding_book = await get_active_siding_prices(db)
+    pricing_summary = attach_unit_prices(envelope["envelope_lines"], price_book, siding_book)
     envelope.update(pricing_summary)
     return envelope
+
+
+# ---------------------------------------------------------------------------
+# v3.34.0 — Sealed siding-price swap layer.
+# GET   /siding-prices  → admin sees override + defaults; contractor sees union.
+# PUT   /siding-prices  → admin-only; encrypts & persists override.
+# ---------------------------------------------------------------------------
+class SidingPriceOverrideBody(BaseModel):
+    """Admin-supplied per-item siding price overrides. Partial updates allowed
+    — any key omitted falls back to the v1 field-tune default automatically."""
+    prices: Dict[str, float] = Field(..., description="Item label → USD price")
+    tune_version: Optional[str] = Field(None, description="Optional label, e.g. 'field_tune_v2_KY_2026Q3'")
+
+
+@api.get("/contractor/materials-brain/siding-prices")
+async def get_siding_prices(user=Depends(_contractor_or_admin)) -> Dict[str, Any]:
+    """Return the **active** siding price book (admin override or v1 defaults).
+    Contractor: read-only view. Admin: same view, plus knows it can PUT."""
+    book = await get_active_siding_prices(db)
+    return {
+        "active_prices": book["prices"],
+        "tune_version":  book["tune_version"],
+        "source":        book["source"],
+        "updated_at":    book["updated_at"],
+        "known_item_keys": sorted(known_siding_item_keys()),
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+    }
+
+
+@api.put("/contractor/materials-brain/siding-prices")
+async def put_siding_prices(body: SidingPriceOverrideBody, user=Depends(_admin_only)) -> Dict[str, Any]:
+    """Admin-only. Encrypt the supplied override dict (partial updates OK) and
+    persist as a single sealed document under `db.siding_pricing_overrides`."""
+    if not body.prices:
+        raise HTTPException(400, "prices payload must include at least one key")
+    known = known_siding_item_keys()
+    unknown = sorted(k for k in body.prices.keys() if k not in known)
+    if unknown:
+        raise HTTPException(400, f"Unknown siding item keys: {unknown}")
+    for k, v in body.prices.items():
+        if not isinstance(v, (int, float)) or v < 0 or v > 100_000:
+            raise HTTPException(400, f"Price for '{k}' out of bounds (0–100000)")
+
+    sealed = seal_siding_override(body.prices)
+    tune_version = body.tune_version or f"{_SIDING_PRICE_TUNE_VERSION}_override"
+    await db.siding_pricing_overrides.update_one(
+        {"key": "global"},
+        {"$set": {
+            "key": "global",
+            "_encrypted": sealed,
+            "tune_version": tune_version,
+            "updated_at": now_iso(),
+            "updated_by": user["id"],
+        }},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "encrypted_field_count": len(body.prices),
+        "tune_version": tune_version,
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+    }
