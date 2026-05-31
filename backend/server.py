@@ -1710,6 +1710,12 @@ async def on_startup():
     from routes.supply_chain import seed_supply_orders
     await seed_supply_orders()
 
+    # Consensus AI Validation Core — seed demo verdict + start background sweep
+    # (pure addition per global preservation lock; existing flows untouched)
+    from routes.consensus import seed_consensus_demo, start_auto_sweep
+    await seed_consensus_demo()
+    start_auto_sweep()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2514,6 +2520,7 @@ from routes import (  # noqa: F401, E402
     billing,
     branch_console,
     ceo,
+    consensus,
     cv_ice_shield,
     deliverable,
     materials_config,

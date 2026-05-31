@@ -10,6 +10,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Printer, MapPin, User, CalendarClock, Wind, ShieldCheck, Plane, FileText, Layers, AlertTriangle, RotateCw, Award, Grid3X3, Droplets, Hammer, Wrench, Trash, Ruler, Presentation } from "lucide-react";
 import { api } from "@/lib/api";
+import ConsensusBadge from "@/components/ConsensusBadge";
 
 const TEAL = "#00F5D4";
 const ORANGE = "#FF5400";
@@ -116,6 +117,9 @@ export default function ContractorDeliverable() {
         background: PAPER, color: PAPER_INK,
       }} data-testid="deliverable-paper">
         <Letterhead pkt={pkt}/>
+        <div style={{ marginTop: -10, marginBottom: 14 }}>
+          <ConsensusBadge jobId={effectiveId}/>
+        </div>
         <ClientFlightBlock pkt={pkt}/>
         <RoofComposition pkt={pkt}/>
         <GeometricsExtended pkt={pkt}/>

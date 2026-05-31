@@ -30,6 +30,7 @@ import CeoLogin from "@/pages/CeoLogin";
 import CeoCommandCenter from "@/pages/CeoCommandCenter";
 import SupplyPipeline from "@/pages/SupplyPipeline";
 import InventoryCost from "@/pages/InventoryCost";
+import AdminConsensus from "@/pages/AdminConsensus";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -102,6 +103,7 @@ function AppShell() {
         <Route path="/admin/ops" element={<Protected role="admin"><AdminOps/></Protected>}/>
         <Route path="/contractor/quote-builder" element={<Protected role="contractor"><QuoteBuilder/></Protected>}/>
         <Route path="/admin/branch-console" element={<Protected role="admin"><BranchConsole/></Protected>}/>
+        <Route path="/admin/consensus" element={<Protected role="admin"><AdminConsensus/></Protected>}/>
 
         <Route path="/fleet" element={<Protected><FleetBoard/></Protected>}/>
         <Route path="/billing" element={<Protected role="contractor"><Pricing/></Protected>}/>

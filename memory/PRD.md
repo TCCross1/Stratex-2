@@ -1,6 +1,39 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.22.0 — Consensus AI Validation Core — LIVE)
+**Live 4-Agent Consensus Engine** — `consensus_validation_engine.py` + `routes/consensus.py`:
+- `ConsensusAuditPanel` runs 4 specialized validators: Geometry, Thermal/Moisture, Quantity Estimator, Auditor-General
+- Tolerance gate (≤0.01) on area/angle/cost deltas → AUTHENTICATED vs REJECTED_VARIANCE_CRITICAL
+- New Mongo collection `consensus_audits` persists every verdict with full audit_records[] + variance logs
+- New endpoints (all prefixed /api):
+  - `POST /ceo/consensus/verify` — verify a raw measurement dataset
+  - `POST /ceo/consensus/verify-job/{job_id}` — pulls measurements from `db.jobs` and runs the panel
+  - `GET  /ceo/consensus/recent?limit=N` — last N committed verdicts (CEO/admin)
+  - `GET  /ceo/consensus/by-job/{job_id}` — latest verdict for one job
+  - `GET  /consensus/public/by-job/{job_id}` — public read-only summary (no auth, no inner payload — used by deliverable badge)
+  - `GET  /admin/consensus?status=…` — admin audit feed + aggregate totals
+- Auto-trigger sweep (`_auto_sweep_loop`, 45s interval): watches for `audit_approved_at` or `status in [AUDIT_APPROVED, SENT]` jobs lacking a consensus verdict and runs the panel automatically (idempotent)
+- `seed_consensus_demo()` writes one AUTHENTICATED verdict for `crown-demo` on cold-boot
+
+**Frontend — 3 mount points, all PURE additions:**
+- `components/ConsensusValidationCore.jsx` → LIVE tile on `/ceo/command` (sibling to the existing static `ConsensusValidationCard`, both coexist). Shows latest verdict + 4-agent grid + re-run button + recent history count.
+- `components/ConsensusBadge.jsx` → public "4/4 CONSENSUS · 100%" pill under the STRATEX letterhead on `/contractor/deliverable/:jobId` and `/deliverable/demo`. Hits the public summary endpoint (no auth, no payload leakage).
+- `pages/AdminConsensus.jsx` → new `/admin/consensus` page: 3 KPI stats (Auth / Rejected / Total) + status filter + audit table sorted desc by timestamp.
+
+**Auth Bug Fix (carried over from same session)**: `/api/auth/login` now returns `ceo_redirect:true` when a CEO-role user attempts the standard TOTP flow → frontend auto-bounces to `/ceo/login` with email prefilled. Added a discreet "🔒 EXECUTIVE? → CEO PORTAL" link under the sign-in card.
+
+Verified live:
+- `curl GET /api/consensus/public/by-job/crown-demo` → AUTHENTICATED · 100.0% (no auth required) ✅
+- `curl GET /api/ceo/consensus/recent` w/ CEO Bearer → returns full audit_records[] ✅
+- `curl GET /api/admin/consensus` w/ admin Bearer → returns items + totals ✅
+- Playwright: Live tile visible on `/ceo/command`, state = AUTHENTICATED, agent grid visible, re-run button refreshes latest ✅
+- Playwright: Deliverable badge "4/4 CONSENSUS · 100%" visible under letterhead ✅
+- Playwright: `/admin/consensus` shows Auth=1 / Rejected=0 / Total=1 with crown-demo row ✅
+
+Untouched (Preservation Lock honoured): existing `ConsensusValidationCard` static UI, existing deliverable layout/sub-components, all other CEO Command Center cards, all other routes.
+
+
 ## What's Been Implemented (2026-05-31 — v3.21.0 — P1 Closeouts: PDF · Dock Wiring · Live Twilio)
 **Server-side PDF rendering (Playwright)** — `routes/pdf.py`:
 - `GET /api/contractor/deliverable/{job_id}/pdf` → Letter portrait, multi-page deliverable

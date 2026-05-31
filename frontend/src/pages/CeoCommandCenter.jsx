@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import ConsensusValidationCore from "@/components/ConsensusValidationCore";
 import {
   AlertTriangle, Activity, Users, TrendingUp, PackageX, Radio,
   Folder, BarChart3, Settings, Briefcase, HelpCircle, MapPin,
@@ -292,6 +293,11 @@ export default function CeoCommandCenter() {
         <section className="ceo-mesh" data-testid="ceo-row-consensus-blueprint">
           <ConsensusValidationCard consensus={pkt.consensus}/>
           <BlueprintsCard blueprint={pkt.blueprint}/>
+        </section>
+
+        {/* LIVE 4-AGENT CONSENSUS CORE — pure addition wired to /api/ceo/consensus/* */}
+        <section data-testid="ceo-row-consensus-live" style={{ marginTop: 16 }}>
+          <ConsensusValidationCore token={typeof window !== "undefined" ? localStorage.getItem("stratex_token") : null}/>
         </section>
 
         {/* PRICING SLIDER WIDGET */}
