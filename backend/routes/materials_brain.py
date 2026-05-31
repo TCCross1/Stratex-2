@@ -16,7 +16,8 @@ margin multiplier sliders).
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+import uuid
+from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -25,6 +26,7 @@ from core import api, current_user, db, now_iso
 from materials_brain import MATERIALS_BRAIN
 from materials_pricing import (
     attach_unit_prices,
+    decrypt_value,
     get_active_siding_prices,
     known_siding_item_keys,
     resolve_unit_price_book,
@@ -203,7 +205,13 @@ async def get_siding_prices(user=Depends(_contractor_or_admin)) -> Dict[str, Any
 @api.put("/contractor/materials-brain/siding-prices")
 async def put_siding_prices(body: SidingPriceOverrideBody, user=Depends(_admin_only)) -> Dict[str, Any]:
     """Admin-only. Encrypt the supplied override dict (partial updates OK) and
-    persist as a single sealed document under `db.siding_pricing_overrides`."""
+    persist as a single sealed document under `db.siding_pricing_overrides`.
+
+    v3.35.0 — every PUT also snapshots the **previous** override doc (if any)
+    into `db.siding_pricing_history` for audit + revert. The history doc
+    keeps the previous `_encrypted` blob verbatim — same Fernet/AES-256
+    seal, same channel.
+    """
     if not body.prices:
         raise HTTPException(400, "prices payload must include at least one key")
     known = known_siding_item_keys()
@@ -216,6 +224,25 @@ async def put_siding_prices(body: SidingPriceOverrideBody, user=Depends(_admin_o
 
     sealed = seal_siding_override(body.prices)
     tune_version = body.tune_version or f"{_SIDING_PRICE_TUNE_VERSION}_override"
+
+    # --- Snapshot the prior override BEFORE we overwrite it.
+    prior = await db.siding_pricing_overrides.find_one({"key": "global"}, {"_id": 0})
+    snapshot_id: Optional[str] = None
+    if prior and prior.get("_encrypted"):
+        snapshot_id = str(uuid.uuid4())
+        await db.siding_pricing_history.insert_one({
+            "snapshot_id": snapshot_id,
+            "key": "global",
+            "_encrypted": prior["_encrypted"],         # opaque ciphertext — preserved verbatim
+            "tune_version": prior.get("tune_version"),
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": prior.get("updated_at"),
+            "snapshotted_from_updated_by": prior.get("updated_by"),
+            "replaced_with_tune_version": tune_version,
+            "triggered_by": user["id"],
+            "trigger_action": "put_override",
+        })
+
     await db.siding_pricing_overrides.update_one(
         {"key": "global"},
         {"$set": {
@@ -231,5 +258,93 @@ async def put_siding_prices(body: SidingPriceOverrideBody, user=Depends(_admin_o
         "ok": True,
         "encrypted_field_count": len(body.prices),
         "tune_version": tune_version,
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+        "previous_snapshot_id": snapshot_id,
+    }
+
+
+# ---------------------------------------------------------------------------
+# v3.35.0 — History + Revert (admin-only audit ledger).
+# ---------------------------------------------------------------------------
+@api.get("/contractor/materials-brain/siding-prices/history")
+async def get_siding_prices_history(
+    limit: int = 50,
+    user=Depends(_admin_only),
+) -> Dict[str, Any]:
+    """Return the audit ledger of past siding-price overrides. Newest first.
+    Each entry is decrypted server-side and returned with the prior price dict
+    so the admin UI can render a diff column."""
+    limit = max(1, min(int(limit or 50), 200))
+    cursor = db.siding_pricing_history.find({"key": "global"}, {"_id": 0}).sort("snapshotted_at", -1).limit(limit)
+    rows: List[Dict[str, Any]] = []
+    async for doc in cursor:
+        prices: Optional[Dict[str, float]] = None
+        try:
+            prices = decrypt_value(doc.get("_encrypted")) or None
+        except Exception:
+            prices = None
+        rows.append({
+            "snapshot_id": doc.get("snapshot_id"),
+            "tune_version": doc.get("tune_version"),
+            "snapshotted_at": doc.get("snapshotted_at"),
+            "snapshotted_from_updated_at": doc.get("snapshotted_from_updated_at"),
+            "snapshotted_from_updated_by": doc.get("snapshotted_from_updated_by"),
+            "replaced_with_tune_version": doc.get("replaced_with_tune_version"),
+            "triggered_by": doc.get("triggered_by"),
+            "trigger_action": doc.get("trigger_action"),
+            "prices": prices,
+        })
+    return {
+        "history": rows,
+        "count": len(rows),
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+    }
+
+
+@api.post("/contractor/materials-brain/siding-prices/revert/{snapshot_id}")
+async def revert_siding_prices(snapshot_id: str, user=Depends(_admin_only)) -> Dict[str, Any]:
+    """Admin-only. Restore a prior sealed override as the new active book.
+    The current override is itself snapshotted first (so revert is also
+    revertable — full bidirectional audit trail)."""
+    target = await db.siding_pricing_history.find_one({"snapshot_id": snapshot_id, "key": "global"}, {"_id": 0})
+    if not target or not target.get("_encrypted"):
+        raise HTTPException(404, f"Snapshot '{snapshot_id}' not found or empty")
+
+    # Snapshot current state first.
+    current = await db.siding_pricing_overrides.find_one({"key": "global"}, {"_id": 0})
+    pre_revert_snapshot_id: Optional[str] = None
+    if current and current.get("_encrypted"):
+        pre_revert_snapshot_id = str(uuid.uuid4())
+        await db.siding_pricing_history.insert_one({
+            "snapshot_id": pre_revert_snapshot_id,
+            "key": "global",
+            "_encrypted": current["_encrypted"],
+            "tune_version": current.get("tune_version"),
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": current.get("updated_at"),
+            "snapshotted_from_updated_by": current.get("updated_by"),
+            "replaced_with_tune_version": target.get("tune_version"),
+            "triggered_by": user["id"],
+            "trigger_action": "pre_revert_snapshot",
+        })
+
+    restored_tune = (target.get("tune_version") or "reverted") + "_reverted"
+    await db.siding_pricing_overrides.update_one(
+        {"key": "global"},
+        {"$set": {
+            "key": "global",
+            "_encrypted": target["_encrypted"],
+            "tune_version": restored_tune,
+            "updated_at": now_iso(),
+            "updated_by": user["id"],
+            "reverted_from_snapshot_id": snapshot_id,
+        }},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "restored_snapshot_id": snapshot_id,
+        "restored_as_tune_version": restored_tune,
+        "pre_revert_snapshot_id": pre_revert_snapshot_id,
         "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
     }

@@ -1,6 +1,41 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.35.0 — Siding Pricing Audit Ledger + Revert)
+**Every admin price change to the sealed siding book is now snapshotted before overwrite, with admin-only history + one-click revert. Same Fernet/AES-256 channel.**
+
+**Backend additions (pure additive, lint clean):**
+- New collection: `db.siding_pricing_history` — append-only ledger of every prior sealed override. Doc shape:
+  - `snapshot_id` (uuid), `key: "global"`, `_encrypted` (verbatim prior ciphertext)
+  - `tune_version`, `snapshotted_at`, `snapshotted_from_updated_at`, `snapshotted_from_updated_by`
+  - `replaced_with_tune_version`, `triggered_by`, `trigger_action` (`put_override` | `pre_revert_snapshot`)
+- **`PUT /api/contractor/materials-brain/siding-prices` (extended)** — before overwriting, snapshots the prior `_encrypted` blob into history. Response now returns `previous_snapshot_id` for cross-reference (null on first-ever PUT).
+- **`GET /api/contractor/materials-brain/siding-prices/history?limit=50` (NEW, admin-only)** — newest-first audit ledger. Server-side decrypts each `_encrypted` blob and returns plain `prices` dict on each row so the admin UI can render a diff column.
+- **`POST /api/contractor/materials-brain/siding-prices/revert/{snapshot_id}` (NEW, admin-only)** — restores any prior sealed override as the new active book. Critically, **the current state is snapshotted FIRST** (action: `pre_revert_snapshot`), so revert is itself revertable. Restored tune_version is suffixed with `_reverted` for clarity.
+
+**Verified live (13/13 cases pass):**
+1. Empty history on cold start
+2. First PUT → `previous_snapshot_id: null` (no prior)
+3–4. Sequential PUTs A→B→C → 2 snapshot rows in history
+5. GET /history → newest-first ordering, OSB price decrypted ($60 then $50)
+6. GET /history as contractor → 403
+7. Revert to snapshot A → returns `restored_snapshot_id`, `pre_revert_snapshot_id`, `tune_A_reverted`
+8. Active book post-revert → OSB=$50 (tune_A's value), source=`admin_override`
+9. History now has 3 entries including the `pre_revert_snapshot` of tune_C
+10. Revert nonexistent snapshot → 404
+11. Revert as contractor → 403
+12. Cleanup
+13. Envelope regression → 200 (no breakage)
+
+**Audit semantics summary:**
+- Every PUT writes 0 or 1 history row (depending on whether a prior override existed)
+- Every REVERT writes 0 or 1 history row + restores a prior `_encrypted` blob verbatim
+- Plaintext is never persisted to history — only the original Fernet ciphertext is preserved, then decrypted on-demand for the admin GET
+- Trigger metadata (`triggered_by`, `trigger_action`, `replaced_with_tune_version`) makes the ledger fully traceable
+
+**Preservation guardrails honored:** No existing tables touched. Envelope endpoint and v1 defaults unchanged. Frontend untouched.
+
+
 ## What's Been Implemented (2026-05-31 — v3.34.0 — Field-Tune v1 + Sealed Swap Mechanism)
 **Plugged in production-grade KY/Midwest 2026 siding pricing AND built the admin-only sealed swap channel — both in one cycle.**
 

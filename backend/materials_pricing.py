@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from stratex_auth import encrypt_value, decrypt_value
+from stratex_auth import encrypt_value, decrypt_value  # noqa: F401  (re-exported for routes layer)
 
 
 # =============================================================================
