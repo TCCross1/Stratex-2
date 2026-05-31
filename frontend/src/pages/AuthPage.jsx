@@ -172,6 +172,16 @@ export default function AuthPage() {
             {mode==="login" ? "→ Create new contractor / operator account" : "← Back to sign in"}
           </button>
 
+          <div className="mt-2">
+            <Link
+              to="/ceo/login"
+              data-testid="ceo-portal-link"
+              className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.25em] text-muted-hud hover:text-emerald-400 transition-colors"
+            >
+              <Lock size={10}/> Executive? → CEO Portal
+            </Link>
+          </div>
+
           <div className="my-4 flex items-center gap-3">
             <span className="flex-1 h-px bg-[#00F0FF]/20"/>
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-hud">or</span>
