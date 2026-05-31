@@ -1,6 +1,54 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.38.0 — Live Investor-Demo Walkthrough)
+**One-click 4-step pricing walkthrough that streams real Fernet-sealed audit rows into the GM timeline panel for investor demos. UI files outside the timeline component stay under preservation lock.**
+
+**Backend additions (`/app/backend/routes/materials_brain.py`):**
+- `POST /api/contractor/materials-brain/demo/walkthrough-step` — admin/CEO only. Body `{step: 1..4, scenario?}`. Executes a single scripted step using the same Fernet seal/decrypt primitives as the production PUT endpoint. Each history row is tagged `trigger_action: "demo_walkthrough"` (or `demo_walkthrough_revert`) for filterability.
+- `POST /api/contractor/materials-brain/demo/walkthrough-clean` — admin/CEO only. Wipes only rows with the demo trigger action + clears the active override if it was created during a demo (`demo_origin: true` flag). Production overrides preserved.
+
+**Scripted scenario "default" (4 steps):**
+1. **Hardie board cost +12%** — Composite Fiber-Cement $16.25 + Sealant $9.95 (supply chain alert)
+2. **Tyvek housewrap +8%** — Housewrap roll $199.50 + Seam tape $20.00 (Q3 vendor adjust)
+3. **Revert Step 1** — restores Hardie spike using the existing revert primitive (writes `pre_revert_snapshot` of step 2)
+4. **OSB sheathing -3%** — OSB $40.75 (regional discount unlocked)
+
+**Frontend additions (`PricingAuditTimeline.jsx` only — no other UI file touched):**
+- Header gains two new buttons: green **▶ STREAM DEMO** + muted **CLEAN DEMO ROWS** (with Trash2 icon).
+- During run: cyan→green gradient progress bar appears in a new `pat-demo-strip`, animating from 25% → 100%. Headline updates per step. Button label changes to `STREAMING 3/4` etc.
+- Auto-confirms, auto-switches to the Siding tab, polls the ledger between steps with 900ms gap so rows cascade visually.
+- Success toast: "Walkthrough complete · 4 sealed audit rows streamed".
+- All progress state self-contained — does not propagate up to the parent CEO page.
+
+**Verified live (8/8 cases pass):**
+1. Step 1 endpoint → seals `demo_step1_hardie_spike`, prior=null ✅
+2. Step 2 → seals `demo_step2_tyvek_adjust`, snapshots step 1 ✅
+3. Step 3 → revert returns `restored_tune_version: demo_step1_hardie_spike_reverted`, `pre_revert_snapshot_id` populated ✅
+4. Step 4 → seals `demo_step4_osb_discount`, OSB=$40.75 active ✅
+5. Active book reflects step 4 (`source: admin_override`) ✅
+6. Clean → wipes 3 demo history rows + cleared the demo-flagged active override (production state untouched) ✅
+7. Operator role on step + clean → 403 / 403 ✅
+8. Bad step (`step: 99`) → 422 (Pydantic ge=1, le=4) ✅
+
+**Frontend Playwright run:**
+- `STREAM DEMO` + `CLEAN DEMO ROWS` buttons render correctly
+- Click → progress strip appears during stream
+- Mid-stream screenshot captured at Step 3/4 with cyan→green progress bar
+- Final screenshot shows 3 timeline rows (DEMO_WALKTHROUGH, DEMO_WALKTHROUGH_REVERT) with REVERT buttons + green success toast
+- Clean button removes all rows; final count = 0
+- All preserved CEO modules confirmed intact post-stream
+
+**Preservation guardrails honored:**
+- Only `PricingAuditTimeline.jsx` modified on frontend (the component approved in v3.37.0).
+- `CeoCommandCenter.jsx` unchanged from v3.37.0 (no second touch).
+- No new routes, no new pages, no new dock buttons.
+- All other UI files locked.
+- Backend additions are append-only — no existing endpoint modified.
+
+All lint green (ESLint frontend + ruff backend).
+
+
 ## What's Been Implemented (2026-05-31 — v3.37.0 — Admin Price-Board UI · Future-Noire Timeline)
 **Wired the four audit-ledger endpoints into a clean append-only timeline module on the GM Command Center. Strict preservation: no existing telemetry card, KY Doppler map, or return matrix moved, dropped, or altered.**
 

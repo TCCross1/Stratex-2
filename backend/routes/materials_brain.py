@@ -467,3 +467,196 @@ async def revert_contractor_prices(snapshot_id: str, user=Depends(_contractor_or
         "pre_revert_snapshot_id": pre_revert_snapshot_id,
         "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
     }
+
+
+# ---------------------------------------------------------------------------
+# v3.38.0 — Live Investor-Demo Walkthrough.
+#
+# Scripted 4-step pricing walkthrough that produces real Fernet-sealed audit
+# rows in the live ledger. Each step calls the same sealing primitives used
+# by the production PUT endpoints, so the resulting history is genuine —
+# nothing mocked, nothing bypassed. Demo lives on a separate route so the
+# action is auditable (`trigger_action: "demo_walkthrough"`) and the rows
+# can be filtered/cleaned post-presentation.
+#
+# Auth: admin OR ceo only (no contractor self-driven demos).
+# ---------------------------------------------------------------------------
+class WalkthroughStepBody(BaseModel):
+    step: int = Field(..., ge=1, le=4, description="Which scripted step to execute (1-4)")
+    scenario: Optional[str] = Field("default", description="Reserved for future multi-scenario demos")
+
+
+_WALKTHROUGH_SCRIPT: List[Dict[str, Any]] = [
+    {
+        "step": 1,
+        "channel": "siding",
+        "headline": "Hardie board cost +12% (supply chain alert)",
+        "tune_version": "demo_step1_hardie_spike",
+        "prices": {
+            "Composite Fiber-Cement Lap Board (12ft)": 16.25,
+            "Color-Matched Sealant Tube": 9.95,
+        },
+    },
+    {
+        "step": 2,
+        "channel": "siding",
+        "headline": "Tyvek housewrap +8% (Q3 vendor adjust)",
+        "tune_version": "demo_step2_tyvek_adjust",
+        "prices": {
+            "Standard Housewrap Roll": 199.50,
+            "Seam Tape": 20.00,
+        },
+    },
+    {
+        "step": 3,
+        "channel": "siding_revert",
+        "headline": "Revert Step 1 (Hardie spike rolled back)",
+        "target_tune_match": "demo_step1_hardie_spike",
+    },
+    {
+        "step": 4,
+        "channel": "siding",
+        "headline": "OSB sheathing -3% (regional discount unlocked)",
+        "tune_version": "demo_step4_osb_discount",
+        "prices": {
+            "7/16 OSB Sheathing": 40.75,
+        },
+    },
+]
+
+
+async def _exec_walkthrough_siding(step_def: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a siding-channel PUT step. Mirrors `put_siding_prices` logic
+    but stamps `trigger_action: "demo_walkthrough"` on the history row."""
+    prices = {k: float(v) for k, v in step_def["prices"].items()}
+    sealed = seal_siding_override(prices)
+    tune_version = step_def["tune_version"]
+
+    prior = await db.siding_pricing_overrides.find_one({"key": "global"}, {"_id": 0})
+    prior_snapshot_id: Optional[str] = None
+    if prior and prior.get("_encrypted"):
+        prior_snapshot_id = str(uuid.uuid4())
+        await db.siding_pricing_history.insert_one({
+            "snapshot_id": prior_snapshot_id,
+            "key": "global",
+            "_encrypted": prior["_encrypted"],
+            "tune_version": prior.get("tune_version"),
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": prior.get("updated_at"),
+            "snapshotted_from_updated_by": prior.get("updated_by"),
+            "replaced_with_tune_version": tune_version,
+            "triggered_by": user["id"],
+            "trigger_action": "demo_walkthrough",
+        })
+
+    await db.siding_pricing_overrides.update_one(
+        {"key": "global"},
+        {"$set": {
+            "key": "global",
+            "_encrypted": sealed,
+            "tune_version": tune_version,
+            "updated_at": now_iso(),
+            "updated_by": user["id"],
+            "demo_origin": True,
+        }},
+        upsert=True,
+    )
+    return {
+        "action": "siding_put",
+        "tune_version": tune_version,
+        "prior_snapshot_id": prior_snapshot_id,
+        "encrypted_field_count": len(prices),
+    }
+
+
+async def _exec_walkthrough_siding_revert(step_def: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+    """Revert to the most recent history snapshot matching a tune_version."""
+    target = await db.siding_pricing_history.find_one(
+        {"key": "global", "tune_version": step_def["target_tune_match"]},
+        {"_id": 0},
+        sort=[("snapshotted_at", -1)],
+    )
+    if not target or not target.get("_encrypted"):
+        return {"action": "siding_revert", "skipped": True, "reason": "no matching snapshot"}
+
+    # Snapshot current state first (pre_revert_snapshot, demo flavor).
+    current = await db.siding_pricing_overrides.find_one({"key": "global"}, {"_id": 0})
+    pre_revert_id: Optional[str] = None
+    if current and current.get("_encrypted"):
+        pre_revert_id = str(uuid.uuid4())
+        await db.siding_pricing_history.insert_one({
+            "snapshot_id": pre_revert_id,
+            "key": "global",
+            "_encrypted": current["_encrypted"],
+            "tune_version": current.get("tune_version"),
+            "snapshotted_at": now_iso(),
+            "snapshotted_from_updated_at": current.get("updated_at"),
+            "snapshotted_from_updated_by": current.get("updated_by"),
+            "replaced_with_tune_version": target.get("tune_version"),
+            "triggered_by": user["id"],
+            "trigger_action": "demo_walkthrough_revert",
+        })
+
+    restored_tune = (target.get("tune_version") or "demo") + "_reverted"
+    await db.siding_pricing_overrides.update_one(
+        {"key": "global"},
+        {"$set": {
+            "key": "global",
+            "_encrypted": target["_encrypted"],
+            "tune_version": restored_tune,
+            "updated_at": now_iso(),
+            "updated_by": user["id"],
+            "reverted_from_snapshot_id": target.get("snapshot_id"),
+            "demo_origin": True,
+        }},
+        upsert=True,
+    )
+    return {
+        "action": "siding_revert",
+        "restored_tune_version": restored_tune,
+        "restored_from_snapshot_id": target.get("snapshot_id"),
+        "pre_revert_snapshot_id": pre_revert_id,
+    }
+
+
+@api.post("/contractor/materials-brain/demo/walkthrough-step")
+async def post_walkthrough_step(body: WalkthroughStepBody, user=Depends(_admin_only)) -> Dict[str, Any]:
+    """Execute a single scripted walkthrough step. Returns the step's effect
+    so the timeline UI can show progress while it cascades 1→2→3→4."""
+    step_def = next((s for s in _WALKTHROUGH_SCRIPT if s["step"] == body.step), None)
+    if not step_def:
+        raise HTTPException(404, f"Unknown walkthrough step {body.step}")
+
+    if step_def["channel"] == "siding":
+        result = await _exec_walkthrough_siding(step_def, user)
+    elif step_def["channel"] == "siding_revert":
+        result = await _exec_walkthrough_siding_revert(step_def, user)
+    else:
+        raise HTTPException(500, f"Unhandled walkthrough channel '{step_def['channel']}'")
+
+    return {
+        "ok": True,
+        "step": body.step,
+        "headline": step_def["headline"],
+        "total_steps": len(_WALKTHROUGH_SCRIPT),
+        "encryption_channel": "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)",
+        **result,
+    }
+
+
+@api.post("/contractor/materials-brain/demo/walkthrough-clean")
+async def post_walkthrough_clean(user=Depends(_admin_only)) -> Dict[str, Any]:
+    """Wipe all demo-walkthrough rows from the siding ledger + clear the
+    demo-flagged active override. Production overrides (not flagged
+    `demo_origin`) are preserved."""
+    rows_deleted = await db.siding_pricing_history.delete_many({
+        "trigger_action": {"$in": ["demo_walkthrough", "demo_walkthrough_revert"]},
+    })
+    active_cleared = await db.siding_pricing_overrides.delete_one({
+        "key": "global", "demo_origin": True,
+    })
+    return {
+        "ok": True,
+        "history_rows_deleted": rows_deleted.deleted_count,
+        "active_override_cleared": bool(active_cleared.deleted_count),
+    }

@@ -19,7 +19,7 @@
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { History, RotateCcw, ShieldCheck, CheckCircle2, AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
+import { History, RotateCcw, ShieldCheck, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Zap, Trash2 } from "lucide-react";
 
 const fmtUSD = (n) =>
   n == null ? "—" : `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -48,6 +48,10 @@ export default function PricingAuditTimeline({ FN }) {
   const [expanded, setExpanded] = useState({}); // snapshot_id -> bool
   const [reverting, setReverting] = useState(null); // snapshot_id while in-flight
   const [toast, setToast] = useState(null);
+  // v3.38.0 — live investor-demo walkthrough state
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);        // 0=idle, 1..4=in-flight
+  const [demoHeadline, setDemoHeadline] = useState("");
 
   const loadSiding = async () => {
     setSiding((s) => ({ ...s, loading: true, error: null }));
@@ -93,6 +97,48 @@ export default function PricingAuditTimeline({ FN }) {
     }
   };
 
+  // v3.38.0 — Live investor-demo walkthrough.
+  // Cascades 4 real Fernet-sealed PUT/REVERT operations into the siding
+  // ledger with 900ms gaps between steps so the timeline animates.
+  const runWalkthrough = async () => {
+    if (demoRunning) return;
+    if (!window.confirm("Run the 4-step pricing walkthrough?\n\nEach step seals a REAL audit row (Fernet/AES-256). Use 'Clean Demo Rows' afterwards to wipe them.")) return;
+    setDemoRunning(true);
+    setTab("siding"); // ensure user sees the channel that will populate
+    try {
+      for (let n = 1; n <= 4; n++) {
+        setDemoStep(n);
+        try {
+          const r = await api.post("/contractor/materials-brain/demo/walkthrough-step", { step: n });
+          setDemoHeadline(`Step ${n}/4 · ${r.data?.headline || ""}`);
+          await loadSiding();
+        } catch (e) {
+          fireToast(`Step ${n} failed: ${e?.response?.data?.detail || "error"}`, "err");
+          break;
+        }
+        // Pause so the timeline visually absorbs the new row before the next.
+        await new Promise((res) => setTimeout(res, 900));
+      }
+      fireToast("Walkthrough complete · 4 sealed audit rows streamed", "ok");
+    } finally {
+      setDemoRunning(false);
+      setDemoStep(0);
+      setTimeout(() => setDemoHeadline(""), 4000);
+    }
+  };
+
+  const cleanWalkthrough = async () => {
+    if (demoRunning) return;
+    if (!window.confirm("Wipe all demo-walkthrough rows from the siding ledger?\n\nProduction overrides will be preserved — only rows tagged demo_origin are removed.")) return;
+    try {
+      const r = await api.post("/contractor/materials-brain/demo/walkthrough-clean");
+      fireToast(`Cleaned · ${r.data?.history_rows_deleted ?? 0} demo rows wiped`, "ok");
+      await loadSiding();
+    } catch (e) {
+      fireToast(e?.response?.data?.detail || "Clean failed", "err");
+    }
+  };
+
   const active = tab === "siding" ? siding : contractor;
   const rows = active.history;
 
@@ -110,27 +156,70 @@ export default function PricingAuditTimeline({ FN }) {
             <ShieldCheck size={9}/> Fernet/AES-256 sealed at rest
           </span>
         </div>
-        <div className="pat-tabs" role="tablist">
+        <div className="pat-controls">
+          {/* v3.38.0 — Investor-demo walkthrough triggers */}
           <button
-            role="tab"
-            data-testid="pat-tab-siding"
-            className={`pat-tab ${tab === "siding" ? "active" : ""}`}
-            onClick={() => setTab("siding")}
-            style={tab === "siding" ? { color: FN.cyan, borderColor: FN.cyan } : {}}
+            data-testid="pat-demo-run"
+            className="pat-demo-btn"
+            onClick={runWalkthrough}
+            disabled={demoRunning}
+            style={{ color: FN.green, borderColor: FN.green }}
+            title="Stream 4 real Fernet-sealed audit rows into the timeline (1s gap)"
           >
-            Siding Book · global
+            <Zap size={11}/> {demoRunning ? `STREAMING ${demoStep}/4` : "STREAM DEMO"}
           </button>
           <button
-            role="tab"
-            data-testid="pat-tab-contractor"
-            className={`pat-tab ${tab === "contractor" ? "active" : ""}`}
-            onClick={() => setTab("contractor")}
-            style={tab === "contractor" ? { color: FN.purple, borderColor: FN.purple } : {}}
+            data-testid="pat-demo-clean"
+            className="pat-demo-btn"
+            onClick={cleanWalkthrough}
+            disabled={demoRunning}
+            style={{ color: FN.muted, borderColor: FN.divider }}
+            title="Wipe all demo-walkthrough rows"
           >
-            Roofing / Gutter · per-contractor
+            <Trash2 size={10}/> CLEAN DEMO ROWS
           </button>
+          <div className="pat-tabs" role="tablist">
+            <button
+              role="tab"
+              data-testid="pat-tab-siding"
+              className={`pat-tab ${tab === "siding" ? "active" : ""}`}
+              onClick={() => setTab("siding")}
+              style={tab === "siding" ? { color: FN.cyan, borderColor: FN.cyan } : {}}
+            >
+              Siding Book · global
+            </button>
+            <button
+              role="tab"
+              data-testid="pat-tab-contractor"
+              className={`pat-tab ${tab === "contractor" ? "active" : ""}`}
+              onClick={() => setTab("contractor")}
+              style={tab === "contractor" ? { color: FN.purple, borderColor: FN.purple } : {}}
+            >
+              Roofing / Gutter · per-contractor
+            </button>
+          </div>
         </div>
       </div>
+
+      {demoRunning && (
+        <div className="pat-demo-strip" data-testid="pat-demo-strip" style={{ borderColor: FN.green }}>
+          <span className="pat-mono" style={{ color: FN.green, fontWeight: 700 }}>
+            ▶ LIVE DEMO · STEP {demoStep}/4
+          </span>
+          <span className="pat-mono" style={{ color: FN.text }}>
+            {demoHeadline || "Sealing next override…"}
+          </span>
+          <div className="pat-demo-bar">
+            <div
+              className="pat-demo-bar-fill"
+              style={{
+                width: `${(demoStep / 4) * 100}%`,
+                background: `linear-gradient(90deg, ${FN.cyan}, ${FN.green})`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="pat-body" data-testid={`pat-body-${tab}`}>
         {active.loading && (
@@ -266,6 +355,30 @@ export default function PricingAuditTimeline({ FN }) {
           letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
         }
         .pat-tabs { display: inline-flex; gap: 6px; }
+        .pat-controls { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .pat-demo-btn {
+          background: transparent; border: 1px solid; cursor: pointer;
+          font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          padding: 6px 10px; border-radius: 4px;
+          display: inline-flex; align-items: center; gap: 5px;
+          transition: filter 120ms ease;
+        }
+        .pat-demo-btn:hover:not(:disabled) { filter: brightness(1.3); }
+        .pat-demo-btn:disabled { opacity: 0.55; cursor: progress; }
+        .pat-demo-strip {
+          display: flex; flex-direction: column; gap: 6px;
+          padding: 10px 12px; margin-bottom: 12px;
+          background: rgba(16, 185, 129, 0.05);
+          border: 1px solid; border-left-width: 3px; border-radius: 4px;
+        }
+        .pat-demo-strip > .pat-mono { font-size: 11px; letter-spacing: 0.1em; }
+        .pat-demo-bar {
+          height: 3px; width: 100%; background: ${FN.divider}; border-radius: 2px; overflow: hidden;
+        }
+        .pat-demo-bar-fill {
+          height: 100%; transition: width 400ms ease;
+        }
         .pat-tab {
           background: transparent; border: 1px solid ${FN.divider};
           color: ${FN.muted}; cursor: pointer;
