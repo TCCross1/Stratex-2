@@ -1,6 +1,12 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.30.1 — Per-State ROI Saturation %)
+**Smart override accept (per Global Preservation directive):** `/api/regional/switchboard` now exposes a precomputed `roi_saturation_pct` on every state card (alongside totals). Pure additive — `RegionalSwitchboard.jsx` retains its client-side computation for backwards compatibility. Spares downstream consumers (mobile dashboards, future BI exports) a divide. Verified: KY=66.7%, IN=100%, OH=100%, TN=50%, totals=75%.
+
+**Rejected (per directive):** cosmetic alias endpoints (`/api/ceo/consensus/audits`, `/api/pilot/jobs`) — existing canonical names retained to avoid duplicate routing surface.
+
+
 ## What's Been Implemented (2026-05-31 — v3.30.0 — Full Regression · iteration_18)
 **Closed P0 (Regional Map Toggle) and P1 (Contractor PDF Endpoint) carryover from previous fork; ran complete `testing_agent_v3_fork` regression on all recent additions.**
 

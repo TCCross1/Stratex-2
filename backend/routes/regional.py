@@ -100,6 +100,10 @@ async def regional_switchboard(
             "is_local": state == local_state,
             "store_count": len(stores),
             "stores_at_roi": s_sat,
+            # v3.30.0 — pure-additive per-state ROI saturation pct (frontend kept its
+            # client-side computation for backwards compatibility; this just spares
+            # downstream consumers a divide.)
+            "roi_saturation_pct": round((s_sat / len(stores)) * 100, 1) if stores else 0.0,
             "units": s_units,
             "scans": s_scans,
             "gross_pipeline_sales": s_gross,
