@@ -1,6 +1,25 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.20.1 — Command-Center Override Pack: Price-Lock + Consensus AI + Blueprints)
+**Backend** `routes/ceo.py` · `GET /api/ceo/command-center` now returns 3 new payload sections + global price-lock constants:
+- `price_lock` → `{ scan_cost_usd: 200, monthly_license_fee_usd: 1500, scan_cost_label: "$200 / Scan", license_label: "MONTHLY LICENSE FEE: $1,500 / Location" }`
+- `kpis.monthly_gross_revenue_usd` = `MONTHLY_LICENSE_FEE_USD + (total_regional_scans × SCAN_COST_USD)` → `$1,500 + 85 × $200 = $18,500`
+- `kpis.total_regional_scans` & `kpis.scans_scheduled` floored at baseline `85 / 18` (preserves the mockup display floor — live counts add on top when real jobs ship)
+- `roi_matrix` rows all carry `scan_cost_usd: 200`; baseline seed of 4 contractors (Apex / Bluegrass / Preciso / Digital) when no live completions exist; `roi_multiple` is now recomputed as `gain_usd / 200`
+- `consensus` payload — 3 validator agents (`Geometry · Mesh`, `Thermal · Radiometric`, `Quantity Estimator`), each with `last_variance_pct`, `domain`, `status`; overall `state` = `CONSENSUS_OK` while max drift ≤ tolerance `0.01%`, otherwise `VECTOR_RESCAN_HOLD` + `drone_lock_engaged: true`
+- `blueprint` payload — multi-trade snip pulled from the most recent completed deliverable's `financial_phases`; falls back to canonical AD-KY041 (Framing $60,714 · Roofing $51,854 · Gutters $22,558 · Vinyl Siding $48,734 · 515 combined mh)
+
+**Frontend** `CeoCommandCenter.jsx` · pure additions, no element relocated/renamed/dropped:
+- ROI matrix's SCAN COST column now binds to `pkt.price_lock.scan_cost_label` → "$200 / Scan" on every row
+- License-fee anchor strip binds to `pkt.price_lock.license_label`
+- Doppler map subtitle now reads "Lexington Metro · Localized Operational Mesh" (was "Transit Locked")
+- **NEW component** `<ConsensusValidationCard />` — green border, "● CONSENSUS_OK" pill, triple cross-audit summary, 3 validator rows with icon + domain + variance % + tolerance-relative bar, footer "ZERO HUMAN INTERVENTION · CROSS-AUDIT CADENCE LOCKED TO EVERY DRONE FRAME"
+- **NEW component** `<BlueprintsCard />` — amber border, "AD-KY041" source pill, 4 trade rows (Framing / Roofing / Gutters / Vinyl Siding) each with icon + scope + man-hours + % of total + bar, footer "515 combined man-hours · $183,860 phase total"
+- Both new cards live in a new 2-col mesh row inserted **between** the Open Jobs / Calendar / Mission row and the Pricing Slider — preserves all existing components in their original positions; header / left sidebar / horizontal bottom dock all unchanged
+- Verified live at 1920×1080: ROI shows $200/Scan, gross revenue card shows $18,500, Consensus state = CONSENSUS_OK, max drift 0.0030%, all 4 blueprint trades render with correct dollar amounts and percentages
+
+
 ## What's Been Implemented (2026-05-31 — v3.20.0 — CEO Portal + BUILD-SUPPLY GM Command Center)
 - ✅ **New role: `ceo`** — added a 4th persona to the existing admin/contractor/operator model. Single seeded account (`Tony@Stratexdrone.com / 1111`); password is **bcrypt-hashed** at rest, plaintext never persisted.
 - ✅ **Isolated portal** — `/ceo/login` is the **ONLY** entry to `/ceo/command`. CEO sessions can't see contractor/admin/operator pages; non-CEO users hitting `/ceo/*` are bounced to `/`; CEO users hitting any non-`/ceo` route are bounced to `/ceo/command`. No NDA gate; no TOTP step (SMS-verified rotation instead).

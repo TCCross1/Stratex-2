@@ -18,6 +18,7 @@ import {
   AlertTriangle, Activity, Users, TrendingUp, PackageX, Radio,
   Folder, BarChart3, Settings, Briefcase, HelpCircle, MapPin,
   KeyRound, LogOut, Calendar, Plane, Box, Truck, Send, ChevronRight,
+  ShieldCheck, Thermometer, Ruler, ListOrdered, Hammer, Layers, Droplets, Wrench,
 } from "lucide-react";
 
 const FN = {
@@ -167,7 +168,7 @@ export default function CeoCommandCenter() {
         <section className="ceo-mesh">
           <div className="ceo-card" data-testid="ceo-roi-matrix" style={{ borderLeft: `4px solid ${FN.cyan}` }}>
             <h3 className="ceo-card-title" style={{ color: FN.cyan }}>STRATEX Investment Return Matrix</h3>
-            <p className="ceo-card-sub">Contractor scan portfolio · flat $1,500/scan allocation</p>
+            <p className="ceo-card-sub">Contractor scan portfolio · Lexington Metro mesh · global price-lock active</p>
             <table className="ceo-table">
               <thead>
                 <tr>
@@ -181,7 +182,9 @@ export default function CeoCommandCenter() {
                 {(pkt.roi_matrix || []).slice(0, 4).map((row, i) => (
                   <tr key={i}>
                     <td>{row.client}</td>
-                    <td className="ceo-r" style={{ color: FN.purple }}>{USD(row.scan_cost_usd)}</td>
+                    <td className="ceo-r" style={{ color: FN.purple }} data-testid={`ceo-scan-cost-${i}`}>
+                      {pkt.price_lock?.scan_cost_label || `$${row.scan_cost_usd} / Scan`}
+                    </td>
                     <td className="ceo-r" style={{ color: FN.green }}>{USD(row.gain_usd)}</td>
                     <td className="ceo-r ceo-mono" style={{ color: FN.amber }}>{row.roi_multiple}x</td>
                   </tr>
@@ -191,8 +194,8 @@ export default function CeoCommandCenter() {
                 )}
               </tbody>
             </table>
-            <div className="ceo-license-strip">
-              MONTHLY LICENSE FEE: $1,500 / Location
+            <div className="ceo-license-strip" data-testid="ceo-license-strip">
+              {pkt.price_lock?.license_label || "MONTHLY LICENSE FEE: $1,500 / Location"}
             </div>
           </div>
 
@@ -203,9 +206,9 @@ export default function CeoCommandCenter() {
             <div className="ceo-map-blip" style={{ top: "42%", left: "72%", "--c": FN.amber }}/>
             <div className="ceo-map-inner">
               <Radio size={32} color={FN.cyan}/>
-              <span className="ceo-map-title">Central KY Doppler &amp; Fleet Active Map</span>
+              <span className="ceo-map-title">Central KY Doppler Tracking Mesh · Fleet Active</span>
               <span className="ceo-map-sub">
-                <MapPin size={10}/> Lexington Metro · Transit Locked
+                <MapPin size={10}/> Lexington Metro · Localized Operational Mesh
               </span>
               <div className="ceo-map-legend">
                 <span><i style={{ background: FN.cyan }}/> Drone Active</span>
@@ -285,6 +288,12 @@ export default function CeoCommandCenter() {
           </div>
         </section>
 
+        {/* NEW ROW · CONSENSUS AI VALIDATION CORE + VINYL SIDING / GUTTERS BLUEPRINTS */}
+        <section className="ceo-mesh" data-testid="ceo-row-consensus-blueprint">
+          <ConsensusValidationCard consensus={pkt.consensus}/>
+          <BlueprintsCard blueprint={pkt.blueprint}/>
+        </section>
+
         {/* PRICING SLIDER WIDGET */}
         <section className="ceo-card ceo-pricing" data-testid="ceo-pricing" style={{ borderLeft: `4px solid ${FN.purple}` }}>
           <div className="ceo-pricing-cols">
@@ -359,6 +368,145 @@ function KpiCard({ Icon, title, value, accent }) {
         <Icon size={14} color={accent}/>
       </div>
       <div className="ceo-kpi-value">{value}</div>
+    </div>
+  );
+}
+
+/* ----- Consensus AI Validation Core ----- */
+const VALIDATOR_ICONS = {
+  "Geometry · Mesh": Ruler,
+  "Thermal · Radiometric": Thermometer,
+  "Quantity Estimator": ListOrdered,
+};
+
+function ConsensusValidationCard({ consensus }) {
+  if (!consensus) return null;
+  const okay = consensus.state === "CONSENSUS_OK";
+  const headerColor = okay ? FN.green : FN.magenta;
+  const tolerance = consensus.tolerance_pct;
+  const maxObs = consensus.max_observed_pct;
+  return (
+    <div className="ceo-card" data-testid="ceo-consensus-card"
+         style={{ borderLeft: `4px solid ${headerColor}` }}>
+      <div className="flex items-center justify-between">
+        <h3 className="ceo-card-title" style={{ color: headerColor, marginBottom: 4 }}>
+          <ShieldCheck size={13}/> Multi-Agent Consensus AI Validation Core
+        </h3>
+        <span className="ceo-pill" data-testid="ceo-consensus-state"
+              style={{ borderColor: headerColor, color: headerColor, padding: "4px 9px", fontSize: 8.5 }}>
+          {okay ? "● CONSENSUS_OK" : "△ VECTOR_RESCAN HOLD"}
+        </span>
+      </div>
+      <p className="ceo-card-sub" style={{ marginBottom: 14 }}>
+        Triple cross-audit · Δ tolerance ≤ {tolerance.toFixed(2)}% · current max drift {maxObs.toFixed(4)}%
+        {consensus.drone_lock_engaged && " · drone HOLD engaged"}
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {(consensus.validators || []).map((v, i) => {
+          const Icon = VALIDATOR_ICONS[v.agent] || ShieldCheck;
+          const drift = Number(v.last_variance_pct || 0);
+          const pctOfTolerance = Math.min(100, (drift / tolerance) * 100);
+          const fillColor = drift <= tolerance ? FN.green : FN.magenta;
+          return (
+            <div key={i} className="ceo-validator-row" data-testid={`ceo-validator-${i}`}>
+              <div className="ceo-validator-head">
+                <span className="ceo-validator-icon" style={{ background: `${fillColor}14`, border: `1px solid ${fillColor}55` }}>
+                  <Icon size={13} color={fillColor}/>
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ceo-validator-name">{v.agent}</div>
+                  <div className="ceo-validator-domain">{v.domain}</div>
+                </div>
+                <span className="ceo-validator-pct" style={{ color: fillColor }}>
+                  Δ {drift.toFixed(4)}%
+                </span>
+              </div>
+              <div className="ceo-validator-bar">
+                <div style={{
+                  width: `${pctOfTolerance}%`, background: fillColor,
+                  height: "100%", borderRadius: 2, transition: "width 0.4s",
+                  boxShadow: `0 0 6px ${fillColor}`,
+                }}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="ceo-consensus-foot">
+        <Activity size={9}/> Zero human intervention · cross-audit cadence locked to every drone frame
+      </div>
+    </div>
+  );
+}
+
+/* ----- Vinyl Siding / Gutters Multi-Trade Blueprint ----- */
+const PHASE_META = {
+  framing: { label: "Framing", Icon: Wrench,   accent: FN.purple  },
+  roofing: { label: "Roofing", Icon: Hammer,   accent: FN.amber   },
+  gutters: { label: "Gutters", Icon: Droplets, accent: FN.cyan    },
+  siding:  { label: "Vinyl Siding", Icon: Layers, accent: "#B8865B" },
+};
+
+function BlueprintsCard({ blueprint }) {
+  if (!blueprint) return null;
+  const phases = blueprint.phases || {};
+  const grandTotal = blueprint.totals?.phase_total_usd || 0;
+  return (
+    <div className="ceo-card" data-testid="ceo-blueprint-card"
+         style={{ borderLeft: `4px solid ${FN.amber}` }}>
+      <div className="flex items-center justify-between">
+        <h3 className="ceo-card-title" style={{ color: FN.amber, marginBottom: 4 }}>
+          <Hammer size={13}/> Vinyl Siding / Gutters Blueprints
+        </h3>
+        <span className="ceo-pill" style={{ borderColor: FN.amber, color: FN.amber, padding: "4px 9px", fontSize: 8.5 }}
+              data-testid="ceo-blueprint-source">
+          {blueprint.project_code || "—"}
+        </span>
+      </div>
+      <p className="ceo-card-sub" style={{ marginBottom: 12 }}>
+        Multi-trade snip · drone-modeled · {blueprint.site || "—"}
+        {blueprint.roof_sqft ? ` · ${blueprint.roof_sqft.toLocaleString()} ft² roof footprint` : ""}
+      </p>
+
+      <div className="ceo-blueprint-rows">
+        {["framing", "roofing", "gutters", "siding"].filter((k) => phases[k]).map((k) => {
+          const meta = PHASE_META[k];
+          const ph = phases[k];
+          const pct = grandTotal > 0 ? (Number(ph.total_price_usd || 0) / grandTotal) * 100 : 0;
+          return (
+            <div key={k} className="ceo-blueprint-row" data-testid={`ceo-blueprint-${k}`}>
+              <span className="ceo-blueprint-icon"
+                    style={{ background: `${meta.accent}14`, border: `1px solid ${meta.accent}55` }}>
+                <meta.Icon size={13} color={meta.accent}/>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="ceo-blueprint-label" style={{ color: FN.text }}>
+                  {meta.label}
+                </div>
+                <div className="ceo-blueprint-scope">{ph.scope}</div>
+                <div className="ceo-blueprint-bar">
+                  <div style={{ width: `${pct}%`, background: meta.accent, height: "100%", borderRadius: 1 }}/>
+                </div>
+              </div>
+              <div className="ceo-blueprint-num">
+                <div className="ceo-mono" style={{ fontSize: 12, color: meta.accent, fontWeight: 700 }}>
+                  {USD(ph.total_price_usd)}
+                </div>
+                <div className="ceo-mono" style={{ fontSize: 8.5, color: FN.muted, marginTop: 1 }}>
+                  {ph.estimated_man_hours} mh · {(pct).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="ceo-blueprint-foot">
+        <span className="ceo-mono">{blueprint.totals?.combined_man_hours || 0} combined man-hours</span>
+        <span className="ceo-mono" style={{ color: FN.green, fontWeight: 700 }}>{USD(grandTotal)} phase total</span>
+      </div>
     </div>
   );
 }
@@ -700,6 +848,87 @@ function FutureNoireGlobals() {
         border-top: 1px solid ${FN.divider};
         padding: 12px 22px;
         display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;
+      }
+
+      /* Consensus validator card */
+      .ceo-validator-row {
+        background: ${FN.bgInput};
+        border: 1px solid ${FN.divider};
+        border-radius: 3px;
+        padding: 10px 12px;
+      }
+      .ceo-validator-head { display: flex; align-items: center; gap: 10px; }
+      .ceo-validator-icon {
+        width: 28px; height: 28px; border-radius: 3px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .ceo-validator-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; color: ${FN.text}; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.1em;
+      }
+      .ceo-validator-domain {
+        font-size: 9.5px; color: ${FN.muted};
+        line-height: 1.3; margin-top: 1px;
+      }
+      .ceo-validator-pct {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px; font-weight: 700;
+        letter-spacing: 0.05em; flex-shrink: 0;
+      }
+      .ceo-validator-bar {
+        height: 4px; background: ${FN.divider}; border-radius: 2px;
+        margin-top: 8px; overflow: hidden;
+      }
+      .ceo-consensus-foot {
+        margin-top: 14px; padding-top: 10px;
+        border-top: 1px solid ${FN.divider};
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px; color: ${FN.muted};
+        text-transform: uppercase; letter-spacing: 0.2em;
+        display: flex; align-items: center; gap: 6px;
+      }
+
+      /* Blueprint card */
+      .ceo-blueprint-rows { display: flex; flex-direction: column; gap: 8px; }
+      .ceo-blueprint-row {
+        display: flex; align-items: center; gap: 10px;
+        background: ${FN.bgInput}; border: 1px solid ${FN.divider};
+        padding: 8px 10px; border-radius: 3px;
+      }
+      .ceo-blueprint-icon {
+        width: 30px; height: 30px; border-radius: 3px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .ceo-blueprint-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.1em;
+      }
+      .ceo-blueprint-scope {
+        font-size: 10px; color: ${FN.muted};
+        margin-top: 2px;
+        overflow: hidden; text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-height: 1.3;
+      }
+      .ceo-blueprint-bar {
+        height: 3px; background: ${FN.divider}; border-radius: 2px;
+        margin-top: 5px; overflow: hidden;
+      }
+      .ceo-blueprint-num {
+        text-align: right; flex-shrink: 0; min-width: 78px;
+      }
+      .ceo-blueprint-foot {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 12px; padding-top: 10px;
+        border-top: 1px solid ${FN.divider};
+        font-size: 10px; color: ${FN.muted};
+        text-transform: uppercase; letter-spacing: 0.15em;
       }
       .ceo-dock-btn {
         background: transparent; border: 1px solid; padding: 9px 16px; border-radius: 3px;
