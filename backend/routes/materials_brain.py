@@ -4,9 +4,11 @@ Pure addition (preservation lock). Wraps `MaterialsMatrixEngine` for the
 Contractor Business Brain and the Admin/GM Command Center.
 
 Endpoints (mounted on shared /api router):
-  GET  /api/contractor/materials-brain/matrix         — full siding + gutter catalog
-  POST /api/contractor/materials-brain/siding-bom     — compute siding BOM
-  POST /api/contractor/materials-brain/gutter-bom     — compute gutter BOM (scaffold)
+  GET  /api/contractor/materials-brain/matrix              — full siding + gutter catalog
+  POST /api/contractor/materials-brain/siding-bom          — compute siding BOM
+  POST /api/contractor/materials-brain/gutter-bom          — compute gutter BOM (scaffold)
+  POST /api/contractor/materials-brain/full-envelope-bom   — single-call roof+wall+gutter envelope rollup
+       (v3.33.0 — natively attaches encrypted unit prices + scope subtotals + grand total)
 
 Auth: contractor or admin (combined scope per build directive — Contractor
 gets field-estimate dropdowns; Admin/GM gets visibility for invoicing and
@@ -19,8 +21,9 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core import api, current_user
+from core import api, current_user, db
 from materials_brain import MATERIALS_BRAIN
+from materials_pricing import attach_unit_prices, resolve_unit_price_book
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +126,13 @@ async def post_full_envelope_bom(body: FullEnvelopeBomBody, user=Depends(_contra
 
     Roofing scaffold lives here for quantities only — full pricing/labor
     quantification stays in `/api/branch/quantify` (branch_console).
+
+    v3.33.0 — natively stitches encrypted unit prices on every line. Roofing
+    + gutter prices come from the caller's `db.materials_configs` doc
+    (Fernet/AES-256 envelope, same channel as the primary materials module).
+    Siding prices come from this module's sealed default book (also Fernet).
+    Response gains `subtotals_by_scope`, `envelope_grand_total_usd`, and
+    `pricing_meta` blocks.
     """
     if body.roofing is None and body.siding is None and body.gutter is None:
         raise HTTPException(400, "Provide at least one of: roofing, siding, gutter")
@@ -132,8 +142,16 @@ async def post_full_envelope_bom(body: FullEnvelopeBomBody, user=Depends(_contra
     if body.gutter and body.gutter.material_class not in {"aluminum", "copper"}:
         raise HTTPException(400, f"Unsupported gutter material_class '{body.gutter.material_class}'")
 
-    return MATERIALS_BRAIN.compute_envelope_bill_of_materials(
+    envelope = MATERIALS_BRAIN.compute_envelope_bill_of_materials(
         roofing=body.roofing.dict() if body.roofing else None,
         siding=body.siding.dict() if body.siding else None,
         gutter=body.gutter.dict() if body.gutter else None,
     )
+
+    # Decrypt the caller's contractor price book (admin → defaults). Both
+    # paths route through the same Fernet/AES-256 channel that the primary
+    # roofing module uses.
+    price_book = await resolve_unit_price_book(db, user["id"])
+    pricing_summary = attach_unit_prices(envelope["envelope_lines"], price_book)
+    envelope.update(pricing_summary)
+    return envelope

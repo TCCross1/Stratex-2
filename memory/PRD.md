@@ -1,6 +1,36 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.33.0 — Encrypted Per-Brand Pricing on Envelope BOM)
+**Single-call `/full-envelope-bom` endpoint now natively attaches encrypted unit prices to every line — same Fernet/AES-256 channel as the primary roofing module.**
+
+**New module: `/app/backend/materials_pricing.py`** (pure additive)
+- **Sealed siding price book** (`_SIDING_DEFAULT_PLAINTEXT` → encrypted via `encrypt_value` at lazy-init → decrypted on every read). Default per-line prices for OSB, foam board, housewrap, nails, seam tape, button caps, composite boards, T&G planks, wood sealer, etc. Sealed channel mirrors the contractor's encrypted MaterialsConfig pattern exactly.
+- **Roofing + gutter line resolver** — pulls the caller's `db.materials_configs._encrypted` doc, decrypts via `decrypt_value`, overlays `MaterialsConfig()` defaults for any missing keys (mirrors `GET /api/contractor/materials`).
+- **Dynamic gutter label matcher** — handles both "6 Inch K Style ALUMINUM Gutter (10ft)" → `gutter_6in_kstyle_lf_price × 10` and "6 Inch Hidden Hangers" → `hidden_hanger_each_price`.
+- **`attach_unit_prices()`** stamps `unit_price_usd`, `line_total_usd`, and `pricing_source` on every envelope line in place.
+
+**Updated `/api/contractor/materials-brain/full-envelope-bom` response gains:**
+- `subtotals_by_scope` — per-section USD subtotals
+- `envelope_grand_total_usd` — single grand total for the whole envelope
+- `pricing_meta` — describes which encryption channel priced each line, plus the channel identifier "Fernet/AES-256 (HKDF-SHA256 derived from AES_KEY)"
+
+**Verified live (5/5 scenarios pass):**
+1. Contractor (Anthony) full envelope: 2800sqft roof + 2400sqft vinyl siding + 180ft K-style aluminum gutter → **$11,387.75 grand total** (Roofing $2,403 / Siding $5,754.50 / Gutter $3,230.25). 14 lines via contractor encrypted book, 5 via sealed siding book, **0 unresolved**.
+2. Admin call (no saved book) → falls back to `MaterialsConfig()` defaults through the same Fernet round-trip; admin can preview pricing without seeing per-contractor multipliers.
+3. Siding-only composite scaffold → all 5 lines priced via sealed siding book.
+4. Regression: `/matrix`, `/siding-bom`, `/gutter-bom` all still return 200 (zero breakage on existing endpoints).
+5. **Encryption proof:** saved a sentinel `shingle_bundle_price = $99.99` via existing `PUT /api/contractor/materials` → envelope endpoint returned that exact value via `pricing_source: contractor_encrypted_book`. Confirms the Fernet round-trip works end-to-end and pricing IS being pulled through the encrypted channel.
+
+**Preservation guardrails honored:**
+- `MaterialsConfig` Pydantic model **unchanged** — master pricing DB schema untouched.
+- `db.materials_configs` collection **unchanged** — no new fields written.
+- Frontend dropdown rendering **untouched** — backend-only response enrichment.
+- `routes/branch_console.py` 4-agent roofing pipeline **untouched** — still owns the canonical roofing quote.
+
+All lint green (ruff). Backend hot-reloaded cleanly.
+
+
 ## What's Been Implemented (2026-05-31 — v3.32.0 — Materials Brain · Locked Coefficients + Envelope BOM)
 **Two upgrades to the Materials Matrix Engine, both pure-additive under preservation lock:**
 
