@@ -1,6 +1,65 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-05-31 — v3.23.0 — Pilot App · The Full Sortie)
+**THE COMPLETE PILOT JOURNEY — 4 NEW SCREENS, end-to-end.**
+
+The full vision from login → calendar → drive → pre-flight → launch → scan → consensus → land → CEO live tracking is now LIVE. Every screen carries the Future-Noire luxury aesthetic (deep dark backgrounds, neon-cyan/emerald accents, monospace HUD typography, neon grid texture, corner circuitry).
+
+**Backend (2 new files, 1 wire):**
+- `fleet_telemetry.py` — user's `FleetStateNode` + `FleetCommandRegistry` (in-memory swarm); seeds Alpha-08 (Christy Cross), Bravo-04, Charlie-11, Delta-02
+- `routes/pilot.py` — 9 endpoints:
+  - `GET  /api/pilot/calendar` — today's 4 weather-cleared sorties
+  - `GET  /api/pilot/jobs/{job_id}` — full job sheet (no pricing leak)
+  - `GET  /api/pilot/preflight/{job_id}` — 7-item checklist state
+  - `POST /api/pilot/preflight/{job_id}/check-node` — establish node ↔ transmitter ↔ system link → returns SAT# (e.g. SAT-3687-3EE8)
+  - `POST /api/pilot/preflight/{job_id}/launch` — all-green gated; mocks hatch relay
+  - `POST /api/pilot/jobs/{job_id}/node-deployed` — accountability mark (gutter clip done)
+  - `POST /api/pilot/jobs/{job_id}/phase` — phase transitions
+  - `POST /api/pilot/location` — GPS heartbeat
+  - `GET  /api/fleet/live` — CEO/GM/Admin live tracking feed (units + telemetry + job intel)
+- 3 new Mongo collections: `pilot_calendar_jobs`, `pilot_node_links`, `pilot_locations`
+- Cold-boot seed: 4 jobs in Lexington KY scheduled today + Alpha-08 placed in front of Crown's house
+- Background GPS drift loop (8s cadence) keeps plane icons moving naturally for the demo
+
+**Frontend (4 new pages + 1 shell component):**
+- `components/PilotShell.jsx` — shared Future-Noire shell (neon grid bg, corner glow, STRATEX header, NeonBadge primitives)
+- `pages/PilotDashboard.jsx` (`/pilot`) — today's 4 sortie cards (Crown / Webb / Hawthorne / Calvert Industrial); each shows client, address, window, roof type, contractor, locked value, weather pill; hover-lift animation
+- `pages/PilotJobSheet.jsx` (`/pilot/job/:jobId`) — left column = client/contractor/structure/locked-value intel; right column = Esri satellite map with neon-pulse house pin + dual CTAs: cyan "GO · DIRECTIONS" (deep-links to Google Maps turn-by-turn) + emerald "BEGIN PRE-FLIGHT"
+- `pages/PilotPreflight.jsx` (`/pilot/preflight/:jobId`) — the HERO COCKPIT SCREEN. Matches user's IMG_2139 reference EXACTLY:
+  - Title bar: "Fleet Autonomous Launch Authorization · STEP 5"
+  - 7-item checklist with neon LEDs: Trailer Hatch · Drone Battery · RTK GPS · Comms · Weather · Personnel · **NODE ↔ TRANSMITTER ↔ SYSTEM** (the new 7th item user requested)
+  - "ESTABLISH NODE LINK" CTA → 1.6s scan animation → SAT# populates
+  - Pulsing teal "AUTHORIZE AERIAL RECONNAISSANCE" launch button (only active when ALL 7 GREEN)
+  - Locked Project Value $41,298.36 amber bar pinned at bottom
+  - **Auto-cinematic post-launch sequence**: LAUNCH (hatch open) → IN_FLIGHT → SCAN (tri-layer: Foundation → Framing → Decking → Flashing → Ice/Water Shield → Drip Edge → Finished Roof Layer · moisture mapping live) → TRANSFER → CONSENSUS (fires the real `/api/ceo/consensus/verify` engine, shows live 4-agent grid) → LANDING (hatch re-opens) → COMPLETE (hatch secured, data committed)
+  - Mid-flight "Mark Node Deployed · Gutter Clipped ✓" accountability button
+- `pages/FleetLiveMap.jsx` (`/fleet/live-map` + `/ceo/live-map`) — Esri satellite map for CEO/GM/Sales Rep with **animated plane icon** + glowing callsign label. Polls every 5s; auto-fits bounds. Active Roster sidebar shows charge/wifi/lifetime-scans. Click plane → popover with operator, callsign, sales rep + phone, client info, job sheet link.
+
+**Mounting (pure-append edits):**
+- `App.js` — 4 new routes (`/pilot`, `/pilot/job/:jobId`, `/pilot/preflight/:jobId`, `/fleet/live-map`, `/ceo/live-map`)
+- `Nav.jsx` — operators now see "PILOT TABLET" link first; admins get "Live Theater" link
+- `CeoCommandCenter.jsx` — new bottom-dock button "Live Theater · Fleet Tracking" (purple) navigates to `/ceo/live-map`
+
+**Verified via Playwright (all green):**
+- Login as `pilot@stratex.io` → land on `/pilot` ✅
+- Calendar grid renders 4 weather-cleared sorties ✅
+- Click sortie 0 (Crown) → opens job sheet with Esri map of 1428 Beaumont Centre Pkwy ✅
+- GO · DIRECTIONS + BEGIN PRE-FLIGHT buttons visible ✅
+- Pre-Flight cockpit renders all 7 checklist items ✅
+- ESTABLISH NODE LINK → satellite # generated (e.g. `SAT-3687-3EE8`) ✅
+- AUTHORIZE AERIAL RECONNAISSANCE button activates when all green ✅
+- Click launch → cinematic phase walkthrough begins ✅
+- CEO logs in → opens `/ceo/live-map` → Alpha-08 plane icon visible on Lexington satellite imagery with Active Roster sidebar ✅
+- Backend `/api/fleet/live` returns Alpha-08 with telemetry, phase, job context, sales rep info ✅
+
+**Files preserved (zero modifications, full preservation lock honored):**
+- Existing `/api/operator/jobs/*` canonical launch pipeline → unchanged (remains system of record)
+- Existing `OperatorTerminal.jsx`, `FleetBoard.jsx`, `FleetLaunch.jsx` → unchanged
+- Existing `ConsensusValidationCard`, all CEO dashboard tiles → unchanged
+- `PreflightStatus` Pydantic model, all auth endpoints → unchanged
+
+
 ## What's Been Implemented (2026-05-31 — v3.22.0 — Consensus AI Validation Core — LIVE)
 **Live 4-Agent Consensus Engine** — `consensus_validation_engine.py` + `routes/consensus.py`:
 - `ConsensusAuditPanel` runs 4 specialized validators: Geometry, Thermal/Moisture, Quantity Estimator, Auditor-General

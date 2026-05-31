@@ -362,6 +362,11 @@ export default function CeoCommandCenter() {
                 style={{ borderColor: FN.green, color: FN.green }}>
           <Briefcase size={12}/> Complete Inventory Cost <ChevronRight size={12}/>
         </button>
+        <button onClick={() => nav("/ceo/live-map")}
+                className="ceo-dock-btn" data-testid="dock-live-theater"
+                style={{ borderColor: FN.cyan, color: FN.cyan }}>
+          <Plane size={12}/> Live Theater · Fleet Tracking <ChevronRight size={12}/>
+        </button>
       </footer>
 
       {showRotate && (

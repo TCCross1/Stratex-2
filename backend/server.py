@@ -1716,6 +1716,13 @@ async def on_startup():
     await seed_consensus_demo()
     start_auto_sweep()
 
+    # Pilot App — calendar seed + live unit on the map + GPS drift loop
+    # (pure addition; canonical /api/operator/jobs/* pipeline untouched)
+    from routes.pilot import seed_pilot_calendar, seed_demo_live_unit, start_drift_loop
+    await seed_pilot_calendar()
+    await seed_demo_live_unit()
+    start_drift_loop()
+
     # Kick off the 24h reminder background sweep (idempotent — tracked via reminder_24h_sent_at)
     global _reminder_task
     _reminder_task = asyncio.create_task(_reminder_24h_sweep_loop())
@@ -2526,6 +2533,7 @@ from routes import (  # noqa: F401, E402
     materials_config,
     onboarding,
     pdf,
+    pilot,
     quote_builder,
     sales_hub,
     simulation,

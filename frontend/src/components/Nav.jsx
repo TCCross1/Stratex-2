@@ -33,6 +33,7 @@ const CONTRACTOR_ITEMS = [
   { to: "/billing", label: "Billing", icon: CreditCard, testid: "nav-billing" },
 ];
 const OPERATOR_ITEMS = [
+  { to: "/pilot", label: "Pilot Tablet", icon: Plane, testid: "nav-pilot-app" },
   { to: "/operator", label: "Job Board", icon: ClipboardList, testid: "nav-operator-board" },
   { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-operator-fleet" },
 ];
@@ -44,6 +45,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/flight-audit", label: "Flight Audit", icon: Plane, testid: "nav-admin-flight-audit" },
   { to: "/admin/cv-ice-shield", label: "I&W Shield", icon: Snowflake, testid: "nav-admin-cv-ice-shield" },
   { to: "/admin/weather", label: "Weather", icon: CloudLightning, testid: "nav-admin-weather" },
+  { to: "/fleet/live-map", label: "Live Theater", icon: Radar, testid: "nav-admin-fleet-live" },
   { to: "/fleet", label: "Fleet", icon: Truck, testid: "nav-admin-fleet" },
 ];
 const ANON_ITEMS = [

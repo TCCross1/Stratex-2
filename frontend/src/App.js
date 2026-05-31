@@ -31,6 +31,10 @@ import CeoCommandCenter from "@/pages/CeoCommandCenter";
 import SupplyPipeline from "@/pages/SupplyPipeline";
 import InventoryCost from "@/pages/InventoryCost";
 import AdminConsensus from "@/pages/AdminConsensus";
+import PilotDashboard from "@/pages/PilotDashboard";
+import PilotJobSheet from "@/pages/PilotJobSheet";
+import PilotPreflight from "@/pages/PilotPreflight";
+import FleetLiveMap from "@/pages/FleetLiveMap";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -117,6 +121,13 @@ function AppShell() {
         <Route path="/ceo/orders/ready" element={<Protected role="ceo"><SupplyPipeline status="ready"/></Protected>}/>
         <Route path="/ceo/orders/shipped" element={<Protected role="ceo"><SupplyPipeline status="shipped"/></Protected>}/>
         <Route path="/ceo/inventory" element={<Protected role="ceo"><InventoryCost/></Protected>}/>
+
+        {/* Pilot App — tablet-first surface for field operators */}
+        <Route path="/pilot" element={<Protected role="operator"><PilotDashboard/></Protected>}/>
+        <Route path="/pilot/job/:jobId" element={<Protected role="operator"><PilotJobSheet/></Protected>}/>
+        <Route path="/pilot/preflight/:jobId" element={<Protected role="operator"><PilotPreflight/></Protected>}/>
+        <Route path="/fleet/live-map" element={<Protected><FleetLiveMap/></Protected>}/>
+        <Route path="/ceo/live-map" element={<Protected role="ceo"><FleetLiveMap/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>
