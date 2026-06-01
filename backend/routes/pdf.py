@@ -1,30 +1,26 @@
 """STRATEX™ · Server-side Playwright PDF renderer for deliverables + deck.
 
 Endpoints:
-  GET /api/contractor/deliverable/{job_id}/pdf   → 8.5×11 portrait PDF of the
-                                                   comprehensive deliverable.
-  GET /api/contractor/deliverable/{job_id}/deck.pdf → 11×8.5 landscape, 10
-                                                   pages, one slide per page.
-
-Both forward the caller's Bearer token to the headless browser via a
-short-lived signed cookie so the React deliverable / deck pages render
-identically to what the user sees. PDF is streamed back as
-`application/pdf`.
-
-Owner check delegates to the same logic the JSON deliverable endpoint uses
-(see routes/deliverable.py).
+  GET  /api/contractor/deliverable/{job_id}/pdf      → portrait PDF (auth)
+  GET  /api/contractor/deliverable/{job_id}/deck.pdf → landscape deck (auth)
+  POST /api/contractor/deliverable/{job_id}/share-link → mint 24h signed URL
+  GET  /api/public/deliverable/share/{token}/pdf     → public no-auth download
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 
-from core import api, current_user, db
+from core import api, current_user, db, now_iso
+from stratex_auth import decrypt_value, encrypt_value
 
 logger = logging.getLogger("stratex.pdf")
 
@@ -157,3 +153,117 @@ async def deliverable_deck_pdf(job_id: str, request: Request, user=Depends(curre
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
+
+
+# ============================================================================
+# v3.42.0 — Signed 24-hour share-link (Tier-1 PDF only, no JWT required).
+# ============================================================================
+class ShareLinkMintBody(BaseModel):
+    ttl_hours: int = Field(24, ge=1, le=72, description="Time-to-live in hours")
+
+
+@api.post("/contractor/deliverable/{job_id}/share-link")
+async def mint_deliverable_share_link(
+    job_id: str,
+    body: ShareLinkMintBody,
+    request: Request,
+    user=Depends(current_user),
+) -> Dict[str, Any]:
+    """Mint a Fernet-sealed 24h share token for the Tier-1 deliverable PDF.
+    Re-uses _check_owner so the v3.40 RESTRICTED_PERIMETER_VIOLATION gate
+    auto-applies: blacklisted contractors cannot mint share links."""
+    await _check_owner(job_id, user)
+
+    exp = datetime.now(timezone.utc) + timedelta(hours=body.ttl_hours)
+    sealed = encrypt_value({
+        "job_id":     job_id,
+        "exp_iso":    exp.isoformat(),
+        "minted_by":  user["id"],
+        "scope":      "tier1_pdf",
+        "nonce":      uuid.uuid4().hex,
+    })
+
+    await db.deliverable_share_links.insert_one({
+        "job_id":     job_id,
+        "minted_by":  user["id"],
+        "minted_at":  now_iso(),
+        "expires_at": exp.isoformat(),
+        "scope":      "tier1_pdf",
+        "active":     True,
+        "token_head": sealed[:24],
+    })
+
+    origin = os.environ.get("PUBLIC_FRONTEND_URL") or str(request.base_url).rstrip("/")
+    share_url = f"{origin.rstrip('/')}/api/public/deliverable/share/{sealed}/pdf"
+
+    return {
+        "ok":             True,
+        "share_url":      share_url,
+        "expires_at":     exp.isoformat(),
+        "ttl_hours":      body.ttl_hours,
+        "scope":          "tier1_pdf",
+        "token_preview":  sealed[:18] + "…",
+    }
+
+
+@api.get("/public/deliverable/share/{token}/pdf")
+async def public_deliverable_share_pdf(token: str, request: Request):
+    """No-auth download. Strict scope: tier1_pdf only. Never serves the deck,
+    raw JSON, or 3D mesh viewer."""
+    try:
+        payload = decrypt_value(token)
+    except Exception:
+        raise HTTPException(404, "Invalid or expired share link")
+    if not isinstance(payload, dict):
+        raise HTTPException(404, "Invalid share link payload")
+    if payload.get("scope") != "tier1_pdf":
+        raise HTTPException(403, "Share token scope mismatch — Tier-1 only")
+    job_id  = payload.get("job_id")
+    exp_iso = payload.get("exp_iso")
+    if not job_id or not exp_iso:
+        raise HTTPException(404, "Malformed share link")
+    try:
+        exp = datetime.fromisoformat(exp_iso.replace("Z", "+00:00"))
+    except Exception:
+        raise HTTPException(404, "Malformed share link expiry")
+    if datetime.now(timezone.utc) > exp:
+        raise HTTPException(410, "Share link expired")
+
+    # Defense in depth: re-validate the original minter still exists + isn't
+    # blacklisted. Mint a fresh service JWT bound to that account so the
+    # headless Playwright render flows through the same auth surface.
+    minter = await db.users.find_one(
+        {"id": payload.get("minted_by")},
+        {"_id": 0, "id": 1, "role": 1, "email": 1},
+    )
+    if not minter:
+        raise HTTPException(410, "Original minter account no longer active")
+    if minter.get("role") == "contractor":
+        restricted = await db.contractor_blacklist.find_one(
+            {"contractor_user_id": minter["id"], "account_status": "RESTRICTED_PERIMETER_VIOLATION"},
+            {"_id": 0},
+        )
+        if restricted:
+            raise HTTPException(410, "Share link revoked — minter under perimeter violation")
+
+    from stratex_auth import create_access_token
+    service_token = create_access_token(minter["id"], minter.get("role", "contractor"), minter.get("email", ""))
+
+    path = "/deliverable/demo" if job_id in ("crown-demo", "AD-KY041") else f"/contractor/deliverable/{job_id}"
+    try:
+        pdf = await _render_pdf(path, service_token, landscape=False)
+    except Exception as e:
+        logger.exception("Public share PDF render failed")
+        raise HTTPException(502, f"PDF render failed: {e}")
+
+    filename = f"STRATEX-{job_id}-tier1.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":     f'inline; filename="{filename}"',
+            "X-Stratex-Share-Scope":   "tier1_pdf",
+            "X-Stratex-Share-Expires": exp.isoformat(),
+        },
+    )
+
