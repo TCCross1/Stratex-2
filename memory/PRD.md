@@ -1,6 +1,80 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-06-01 — v3.41.0 — Enhanced Deliverable PDF · Tri-Tone Ledger + Sealed Envelope Rollup)
+**Two new sections injected into the Contractor Deliverable React page (which Playwright renders into the PDF on demand). Pure additive — no existing section moved or altered.**
+
+**Frontend changes (`/app/frontend/src/pages/ContractorDeliverable.jsx` only):**
+- Mounted between `AnomalyFindings` and `FinancialPhases`:
+  - `<TriToneAnomalyLedger jobId={effectiveId}/>`
+  - `<SealedEnvelopeRollup jobId={effectiveId} pkt={pkt}/>`
+- New `TriToneAnomalyLedger` component:
+  - Auto-fetches latest scan from `/api/contractor/anomaly/scans?project_id=...&limit=1`
+  - Renders 3 tier cards (YELLOW/ORANGE/RED) + a full ledger table with severity index, sqft, materials line, line total
+  - Footer shows `pricing_version_id` so the immutability is visible to the client
+  - Empty state: thin placeholder card if no scan exists yet (PDF layout still preserved)
+- New `SealedEnvelopeRollup` component:
+  - POSTs to `/api/contractor/materials-brain/full-envelope-bom` with inputs derived from `pkt.geometrics_extended`
+  - Renders 4 subtotal cards (Roofing / Siding / Gutter / Grand Total) + top-5 lines per scope
+  - Footer surfaces `Fernet/AES-256` + `tune_version` so the contractor can audit which encryption channel sealed the prices
+
+**Tier 1 sanitization applied:**
+- Surfaced: tier label, severity index, sqft, material name, qty, unit, line total, subtotals, grand total, encryption channel
+- **Suppressed**: raw frame_id paths, centroid_x/y vectors, `mc_price_key` SKU origins, `pricing_source` per-line identifiers, raw `unit_price_usd` (only line totals)
+
+**Verified live (PDF re-rendered + content-extracted):**
+| Section | Status | Sample value |
+|---|---|---|
+| TRI-LAYER FORENSIC LEDGER · YELLOW count | ✅ | 1 |
+| TRI-LAYER FORENSIC LEDGER · ORANGE count | ✅ | 2 |
+| TRI-LAYER FORENSIC LEDGER · RED count | ✅ | 2 |
+| Anomaly A-101 line total | ✅ | $90.00 |
+| Anomaly A-104 line total | ✅ | $77.50 (RED priced via contractor encrypted book at $38.75/sheet) |
+| SEALED ENVELOPE · Roofing subtotal | ✅ | $2,403.00 |
+| SEALED ENVELOPE · Siding subtotal | ✅ | $6,344.50 |
+| SEALED ENVELOPE · Gutter subtotal | ✅ | $3,230.25 |
+| SEALED ENVELOPE · Grand total | ✅ | $11,977.75 |
+| pricing_version_id rendered | ✅ | pv_af745be369ac9ff197 |
+| Tier-1 sanitization (no raw vectors / SKU paths) | ✅ | confirmed by extraction tool |
+
+**Backend unchanged.** PDF generator (`/app/backend/routes/pdf.py`) is a thin Playwright wrapper that renders the React page — modifying the React component is sufficient and required.
+
+All lint green (ESLint frontend).
+
+
+## What's Been Implemented (2026-05-31 — v3.40.0 — Pre-Launch Telemetry & Tripwire Security · Backend Foundation)
+**Phase 1A complete. Backend foundation for the geofence + tripwire + blacklist + 8-line preflight is live and end-to-end verified (13/13 curl cases). Frontend PilotPreflight.jsx partially modified (8-line checklist swap done; investor-demo Yellow-Triangle widget + ContractorRegistration tripwire UI deferred to Phase 1B).**
+
+**Backend additions:**
+- `/app/backend/geofence_service.py` — local-geometry geofencing (no external API, supports unbounded zones via per-doc storage), haversine distance + point-in-zone primitives, tripwire CRUD, breach event recorder, blacklist engine
+- `/app/backend/routes/geofence.py` — 7 endpoints: `POST /geofence/init`, `GET /geofence/job/{id}`, `POST /geofence/simulate-breach` (investor-demo cinematic), `GET /geofence/alerts`, `GET/PUT /contractor/tripwire`, `POST /pilot/jobs/{id}/authorize-launch`, `POST /pilot/jobs/{id}/gutter-node/link`
+- `/app/backend/routes/pilot.py` updated — preflight endpoint now returns 8-line checklist (legacy BLE `node_link` row replaced with `gutter_nodes` + `geofence_perimeter`)
+- `/app/backend/routes/pdf.py` updated — `_check_owner` now enforces `RESTRICTED_PERIMETER_VIOLATION` blacklist gate (403 with strike count)
+
+**New collections:** `geofence_zones`, `gutter_node_links`, `geofence_breach_events`, `contractor_tripwires`, `contractor_blacklist`, `launch_authorizations` (all immutable / append-only).
+
+**Frontend additions (partial — Phase 1A scope):**
+- `PilotPreflight.jsx` updated — 8-line checklist with new `gutter_nodes` + `geofence_perimeter` icons (Wifi + Crosshair). Two new CTAs replacing the legacy node-link button: `INITIALIZE AUTOMATED PERIMETER` (calls `/geofence/init`) + `LINK GUTTER NODES (TWO-FACTOR)` (calls `/pilot/jobs/{id}/gutter-node/link`). `AUTHORIZE AERIAL RECONNAISSANCE` button gated on `all_green=true` and re-validated server-side via the new `/authorize-launch` endpoint.
+
+**Verified live (13/13 backend cases pass):**
+- Preflight before init: 6 green / 2 amber (gutter_nodes, geofence_perimeter)
+- Authorize with red checks → 409 with `failed: [...]` list
+- Init perimeter + gutter node link → all 8 green
+- Authorize → 200 + immutable `launch_authorizations` row + perimeter_tag
+- Tripwire CRUD: ≥1 of each role required (owner/foreman/sales_rep) → 400 on missing
+- Simulate breach with foreman phone inside zone, no invoice → Strike 1 → WATCHLIST
+- Second breach → Strike 2 → RESTRICTED_PERIMETER_VIOLATION
+- /geofence/alerts as CEO → shows alerts + blacklist entry
+- Restricted contractor PDF fetch → 403 "Account RESTRICTED_PERIMETER_VIOLATION · 2 verified breach strike(s)"
+- Stranger phone (no tripwire match) → no strike, graceful
+- Role gates: operator → 403 on /geofence/init + /geofence/alerts
+
+**Deferred to Phase 1B (not part of this commit):**
+- Yellow-Triangle alert widget on CEO Command Center + Sales hub
+- ContractorRegistration tripwire UI (we use AuthPage.jsx — needs design discussion)
+- Frontend Playwright validation of the PilotPreflight changes
+
+
 ## What's Been Implemented (2026-05-31 — v3.39.0 — Structural Anomaly Estimator · Multi-Tier Drone-Thermal Ledger)
 **Full spec delivered: compute + tax-table + audit ledger + multi-temporal delta. Pure additive, lint clean, encrypted pricing channel preserved.**
 

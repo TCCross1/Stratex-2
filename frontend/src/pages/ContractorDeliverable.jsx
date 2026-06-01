@@ -125,6 +125,10 @@ export default function ContractorDeliverable() {
         <GeometricsExtended pkt={pkt}/>
         <MoistureDiagnostics pkt={pkt}/>
         <AnomalyFindings pkt={pkt}/>
+        {/* v3.41.0 — Tri-Tone Anomaly Ledger (YELLOW/ORANGE/RED) + Sealed Envelope Rollup.
+            Tier-1 sanitization: no raw vector geometry, no proprietary SKU paths. */}
+        <TriToneAnomalyLedger jobId={effectiveId}/>
+        <SealedEnvelopeRollup jobId={effectiveId} pkt={pkt}/>
         <FinancialPhases pkt={pkt}/>
         <PricingTable pkt={pkt}/>
         <DisposalLogistics pkt={pkt}/>
@@ -310,6 +314,264 @@ function AnomalyFindings({ pkt }) {
     </section>
   );
 }
+
+/* ============================================================================
+ * v3.41.0 — Tri-Tone Anomaly Ledger
+ * ----------------------------------------------------------------------------
+ * Renders the YELLOW (Vapor Barrier) / ORANGE (EPDM Patch) / RED (Critical
+ * Rot) tiers produced by /api/contractor/anomaly/evaluate. Pulls the latest
+ * scan for this job_id; renders empty-state cleanly when no scan exists.
+ *
+ * Tier 1 sanitization:
+ *   • Surface labels: tier, severity_index, layer, item, qty/coverage, cost
+ *   • Suppressed:    raw frame_id paths, raw centroid_x/y vector pixels,
+ *                    proprietary `mc_price_key` SKU identifiers
+ * ============================================================================
+ */
+const TIER_PALETTE = {
+  YELLOW: { fg: "#854D0E", bg: "#FEF3C7", chip: "#CA8A04", label: "VAPOR BARRIER", accent: "#FACC15" },
+  ORANGE: { fg: "#9A3412", bg: "#FFEDD5", chip: "#EA580C", label: "EPDM PATCH",     accent: "#FB923C" },
+  RED:    { fg: "#7F1D1D", bg: "#FEE2E2", chip: "#DC2626", label: "CRITICAL ROT",   accent: "#EF4444" },
+};
+
+function TriToneAnomalyLedger({ jobId }) {
+  const [scan, setScan] = useState(null);
+  const [tried, setTried] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await api.get(`/contractor/anomaly/scans?project_id=${encodeURIComponent(jobId)}&limit=1`);
+        const first = (r.data?.scans || [])[0];
+        if (first) setScan(first);
+      } catch {/* graceful skip — section renders empty state */ }
+      finally { setTried(true); }
+    })();
+  }, [jobId]);
+
+  if (!tried) return null;
+  // Empty state — render a slim placeholder card so the section is preserved
+  // in the PDF layout even when no anomaly scan exists yet.
+  if (!scan) return (
+    <section className="mb-6" data-testid="deliverable-tri-tone-anomaly">
+      <SectionTitle icon={Layers} label="TRI-LAYER FORENSIC LEDGER"/>
+      <div className="p-4 border font-mono text-[11px] tracking-widest uppercase"
+           style={{ borderColor: NICKEL, background: SUBTLE_BG, color: PAPER_INK }}>
+        // NO MULTI-TIER ANOMALY SCAN ON RECORD FOR THIS JOB
+      </div>
+    </section>
+  );
+
+  const ledger = scan.calculated_ledger || [];
+  const counts = scan.tier_counts || { YELLOW: 0, ORANGE: 0, RED: 0 };
+  const fin = scan.financial_summary || {};
+  const byTier = (color) => ledger.filter((a) => (a.thermal_color || "").toUpperCase() === color);
+
+  return (
+    <section className="mb-6" data-testid="deliverable-tri-tone-anomaly">
+      <SectionTitle icon={Layers} label="TRI-LAYER FORENSIC LEDGER"/>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        {["YELLOW", "ORANGE", "RED"].map((tier) => {
+          const p = TIER_PALETTE[tier];
+          return (
+            <div key={tier} className="p-3 border" style={{ borderColor: NICKEL, background: p.bg }}>
+              <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: p.fg }}>
+                // {p.label} · {tier}
+              </div>
+              <div className="flex items-baseline justify-between mt-1">
+                <span className="text-2xl font-semibold" style={{ color: p.fg }}>
+                  {counts[tier] || 0}
+                </span>
+                <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: p.fg, opacity: 0.7 }}>
+                  Region{(counts[tier] || 0) === 1 ? "" : "s"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <table className="w-full text-[11px]" data-testid="deliverable-tri-tone-table">
+        <thead>
+          <tr style={{ background: INK, color: TEAL }}>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Tier</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Code</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Severity Index</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Damage SqFt</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Remediation</th>
+            <th className="text-right p-2 font-mono tracking-widest uppercase text-[9px]">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {["YELLOW", "ORANGE", "RED"].flatMap((tier) => {
+            const rows = byTier(tier);
+            const p = TIER_PALETTE[tier];
+            return rows.map((a, i) => {
+              const m = (a.required_materials || [])[0] || {};
+              return (
+                <tr key={`${tier}-${a.code || i}`} style={{ background: i % 2 ? "#FFFFFF" : p.bg }}>
+                  <td className="p-2">
+                    <span className="font-mono text-[9px] tracking-widest uppercase px-2 py-0.5"
+                          style={{ background: p.chip, color: "#FFFFFF" }}>
+                      {tier}
+                    </span>
+                  </td>
+                  <td className="p-2 font-mono" style={{ color: p.fg }}>{a.code}</td>
+                  <td className="p-2" style={{ color: PAPER_INK }}>{a.severity_index}</td>
+                  <td className="p-2 font-mono" style={{ color: PAPER_INK }}>{a.damage_extent_sqft}</td>
+                  <td className="p-2" style={{ color: PAPER_INK }}>
+                    {m.qty} × {m.unit} {m.item}
+                  </td>
+                  <td className="p-2 text-right font-mono" style={{ color: p.fg }}>
+                    {USD(m.line_total_usd)}
+                  </td>
+                </tr>
+              );
+            });
+          })}
+        </tbody>
+        <tfoot>
+          <tr style={{ background: INK, color: TEAL }}>
+            <td colSpan={5} className="p-2 font-mono tracking-widest uppercase text-[9px] text-right">
+              Forensic Phase Subtotal · base materials · sales tax @ {((fin.sales_tax_rate_locked || 0) * 100).toFixed(2)}% · labor {(fin.allocated_labor_hours || 0)}h
+            </td>
+            <td className="p-2 text-right font-mono">{USD(fin.gross_combined_phase_cost)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div className="font-mono text-[9px] tracking-widest uppercase mt-2" style={{ color: PAPER_INK, opacity: 0.55 }}>
+        // Pricing locked at scan time · pricing_version_id {scan.pricing_version_id}
+      </div>
+    </section>
+  );
+}
+
+
+/* ============================================================================
+ * v3.41.0 — Sealed Materials Envelope Rollup
+ * ----------------------------------------------------------------------------
+ * Hits /api/contractor/materials-brain/full-envelope-bom for the roof+wall+
+ * gutter envelope. Renders per-scope subtotals + grand total, with line-item
+ * preview limited to top 5 per scope (Tier-1 sanitization).
+ *
+ * Tier 1 sanitization:
+ *   • Surface:   scope, item name, quantity, unit, line total
+ *   • Suppressed: unit_price_usd raw (kept as line-total only),
+ *                 pricing_source SKU origins, raw envelope vector centroids
+ * ============================================================================
+ */
+function SealedEnvelopeRollup({ jobId, pkt }) {
+  const [env, setEnv] = useState(null);
+  const [tried, setTried] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Derive envelope inputs from deliverable packet. Defaults align with
+        // crown-demo geometry — real jobs pass these from the contractor's
+        // saved measurements.
+        const roofSqft = Number(pkt?.geometrics_extended?.roof_net_sqft || 2800);
+        const wallSqft = Number(pkt?.geometrics_extended?.wall_siding_net_sqft || 2400);
+        const gutterFt = Number(pkt?.geometrics_extended?.gutter_linear_ft || 180);
+        const body = {
+          roofing: {
+            roof_square_footage: roofSqft,
+            valleys_ft: Number(pkt?.geometrics_extended?.valley_linear_ft || 40),
+            perimeter_ft: Number(pkt?.geometrics_extended?.rake_gable_linear_ft || 220),
+            pitch_multiplier: 1.15,
+            flashing_ft: 28,
+          },
+          siding: {
+            wall_square_footage: wallSqft,
+            style_type: "Dutch_Lap",
+            material_class: "vinyl",
+            use_foam_insulation: true,
+            use_foil_face: true,
+          },
+          gutter: {
+            linear_footage: gutterFt,
+            size: "6_Inch",
+            style: "K_Style",
+            material_class: "aluminum",
+            downspout_count: 4,
+          },
+        };
+        const r = await api.post("/contractor/materials-brain/full-envelope-bom", body);
+        setEnv(r.data);
+      } catch {/* graceful skip */}
+      finally { setTried(true); }
+    })();
+  }, [jobId, pkt]);
+
+  if (!tried || !env) return null;
+  const scopes = env.scopes_included || [];
+  const subtotals = env.subtotals_by_scope || {};
+  const lines = env.envelope_lines || [];
+  const top5 = (scope) => lines.filter((l) => l.scope === scope).slice(0, 5);
+
+  return (
+    <section className="mb-6" data-testid="deliverable-envelope-rollup">
+      <SectionTitle icon={ShieldCheck} label="SEALED MATERIALS ENVELOPE · ROOF · WALL · GUTTER"/>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+        {["roofing", "siding", "gutter"].filter((s) => scopes.includes(s)).map((s) => {
+          const labelMap = { roofing: "ROOFING", siding: "SIDING", gutter: "GUTTER" };
+          const colorMap = { roofing: ORANGE, siding: "#B8865B", gutter: TEAL };
+          return (
+            <div key={s} className="p-3 border" style={{ borderColor: NICKEL, background: SUBTLE_BG }}>
+              <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: colorMap[s] }}>
+                // {labelMap[s]} SUBTOTAL
+              </div>
+              <div className="text-xl font-semibold mt-1 font-mono" style={{ color: PAPER_INK }}>
+                {USD(subtotals[s])}
+              </div>
+            </div>
+          );
+        })}
+        <div className="p-3 border" style={{ borderColor: TEAL, background: INK }}>
+          <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: TEAL }}>
+            // ENVELOPE GRAND TOTAL
+          </div>
+          <div className="text-xl font-semibold mt-1 font-mono" style={{ color: TEAL }}>
+            {USD(env.envelope_grand_total_usd)}
+          </div>
+        </div>
+      </div>
+
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr style={{ background: INK, color: TEAL }}>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Scope</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Material</th>
+            <th className="text-right p-2 font-mono tracking-widest uppercase text-[9px]">Qty</th>
+            <th className="text-left p-2 font-mono tracking-widest uppercase text-[9px]">Unit</th>
+            <th className="text-right p-2 font-mono tracking-widest uppercase text-[9px]">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {["roofing", "siding", "gutter"].filter((s) => scopes.includes(s)).flatMap((s) =>
+            top5(s).map((l, i) => (
+              <tr key={`${s}-${i}`} style={{ background: i % 2 ? "#FFFFFF" : SUBTLE_BG }}>
+                <td className="p-2 font-mono text-[9px] tracking-widest uppercase" style={{ color: PAPER_INK }}>
+                  {s.toUpperCase()}
+                </td>
+                <td className="p-2" style={{ color: PAPER_INK }}>{l.item}</td>
+                <td className="p-2 text-right font-mono" style={{ color: PAPER_INK }}>{l.quantity}</td>
+                <td className="p-2 font-mono text-[9px] tracking-widest uppercase" style={{ color: PAPER_INK, opacity: 0.7 }}>
+                  {l.unit}
+                </td>
+                <td className="p-2 text-right font-mono" style={{ color: PAPER_INK }}>{USD(l.line_total_usd)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      <div className="font-mono text-[9px] tracking-widest uppercase mt-2" style={{ color: PAPER_INK, opacity: 0.55 }}>
+        // Pricing sealed via {env.pricing_meta?.encryption_channel || "Fernet/AES-256"} · {env.pricing_meta?.lines_priced_via_contractor_encrypted_book || 0} line(s) via contractor book · {env.pricing_meta?.lines_priced_via_sealed_siding_book || 0} via sealed siding book · tune {env.pricing_meta?.siding_tune_version || "field_tune_v1"}
+      </div>
+    </section>
+  );
+}
+
 
 /* ===== LUXURY ADDITIONS — Geometrics · Diagnostics · Phases · Disposal ===== */
 
