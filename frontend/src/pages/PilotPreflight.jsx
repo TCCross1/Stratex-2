@@ -12,7 +12,7 @@ import { PilotShell, FN_TEAL, FN_GREEN, FN_AMBER, FN_RED, FN_DIM, FN_INK } from 
 import {
   Truck, BatteryCharging, Satellite, RadioTower, CloudSun,
   UserCheck, Link2, ShieldCheck, Lock, Loader2, CheckCircle2,
-  Plane, Send, ArrowDownToLine, Radar,
+  Plane, Send, ArrowDownToLine, Radar, Wifi, Crosshair,
 } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -23,7 +23,9 @@ const ICONS = {
   comms: RadioTower,
   weather: CloudSun,
   personnel: UserCheck,
-  node_link: Link2,
+  // v3.40.0 — legacy node_link replaced with two security telemetry lines.
+  gutter_nodes: Wifi,
+  geofence_perimeter: Crosshair,
 };
 
 const PHASE_ORDER = ["PRE_FLIGHT", "LAUNCH", "IN_FLIGHT", "SCAN", "TRANSFER", "CONSENSUS", "LANDING", "COMPLETE"];
@@ -63,27 +65,54 @@ export default function PilotPreflight() {
 
   useEffect(() => { load(); }, [load]);
 
-  const linkNode = async () => {
+  const linkNode = linkGutterNodes; // legacy reference shim (v3.40.0)
+
+  const linkGutterNodes = async () => {
     setLinking(true);
     try {
-      // dramatic scan delay
-      await new Promise((r) => setTimeout(r, 1600));
-      await axios.post(`${API}/pilot/preflight/${jobId}/check-node`, {}, auth);
+      await new Promise((r) => setTimeout(r, 1400)); // cinematic two-factor handshake
+      await axios.post(`${API}/pilot/jobs/${jobId}/gutter-node/link`, { job_id: jobId }, auth);
       await load();
     } finally { setLinking(false); }
+  };
+
+  const [perimeterBusy, setPerimeterBusy] = useState(false);
+  const initializePerimeter = async () => {
+    setPerimeterBusy(true);
+    try {
+      // Property centroid comes back from preflight payload; falls back to KY demo coords.
+      const lat = data?.property_centroid?.lat ?? 38.045;
+      const lng = data?.property_centroid?.lng ?? -84.495;
+      await new Promise((r) => setTimeout(r, 1100)); // 150ft sweep animation
+      await axios.post(`${API}/geofence/init`,
+        { job_id: jobId, center_lat: lat, center_lng: lng, radius_ft: 150 },
+        auth);
+      await load();
+    } catch (e) {
+      // Per spec: failure routes a critical payload to CEO Warning module — handled
+      // server-side by the breach pipeline; client just surfaces the failure here.
+      alert("Geofence initialization failed — CEO Warning Module notified.");
+    } finally { setPerimeterBusy(false); }
   };
 
   const authorizeLaunch = async () => {
     if (!data.all_green) return;
     setLaunching(true);
     try {
-      await axios.post(`${API}/pilot/preflight/${jobId}/launch`, { confirm: true }, auth);
+      // v3.40.0 — defense-in-depth: backend re-runs the 8-line preflight + writes
+      // an immutable launch_authorizations row. 409 if any line drops since render.
+      await axios.post(`${API}/pilot/jobs/${jobId}/authorize-launch`, { confirm: true }, auth);
       setPhase("LAUNCH");
       // Auto-cinematic walkthrough of the post-launch phase chain.
       setTimeout(() => bumpPhase("IN_FLIGHT"), 2200);
       setTimeout(() => bumpPhase("SCAN"), 4200);
       setTimeout(() => bumpPhase("TRANSFER"), 10000);
       setTimeout(() => runConsensus(), 11500);
+    } catch (e) {
+      const failed = e?.response?.data?.detail?.failed;
+      if (Array.isArray(failed) && failed.length) {
+        alert(`Launch refused — failing checks: ${failed.join(", ")}`);
+      }
     } finally { setLaunching(false); }
   };
 
@@ -187,22 +216,48 @@ export default function PilotPreflight() {
               );
             })}
 
-            {/* NODE LINK CTA (only when node not yet linked) */}
-            {!data.node_link && (
-              <button onClick={linkNode} disabled={linking}
-                      data-testid="pilot-link-node-btn"
+            {/* v3.40.0 — Two new security telemetry CTAs replacing the legacy BLE node link.
+                Pure additive against the spec: Initialize Perimeter + Link Gutter Nodes. */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
+              <button onClick={initializePerimeter}
+                      disabled={perimeterBusy || !!data.geofence_zone}
+                      data-testid="pilot-init-perimeter-btn"
                       style={{
-                        marginTop: 4, cursor: linking ? "wait" : "pointer",
-                        background: "transparent", color: FN_TEAL,
-                        border: `1px dashed ${FN_TEAL}aa`, borderRadius: 4,
-                        padding: "10px 14px", fontFamily: "monospace",
-                        fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase",
+                        cursor: (perimeterBusy || data.geofence_zone) ? "wait" : "pointer",
+                        background: data.geofence_zone ? `${FN_GREEN}10` : "transparent",
+                        color: data.geofence_zone ? FN_GREEN : FN_TEAL,
+                        border: `1px dashed ${data.geofence_zone ? FN_GREEN : FN_TEAL}aa`,
+                        borderRadius: 4, padding: "10px 14px",
+                        fontFamily: "monospace", fontSize: 11,
+                        letterSpacing: "0.22em", textTransform: "uppercase",
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       }}>
-                {linking ? <Loader2 size={14} className="animate-spin"/> : <Link2 size={14}/>}
-                {linking ? "ESTABLISHING NODE ↔ TRANSMITTER LINK…" : "ESTABLISH NODE LINK · ACQUIRE SAT#"}
+                {perimeterBusy
+                  ? <><Loader2 size={14} className="animate-spin"/> COMPUTING 150-FT PERIMETER…</>
+                  : data.geofence_zone
+                    ? <><CheckCircle2 size={14}/> PERIMETER · {data.geofence_zone.perimeter_tag}</>
+                    : <><Crosshair size={14}/> INITIALIZE AUTOMATED PERIMETER</>}
               </button>
-            )}
+              <button onClick={linkGutterNodes}
+                      disabled={linking || !!data.gutter_link}
+                      data-testid="pilot-link-gutter-btn"
+                      style={{
+                        cursor: (linking || data.gutter_link) ? "wait" : "pointer",
+                        background: data.gutter_link ? `${FN_GREEN}10` : "transparent",
+                        color: data.gutter_link ? FN_GREEN : FN_TEAL,
+                        border: `1px dashed ${data.gutter_link ? FN_GREEN : FN_TEAL}aa`,
+                        borderRadius: 4, padding: "10px 14px",
+                        fontFamily: "monospace", fontSize: 11,
+                        letterSpacing: "0.22em", textTransform: "uppercase",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      }}>
+                {linking
+                  ? <><Loader2 size={14} className="animate-spin"/> ESTABLISHING TWO-FACTOR LOOP…</>
+                  : data.gutter_link
+                    ? <><CheckCircle2 size={14}/> GUTTER NODES · {data.gutter_link.node_id}</>
+                    : <><Wifi size={14}/> LINK GUTTER NODES (TWO-FACTOR)</>}
+              </button>
+            </div>
           </div>
 
           {/* LAUNCH ZONE */}

@@ -56,6 +56,20 @@ async def _check_owner(job_id: str, user: Dict[str, Any]):
     is_demo = (job_id in ("crown-demo", "AD-KY041")) or (job and job.get("is_public_demo") is True)
     if role == "contractor" and not is_demo and job and job.get("contractor_id") != user["id"]:
         raise HTTPException(403, "not your job")
+    # v3.40.0 — blacklist gate: RESTRICTED_PERIMETER_VIOLATION freezes raw 3D
+    # deliverable access (per spec section 4 blacklist enforcement).
+    if role == "contractor":
+        restricted = await db.contractor_blacklist.find_one(
+            {"contractor_user_id": user["id"], "account_status": "RESTRICTED_PERIMETER_VIOLATION"},
+            {"_id": 0, "strikes": 1, "last_breach_id": 1},
+        )
+        if restricted:
+            raise HTTPException(
+                403,
+                f"Account RESTRICTED_PERIMETER_VIOLATION · "
+                f"{restricted.get('strikes', 0)} verified breach strike(s) · "
+                f"Raw 3D deliverable frozen pending administrator review."
+            )
     # admins / ceo / investor tour-mode pass through
     return is_demo, job
 

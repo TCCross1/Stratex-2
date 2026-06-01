@@ -2558,6 +2558,7 @@ from routes import (  # noqa: F401, E402
     materials_brain,
     materials_config,
     anomaly_estimator,
+    geofence,
     onboarding,
     pdf,
     pilot,

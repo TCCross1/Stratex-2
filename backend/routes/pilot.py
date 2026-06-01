@@ -173,34 +173,53 @@ async def pilot_job_sheet(job_id: str, user=Depends(_pilot_or_ops)):
 
 @api.get("/pilot/preflight/{job_id}")
 async def pilot_preflight_status(job_id: str, user=Depends(_pilot_or_ops)):
-    """Compute the current 7-item checklist state."""
+    """Compute the current 8-item checklist state.
+
+    v3.40.0 — legacy `node_link` (BLE handshake) row replaced by two new
+    mandatory security telemetry lines:
+       • Gutter Nodes (Two-Factor Loop, accelerometer-based)
+       • Geofence Perimeter (150-ft local-geometry zone)
+    """
     doc = await db[PILOT_CALENDAR_COLLECTION].find_one({"id": job_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, f"Job {job_id} not found")
-    node_link = await db[NODE_LINKS_COLLECTION].find_one(
-        {"job_id": job_id},
+    gutter_link = await db.gutter_node_links.find_one(
+        {"job_id": job_id, "active": True},
         {"_id": 0},
         sort=[("linked_at", -1)],
     )
+    geofence_zone = await db.geofence_zones.find_one(
+        {"job_id": job_id, "active": True},
+        {"_id": 0},
+    )
     weather_ok = bool(doc.get("weather_cleared", True))
     checks = [
-        {"key": "trailer_hatch",   "label": "Trailer Hatch",            "value": "Ready (Secured)",                        "ok": True},
-        {"key": "drone_battery",   "label": "Drone Battery",            "value": "100% (Balanced)",                        "ok": True},
-        {"key": "rtk_gps",         "label": "RTK GPS",                  "value": "Centimeter Locked (High-Precision)",     "ok": True},
-        {"key": "comms",           "label": "Communication Link",       "value": "Strong (Secure)",                        "ok": True},
-        {"key": "weather",         "label": "Weather",                  "value": "Optimal (No Precipitation/Wind < 5mph)", "ok": weather_ok},
-        {"key": "personnel",       "label": "Personnel",                "value": "Clear of Deployment Area",               "ok": True},
-        {"key": "node_link",       "label": "Node ↔ Transmitter ↔ System",
-            "value": (f"LINKED · SAT# {node_link['node_id']}" if node_link else "AWAITING LINK"),
-            "ok": bool(node_link)},
+        {"key": "trailer_hatch",     "label": "Trailer Hatch",      "value": "Ready (Secured)",                        "ok": True},
+        {"key": "drone_battery",     "label": "Drone Battery",      "value": "100% (Balanced)",                        "ok": True},
+        {"key": "rtk_gps",           "label": "RTK GPS",            "value": "Centimeter Locked (High-Precision)",     "ok": True},
+        {"key": "comms",             "label": "Communication Link", "value": "Strong (Secure)",                        "ok": True},
+        {"key": "weather",           "label": "Weather",            "value": "Optimal (No Precipitation/Wind < 5mph)", "ok": weather_ok},
+        {"key": "personnel",         "label": "Personnel",          "value": "Clear of Deployment Area",               "ok": True},
+        {"key": "gutter_nodes",      "label": "Gutter Nodes",
+            "value": (f"Active (Two-Factor Loop) · {gutter_link['node_id']}" if gutter_link else "AWAITING TWO-FACTOR LINK"),
+            "ok":    bool(gutter_link)},
+        {"key": "geofence_perimeter","label": "Geofence Perimeter",
+            "value": (f"Formed & Activated · {geofence_zone['perimeter_tag']}" if geofence_zone else "AWAITING PERIMETER INIT"),
+            "ok":    bool(geofence_zone)},
     ]
     all_green = all(c["ok"] for c in checks)
     return {
         "job_id": job_id,
         "checks": checks,
         "all_green": all_green,
-        "node_link": node_link,
+        "gutter_link": gutter_link,
+        "geofence_zone": geofence_zone,
         "project_value_locked_usd": doc.get("project_value_locked_usd", 41298.36),
+        # Property centroid for one-tap Initialize-Perimeter button.
+        "property_centroid": {
+            "lat": doc.get("property_lat", 38.045),
+            "lng": doc.get("property_lng", -84.495),
+        },
     }
 
 
