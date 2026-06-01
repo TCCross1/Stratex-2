@@ -10,12 +10,12 @@ import { useAuth } from "@/lib/auth";
 import { Plane, ChevronLeft, LogOut } from "lucide-react";
 
 export const FN_BG = "radial-gradient(ellipse at top, #0a1626 0%, #050810 70%, #02050a 100%)";
-export const FN_TEAL = "#22d3ee";
-export const FN_GREEN = "#10b981";
-export const FN_AMBER = "#f59e0b";
-export const FN_RED = "#ef4444";
-export const FN_INK = "#e2e8f0";
-export const FN_DIM = "#64748b";
+export const FN_TEAL = "#00E5FF";
+export const FN_GREEN = "#00FF9C";
+export const FN_AMBER = "#FFB020";
+export const FN_RED = "#FF2D78";
+export const FN_INK = "#E2E8F0";
+export const FN_DIM = "#7C8A9E";
 
 export function PilotShell({ children, title, subtitle, back, rightSlot }) {
   const nav = useNavigate();

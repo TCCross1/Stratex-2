@@ -12,19 +12,38 @@
   --deep-charcoal: #10141D;
   --hud-panel: rgba(16, 20, 29, 0.78);
 
-  /* ============ STRATEX™ LUXURY-CORPORATE PALETTE — SINGLE SOURCE OF TRUTH ============
-     Mandatory 3-color palette per Strategic Thermal Reconnaissance brand spec.
-     All UI highlights, active states, data streams, and 3-D canvas vectors MUST
-     resolve to one of these three values. */
-  --electric-teal:    #00F5D4;
-  --neon-orange:      #FF5400;
-  --metallic-nickel:  #3A4350;
+  /* ============ STRATEX™ BRAND BIBLE v4.0-PROD — SINGLE SOURCE OF TRUTH ============
+     Locked by founder directive 2026-06-01. Every screen MUST resolve accents to
+     one of these tokens. See /app/design_guidelines.md §1. */
+  --stx-cyan:    #00E5FF;
+  --stx-amber:   #FFB020;
+  --stx-green:   #00FF9C;
+  --stx-magenta: #FF2D78;
+  --stx-purple:  #C084FC;
+  --stx-text:    #E2E8F0;
+  --stx-muted:   #7C8A9E;
+  --stx-divider: #1E293B;
+  --stx-bg-main: #080C14;
+  --stx-bg-card: #0F172A;
+  --stx-ink:     #030712;
 
-  /* Legacy semantic aliases (status indicators) — retuned to the strict palette
-     so existing components keep working while honoring the brand. */
-  --cyber-teal: var(--electric-teal);   /* used by HUD accents, LEDs, focus rings */
-  --volt-green: var(--electric-teal);   /* legacy "OK/STANDBY" semantic → now teal */
-  --plasma-orange: var(--neon-orange);  /* legacy "ALERT/ABORT" semantic → exact neon */
+  /* Glow tokens — every neon detail uses a layered tight + wide pair. */
+  --stx-glow-cyan-tight:    0 0 12px #00E5FF;
+  --stx-glow-cyan-wide:     0 0 28px #00E5FF66;
+  --stx-glow-amber-tight:   0 0 12px #FFB020;
+  --stx-glow-amber-wide:    0 0 28px #FFB02066;
+  --stx-glow-green-tight:   0 0 12px #00FF9C;
+  --stx-glow-green-wide:    0 0 28px #00FF9C66;
+  --stx-glow-magenta-tight: 0 0 12px #FF2D78;
+  --stx-glow-magenta-wide:  0 0 28px #FF2D7866;
+
+  /* Legacy palette — REMAPPED to brand bible so older components inherit the glow. */
+  --electric-teal:    #00E5FF;
+  --neon-orange:      #FFB020;
+  --metallic-nickel:  #3A4350;
+  --cyber-teal:   var(--stx-cyan);
+  --volt-green:   var(--stx-green);
+  --plasma-orange: var(--stx-amber);
 
   --silver-white: #E2E8F0;
   --muted: #94A3B8;
