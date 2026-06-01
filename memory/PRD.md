@@ -1,6 +1,45 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-06-01 — v3.42.1 — Combined Security & Seamless Delivery Upgrades)
+
+**P0 directive shipped end-to-end. 19/19 backend regression + frontend smoke verified.**
+
+### 1. Tripwire Registration at Signup (AuthPage + Server)
+- `SignupBody` extended with optional `tripwire_contacts: [{role, name, phone} × 3]`
+- Validates role completeness **before** `db.users.insert_one` (atomic — no orphan users)
+- On success, calls `geofence_service.save_contractor_tripwire` → seeds `db.contractor_tripwires`
+- Frontend `AuthPage.jsx`: 6 conditional fields (Owner/Foreman/Sales Rep × name+phone) only on contractor signup
+- "Create Account" button disabled until all 6 filled; live `tripwire-status` indicator (amber/green)
+
+### 2. PDF Share-Link Endpoint (`POST /api/contractor/deliverable/{job_id}/share-link`)
+- Fernet (AES-256) sealed 24h-TTL token, scope = `tier1_pdf` (NEVER serves deck/raw mesh)
+- Re-uses `_check_owner` so `RESTRICTED_PERIMETER_VIOLATION` blacklist auto-blocks mint
+- Public download via `GET /api/public/deliverable/share/{token}/pdf` re-validates minter is still active
+- Per-link audit row stored in `db.deliverable_share_links` (token_head only, never the raw token)
+
+### 3. Yellow-Triangle Caution Widget on CEO + Admin Dashboards
+- `YellowTriangleWidget.jsx` mounted in `CeoCommandCenter` header and `AdminSalesHub` title strip
+- Polls `/api/geofence/alerts` every 12s; pulses amber on count>0; expandable drawer with last 6 strikes + blacklist strip
+- Graceful hide on endpoint failure (no console errors for operators who can't see the route)
+
+### 4. Bug Fixes
+- **PilotPreflight.jsx TDZ crash** — removed unused `linkNode = linkGutterNodes` legacy shim that referenced `const linkGutterNodes` before its declaration (would throw `ReferenceError: Cannot access before initialization`)
+- **Signup QR-not-shown bug** — removed premature `setMode('login')` so the `mode === 'signup' && qrDataUrl` render gate now correctly displays the TOTP QR scan card with a "Continue to Sign In" button
+
+### Files touched
+- `/app/backend/server.py` — SignupBody + signup validation/seeding order
+- `/app/frontend/src/pages/AuthPage.jsx` — tripwire state + 6 fields + QR gate fix
+- `/app/frontend/src/pages/CeoCommandCenter.jsx` — header widget import + mount
+- `/app/frontend/src/pages/AdminSalesHub.jsx` — title strip widget mount
+- `/app/frontend/src/pages/PilotPreflight.jsx` — TDZ shim removed
+
+### Regression
+- `/app/test_reports/iteration_19.json` — 19/19 backend pytest, 5/6 frontend smoke (the only failure was the QR-display bug, now fixed)
+- `/app/backend/tests/test_iter19_v342_regression.py` — created by testing agent for future re-runs
+
+
+
 ## What's Been Implemented (2026-06-01 — v3.41.0 — Enhanced Deliverable PDF · Tri-Tone Ledger + Sealed Envelope Rollup)
 **Two new sections injected into the Contractor Deliverable React page (which Playwright renders into the PDF on demand). Pure additive — no existing section moved or altered.**
 

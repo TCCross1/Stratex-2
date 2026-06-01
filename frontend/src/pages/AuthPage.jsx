@@ -116,7 +116,10 @@ export default function AuthPage() {
       toast.success("Account created — scan the TOTP QR code");
       setEmail(sEmail);
       setPassword(sPassword);
-      setMode("login");
+      // v3.42.1 — DO NOT flip mode to login here. The render gate
+      // `mode === 'signup' && qrDataUrl` shows the QR step; the
+      // "Continue to Sign In" button below performs the mode flip
+      // after the user has finished pairing their authenticator.
       setStep(1);
     } catch (e) { toast.error(fmtErr(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }

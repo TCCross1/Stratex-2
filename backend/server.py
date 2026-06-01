@@ -205,6 +205,16 @@ async def signup(body: SignupBody, request: Request):
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(409, "Email already registered")
+
+    # v3.42.1 — Validate tripwire payload BEFORE creating the user, so a
+    # malformed tripwire array does not leave an orphan user row in db.users.
+    if body.role == "contractor" and body.tripwire_contacts:
+        roles_present = {c.role.lower() for c in body.tripwire_contacts}
+        required = {"owner", "foreman", "sales_rep"}
+        missing = required - roles_present
+        if missing:
+            raise HTTPException(400, f"Tripwire array missing required roles: {sorted(missing)}")
+
     secret = new_totp_secret()
     user = {
         "id": str(uuid.uuid4()),
@@ -220,13 +230,8 @@ async def signup(body: SignupBody, request: Request):
     }
     await db.users.insert_one(user)
 
-    # v3.42.0 — Tripwire array seed (contractor only). Validated 1+ of each role.
+    # v3.42.0 — Tripwire array seed (contractor only). Roles already validated above.
     if body.role == "contractor" and body.tripwire_contacts:
-        roles_present = {c.role.lower() for c in body.tripwire_contacts}
-        required = {"owner", "foreman", "sales_rep"}
-        missing = required - roles_present
-        if missing:
-            raise HTTPException(400, f"Tripwire array missing required roles: {sorted(missing)}")
         try:
             from geofence_service import save_contractor_tripwire
             await save_contractor_tripwire(
