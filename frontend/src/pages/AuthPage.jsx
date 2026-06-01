@@ -36,6 +36,19 @@ export default function AuthPage() {
   const [qrUri, setQrUri] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [tSecret, setTSecret] = useState("");
+  // v3.42.0 — Tripwire registration array (contractor only).
+  // 6 mandatory fields: Owner/Foreman/Sales Rep × (name + phone).
+  const [tripwire, setTripwire] = useState({
+    owner:     { name: "", phone: "" },
+    foreman:   { name: "", phone: "" },
+    sales_rep: { name: "", phone: "" },
+  });
+  const setTrip = (role, field, val) =>
+    setTripwire((t) => ({ ...t, [role]: { ...t[role], [field]: val } }));
+  const tripwireComplete =
+    !!(tripwire.owner.name.trim() && tripwire.owner.phone.trim() &&
+       tripwire.foreman.name.trim() && tripwire.foreman.phone.trim() &&
+       tripwire.sales_rep.name.trim() && tripwire.sales_rep.phone.trim());
 
   const handleLogin = async (e) => {
     e?.preventDefault();
@@ -75,9 +88,27 @@ export default function AuthPage() {
   const handleSignup = async (e) => {
     e?.preventDefault();
     if (busy) return;
+    if (sRole === "contractor" && !tripwireComplete) {
+      toast.error("Tripwire registration incomplete — Owner, Foreman & Sales Rep contact required.");
+      return;
+    }
     setBusy(true);
     try {
-      const r = await signup({ email: sEmail.trim().toLowerCase(), password: sPassword, legal_name: sLegal, company_name: sCompany, role: sRole });
+      const payload = {
+        email: sEmail.trim().toLowerCase(),
+        password: sPassword,
+        legal_name: sLegal,
+        company_name: sCompany,
+        role: sRole,
+      };
+      if (sRole === "contractor") {
+        payload.tripwire_contacts = [
+          { role: "owner",     name: tripwire.owner.name.trim(),     phone: tripwire.owner.phone.trim() },
+          { role: "foreman",   name: tripwire.foreman.name.trim(),   phone: tripwire.foreman.phone.trim() },
+          { role: "sales_rep", name: tripwire.sales_rep.name.trim(), phone: tripwire.sales_rep.phone.trim() },
+        ];
+      }
+      const r = await signup(payload);
       setQrUri(r.totp_setup.uri);
       setTSecret(r.totp_setup.secret);
       const dataUrl = await QRCode.toDataURL(r.totp_setup.uri, { color: { dark: "#00F0FF", light: "#06080B" }, margin: 1, width: 220 });
@@ -154,7 +185,73 @@ export default function AuthPage() {
               {sRole==="contractor" && <div><label className="hud-label">Company</label><input data-testid="signup-company" required className="hud-input" value={sCompany} onChange={(e)=>setSCompany(e.target.value)}/></div>}
               <div><label className="hud-label">Email</label><input data-testid="signup-email" type="email" required className="hud-input" value={sEmail} onChange={(e)=>setSEmail(e.target.value)}/></div>
               <div><label className="hud-label">Password (≥ 10 chars)</label><input data-testid="signup-password" type="password" minLength={10} required className="hud-input" value={sPassword} onChange={(e)=>setSPassword(e.target.value)}/></div>
-              <button type="submit" disabled={busy} className="btn-hud w-full justify-center" data-testid="signup-submit">{busy?"…":"Create Account"}</button>
+
+              {sRole === "contractor" && (
+                <div data-testid="tripwire-block" className="mt-2 p-3 border border-volt/30 bg-[#0a1018]/70">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Shield size={11} className="text-volt"/>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-volt">
+                      Tripwire Registration · Required
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-muted-hud leading-snug mb-3">
+                    All three roles must be present so the geofence breach engine
+                    can match phone pings on every active job.
+                  </p>
+
+                  {[
+                    { key: "owner",     label: "Owner" },
+                    { key: "foreman",   label: "Foreman" },
+                    { key: "sales_rep", label: "Sales Rep" },
+                  ].map((r) => (
+                    <div key={r.key} className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <label className="hud-label">{r.label} Name</label>
+                        <input
+                          data-testid={`tripwire-${r.key}-name`}
+                          required
+                          className="hud-input"
+                          value={tripwire[r.key].name}
+                          onChange={(e) => setTrip(r.key, "name", e.target.value)}
+                          placeholder={`${r.label} legal name`}
+                        />
+                      </div>
+                      <div>
+                        <label className="hud-label">{r.label} Phone</label>
+                        <input
+                          data-testid={`tripwire-${r.key}-phone`}
+                          required
+                          type="tel"
+                          inputMode="tel"
+                          className="hud-input"
+                          value={tripwire[r.key].phone}
+                          onChange={(e) => setTrip(r.key, "phone", e.target.value)}
+                          placeholder="+1 555 555 5555"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    className="font-mono text-[9.5px] uppercase tracking-[0.22em] mt-1"
+                    style={{ color: tripwireComplete ? "#10B981" : "#F59E0B" }}
+                    data-testid="tripwire-status"
+                  >
+                    {tripwireComplete
+                      ? "✓ Tripwire array sealed — perimeter breach matcher ready"
+                      : "⚠ Tripwire incomplete · blocks registration"}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={busy || (sRole === "contractor" && !tripwireComplete)}
+                className="btn-hud w-full justify-center"
+                data-testid="signup-submit"
+              >
+                {busy?"…":"Create Account"}
+              </button>
             </form>
           )}
 

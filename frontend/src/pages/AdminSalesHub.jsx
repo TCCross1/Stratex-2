@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { KY_SALES_TARGETS, SALES_STATUS_OPTIONS, SALES_STATUS_COLORS } from "@/lib/salesTargets";
 import { X, MessageSquare, Phone, FileText } from "lucide-react";
+import YellowTriangleWidget from "@/components/YellowTriangleWidget";
 
 /**
  * /admin/sales — Pre-Cached Sales Targets Hub (Section 4 seed)
@@ -129,7 +130,10 @@ export default function AdminSalesHub() {
     <div className="min-h-screen bg-[#0B0F19] text-silver px-6 md:px-12 py-10" data-testid="admin-sales-root">
       <style>{`@keyframes salesPulse { 0%,100% { transform:scale(1); opacity:0.95;} 50% { transform:scale(1.18); opacity:0.55;} }`}</style>
       <div className="max-w-[1500px] mx-auto">
-        <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-2">// STRATEX VISION • ADMIN • SALES HUB</div>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase">// STRATEX VISION • ADMIN • SALES HUB</div>
+          <YellowTriangleWidget portal="admin-sales"/>
+        </div>
         <h1 className="font-display text-2xl md:text-4xl uppercase tracking-widest mb-2">Central Kentucky Footprint</h1>
         <p className="font-body text-sm text-muted-hud mb-6 max-w-3xl">
           Pre-cached contractor sales targets seeded from Lexington-radius prospect intel. Click any status chip

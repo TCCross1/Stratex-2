@@ -65,8 +65,6 @@ export default function PilotPreflight() {
 
   useEffect(() => { load(); }, [load]);
 
-  const linkNode = linkGutterNodes; // legacy reference shim (v3.40.0)
-
   const linkGutterNodes = async () => {
     setLinking(true);
     try {

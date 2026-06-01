@@ -51,12 +51,22 @@ from roof_topology import build_topology
 # Pydantic Models
 # ---------------------------------------------------------------------------
 
+class TripwireSignupContact(BaseModel):
+    role: str   # owner | foreman | sales_rep
+    name: str
+    phone: str
+
+
 class SignupBody(BaseModel):
     email: EmailStr
     password: str
     legal_name: str
     company_name: Optional[str] = ""
     role: str  # contractor | operator (admin only via seed)
+    # v3.42.0 — optional tripwire array seeded at registration for contractors.
+    # When supplied, persists immediately to db.contractor_tripwires so the
+    # geofence breach pipeline can match phones from minute zero.
+    tripwire_contacts: Optional[List[TripwireSignupContact]] = None
 
 
 class LoginStartBody(BaseModel):
@@ -209,6 +219,26 @@ async def signup(body: SignupBody, request: Request):
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
+
+    # v3.42.0 — Tripwire array seed (contractor only). Validated 1+ of each role.
+    if body.role == "contractor" and body.tripwire_contacts:
+        roles_present = {c.role.lower() for c in body.tripwire_contacts}
+        required = {"owner", "foreman", "sales_rep"}
+        missing = required - roles_present
+        if missing:
+            raise HTTPException(400, f"Tripwire array missing required roles: {sorted(missing)}")
+        try:
+            from geofence_service import save_contractor_tripwire
+            await save_contractor_tripwire(
+                db,
+                contractor_user_id=user["id"],
+                contacts=[c.dict() for c in body.tripwire_contacts],
+            )
+        except Exception as _e:
+            # Account is created — tripwire seeding failure is logged but
+            # never blocks signup. Contractor can set via PUT later.
+            logger.warning("tripwire seed at signup failed: %s", _e)
+
     return {
         "user": _public_user(user),
         "totp_setup": {

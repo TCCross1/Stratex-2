@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import ConsensusValidationCore from "@/components/ConsensusValidationCore";
 import PricingAuditTimeline from "@/components/PricingAuditTimeline";
+import YellowTriangleWidget from "@/components/YellowTriangleWidget";
 import {
   AlertTriangle, Activity, Users, TrendingUp, PackageX, Radio,
   Folder, BarChart3, Settings, Briefcase, HelpCircle, MapPin,
@@ -123,6 +124,7 @@ export default function CeoCommandCenter() {
           <p className="ceo-sub">{pkt.region.toUpperCase()} REGION · LOCALIZED MATERIAL LOGISTICS &amp; STRATEX CLIENT YIELDS</p>
         </div>
         <div className="ceo-header-right">
+          <YellowTriangleWidget portal="ceo"/>
           <span className="ceo-pulse"><span className="ceo-pulse-dot"/> STX LINK SECURE</span>
           <button onClick={() => setShowRotate(true)} data-testid="ceo-rotate-btn"
             className="ceo-pill" style={{ borderColor: FN.amber, color: FN.amber }}>
