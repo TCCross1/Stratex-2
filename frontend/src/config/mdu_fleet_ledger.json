@@ -1,0 +1,34 @@
+{
+  "version":         "v4.0-PROD",
+  "ledger_label":    "STRATEX™ Mobile Drone Unit · Capital Allocation Ledger",
+  "sealed_at_iso":   "2026-06-01T00:00:00Z",
+  "immutable":       true,
+  "personnel_and_cloud_infrastructure": {
+    "software_engineer_and_first_operator_salary":          100000.00,
+    "aws_cloud_storage_and_enterprise_security_layer":       24000.00
+  },
+  "mobile_drone_unit_1_master_command": {
+    "logistics_vehicle_gmc_truck_2014_or_older":             18500.00,
+    "enclosed_utility_trailer_5x8":                           4500.00,
+    "mji_enterprise_drone_and_docking_station_3":            22000.00,
+    "redundant_battery_cells_drone_and_dock":                 4200.00,
+    "starlink_hardware_and_commercial_mount_kit":              700.00,
+    "automated_top_hatch_relay_actuator_system":               850.00,
+    "utility_trailer_hatch_head_custom_fabrication":          2500.00,
+    "dual_rtx_5090_nvidia_ai_studio_workstation_with_monitors": 12500.00,
+    "apple_macbook_pro_m3_max_field_terminal":                3800.00,
+    "commercial_fleet_insurance_and_vehicle_tagging":         3200.00,
+    "premium_vinyl_decals_stratex_abc_qxo_branding":           650.00
+  },
+  "mobile_drone_unit_2_satellite_extension": {
+    "logistics_vehicle_gmc_truck_2014_or_older":             18500.00,
+    "enclosed_utility_trailer_5x8":                           4500.00,
+    "mji_enterprise_drone_and_docking_station_3":            22000.00,
+    "redundant_battery_cells_drone_and_dock":                 4200.00,
+    "starlink_hardware_and_commercial_mount_kit":              700.00,
+    "automated_top_hatch_relay_actuator_system":               850.00,
+    "utility_trailer_hatch_head_custom_fabrication":          2500.00,
+    "commercial_fleet_insurance_and_vehicle_tagging":         3200.00,
+    "premium_vinyl_decals_stratex_abc_qxo_branding":           650.00
+  }
+}

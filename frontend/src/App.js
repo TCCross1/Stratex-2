@@ -36,6 +36,8 @@ import PilotJobSheet from "@/pages/PilotJobSheet";
 import PilotPreflight from "@/pages/PilotPreflight";
 import FleetLiveMap from "@/pages/FleetLiveMap";
 import RegionalSwitchboard from "@/pages/RegionalSwitchboard";
+import MduFleetPortal from "@/pages/MduFleetPortal";
+import BlacklistMatrix from "@/pages/BlacklistMatrix";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -130,6 +132,10 @@ function AppShell() {
         <Route path="/fleet/live-map" element={<Protected><FleetLiveMap/></Protected>}/>
         <Route path="/ceo/live-map" element={<Protected role="ceo"><FleetLiveMap/></Protected>}/>
         <Route path="/ceo/regional" element={<Protected role="ceo"><RegionalSwitchboard/></Protected>}/>
+        <Route path="/ceo/fleet" element={<Protected role="ceo"><MduFleetPortal/></Protected>}/>
+        <Route path="/ceo/blacklist" element={<Protected role="ceo"><BlacklistMatrix/></Protected>}/>
+        <Route path="/admin/fleet" element={<Protected role="admin"><MduFleetPortal/></Protected>}/>
+        <Route path="/admin/blacklist" element={<Protected role="admin"><BlacklistMatrix/></Protected>}/>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>

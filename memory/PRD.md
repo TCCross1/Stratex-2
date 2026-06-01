@@ -1,6 +1,63 @@
 # STRATEX™ — PRD & Build Log
 
 
+## What's Been Implemented (2026-06-01 — v4.0-PROD — Enterprise System Architecture & Disruption Blueprint)
+
+**Section 1: System Visual Dock & Executive Interfaces**
+
+- **`ScrollingGlassDock.jsx`** (NEW) — Horizontally scrolling frosted-glass dock, anchored fixed at the lower viewport margin (centered, max-width 92vw, backdrop-blur 22px, brand palette Cyan #00F0FF / Amber #FF9900 / Matrix-Green #00FF66). Polls `/api/geofence/alerts` every 12s for live badge counts. Three launcher tiles:
+  - **Yellow Triangle App** → `/ceo/blacklist`
+  - **MDU Fleet Portal** → `/ceo/fleet`
+  - **Blacklist Matrix** → `/ceo/blacklist`
+- **Mounted on** `CeoCommandCenter.jsx` (CEO portal) and `BranchConsole.jsx` (Admin/GM portal — routePrefix="/admin" so tiles route to `/admin/fleet` + `/admin/blacklist`).
+- **YellowTriangleWidget** now also mounted in the BranchConsole header alongside the existing CEO header instance (mirrors per blueprint Section 1.2).
+
+**Section 2: Fleet Capital Allocation Ledger**
+
+- **`/app/frontend/src/config/mdu_fleet_ledger.json`** (NEW, immutable seal) — Holds three blocks:
+  - `personnel_and_cloud_infrastructure` → $124,000.00 subtotal
+  - `mobile_drone_unit_1_master_command` → $73,400.00 subtotal (11 lines including dual RTX 5090 workstation + MacBook Pro M3 Max field terminal)
+  - `mobile_drone_unit_2_satellite_extension` → $57,100.00 subtotal (9 lines, satellite unit without studio workstation per blueprint)
+  - **Grand Total: $254,500.00** ✅ verified via screenshot
+- **`MduFleetPortal.jsx`** (NEW, route `/ceo/fleet` + `/admin/fleet`) — Renders ledger as three frosted-glass columns + grand-total hero card with Fernet/AES-256 channel label.
+
+**Section 3: Blacklist Matrix Surface**
+
+- **`BlacklistMatrix.jsx`** (NEW, route `/ceo/blacklist` + `/admin/blacklist`) — Two-column dark UI; left column = RESTRICTED_PERIMETER_VIOLATION ledger; right column = live UNAUTHORIZED_SITE_BREACH strike feed. Auto-refresh every 12s via `/api/geofence/alerts`.
+
+**Backend enforcement (already in place from v3.40.0; verified in iteration_19)**
+
+The blueprint's `executeTripwireEnforcement` JS pseudocode maps 1:1 onto our existing Python implementation:
+- `geofence_service.haversine_distance_ft` + `point_in_zone` — strict 150 ft radius check
+- `lookup_tripwire_by_phone(db, phone)` — `tripwireContactMatch.findMobile`
+- `job_has_cleared_invoice(db, job_id)` — `db.invoices.checkAssociatedOrder`
+- `record_breach_event(...)` + `increment_strike(...)` — `blacklistController.registerViolationStrike`
+- Dispatch surface = the YellowTriangleWidget polling layer (already mounted on CEO + GM consoles)
+
+**Pilot Pre-Flight DORMANT enforcement (Section 1.3)**
+
+Already implemented and regression-verified in iteration_19. `POST /api/pilot/jobs/{job_id}/authorize-launch` re-runs the 8-line checklist server-side and returns HTTP 409 with the failing list if any line drops. Launch button remains locked unless `data.all_green && phase === 'PRE_FLIGHT'`.
+
+**Files touched (this session)**
+
+- `/app/frontend/src/App.js` — 2 new routes per portal (`/ceo/fleet`, `/ceo/blacklist`, `/admin/fleet`, `/admin/blacklist`)
+- `/app/frontend/src/components/ScrollingGlassDock.jsx` (NEW)
+- `/app/frontend/src/pages/MduFleetPortal.jsx` (NEW)
+- `/app/frontend/src/pages/BlacklistMatrix.jsx` (NEW)
+- `/app/frontend/src/config/mdu_fleet_ledger.json` (NEW, immutable)
+- `/app/frontend/src/pages/CeoCommandCenter.jsx` — dock mount
+- `/app/frontend/src/pages/BranchConsole.jsx` — dock + YellowTriangle widget mount
+
+**Verification**
+
+- JS lint: ✅ green on all new + modified files
+- Smoke screenshot 1 — CEO Command Center: dock visible bottom-center + YT widget in header
+- Smoke screenshot 2 — MDU Fleet Portal: grand total renders $254,500.00 with three frosted columns
+- Smoke screenshot 3 — Blacklist Matrix: dual-card layout, polling `/api/geofence/alerts` shows clean 0/0 state
+- Backend regression unchanged from iteration_19 (19/19 pytest pass); no new endpoints required because Section 2 enforcement already lives in `routes/geofence.py`.
+
+
+
 ## What's Been Implemented (2026-06-01 — v3.42.1 — Combined Security & Seamless Delivery Upgrades)
 
 **P0 directive shipped end-to-end. 19/19 backend regression + frontend smoke verified.**

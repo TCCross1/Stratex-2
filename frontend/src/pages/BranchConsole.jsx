@@ -15,6 +15,8 @@ import {
   CheckCircle2, AlertTriangle, Lock, PlayCircle, Cpu, Award,
   Activity, ShieldCheck, FileWarning, Atom, Zap, ExternalLink,
 } from "lucide-react";
+import YellowTriangleWidget from "@/components/YellowTriangleWidget";
+import ScrollingGlassDock from "@/components/ScrollingGlassDock";
 
 const TEAL = "#00F0FF";
 const ORANGE = "#FF7B00";
@@ -158,6 +160,7 @@ export default function BranchConsole() {
 
   return (
     <div style={{ background: BG_MAIN, color: "#F1F5F9", minHeight: "100vh", padding: "2rem", fontFamily: "monospace" }}>
+      <ScrollingGlassDock portal="gm" routePrefix="/admin"/>
       <div className="max-w-[1600px] mx-auto">
 
         {/* Header */}
@@ -176,6 +179,7 @@ export default function BranchConsole() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <YellowTriangleWidget portal="gm"/>
             <a href="/admin/overseer"
               data-testid="branch-view-halts-link"
               style={{

@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import ConsensusValidationCore from "@/components/ConsensusValidationCore";
 import PricingAuditTimeline from "@/components/PricingAuditTimeline";
 import YellowTriangleWidget from "@/components/YellowTriangleWidget";
+import ScrollingGlassDock from "@/components/ScrollingGlassDock";
 import {
   AlertTriangle, Activity, Users, TrendingUp, PackageX, Radio,
   Folder, BarChart3, Settings, Briefcase, HelpCircle, MapPin,
@@ -116,6 +117,7 @@ export default function CeoCommandCenter() {
   return (
     <div className="app-container" data-testid="ceo-cc-root" style={{ background: FN.bgMain, color: FN.text }}>
       <FutureNoireGlobals/>
+      <ScrollingGlassDock portal="ceo" routePrefix="/ceo"/>
 
       {/* HEADER */}
       <header className="ceo-header">
