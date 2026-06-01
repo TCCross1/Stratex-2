@@ -29,15 +29,17 @@ const FN = {
   bgMain: "#080c14",
   bgCard: "#0f172a",
   bgInput: "#0b1329",
-  cyan: "#06b6d4",
-  purple: "#a855f7",
-  green: "#10b981",
-  magenta: "#f43f5e",
-  amber: "#f59e0b",
-  text: "#cbd5e1",
-  muted: "#64748b",
+  // v4.0-PROD-BRAND — palette tuned to the STRATEX logo (IMG_2137).
+  // Higher chroma, brighter neon, professional — NOT blown out.
+  cyan:    "#00E5FF",
+  purple:  "#C084FC",
+  green:   "#00FF9C",
+  magenta: "#FF2D78",
+  amber:   "#FFB020",
+  text:    "#E2E8F0",
+  muted:   "#7C8A9E",
   divider: "#1e293b",
-  ink: "#030712",
+  ink:     "#030712",
 };
 
 const USD = (n) =>
@@ -666,7 +668,7 @@ function FutureNoireGlobals() {
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 2px;
-        text-shadow: 0 0 10px rgba(16,185,129,0.35);
+        text-shadow: 0 0 14px ${FN.green}88, 0 0 28px ${FN.green}44;
         font-family: 'JetBrains Mono', monospace;
       }
       .ceo-sub {
@@ -688,7 +690,7 @@ function FutureNoireGlobals() {
       }
       .ceo-pulse-dot {
         width: 6px; height: 6px; border-radius: 50%; background: ${FN.cyan};
-        box-shadow: 0 0 8px ${FN.cyan};
+        box-shadow: 0 0 14px ${FN.cyan}, 0 0 28px ${FN.cyan}66;
         animation: ceoPulse 2s infinite;
       }
       @keyframes ceoPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -697,9 +699,12 @@ function FutureNoireGlobals() {
         font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.25em;
         text-transform: uppercase; font-weight: 700; cursor: pointer;
         display: inline-flex; align-items: center; gap: 6px;
+        text-shadow: 0 0 8px currentColor;
+        box-shadow: inset 0 0 12px rgba(255,255,255,0.02), 0 0 10px currentColor;
+        filter: saturate(115%);
         transition: all 0.2s;
       }
-      .ceo-pill:hover { transform: translateY(-1px); }
+      .ceo-pill:hover { transform: translateY(-1px); filter: saturate(135%) brightness(1.12); }
 
       .ceo-sidebar {
         grid-area: sidebar;
@@ -718,9 +723,10 @@ function FutureNoireGlobals() {
       }
       .ceo-nav-btn.active {
         border-color: ${FN.cyan}; color: ${FN.cyan};
-        box-shadow: 0 0 10px rgba(6,182,212,0.25);
+        box-shadow: 0 0 18px ${FN.cyan}66, inset 0 0 12px ${FN.cyan}1A;
+        text-shadow: 0 0 8px ${FN.cyan};
       }
-      .ceo-nav-btn:hover { border-color: ${FN.cyan}99; color: ${FN.cyan}; }
+      .ceo-nav-btn:hover { border-color: ${FN.cyan}; color: ${FN.cyan}; box-shadow: 0 0 12px ${FN.cyan}44; }
       .ceo-nav-icon-wrap { position: relative; }
       .ceo-nav-badge {
         position: absolute; top: -6px; right: -8px;
@@ -728,7 +734,7 @@ function FutureNoireGlobals() {
         font-size: 8px; font-weight: 700;
         width: 14px; height: 14px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 0 6px ${FN.magenta};
+        box-shadow: 0 0 10px ${FN.magenta}, 0 0 20px ${FN.magenta}88;
       }
       .ceo-nav-btn span { font-size: 7.5px; text-transform: uppercase; margin-top: 4px; letter-spacing: 0.05em; }
 
@@ -752,7 +758,11 @@ function FutureNoireGlobals() {
         padding: 16px 18px;
         border-radius: 4px;
         position: relative;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset,
+                    0 18px 40px -28px rgba(0,229,255,0.18);
+        transition: box-shadow 220ms ease, transform 220ms ease;
       }
+      .ceo-card:hover { box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 22px 60px -22px rgba(0,229,255,0.28); }
 
       .ceo-kpi { padding: 14px 16px; min-height: 92px; }
       .ceo-kpi-head {
@@ -761,7 +771,7 @@ function FutureNoireGlobals() {
         text-transform: uppercase; letter-spacing: 0.5px;
         font-family: 'JetBrains Mono', monospace;
       }
-      .ceo-kpi-value { font-size: 22px; font-weight: 800; color: #fff; margin-top: 8px; }
+      .ceo-kpi-value { font-size: 24px; font-weight: 800; color: #ffffff; margin-top: 8px; text-shadow: 0 0 12px rgba(255,255,255,0.18); letter-spacing: 0.02em; }
 
       .ceo-card-title {
         font-size: 11px; margin-bottom: 12px;
@@ -769,6 +779,7 @@ function FutureNoireGlobals() {
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
         display: inline-flex; align-items: center; gap: 6px;
+        text-shadow: 0 0 12px currentColor, 0 0 24px rgba(0,229,255,0.18);
       }
       .ceo-card-sub { font-size: 10px; color: ${FN.muted}; margin-bottom: 10px; }
 
@@ -787,11 +798,13 @@ function FutureNoireGlobals() {
       .ceo-truncate { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .ceo-license-strip {
         margin-top: 10px; padding: 8px 10px;
-        background: rgba(16,185,129,0.07);
-        border: 1px solid rgba(16,185,129,0.3);
+        background: rgba(0,255,156,0.10);
+        border: 1px solid ${FN.green}66;
         color: ${FN.green}; font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: 0.15em;
         font-family: 'JetBrains Mono', monospace;
+        text-shadow: 0 0 10px ${FN.green}88;
+        box-shadow: 0 0 18px ${FN.green}22;
       }
 
       /* Map */
