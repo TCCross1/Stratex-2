@@ -38,6 +38,7 @@ import FleetLiveMap from "@/pages/FleetLiveMap";
 import RegionalSwitchboard from "@/pages/RegionalSwitchboard";
 import MduFleetPortal from "@/pages/MduFleetPortal";
 import BlacklistMatrix from "@/pages/BlacklistMatrix";
+import CeoSuppliers from "@/pages/CeoSuppliers";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
 function Protected({ role, children }) {
@@ -134,6 +135,7 @@ function AppShell() {
         <Route path="/ceo/regional" element={<Protected role="ceo"><RegionalSwitchboard/></Protected>}/>
         <Route path="/ceo/fleet" element={<Protected role="ceo"><MduFleetPortal/></Protected>}/>
         <Route path="/ceo/blacklist" element={<Protected role="ceo"><BlacklistMatrix/></Protected>}/>
+        <Route path="/ceo/suppliers" element={<Protected role="ceo"><CeoSuppliers/></Protected>}/>
         <Route path="/admin/fleet" element={<Protected role="admin"><MduFleetPortal/></Protected>}/>
         <Route path="/admin/blacklist" element={<Protected role="admin"><BlacklistMatrix/></Protected>}/>
 

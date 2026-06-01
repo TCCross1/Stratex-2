@@ -37,6 +37,9 @@ from core import (
 )
 from routes.billing import DRY_RUN_PENALTY, PRICING_TIERS
 from routes.sales_hub import KY_SALES_TARGETS_SEED
+# Phase 1 v4.1 — Supplier registry (must import at module load so @api.post
+# decorators register BEFORE app.include_router(api) executes below).
+from routes import suppliers as _suppliers_mod  # noqa: F401
 from stratex_auth import (
     hash_password, verify_password,
     create_access_token, create_refresh_token, decode_token,
@@ -1765,6 +1768,9 @@ async def on_startup():
     # Supply-chain demo orders — populates the 4 pipeline pages on cold-boot
     from routes.supply_chain import seed_supply_orders
     await seed_supply_orders()
+
+    # Phase 1 v4.1 — Supplier registry idempotent seed (QXO + ABC Supply)
+    await _suppliers_mod.seed_suppliers(db)
 
     # Consensus AI Validation Core — seed demo verdict + start background sweep
     # (pure addition per global preservation lock; existing flows untouched)
