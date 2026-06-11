@@ -10,6 +10,16 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* iOS Safari preview safety net — cap heavy text-shadow blur that triggers
+   inline PDF rasterizer to fill solid color blocks instead of soft glows.
+   Glows still render correctly in real PDF viewers, just slightly softer. */
+h1, h2, h3, .eyebrow, .classif, .cover-tm, .cover-title,
+.pill, .kpi-tile .l, .kpi-tile .v, .toc-item .p,
+.glow-cyan, .glow-amber, .glow-green, .glow-mag, .glow-orange {
+  text-shadow: 0 0 4px currentColor !important;
+}
+.cover-title, h1 { text-shadow: 0 0 6px rgba(0,229,255,0.4) !important; }
+
 html, body {
   background: #080C14;
   color: #E2E8F0;
