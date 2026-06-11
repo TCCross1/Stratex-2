@@ -15,41 +15,33 @@ from pydantic import BaseModel
 
 from core import api, contractor_only, current_user, db, logger, now_iso
 
-# Backend-defined tiers — Model A (Premium Fleet Deployment Engine)
+# v4.1 — STRATEX™ Enterprise-Only Pricing (per founder directive 2026-06-01)
+# Old on_demand + volume_builder tiers deleted per STRICT_DELETE_OTHERS directive.
+# Single tier: $1,500 platform signup + $200 per autonomous scan.
 PRICING_TIERS = {
-    "on_demand": {
-        "name": "On-Demand",
-        "price": 98.00,
+    "enterprise": {
+        "name": "Enterprise",
+        "price": 1500.00,             # one-time platform signup / activation
         "included_drops": 0,
-        "extra_drop_price": 350.00,
-        "blurb": "Low-volume builders, historic restoration, system trials",
+        "extra_drop_price": 200.00,   # per autonomous scan
+        "blurb": "Strategic deployment for multi-branch suppliers and high-volume contractors",
         "features": [
-            "0 included fleet drops",
-            "$300–$400 per autonomous drop",
-            "Full STRATEX™ Risk Engine",
-            "Immutable pre-flight audit trail",
-            "PDF supplement export + email delivery",
-        ],
-    },
-    "volume_builder": {
-        "name": "Volume Builder",
-        "price": 998.00,
-        "included_drops": 4,
-        "extra_drop_price": 198.00,
-        "blurb": "Established residential roofing operators — heavy weekly volume",
-        "features": [
-            "4 fleet drops INCLUDED / month",
-            "$198 per additional drop (44%+ savings)",
-            "Multi-trailer dispatch + RTK fleet",
-            "AES-256 Business Brain isolation",
-            "Priority operator allocation",
-            "Compliance audit log + SOC2 export",
+            "$1,500 one-time platform activation",
+            "$200 per autonomous scan (no caps, no minimums)",
+            "Full STRATEX™ Trifecta Verification Stack",
+            "Tripwire cost-shopping defense (perimeter + gutter node)",
+            "Triple-layer 3D digital twin in every report",
+            "AES-256 Business Brain + immutable pricing ledger",
+            "Co-brand toggle (QXO / ABC Supply / blank-label)",
+            "24h Fernet-sealed homeowner share links",
+            "Real-time fleet USA map + breach alerting",
+            "SOC2 audit log + compliance export",
         ],
         "popular": True,
     },
 }
 
-IMPLEMENTATION_FEE = 598.00
+IMPLEMENTATION_FEE = 0.00   # Folded into the $1,500 activation
 DRY_RUN_PENALTY = 150.00
 
 

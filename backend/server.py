@@ -40,6 +40,10 @@ from routes.sales_hub import KY_SALES_TARGETS_SEED
 # Phase 1 v4.1 — Supplier registry (must import at module load so @api.post
 # decorators register BEFORE app.include_router(api) executes below).
 from routes import suppliers as _suppliers_mod  # noqa: F401
+# Phase 2 v4.1 — Ops dashboard KPI aggregator
+from routes import ops_dashboard as _ops_mod  # noqa: F401
+# Sales deck — Strategic Briefing PDF for Doug Piercy
+from routes import pitch_deck as _pitch_mod  # noqa: F401
 from stratex_auth import (
     hash_password, verify_password,
     create_access_token, create_refresh_token, decode_token,
