@@ -880,7 +880,28 @@ tfoot td { color: var(--amber); border-bottom: none; border-top: 1px solid var(-
     <!-- Site telemetry -->
     <div class="frame amber">
       <h3 style="color: var(--amber); text-shadow: 0 0 10px var(--amber);">STRATEX™ VISION · ADVANCED DIAGNOSTICS</h3>
-      <svg viewBox="0 0 720 440" style="width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px;">
+      <div style="position: relative; width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px; overflow: hidden;">
+        <img src="assets/render_full_twin.png" alt="" style="width: 100%; height: auto; display: block; filter: contrast(1.05) saturate(1.08);">
+        <div style="position: absolute; top: 12px; left: 12px; background: rgba(11,26,34,0.85); border: 1px solid rgba(0,229,255,0.35); border-radius: 4px; padding: 8px 12px; font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 8px; color: #7C8A9E; letter-spacing: 0.18em;">PROJECT</div>
+          <div style="font-size: 10px; color: #fff; margin-top: 2px;">BLG-KY142 · 142 Bluegrass Ridge</div>
+          <div style="font-size: 8px; color: #7C8A9E; margin-top: 4px;">Total Squares: <span style="color:#fff">24.3</span> · Valleys: <span style="color:#fff">148'8"</span></div>
+        </div>
+        <div style="position: absolute; top: 12px; right: 12px; background: rgba(11,26,34,0.85); border: 1px solid rgba(255,123,0,0.45); border-radius: 4px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; width: 170px;">
+          <div style="font-size: 9px; color: #FFB020; letter-spacing: 0.16em; padding-bottom: 6px; border-bottom: 1px solid rgba(255,123,0,0.25); margin-bottom: 6px;">FORENSIC OVERLAY</div>
+          <div style="font-size: 8px; color: #7C8A9E;">Diagnosis</div>
+          <div style="font-size: 9.5px; color: #fff;">Trapped Moisture · CDX Rot</div>
+          <div style="font-size: 8px; color: #7C8A9E; margin-top: 4px;">Location</div>
+          <div style="font-size: 9.5px; color: #fff;">Facet F2 · Rear Hip</div>
+          <div style="font-size: 8px; color: #7C8A9E; margin-top: 4px;">Confidence</div>
+          <div style="font-size: 9.5px; color: #00FF9C;">92.3%</div>
+        </div>
+        <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,229,255,0.10); border: 1px solid rgba(0,229,255,0.55); border-radius: 3px; padding: 6px 12px; font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 8px; color: #7C8A9E;">Anomaly #04 · CDX Rot</div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: #fff;">$17,645.00</div>
+        </div>
+      </div>
+      <svg viewBox="0 0 720 1" style="display:none;">
         <defs>
           <!-- Cyan diagonal hatch pattern for shingle/seam surface -->
           <pattern id="shingleHatch" patternUnits="userSpaceOnUse" width="14" height="8" patternTransform="rotate(35)">
@@ -1076,7 +1097,12 @@ tfoot td { color: var(--amber); border-bottom: none; border-top: 1px solid var(-
     <!-- Layer 1 — Finished Slate / Shingle -->
     <div class="frame cyan">
       <h3>LAYER 01 · FINISHED SLATE</h3>
-      <svg viewBox="0 0 380 260" style="width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px;">
+      <div style="position: relative; width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px; overflow: hidden;">
+        <img src="assets/render_layer1_shingle.png" alt="" style="width: 100%; height: auto; display: block;">
+        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(11,26,34,0.8); border: 1px solid #00E5FF; border-radius: 3px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00E5FF; letter-spacing: 0.14em;">SUB-LAYER · FINISHED SLATE</div>
+        <div style="position: absolute; bottom: 8px; left: 12px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #7C8A9E;">Squares: <span style="color:#fff">24.3</span> · Waste: <span style="color:#fff">12%</span> · Ridge: <span style="color:#fff">62 lf</span></div>
+      </div>
+      <svg viewBox="0 0 1 1" style="display:none;">
         <defs>
           <pattern id="L1Hatch" patternUnits="userSpaceOnUse" width="10" height="6" patternTransform="rotate(35)">
             <line x1="0" y1="0" x2="0" y2="6" stroke="#00E5FF" stroke-width="0.4" opacity="0.6"/>
@@ -1126,7 +1152,12 @@ tfoot td { color: var(--amber); border-bottom: none; border-top: 1px solid var(-
     <!-- Layer 2 — Sheathing + Felt -->
     <div class="frame amber">
       <h3 style="color: var(--amber); text-shadow: 0 0 10px var(--amber);">LAYER 02 · SHEATHING + FELT</h3>
-      <svg viewBox="0 0 380 260" style="width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px;">
+      <div style="position: relative; width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px; overflow: hidden;">
+        <img src="assets/render_layer2_decking.png" alt="" style="width: 100%; height: auto; display: block;">
+        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(11,26,34,0.8); border: 1px solid #FFB020; border-radius: 3px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #FFB020; letter-spacing: 0.14em;">SUB-LAYER · 7/16" CDX</div>
+        <div style="position: absolute; bottom: 8px; left: 12px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #7C8A9E;">Sheets: <span style="color:#fff">76</span> · I&amp;W Shield: <span style="color:#fff">160 sf</span> · Rot: <span style="color:#FF2D78">3 sheets</span></div>
+      </div>
+      <svg viewBox="0 0 1 1" style="display:none;">
         <defs>
           <pattern id="L2Grid" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(35)">
             <path d="M14 0 L0 0 0 14" stroke="#FFB020" stroke-width="0.4" fill="none" opacity="0.55"/>
@@ -1171,7 +1202,12 @@ tfoot td { color: var(--amber); border-bottom: none; border-top: 1px solid var(-
     <!-- Layer 3 — Framing -->
     <div class="frame green">
       <h3 style="color: var(--green); text-shadow: 0 0 10px var(--green);">LAYER 03 · STRUCTURAL FRAMING</h3>
-      <svg viewBox="0 0 380 260" style="width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px;">
+      <div style="position: relative; width: 100%; background: radial-gradient(ellipse at center, #0B1A22 0%, #03070C 100%); border-radius: 4px; overflow: hidden;">
+        <img src="assets/render_layer3_framing.png" alt="" style="width: 100%; height: auto; display: block;">
+        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(11,26,34,0.8); border: 1px solid #00FF9C; border-radius: 3px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00FF9C; letter-spacing: 0.14em;">LAYER · STRUCTURAL FRAMING</div>
+        <div style="position: absolute; bottom: 8px; left: 12px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #7C8A9E;">2x8 Rafters 16" o.c. · LVL Ridge · Hurricane Straps <span style="color:#00FF9C">VERIFIED</span></div>
+      </div>
+      <svg viewBox="0 0 1 1" style="display:none;">
         <defs>
           <filter id="cyG3"><feGaussianBlur stdDeviation="1.4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
