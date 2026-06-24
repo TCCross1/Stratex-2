@@ -1545,7 +1545,11 @@ tfoot td { color: var(--amber); border-bottom: none; border-top: 1px solid var(-
     <!-- Overhang section -->
     <div class="frame amber" style="display: flex; flex-direction: column;">
       <h3 style="color: var(--amber); text-shadow: 0 0 10px var(--amber);">EAVE OVERHANG · CUT THROUGH</h3>
-      <svg viewBox="0 0 320 280" style="width: 100%; background: #02060B; border-radius: 4px;">
+      <div style="position: relative; width: 100%; background: #02060B; border-radius: 4px; overflow: hidden; flex: 1;">
+        <img src="assets/render_cut_section.png" alt="" style="width: 100%; height: auto; display: block;">
+        <div style="position: absolute; bottom: 8px; left: 12px; right: 12px; font-family: 'JetBrains Mono', monospace; font-size: 7px; color: #7C8A9E; letter-spacing: 0.12em;">EAVE PROFILE · WIND/RAIN BACK-PRESSURE PATH</div>
+      </div>
+      <svg viewBox="0 0 1 1" style="display:none;">
         <g transform="translate(20, 30)">
           <!-- rafter angled -->
           <polygon points="40,40 280,140 280,158 40,58" fill="#FFB020" opacity="0.5"/><text x="160" y="92" font-family="JetBrains Mono" font-size="7" fill="#FFB020">2x8 RAFTER</text>

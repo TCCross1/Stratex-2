@@ -1,83 +1,46 @@
-"""STRATEX™ shared core — app, db, routers, dependencies, common helpers.
+# backend/core.py
+# STRATEX MASTER CONTROL TOWER - ORCHESTRATION ENGINE
+# ROLE: PROJECT MANAGER AI - APEX AUTHORITY
 
-All route modules import their FastAPI app, db client, routers, and auth
-dependencies from this module. This is the only place where the FastAPI
-`app`, MongoDB client, and shared APIRouters are constructed.
-"""
-from __future__ import annotations
-
+from typing import Dict, Any
 import logging
-import os
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict
 
-from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI
-from motor.motor_asyncio import AsyncIOMotorClient
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("StratexManager")
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+def delegate_to_expert_agent(task_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Delegates verified telemetry to the appropriate Stratex expert agent."""
+    logger.info(f"Delegating {task_type} to expert agent...")
+    
+    agent_map = {
+        "framing": "framing_expert_agent",
+        "thermal": "thermal_moisture_expert",
+        "energy": "energy_efficiency_expert",
+        "materials": "materials_brain_expert",
+        "opening": "door_window_specialist"
+    }
+    
+    # Verification Protocol
+    if not data or data.get("accuracy_score", 0) < 0.95:
+        return {"status": "VALIDATION_REQUIRED", "message": "Precision below threshold. Re-scan required."}
+        
+    return {"status": "DELEGATED", "agent": agent_map.get(task_type), "payload": data}
 
-from stratex_auth import auth_dep, role_dep, require_nda, require_ceo  # noqa: E402
-
-# --- Mongo --------------------------------------------------------------
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
-
-
-def get_db():
-    return db
-
-
-# --- App + routers ------------------------------------------------------
-app = FastAPI(title="STRATEX API", version="2.0.0")
-api = APIRouter(prefix="/api")
-auth_r = APIRouter(prefix="/api/auth")
-
-logger = logging.getLogger("stratex")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-# --- Auth dependency singletons (bound to local db) ---------------------
-current_user = auth_dep(get_db)
-contractor_only = role_dep(get_db, "contractor")
-operator_only = role_dep(get_db, "operator")
-admin_only = role_dep(get_db, "admin")
-ceo_only = require_ceo(get_db)
-contractor_ndaed = require_nda(get_db)
-
-
-# --- Shared response shapers --------------------------------------------
-def _public_user(u: Dict[str, Any]) -> Dict[str, Any]:
+def process_master_data_ingress(raw_drone_data: Dict[str, Any]):
+    """Orchestrates incoming DJI Manifold 3 telemetry data."""
+    if not raw_drone_data.get("pinpoint_accurate", False):
+        return "SIGNAL_RESCAN"
+        
+    logger.info("Telemetry data received in Stratex Master Data folder. PM Agent initiating triple-check.")
+    
     return {
-        "id": u["id"],
-        "email": u["email"],
-        "legal_name": u.get("legal_name", ""),
-        "first_name": u.get("first_name") or (
-            u.get("legal_name", "").split(" ")[0] if u.get("legal_name") else ""
-        ),
-        "company_name": u.get("company_name", ""),
-        "role": u["role"],
-        "tour_mode": bool(u.get("tour_mode", False)),
-        "nda_accepted": u.get("nda_accepted", False),
-        "totp_enrolled": u.get("totp_enrolled", False),
-        "created_at": u.get("created_at"),
+        "thermal_analysis": delegate_to_expert_agent("thermal", raw_drone_data),
+        "material_estimation": delegate_to_expert_agent("materials", raw_drone_data),
+        "energy_audit": delegate_to_expert_agent("energy", raw_drone_data)
     }
 
-
-def _strip_pricing(job: Dict[str, Any]) -> Dict[str, Any]:
-    """Operator/operator-board view: redact ALL pricing & business fields."""
-    o = dict(job)
-    o.pop("pricing", None)
-    o.pop("homeowner_email", None)
-    o.pop("homeowner_phone", None)
-    return o
+def final_project_manager_approval(report_data: Dict[str, Any]):
+    """Apex Authority: Final authorization before Report Generation."""
+    if report_data.get("issues"):
+        return "KICK_BACK_TO_EXPERTS"
+    return "APPROVED_FOR_REPORTING"

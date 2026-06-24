@@ -1,0 +1,195 @@
+Operating System: macOS 15.3
+Kernel version: 24.3.0
+
+CPU info: 
+Apple M1
+
+Hostname: 
+Anthonys-iMac.local
+
+System Time: 
+20250308114841
+
+> usbdevices
+VID: 0x2109 PID: 0x2817
+VID: 0x0bc2 PID: 0x2344
+VID: 0x2109 PID: 0x8817
+VID: 0x050d PID: 0x006b
+VID: 0x2109 PID: 0x0817
+> 
+> recordraw
+> 
+> devices
+> 
+> pnpinfo
+001	Slate Media Technology, RAVEN, USB         457;1056
+002	Slate Media Technology, RAVEN MTX, USB     1EF1;57
+003	Slate Media Technology, RAVEN MTZ, USB     222A;1
+004	Slate Media Technology, RAVEN MTi2, USB    2575;0109,0402
+> 
+> monitors
+UPDD monitor layout information
+  found 2 monitors
+  primary monitor is 1
+    Monitor 1:        Built-in Retina Display
+      Left:   0
+      Top:    0
+      Right:  2239
+      Bottom: 1259
+    Monitor 2:        RAVEN MTi MAX
+      Left:   2240
+      Top:    -52
+      Right:  4799
+      Bottom: 1387
+> 
+> version
+07.01.179.3020640
+> 
+> global get *
+anchor_mouse.enabled: 1
+authentication: H4TJQ0D8Q6W8
+autoconfigure: 0
+build_level: Beta
+claim_until: 2025-04-07
+computer_key: H4TJQ0D8Q6W8
+console.hideoption.check_for_updates: 1
+console.hideoption.touch_devices: 1
+console.hideoption.usb_devices: 1
+cryptographic_check.6: ApidBtdB6rKW39YaKxo/Rd2d5dCZ5L6j2+R/qZ+O3cA=
+generated: Sat Dec 21 17:03:14 2024 GMT
+gesture action double tap: double click
+gesture action five finger splay: keystroke
+gesture action five finger squeeze: keystroke
+gesture action five finger squeeze and splay: no action
+gesture action four finger drag: no action
+gesture action four finger splay: keystroke
+gesture action four finger squeeze: keystroke
+gesture action four finger squeeze and splay: no action
+gesture action four finger swipe down: keystroke
+gesture action four finger swipe left: keystroke
+gesture action four finger swipe right: keystroke
+gesture action four finger swipe up: keystroke
+gesture action one finger swipe left from right edge of screen: mission control
+gesture action option double tap click using: click using left button
+gesture action option five finger splay keystroke code: 14
+gesture action option five finger splay keystroke modifiers: 1835306
+gesture action option five finger splay keystroke text: Command Control Option W
+gesture action option five finger squeeze and splay reposition cursor: 0
+gesture action option five finger squeeze keystroke code: 14
+gesture action option five finger squeeze keystroke modifiers: 1835306
+gesture action option five finger squeeze keystroke text: Command Control Option W
+gesture action option four finger drag reposition cursor: 1
+gesture action option four finger splay keystroke code: 14
+gesture action option four finger splay keystroke modifiers: 1048841
+gesture action option four finger splay keystroke text: Command W
+gesture action option four finger squeeze keystroke code: 5
+gesture action option four finger squeeze keystroke modifiers: 1048841
+gesture action option four finger squeeze keystroke text: Command H
+gesture action option four finger swipe down keystroke code: 120
+gesture action option four finger swipe down keystroke modifiers: 8388865
+gesture action option four finger swipe down keystroke text: End
+gesture action option four finger swipe left keystroke code: 124
+gesture action option four finger swipe left keystroke modifiers: 11665675
+gesture action option four finger swipe left keystroke text: Command Shift Left
+gesture action option four finger swipe left reposition cursor: 0
+gesture action option four finger swipe right keystroke code: 125
+gesture action option four finger swipe right keystroke modifiers: 11665675
+gesture action option four finger swipe right keystroke text: Command Shift Right
+gesture action option four finger swipe right reposition cursor: 0
+gesture action option four finger swipe up keystroke code: 116
+gesture action option four finger swipe up keystroke modifiers: 8388865
+gesture action option four finger swipe up keystroke text: Home
+gesture action option press click using: click using right button
+gesture action option tap click length: 5
+gesture action option three finger swipe down keystroke code: 122
+gesture action option three finger swipe down keystroke modifiers: 8388865
+gesture action option three finger swipe down keystroke text: Page Down
+gesture action option three finger swipe left keystroke code: 34
+gesture action option three finger swipe left keystroke modifiers: 1048849
+gesture action option three finger swipe left keystroke text: Command [
+gesture action option three finger swipe left reposition cursor: 0
+gesture action option three finger swipe right keystroke code: 31
+gesture action option three finger swipe right keystroke modifiers: 1048849
+gesture action option three finger swipe right keystroke text: Command ]
+gesture action option three finger swipe right reposition cursor: 0
+gesture action option three finger swipe up keystroke code: 117
+gesture action option three finger swipe up keystroke modifiers: 8388865
+gesture action option three finger swipe up keystroke text: Page Up
+gesture action option two finger double tap reposition cursor: 0
+gesture action option two finger drag scroll direction natural: 0
+gesture action option two finger drag speed: 100
+gesture action option two finger swipe down reposition cursor: 0
+gesture action option two finger swipe left reposition cursor: 0
+gesture action option two finger swipe right reposition cursor: 0
+gesture action option two finger swipe up reposition cursor: 0
+gesture action press: no action
+gesture action press and tap: no action
+gesture action rotate: no action
+gesture action three finger drag: no action
+gesture action three finger swipe down: no action
+gesture action three finger swipe left: keystroke
+gesture action three finger swipe right: keystroke
+gesture action three finger swipe up: no action
+gesture action three finger tap: click
+gesture action two finger double tap: no action
+gesture action two finger drag: no action
+gesture action two finger tap: no action
+gesture double tap enabled: 0
+gesture enable one finger swiping from screen edge: 0
+gesture enable swiping from screen edge: 0
+gesture force drag activation pressure: 55705
+gesture force drag deactivation pressure: 47185
+gesture force press activation pressure: 55705
+gesture force press deactivation pressure: 47185
+gesture four finger squeeze splay separate: 0
+gesture gesture press visual feedback: 0
+gesture menu icon visible: 0
+gesture press time: 750
+gesture squeeze splay sensitivity: 15
+gesture two finger double tap enabled: 0
+gesture use three finger swipes: 0
+gesture use two finger swipes: 0
+gesture web browsers: _
+installation_info: 2025-03-08
+sm9TTG3MjMsA9quqVHwfMtj/2tR+V3d/Kf+UqI4yN0g=
+last_checked_os_version: macOS 15.3
+license.6.authentication_data: nuSUlw0FfuOZp+rMKk67Fr5f93m401I+7Y4CHxoPZQM=
+license.6.authentication_method: apikey
+license.6.bundle: Permanent - Slate - Mac - 010725
+license.6.company: Slate Media Technology
+license.6.eval_click_limit: 100
+license.6.id_bundle: 6
+license.6.type: permanent
+licensed.build: 07.01.179
+j8fK/+xZE9mb5FbyzTYXj7KUhBlK9UnvXUyBf+YBRBg=
+monitorsetupcount: 2
+monitorsetupmetrics: 0:0:1259:2239:0:0:1259:2239:2240:-52:1387:4799:0:0:
+monitorsetupmetrics.was: 0:0:1259:2239:0:0:1259:2239:2240:-52:1387:4799:0:0:
+monitorsetupname-1: Built-in Retina Display
+monitorsetupname-2: RAVEN MTi MAX
+number_of_controllers: 4
+number_of_devices: 0
+pen_interface.enabled: 0
+private.dext.status: 0
+private.monitors_detected: 0
+private.updd_commander_run_after_install_done: 1
+register.show.auto_order: 0
+registration.6.cryptographic_check: YeXolnSqU/eOE1VMGf+if7tdwYr4uSq/YFFxCW+J8ds=
+registration.6.email: 
+registration.6.installable_until: 2025-10-01
+registration.6.is_eval: 0
+registration.6.support_until: 2025-10-01
+release: 3020640
+secure.system_protection: hgOhfkC4dyA=
+sent_to: 
+touch_interface.enabled: 0
+tuio divide x axis: 1
+tuio host: 127.0.0.1
+tuio port: 3338
+tuio send packets at updd rate: 1
+tuio show icon: 1
+updd_commander_run_after_install: 0
+upddcommander.applicationsettings.extra_touch_logging: 1
+upddcommander.applicationsettings.press_visual_feedback: 0
+upddcommander.applicationsettings.touch_click_nearest: 0
+> 
