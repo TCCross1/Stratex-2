@@ -16,6 +16,53 @@ const PORTAL_TILES = [
   { id: "supply", label: "Supply Chain Security",     sub: "Geofence · pipeline · encryption",  to: "/demo/supply-chain",  accent: "orange", icon: Shield },
 ];
 
+// Full dashboard switchboard — every operational surface in STRATEX™,
+// grouped by audience.
+const DASHBOARD_GROUPS = [
+  {
+    title: "Demo Modules",
+    sub: "Auth-free walkthroughs for live prospect demonstrations",
+    accent: "teal",
+    items: [
+      { id: "demo-scan",  label: "New Drone Scan",          to: "/demo/scan",         icon: Radar },
+      { id: "demo-twin",  label: "Diagnostic Twin",         to: "/demo/twin",         icon: Box },
+      { id: "demo-maint", label: "AI Maintenance Priority", to: "/demo/maintenance",  icon: Activity },
+      { id: "demo-quant", label: "STRATEX Quant™ Estimator", to: "/demo/quant",        icon: Cpu },
+      { id: "demo-supply",label: "Supply Chain Security",   to: "/demo/supply-chain", icon: Shield },
+    ],
+  },
+  {
+    title: "Executive Cockpits",
+    sub: "Single-tenant command centers",
+    accent: "volt",
+    items: [
+      { id: "ceo-ops",       label: "CEO Cockpit",          to: "/ceo/ops",       icon: Satellite },
+      { id: "ceo-suppliers", label: "Supplier Registry",    to: "/ceo/suppliers", icon: Cloud },
+      { id: "ceo-login",     label: "CEO Secure Portal",    to: "/ceo/login",     icon: Shield },
+    ],
+  },
+  {
+    title: "Operations",
+    sub: "GM · Admin · Pricing — branch and tenant ops",
+    accent: "orange",
+    items: [
+      { id: "gm-ops",     label: "GM Ops Dashboard",    to: "/gm/ops",   icon: Activity },
+      { id: "admin-ops",  label: "Admin Operations",    to: "/admin/ops", icon: Cpu },
+      { id: "pricing",    label: "Pricing & Plans",     to: "/pricing",  icon: Zap },
+    ],
+  },
+  {
+    title: "Field & Contractor",
+    sub: "Contractor portal · drone operator · pilot terminal",
+    accent: "teal",
+    items: [
+      { id: "contractor", label: "Contractor Portal",   to: "/auth",     icon: Crosshair },
+      { id: "pilot",      label: "Pilot Terminal",      to: "/pilot",    icon: Sun },
+      { id: "operator",   label: "Operator Console",    to: "/operator", icon: Radar },
+    ],
+  },
+];
+
 function PortalTile({ tile }) {
   const accentClass = tile.accent === "orange" ? "text-plasma" : tile.accent === "volt" ? "text-volt" : "text-teal";
   const accentColor = tile.accent === "orange" ? "#FF5400" : tile.accent === "volt" ? "#A6FF00" : "#00F5D4";
@@ -240,21 +287,67 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* SWITCHBOARD — full grid */}
+      {/* SWITCHBOARD — every dashboard in STRATEX™ */}
       <section className="px-6 md:px-12 py-16 md:py-24" id="switchboard">
         <div className="max-w-[1500px] mx-auto">
-          <div className="text-center mb-10">
-            <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// MASTER PORTAL SWITCHBOARD · ALL OPERATIONAL PLANES</div>
+          <div className="text-center mb-10 md:mb-14">
+            <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// MASTER PORTAL SWITCHBOARD · ALL DASHBOARDS</div>
             <h2 className="font-display text-[1.5rem] sm:text-3xl md:text-5xl uppercase tracking-[0.04em] sm:tracking-[0.1em] text-silver leading-tight">
-              Choose Your <span className="text-teal glow-teal">Command Plane</span>
+              Every <span className="text-teal glow-teal">Command Surface</span>, One Switchboard
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-hud font-body">
-              Five operational modules. Zero friction. Upload any drone payload to receive a forensic
-              CAD/BIM report — squares, valleys, gables, layered digital twin, BOM, labor — under 90 seconds.
+              Demo modules · executive cockpits · branch operations · field contractor terminals.
+              Tap any tile to jump straight in.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+
+          {/* Hero row — primary demo tile + 2 standout demo tiles */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
             {PORTAL_TILES.map((t) => <PortalTile key={t.id} tile={t}/>)}
+          </div>
+
+          {/* Full dashboard grid, grouped */}
+          <div className="space-y-10 md:space-y-12">
+            {DASHBOARD_GROUPS.map((grp) => {
+              const dot = grp.accent === "volt" ? "#A6FF00" : grp.accent === "orange" ? "#FF5400" : "#00F5D4";
+              return (
+                <div key={grp.title}>
+                  <div className="flex items-baseline gap-3 mb-4">
+                    <span className="w-2 h-2 rounded-full" style={{ background: dot, boxShadow: `0 0 8px ${dot}` }}/>
+                    <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.18em] text-silver">{grp.title}</h3>
+                    <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-muted-hud hidden md:inline">// {grp.sub}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {grp.items.map((it) => {
+                      const Icon = it.icon;
+                      return (
+                        <Link
+                          key={it.id}
+                          to={it.to}
+                          data-testid={`dash-tile-${it.id}`}
+                          className="group block rounded-md p-4 transition-all hover:scale-[1.015] hover:brightness-110"
+                          style={{
+                            background: "rgba(15,22,34,0.55)",
+                            border: `1px solid ${dot}55`,
+                            boxShadow: `inset 0 0 20px ${dot}10`,
+                          }}
+                        >
+                          <div style={{ color: dot, filter: `drop-shadow(0 0 4px ${dot}99)` }}>
+                            <Icon size={18} strokeWidth={1.5}/>
+                          </div>
+                          <div className="mt-2 font-display text-[12px] sm:text-[13px] uppercase tracking-[0.1em] text-silver leading-tight break-words">
+                            {it.label}
+                          </div>
+                          <div className="mt-1 font-mono text-[9px] tracking-[0.18em] uppercase" style={{ color: dot }}>
+                            {it.to}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
