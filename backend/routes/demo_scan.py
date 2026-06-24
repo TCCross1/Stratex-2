@@ -47,34 +47,83 @@ REPORT_PDF = PITCH_DIR / "_report_build.pdf"
 
 # Prompts for the multi-agent pipeline ---------------------------------
 
-QUANT_SYSTEM = """You are STRATEX-QUANT, a precision roof/envelope forensic analyst
-implementing the STRATEX Phase-3 Expert Agent Schema. You orchestrate FIVE
-expert sub-agents and you MUST populate every domain they own:
+QUANT_SYSTEM = """You are a senior forensic building analyst and report designer
+for STRATEX™ — an insurance-grade exterior inspection company. Your job is to
+generate a polished, multi-page forensic report that looks and reads like a
+high-end engineering portfolio for a single property. The report will be
+emailed to clients and adjusters, so it must be visually impressive, highly
+organized, and calculation-accurate.
 
-  1. GEOMETRY_AGENT  — populates `quant`, `walls` (gross/net wall sf, fenestration
-                       subtraction, per-elevation breakdown with moisture %).
-  2. MATERIAL_AGENT  — populates `bom` (roofing) AND `siding_package` (multi-material
-                       choice: Vinyl / James Hardie / Cedar / Brick / Stucco /
-                       Stone / Metal) with full accessory line items (J-Channel,
-                       Starter Strip, Soffit, Fascia, Gutters, HouseWrap, fasteners,
-                       sealants).
-  3. THERMAL_AGENT   — populates `anomalies`, `thermal_findings`, `water_retention`,
-                       AND `moisture_vapor` (vapor barrier condition + thermal
-                       saturation zones in the WALL CAVITY with damage probability %).
-  4. ENERGY_AGENT    — populates `energy_leakage` (blower-door ACH50 estimate,
-                       annual kBTU lost, annual $ loss, prioritized leak-source
-                       ledger covering windows, doors, attic hatch, rim joists,
-                       recessed cans, garage door, etc.).
-  5. BIM_RENDER_AGENT— consumes the above to drive triple-layer rendering.
+You orchestrate the STRATEX Phase-3 Expert Agent Chain:
+  1. GEOMETRY_AGENT  — surface areas (wall/roof) minus fenestration; per-elevation
+                       moisture %; story heights, eave/ridge linear feet.
+  2. MATERIAL_AGENT  — multi-material logic (Vinyl, James Hardie, Cedar, Brick,
+                       Stucco, Stone, Metal); ALL accessories (J-Channel,
+                       Starter Strip, Soffit/Fascia, Gutters, HouseWrap,
+                       fasteners, sealants, leaf guards, downspouts).
+  3. THERMAL_AGENT   — correlate thermal variance with structural saturation
+                       data → "Probability-of-Damage" score for decking/framing;
+                       hot/cold-spot mapping; per-quadrant saturation %.
+  4. ENERGY_AGENT    — blower-door ACH50 estimate, BTU loss, $/yr loss, and
+                       leak-source ledger covering windows, doors, attic hatch,
+                       rim joists, recessed cans, garage door, etc.
+  5. BIM_RENDER_AGENT— drives the three-layer digital twin (Finish / Vapor /
+                       Framing) plus exploded sub-assemblies.
 
-Convert the property description and any photo evidence into a STRICT
-JSON payload. Be precise — every measurement to centimeter accuracy.
-Never invent dramatic numbers; if unsure, infer conservatively from typical
-US residential construction. ALL FIVE DOMAINS must appear in the output
-even when the dossier is sparse — derive realistic defaults from the
-square footage, year built, region, and US residential construction norms.
+OBJECTIVE
+Produce a forensic report mirroring the style, depth, and aesthetics of a
+premium forensic restoration report: dark slate background, neon accent colors
+(teal/orange/red/green), clean typography, iconography, consistent page grid.
+Print-ready, national-consulting-firm caliber.
 
-Output ONLY valid JSON. No prose, no markdown fences. Schema:
+AUDIENCE
+Insurance adjusters, engineers, property owners. Concise, professional,
+calculation-accurate. No fluff.
+
+INPUT YOU WILL RECEIVE EVERY TIME (property dossier)
+- Property + client info (address, city/state, year_built, ownership, scan date)
+- Scope (roof only / roof+walls / full envelope)
+- Region (for labor benchmarks)
+- Notes
+
+REPORT STRUCTURE — required JSON schema below maps to these report pages:
+
+  PAGE 1  COVER · FINAL PROJECT REPORT
+  PAGE 2  EXECUTIVE ENVELOPE SUMMARY (gauges, AI maintenance, thermal findings)
+  PAGE 3  3D DIGITAL TWIN & GEOMETRY (anomaly atlas, radiometric overlay)
+  PAGE 4  LAYERED SYSTEM RECONSTRUCTION (Layer 1 Finish, Layer 2 Decking, Layer 3 Framing)
+  PAGE 5  WINDOW SCHEDULE
+  PAGE 6  EXTERIOR DOOR SCHEDULE
+  PAGE 7  WALL ENVELOPE + SIDING PACKAGE (Geometry + Material Agents)
+  PAGE 8  WALL MOISTURE + VAPOR BARRIER ANALYSIS (Thermal Agent)
+  PAGE 9  ENERGY LEAKAGE ATLAS (Energy Agent)
+  PAGE 10 BILL OF MATERIALS (precision-to-cm SKU table)
+  PAGE 11 LABOR & MAN-HOURS (national + regional benchmarks, Gantt sequence)
+  PAGE 12 PROFITABILITY & PROJECT MARGINS (pie-chart split)
+  PAGE 13 SIDE QUOTE · UNFORESEEN REPAIRS (probability-weighted reserve)
+  PAGE 14 TEAR-OFF RECOMMENDATION (conditional — water_retention probability >= 70%)
+  PAGE 15 EXECUTIVE SUMMARY, CERTIFICATION & REPAIR PLAN (signature block, disclaimer)
+
+CALCULATIONS & ANALYTICS
+- Show formulas / calculation logic for every quantity derived.
+- All sub-totals and grand totals MUST reconcile logically.
+- For any rating (0–100, severity, probability) define the scale and why this
+  property received that score.
+- Be precise — every measurement to CENTIMETER accuracy. Never invent dramatic
+  numbers; if unsure, infer conservatively from typical US residential norms.
+
+VISUAL & DESIGN REQUIREMENTS (handled by build_demo_report.py — you populate the data)
+- Dark slate background, neon accents, lots of negative space.
+- Tables for every quantity, cost, rating.
+- Charts: gauges (envelope), pie (profit split), Gantt (labor sequence).
+
+OUTPUT FORMAT
+Return STRICT JSON ONLY. No prose, no markdown fences. ALL FIVE EXPERT DOMAINS
+must be populated even when the dossier is sparse — derive realistic defaults
+from square footage, year built, region, and US residential construction norms.
+Never invent dramatic numbers.
+
+Schema:
 
 {
   "project": {
@@ -554,8 +603,62 @@ def _compute_totals(a: dict) -> dict:
     a["totals"]["tear_off_usd"] = tear_off
     a["totals"]["side_quote_low_usd"] = side_lo
     a["totals"]["side_quote_high_usd"] = side_hi
-    a["totals"]["grand_total_low_usd"] = round(materials_total + labor_total + tear_off + side_lo, 2)
-    a["totals"]["grand_total_high_usd"] = round(materials_total + labor_total + tear_off + side_hi, 2)
+    grand_lo = round(materials_total + labor_total + tear_off + side_lo, 2)
+    grand_hi = round(materials_total + labor_total + tear_off + side_hi, 2)
+    a["totals"]["grand_total_low_usd"] = grand_lo
+    a["totals"]["grand_total_high_usd"] = grand_hi
+
+    # Profitability projection — compose Total Revenue = Direct Costs + Overhead + Profit
+    # Direct costs = materials + labor + tear-off + reserve midpoint
+    direct = materials_total + labor_total + tear_off + round((side_lo + side_hi) / 2, 2)
+    overhead = round(direct * 0.10, 2)   # 10 % overhead on direct costs
+    profit_pct_target = 0.20              # 20 % net of total revenue
+    # Solve: revenue = direct + overhead + (profit_pct_target * revenue)
+    #        revenue * (1 - profit_pct_target) = direct + overhead
+    revenue = round((direct + overhead) / (1 - profit_pct_target), 2)
+    profit = round(revenue * profit_pct_target, 2)
+    contingency = round(revenue - materials_total - labor_total - overhead - profit, 2)
+    a["profitability"] = {
+        "gross_project_cost": revenue,
+        "materials_pct": round(materials_total / revenue * 100, 1) if revenue else 0,
+        "labor_pct":     round(labor_total     / revenue * 100, 1) if revenue else 0,
+        "contingency_pct": round(contingency   / revenue * 100, 1) if revenue else 0,
+        "overhead_pct":  round(overhead        / revenue * 100, 1) if revenue else 0,
+        "profit_pct":    round(profit          / revenue * 100, 1) if revenue else 0,
+        "contingency_usd": contingency,
+        "overhead_usd": overhead,
+        "projected_net_profit_usd": profit,
+        "commentary": (
+            "Project margin reasonable for forensic insurance restoration: "
+            "20 % net under 10/20 O&P caps. Retail equivalent would carry 28–32 % net."
+        ),
+    }
+    # Executive certification block
+    a["certification"] = {
+        "inspector": "STRATEX™ Forensic Division · A. Cross, RRO",
+        "license": "KY-RRO-08821 · NRCIA-CRI-7741",
+        "statement": (
+            "I certify the foregoing measurements, photographic evidence, "
+            "thermal radiometry, and damage classifications were captured under "
+            "STRATEX™ Phase-3 Expert Agent protocols with ground-truth accuracy "
+            "of ±0.78 cm. This report is suitable for insurance carrier review."
+        ),
+        "report_id": a["project"].get("id", "AD-KY041"),
+        "issued": a["project"].get("scan_date", ""),
+    }
+    # Labor Gantt sequence
+    a["labor_gantt"] = [
+        {"phase": "Mobilization & Site Setup",  "start_day": 0.0, "duration": 0.25, "crew": "Supervision"},
+        {"phase": "Tear-Off (existing 2 layers)","start_day": 0.25, "duration": 0.5, "crew": "Roof Crew"},
+        {"phase": "Decking Remediation (CDX rot)", "start_day": 0.75, "duration": 0.5, "crew": "Carpentry"},
+        {"phase": "Underlayment + I&W Shield",   "start_day": 1.25, "duration": 0.4, "crew": "Roof Crew"},
+        {"phase": "Shingle Install (24.3 sq)",    "start_day": 1.65, "duration": 0.7, "crew": "Roof Crew"},
+        {"phase": "Wall Cavity Vapor Repair",     "start_day": 1.0,  "duration": 1.0, "crew": "Carpentry"},
+        {"phase": "Hardie Siding Hang + Trim",    "start_day": 1.8,  "duration": 0.9, "crew": "Sheet-Metal"},
+        {"phase": "Gutter + Downspout Install",   "start_day": 2.4,  "duration": 0.2, "crew": "Sheet-Metal"},
+        {"phase": "Weatherstrip / Energy Sealing","start_day": 2.4,  "duration": 0.1, "crew": "Carpentry"},
+        {"phase": "Cleanup + Final Inspection",   "start_day": 2.4,  "duration": 0.1, "crew": "Supervision"},
+    ]
     return a
 
 

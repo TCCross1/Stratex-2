@@ -694,6 +694,174 @@ def page_energy_leakage(a: dict) -> str:
     """
 
 
+def page_profitability(a: dict) -> str:
+    if "profitability" not in a:
+        return ""
+    p = a["project"]; pr = a["profitability"]
+    # Build a CSS conic-gradient pie chart from the splits
+    splits = [
+        ("MATERIALS",   pr["materials_pct"],   "#4DF6FF"),
+        ("LABOR",       pr["labor_pct"],       "#FFB020"),
+        ("CONTINGENCY", pr.get("contingency_pct", 0), "#FF2D78"),
+        ("OVERHEAD",    pr["overhead_pct"],    "#FF7B00"),
+        ("PROFIT",      pr["profit_pct"],      "#00FF9C"),
+    ]
+    cum = 0.0
+    pie_stops = []
+    for label, pct, color in splits:
+        start = cum
+        cum += pct
+        pie_stops.append(f"{color} {start:.1f}% {cum:.1f}%")
+    pie_css = "conic-gradient(" + ", ".join(pie_stops) + ")"
+    legend = "".join(
+        f"""<div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:{c};border-radius:2px;box-shadow:0 0 6px {c};"></span>
+          <span style="flex:1;">{label}</span>
+          <span style="color:#fff;font-weight:700;">{pct:.1f}%</span>
+        </div>""" for label, pct, c in splits
+    )
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · PROFITABILITY & PROJECT MARGINS", p)}
+      <div class="eyebrow">· PROFITABILITY & PROJECT MARGINS</div>
+      <h1 style="font-size:30px;">Project <span class="glow-green">Margin</span> Overview</h1>
+      <div class="row c2" style="margin-top:22px;align-items:center;">
+        <div class="frame green" style="text-align:center;">
+          <h2 style="color:var(--green);">COST COMPOSITION</h2>
+          <div style="display:flex;justify-content:center;margin:16px 0;">
+            <div style="width:220px;height:220px;border-radius:50%;background:{pie_css};
+              box-shadow:0 0 32px rgba(77,246,255,0.18); position:relative;">
+              <div style="position:absolute;inset:50px;border-radius:50%;background:#02060B;
+                display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;">GROSS COST</div>
+                <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#fff;">
+                  {_usd(pr['gross_project_cost'])}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:left;max-width:260px;margin:0 auto;">{legend}</div>
+        </div>
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">FINANCIAL SUMMARY</h2>
+          <table>
+            <tbody>
+              <tr><td>GROSS PROJECT REVENUE</td><td class="right glow-cyan">{_usd(pr['gross_project_cost'])}</td></tr>
+              <tr><td>TOTAL MATERIALS</td><td class="right">{_usd(a['totals']['materials_usd'])}</td></tr>
+              <tr><td>TOTAL LABOR</td><td class="right">{_usd(a['totals']['labor_usd'])}</td></tr>
+              <tr><td>CONTINGENCY (tear-off + reserve)</td><td class="right">{_usd(pr.get('contingency_usd', 0))}</td></tr>
+              <tr><td>OVERHEAD (10%)</td><td class="right">{_usd(pr['overhead_usd'])}</td></tr>
+              <tr><td>PROJECTED NET PROFIT (20%)</td><td class="right glow-green">{_usd(pr['projected_net_profit_usd'])}</td></tr>
+            </tbody>
+          </table>
+          <div class="mono" style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.5;">
+            {escape(pr['commentary'])}
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_labor_gantt(a: dict) -> str:
+    if "labor_gantt" not in a:
+        return ""
+    p = a["project"]; rows = a["labor_gantt"]
+    total_days = max(r["start_day"] + r["duration"] for r in rows)
+    bars = "".join(
+        f"""<tr>
+          <td style="width:34%;">{escape(r['phase'])}</td>
+          <td class="mono" style="width:14%;color:var(--muted);">{escape(r['crew'])}</td>
+          <td style="width:8%;" class="right">{r['duration']:.2f} d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:{r['start_day']/total_days*100:.1f}%;
+                width:{r['duration']/total_days*100:.1f}%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr>""" for r in rows
+    )
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · LABOR & MAN-HOURS · GANTT SEQUENCE", p)}
+      <div class="eyebrow">· LABOR SEQUENCE · GANTT TIMELINE</div>
+      <h1 style="font-size:30px;">Crew <span class="glow-amber">Choreography</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>PHASE</th><th>CREW</th><th class="right">DURATION</th><th>TIMELINE · {total_days:.1f} d</th></tr></thead>
+          <tbody>{bars}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_executive_certification(a: dict) -> str:
+    if "certification" not in a:
+        return ""
+    p = a["project"]; t = a["totals"]; c = a["certification"]
+    repair_plan = "".join(
+        f"""<tr>
+          <td class="mono">{i+1}</td>
+          <td><span class="pill" style="color:{_sev_color(t['severity'])};">{escape(t['severity'])}</span></td>
+          <td>{escape(t['task'])}</td>
+          <td class="right glow-green">${t['annual_savings_usd']}/yr</td>
+        </tr>"""
+        for i, t in enumerate(a.get("priority_tasks", []))
+    )
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · EXECUTIVE SUMMARY · CERTIFICATION & REPAIR PLAN", p)}
+      <div class="eyebrow">· EXECUTIVE SUMMARY · CERTIFICATION</div>
+      <h1 style="font-size:30px;">Final <span class="glow-cyan">Project</span> Summary</h1>
+
+      <div class="row c4" style="margin-top:22px;">
+        <div class="frame cyan kpi"><div class="l">TOTAL PROJECT COST</div><div class="v glow-cyan">{_usd(t['grand_total_low_usd'])}</div><div class="u">LOW · GRAND TOTAL</div></div>
+        <div class="frame amber kpi"><div class="l">HIGH RANGE</div><div class="v glow-amber">{_usd(t['grand_total_high_usd'])}</div><div class="u">HIGH · GRAND TOTAL</div></div>
+        <div class="frame green kpi"><div class="l">PROJECTED NET PROFIT</div><div class="v glow-green">{_usd(a.get('profitability',{}).get('projected_net_profit_usd',0))}</div><div class="u">20% TARGET</div></div>
+        <div class="frame mag kpi"><div class="l">URGENCY ITEMS</div><div class="v">{len([t for t in a.get('priority_tasks',[]) if t['severity'] in ('URGENT','HIGH')])}</div><div class="u">CRITICAL TASKS</div></div>
+      </div>
+
+      <div class="frame cyan" style="margin-top:18px;">
+        <h2 style="color:var(--cyan);">AI-PRIORITIZED REPAIR PLAN</h2>
+        <table>
+          <thead><tr><th>#</th><th>URGENCY</th><th>TASK</th><th class="right">EST. ANNUAL SAVINGS</th></tr></thead>
+          <tbody>{repair_plan}</tbody>
+        </table>
+      </div>
+
+      <div class="frame amber" style="margin-top:18px;">
+        <h2 style="color:var(--amber);">CERTIFICATION</h2>
+        <div style="font-size:11px;color:var(--silver);line-height:1.6;margin-bottom:14px;">
+          {escape(c['statement'])}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding-top:18px;border-top:1px solid rgba(255,176,32,0.25);">
+          <div>
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">INSPECTOR</div>
+            <div style="font-size:13px;color:#fff;margin-top:4px;">{escape(c['inspector'])}</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.14em;">{escape(c['license'])}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">REPORT ID</div>
+            <div style="font-size:13px;color:#fff;margin-top:4px;">{escape(c['report_id'])}</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.14em;">ISSUED {escape(c['issued'])}</div>
+          </div>
+        </div>
+        <div class="mono" style="font-size:8px;color:var(--muted);margin-top:18px;letter-spacing:.14em;line-height:1.5;">
+          DISCLAIMER · This report is the proprietary work product of STRATEX™ Forensic
+          Division. Findings are based on aerial drone reconnaissance, photogrammetric
+          mesh reconstruction, and radiometric thermal analysis captured on the scan date.
+          Concealed conditions discoverable only after tear-off are documented in the
+          unforeseen-repair reserve. Reproduction or transmission without authorization
+          is prohibited.
+        </div>
+      </div>
+    </div>
+    """
+
+
 def build_html(a: dict) -> str:
     pages = [
         page_cover(a),
@@ -707,8 +875,11 @@ def build_html(a: dict) -> str:
         page_energy_leakage(a),
         page_bom(a),
         page_labor(a),
+        page_labor_gantt(a),
+        page_profitability(a),
         page_side_quote(a),
         page_tearoff(a),
+        page_executive_certification(a),
     ]
     body = "\n".join(p for p in pages if p)
     return f"""<!doctype html>
