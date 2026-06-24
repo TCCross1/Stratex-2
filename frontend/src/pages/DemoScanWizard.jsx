@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { StratexWordmark, StratexGlyph } from "@/components/StratexBrand";
 import ParametricTwin from "@/components/ParametricTwin";
+import StratexTwinGallery from "@/components/StratexTwinGallery";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -263,7 +264,7 @@ function AnalysisPulse() {
 function AnalysisDashboard({ a, sessionId, onRestart }) {
   const pdfUrl = `${API}/demo/scan-report.pdf?session_id=${sessionId}`;
   const [layer, setLayer] = useState(0); // 0 finished / 1 deck / 2 framing
-  const [renderMode, setRenderMode] = useState("parametric"); // "parametric" | "ai"
+  const [renderMode, setRenderMode] = useState("gallery"); // "gallery" | "parametric" | "ai"
   const [topology, setTopology] = useState(null);
   const layerImgs = [
     `${process.env.REACT_APP_BACKEND_URL}/api/pitch/assets/render_layer1_shingle.png`,
@@ -334,18 +335,25 @@ function AnalysisDashboard({ a, sessionId, onRestart }) {
             <div className="flex gap-2 items-center flex-wrap">
               {/* Render mode toggle */}
               <div className="flex gap-1 border border-slate-700 rounded p-0.5">
+                <button data-testid="render-mode-gallery"
+                  onClick={() => setRenderMode("gallery")}
+                  className={"px-2 py-1 rounded font-mono text-[9px] tracking-[0.14em] " +
+                    (renderMode === "gallery" ? "bg-cyan-400 text-black" : "text-slate-400 hover:text-cyan-400")}
+                  title="Approved Stratex BIM digital-twin gallery">
+                  BIM TWIN
+                </button>
                 <button data-testid="render-mode-parametric"
                   onClick={() => setRenderMode("parametric")}
                   className={"px-2 py-1 rounded font-mono text-[9px] tracking-[0.14em] " +
                     (renderMode === "parametric" ? "bg-emerald-400 text-black" : "text-slate-400 hover:text-emerald-400")}
-                  title="Forensic-grade 3D twin driven by scan data">
-                  PARAMETRIC
+                  title="Parametric 3D from scan data">
+                  SCAN 3D
                 </button>
                 <button data-testid="render-mode-ai"
                   onClick={() => setRenderMode("ai")}
                   className={"px-2 py-1 rounded font-mono text-[9px] tracking-[0.14em] " +
-                    (renderMode === "ai" ? "bg-cyan-400 text-black" : "text-slate-400 hover:text-cyan-400")}
-                  title="Photorealistic AI render (marketing-grade)">
+                    (renderMode === "ai" ? "bg-amber-400 text-black" : "text-slate-400 hover:text-amber-400")}
+                  title="Layer-specific AI CAD render">
                   AI · CAD
                 </button>
               </div>
@@ -363,7 +371,9 @@ function AnalysisDashboard({ a, sessionId, onRestart }) {
             </div>
           </div>
 
-          {renderMode === "parametric" ? (
+          {renderMode === "gallery" ? (
+            <StratexTwinGallery height={360}/>
+          ) : renderMode === "parametric" ? (
             topology ? (
               <ParametricTwin topology={{
                 facets: topology.facets,

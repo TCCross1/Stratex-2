@@ -1,5 +1,27 @@
 # STRATEX™ — Product Requirements & Build Status
 
+## PRIMARY ROLE (CEO DIRECTIVE · LOCKED · Feb 2026)
+
+**Stratex is an ANALYSIS ENGINE for already-created property scan data.**
+It does NOT create the original measurements or raw field scans. It ingests
+completed scan/model inputs (point clouds, meshes, thermal datasets,
+measurement-ready property files), analyzes them through the 5-agent expert
+chain, and produces a fast, polished, contractor-ready output:
+damage assessment · thermal review · energy-loss review · ventilation review ·
+materials · estimates · repair priorities · final reporting.
+
+### Visuals vs. Calculations — Hard Rule
+- The approved Stratex digital-twin renders (`/twin/master.jpeg`, `/twin/quad.jpeg`)
+  are **PRESENTATION ASSETS ONLY**.
+- They appear on landing page, demo states, processing screens, and report-preview
+  areas where generic scans were previously shown.
+- **All calculations and estimations must come from real compatible scan inputs.**
+- A rotatable spin/inspect experience is allowed when (a) real 3D twin / point
+  cloud data is available, OR (b) a multi-view image dataset has enough
+  overlapping views. Otherwise, use the stepped-angle gallery for presentation
+  and keep calculations tied to real imported source data.
+- The UI MUST display a "PRESENTATION RENDER" disclaimer on stylized visuals.
+
 ## Original Problem Statement
 Build STRATEX™ — a dual-sided, hyper-secure B2B SaaS platform for drone-based
 roof + envelope inspections and automated quoting. Future-Noire aesthetic,
