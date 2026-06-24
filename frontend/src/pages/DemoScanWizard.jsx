@@ -69,14 +69,9 @@ export default function DemoScanWizard({ initialStep = 1 }) {
       (async () => {
         setLoading(true);
         try {
-          const r = await axios.get(`${API}/demo/sample`, { timeout: 15000 });
+          const r = await axios.get(`${API}/demo/sample`, { timeout: 30000 });
           setAnalysis(r.data);
-          // also create a real session so the PDF link works
-          const fd = new FormData();
-          Object.entries(dossier).forEach(([k, v]) => fd.append(k, v));
-          axios.post(`${API}/demo/scan-analyze`, fd, { timeout: 90000 })
-            .then((rr) => setSessionId(rr.data.session_id))
-            .catch(() => {});
+          setSessionId("sample"); // PDF endpoint serves sample on this id
         } catch (e) {
           setError(e.response?.data?.detail || e.message);
         } finally {
@@ -286,19 +281,19 @@ function AnalysisDashboard({ a, sessionId, onRestart }) {
   return (
     <div className="space-y-4" data-testid="analysis-dashboard">
       {/* Action bar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-[9px] tracking-[0.28em] text-cyan-400">// PROJECT {a.project.id} · {a.project.city_state}</div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">{a.project.address}</h2>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-mono text-[9px] tracking-[0.28em] text-cyan-400 truncate">// PROJECT {a.project.id} · {a.project.city_state}</div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight break-words">{a.project.address}</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <a href={pdfUrl} target="_blank" rel="noreferrer" data-testid="open-pdf"
-            className="px-5 py-2.5 rounded font-mono text-xs tracking-[0.18em] text-black bg-cyan-400 hover:brightness-110"
+            className="px-4 py-2.5 rounded font-mono text-[11px] tracking-[0.18em] text-black bg-cyan-400 hover:brightness-110 whitespace-nowrap"
             style={{ boxShadow: "0 0 22px rgba(0,229,255,0.6)" }}>
-            OPEN 9-PAGE PDF REPORT ↗
+            FULL PDF REPORT ↗
           </a>
           <button onClick={onRestart} data-testid="new-scan"
-            className="px-5 py-2.5 rounded font-mono text-xs tracking-[0.18em] text-slate-300 border border-slate-600 hover:border-cyan-400 hover:text-cyan-400">
+            className="px-4 py-2.5 rounded font-mono text-[11px] tracking-[0.18em] text-slate-300 border border-slate-600 hover:border-cyan-400 hover:text-cyan-400 whitespace-nowrap">
             NEW SCAN
           </button>
         </div>
@@ -315,9 +310,9 @@ function AnalysisDashboard({ a, sessionId, onRestart }) {
       {/* Grand total */}
       <Frame color="cyan">
         <div className="font-mono text-[9px] text-cyan-400 tracking-[0.28em]">// EXECUTIVE GRAND TOTAL RANGE</div>
-        <div className="font-mono text-4xl text-white mt-2" style={{ letterSpacing: "-0.02em" }}>
+        <div className="font-mono text-2xl sm:text-3xl md:text-4xl text-white mt-2 break-words" style={{ letterSpacing: "-0.02em" }}>
           <span style={{ color: "#00E5FF", textShadow: "0 0 8px rgba(0,229,255,0.6)" }}>{USD(a.totals.grand_total_low_usd)}</span>
-          <span className="text-slate-500 text-lg mx-3">→</span>
+          <span className="text-slate-500 text-base sm:text-lg mx-2 sm:mx-3">→</span>
           <span style={{ color: "#FFB020", textShadow: "0 0 8px rgba(255,176,32,0.6)" }}>{USD(a.totals.grand_total_high_usd)}</span>
         </div>
         <div className="font-mono text-[10px] text-slate-400 mt-2 tracking-wide leading-relaxed">
