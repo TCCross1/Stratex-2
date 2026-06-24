@@ -1,5 +1,5 @@
 export const ASSETS = {
-  logo: "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/uxbfg6t0_IMG_2137.png",
+  logo: "/stratex_logo.png",
   dashboard_montage: "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/zdnjwm8j_IMG_2145.png",
   trailer_engineering: "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/3cs90n0v_IMG_2146.png",
   caliper_tablet: "https://customer-assets.emergentagent.com/job_787f5e59-e51f-4e86-9583-3bde406f230e/artifacts/37kjvb3k_IMG_2141.png",

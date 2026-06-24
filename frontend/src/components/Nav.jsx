@@ -87,9 +87,7 @@ export default function Nav({ role }) {
               <span className="flex items-center gap-2"><Shield size={12} className="text-volt"/><span className="text-volt uppercase tracking-widest">{user.role}</span><span className="text-muted-hud">• {user.email}</span></span>
               <button onClick={doLogout} data-testid="nav-logout" className="flex items-center gap-1 text-plasma hover:text-silver uppercase tracking-widest"><LogOut size={12}/> Logout</button>
             </>
-          ) : (
-            <Link to="/auth" data-testid="nav-signin" className="flex items-center gap-1 text-teal hover:text-silver uppercase tracking-widest"><LogIn size={12}/> Sign In</Link>
-          )}
+          ) : null}
         </div>
 
         {/* Mobile menu button */}
@@ -116,9 +114,7 @@ export default function Nav({ role }) {
                 <span className="flex items-center gap-1"><Shield size={11} className="text-volt"/><span className="text-volt uppercase tracking-widest">{user.role}</span></span>
                 <button onClick={doLogout} data-testid="nav-logout-mobile" className="flex items-center gap-1 text-plasma uppercase tracking-widest"><LogOut size={11}/> Logout</button>
               </>
-            ) : (
-              <Link to="/auth" onClick={()=>setOpen(false)} data-testid="nav-signin-mobile" className="flex items-center gap-1 text-teal uppercase tracking-widest"><LogIn size={11}/> Sign In</Link>
-            )}
+            ) : null}
           </div>
         </div>
       )}

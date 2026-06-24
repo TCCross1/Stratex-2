@@ -8,6 +8,35 @@ import useIsMobile from "@/hooks/use-is-mobile";
 import { api } from "@/lib/api";
 import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
 
+const PORTAL_TILES = [
+  { id: "scan",   label: "New Drone Scan",            sub: "Upload imagery → CAD/BIM report", to: "/demo/scan",          accent: "teal",   primary: true, icon: Radar },
+  { id: "twin",   label: "Diagnostic Twin Command",   sub: "3D wireframe · framing · thermal",  to: "/demo/twin",          accent: "orange", icon: Box },
+  { id: "maint",  label: "AI Maintenance Priority",   sub: "Urgency-ranked task queue",         to: "/demo/maintenance",   accent: "teal",   icon: Activity },
+  { id: "quant",  label: "STRATEX Quant™ Estimator",  sub: "Take-off analytics · valuation",    to: "/demo/quant",         accent: "volt",   icon: Cpu },
+  { id: "supply", label: "Supply Chain Security",     sub: "Geofence · pipeline · encryption",  to: "/demo/supply-chain",  accent: "orange", icon: Shield },
+];
+
+function PortalTile({ tile }) {
+  const accentClass = tile.accent === "orange" ? "text-plasma" : tile.accent === "volt" ? "text-volt" : "text-teal";
+  const accentColor = tile.accent === "orange" ? "#FF5400" : tile.accent === "volt" ? "#A6FF00" : "#00F5D4";
+  const Icon = tile.icon;
+  return (
+    <Link to={tile.to} data-testid={`portal-tile-${tile.id}`} className="block group">
+      <HudCard scanline className={`p-5 md:p-6 h-full transition-all hover:brightness-110 hover:scale-[1.01] ${tile.primary ? "ring-1 ring-teal/40" : ""}`}>
+        <div className={`flex items-center gap-3 mb-4 ${accentClass}`}>
+          <Icon size={20} strokeWidth={1.5}/>
+          <span className="font-mono text-[10px] tracking-[0.28em] uppercase">{tile.primary ? "PRIMARY OPERATION" : `MODULE · ${tile.id.toUpperCase()}`}</span>
+        </div>
+        <h3 className="font-display text-base md:text-lg uppercase tracking-[0.12em] text-silver">{tile.label}</h3>
+        <p className="font-body text-xs text-muted-hud leading-relaxed mt-2">{tile.sub}</p>
+        <div className="mt-4 font-mono text-[10px] tracking-[0.22em] uppercase" style={{ color: accentColor }}>
+          Launch →
+        </div>
+      </HudCard>
+    </Link>
+  );
+}
+
 const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
   <HudCard scanline className="p-6 md:p-8" data-testid={testid}>
     <div className={`flex items-center gap-3 mb-6 ${accent === "orange" ? "text-plasma" : accent === "volt" ? "text-volt" : "text-teal"}`}>
@@ -47,13 +76,12 @@ export default function Landing() {
               capacitance model to calculate the <span className="text-silver">true moisture volume and depth beneath the roof membrane</span> —
               not what reflects off the surface, but the actual sub-surface mass entrapment, measured to the cubic inch.
             </p>
-            <div className="mt-8 md:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 md:gap-4">
-              <Link to="/onboard" data-testid="hero-launch-cta" className="btn-hud pulse-glow w-full sm:w-auto justify-center">
-                <Radar size={16} /> Start ROI Calculator → Sign Up
-              </Link>
-              <Link to="/auth" data-testid="hero-projects-cta" className="btn-hud btn-hud-ghost w-full sm:w-auto justify-center">
-                <Shield size={16} /> Returning User — Sign In
-              </Link>
+            <div className="mt-8 md:mt-10">
+              <div className="font-mono text-[10px] tracking-[0.32em] text-teal uppercase mb-3">// MASTER PORTAL SWITCHBOARD</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                {PORTAL_TILES.slice(0, 1).map((t) => <PortalTile key={t.id} tile={t}/>)}
+                {PORTAL_TILES.slice(1, 3).map((t) => <PortalTile key={t.id} tile={t}/>)}
+              </div>
             </div>
             <div className="mt-10 md:mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 max-w-2xl">
               <DataReadout label="Trailer Rigs" value="24/7" testid="stat-trailers" />
@@ -212,23 +240,22 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="px-6 md:px-12 py-24">
+      {/* SWITCHBOARD — full grid */}
+      <section className="px-6 md:px-12 py-16 md:py-24" id="switchboard">
         <div className="max-w-[1500px] mx-auto">
-          <HudCard scanline className="p-10 md:p-16 text-center">
-            <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// AUTHORIZE AERIAL RECONNAISSANCE</div>
-            <h2 className="font-display text-[1.5rem] sm:text-3xl md:text-5xl uppercase tracking-[0.04em] sm:tracking-[0.1em] text-silver leading-tight" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
-              Deploy your first <span className="text-teal glow-teal">autonomous</span> mission
+          <div className="text-center mb-10">
+            <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// MASTER PORTAL SWITCHBOARD · ALL OPERATIONAL PLANES</div>
+            <h2 className="font-display text-[1.5rem] sm:text-3xl md:text-5xl uppercase tracking-[0.04em] sm:tracking-[0.1em] text-silver leading-tight">
+              Choose Your <span className="text-teal glow-teal">Command Plane</span>
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-muted-hud font-body">
-              Configure intake, run a caliper analysis, lock your pricing under 20/25 O&P, and authorize launch — all in under 5 minutes.
+              Five operational modules. Zero friction. Upload any drone payload to receive a forensic
+              CAD/BIM report — squares, valleys, gables, layered digital twin, BOM, labor — under 90 seconds.
             </p>
-            <div className="mt-8 flex justify-center">
-              <Link to="/onboard" data-testid="cta-new-mission" className="btn-hud pulse-glow">
-                <ArrowRight size={16}/> Run ROI Calculator → Sign Up
-              </Link>
-            </div>
-          </HudCard>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {PORTAL_TILES.map((t) => <PortalTile key={t.id} tile={t}/>)}
+          </div>
         </div>
       </section>
 

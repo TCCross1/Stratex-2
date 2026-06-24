@@ -160,7 +160,7 @@ export function ProjectIdentityCard({ project }) {
 }
 
 /**
- * STRATE™ Quant™ Estimation card — bottom-left summary.
+ * STRATEX Quant™ Estimation card — bottom-left summary.
  */
 export function QuantEstimationCard({ telemetry }) {
   const t = telemetry?.totals || {};
@@ -176,7 +176,7 @@ export function QuantEstimationCard({ telemetry }) {
       }}
     >
       <div className="font-mono text-[10px] uppercase tracking-widest text-teal mb-2" style={{ textShadow:"0 0 6px rgba(0,240,255,0.5)" }}>
-        STRATE™ Quant™ Estimation
+        STRATEX Quant™ Estimation
       </div>
       <div className="space-y-1 font-mono text-[12px] text-silver">
         <div className="flex justify-between gap-6"><span>Total Squares</span><span className="text-teal">{t.squares ?? "—"}</span></div>

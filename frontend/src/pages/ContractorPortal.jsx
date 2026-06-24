@@ -600,7 +600,7 @@ export function JobDetail() {
                   </div>
                 )}
 
-                {/* Bottom-left: STRATE Quant Estimation */}
+                {/* Bottom-left: STRATEX Quant Estimation */}
                 <div className="absolute bottom-12 left-4 z-10 pointer-events-none">
                   <QuantEstimationCard telemetry={tele}/>
                 </div>

@@ -4,6 +4,8 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Nav from "@/components/Nav";
 import Landing from "@/pages/Landing";
+import Switchboard from "@/pages/Switchboard";
+import DemoScanWizard from "@/pages/DemoScanWizard";
 import AuthPage from "@/pages/AuthPage";
 import AuthCallback from "@/pages/AuthCallback";
 import NDAPage from "@/pages/NDAPage";
@@ -75,13 +77,20 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const hideNav = ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
+  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard";
+  const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
-      {!isCeoArea && <InvestorAssistant/>}
+      {!isCeoArea && !isDemo && <InvestorAssistant/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
+        <Route path="/switchboard" element={<Switchboard/>}/>
+        <Route path="/demo/scan" element={<DemoScanWizard/>}/>
+        <Route path="/demo/twin" element={<DemoScanWizard initialStep={3}/>}/>
+        <Route path="/demo/maintenance" element={<DemoScanWizard initialStep={3}/>}/>
+        <Route path="/demo/quant" element={<DemoScanWizard initialStep={3}/>}/>
+        <Route path="/demo/supply-chain" element={<DemoScanWizard initialStep={3}/>}/>
         <Route path="/onboard" element={<OnboardingROI/>}/>
         <Route path="/_neon-preview" element={<NeonLayerPreview/>}/>
         <Route path="/_roof-audit" element={<RoofAuditHarness/>}/>

@@ -1,0 +1,719 @@
+"""Build a 9-page Future-Noire HTML report from a Stratex analysis dict.
+
+This module is imported by /app/backend/routes/demo_scan.py to produce
+the HTML that Playwright then renders into a tabloid (11x17) landscape
+PDF.
+"""
+from __future__ import annotations
+
+from html import escape
+from typing import Any
+
+
+def _usd(n: float) -> str:
+    try:
+        return f"${n:,.2f}"
+    except Exception:
+        return "$0.00"
+
+
+def _sev_color(s: str) -> str:
+    return {
+        "URGENT": "#FF2D78", "SEVERE": "#FF2D78", "HIGH": "#FF7B00",
+        "MED": "#FFB020", "FAILED": "#FF2D78", "WORN": "#FFB020",
+        "LOW": "#00FF9C", "NONE": "#7C8A9E", "OK": "#00FF9C",
+    }.get(s, "#00E5FF")
+
+
+CSS = r"""
+@page { size: 17in 11in; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #02060B; --bg2: #0B1320; --card: rgba(15,22,34,0.65);
+  --cyan: #4DF6FF; --amber: #FFB020; --green: #00FF9C;
+  --mag: #FF2D78; --orange: #FF7B00; --silver: #E2E8F0;
+  --muted: #7C8A9E; --line: rgba(77,246,255,0.18);
+}
+html, body { background: var(--bg); color: var(--silver);
+  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.page { width: 17in; height: 11in; padding: 0.55in 0.65in; position: relative;
+  background:
+    radial-gradient(ellipse at 80% 10%, rgba(77,246,255,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 10% 90%, rgba(255,123,0,0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #03070D 0%, #02060B 100%);
+  page-break-after: always; overflow: hidden; }
+.page:last-child { page-break-after: auto; }
+
+/* === STRATEX OFFICIAL WORDMARK === */
+.wm { font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+  letter-spacing: 0.04em; line-height: 1; display: inline-flex; align-items: baseline;
+  white-space: nowrap; }
+.wm .strat {
+  background: linear-gradient(180deg, #FFFFFF 0%, #B6BFCB 70%, #8A95A3 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.wm .ex {
+  color: transparent; -webkit-text-stroke: 1.4px #4DF6FF;
+  text-shadow: 0 0 5px rgba(77,246,255,0.85), 0 0 12px rgba(77,246,255,0.5);
+  font-style: italic; margin-left: 0.04em;
+}
+.wm .tm { color: #4DF6FF; opacity: 0.9; margin-left: 0.16em; }
+
+.hdr { display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px; }
+.hdr .crumb { font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--muted); letter-spacing: 0.22em; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--cyan); letter-spacing: 0.32em; }
+h1 { font-size: 42px; font-weight: 700; letter-spacing: -0.02em;
+  margin-top: 4px; color: #fff; }
+h2 { font-size: 11px; letter-spacing: 0.28em; color: var(--amber);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.frame { background: var(--card); border: 1px solid var(--line);
+  border-radius: 6px; padding: 16px; backdrop-filter: blur(8px); }
+.frame.cyan { border-color: rgba(0,229,255,0.45); box-shadow: 0 0 28px rgba(0,229,255,0.10) inset; }
+.frame.amber { border-color: rgba(255,176,32,0.45); box-shadow: 0 0 28px rgba(255,176,32,0.10) inset; }
+.frame.green { border-color: rgba(0,255,156,0.45); box-shadow: 0 0 28px rgba(0,255,156,0.10) inset; }
+.frame.mag   { border-color: rgba(255,45,120,0.45); box-shadow: 0 0 28px rgba(255,45,120,0.10) inset; }
+.kpi { display: flex; flex-direction: column; gap: 4px; }
+.kpi .l { font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  color: var(--muted); letter-spacing: 0.22em; }
+.kpi .v { font-family: 'Space Grotesk', sans-serif; font-size: 26px;
+  font-weight: 700; color: #fff; }
+.kpi .u { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; color: var(--silver); }
+thead th { text-align: left; padding: 8px 10px; color: var(--cyan);
+  font-size: 8.5px; letter-spacing: 0.18em; border-bottom: 1px solid rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.05); }
+tbody td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+.right { text-align: right; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.14em;
+  border: 1px solid currentColor; }
+.gauge { display: inline-block; width: 110px; height: 70px; position: relative; }
+.gauge svg { width: 100%; height: 100%; }
+.classif { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.28em;
+  color: var(--muted); }
+.glow-cyan  { color: var(--cyan);  text-shadow: 0 0 4px currentColor; }
+.glow-amber { color: var(--amber); text-shadow: 0 0 4px currentColor; }
+.glow-green { color: var(--green); text-shadow: 0 0 4px currentColor; }
+.glow-mag   { color: var(--mag);   text-shadow: 0 0 4px currentColor; }
+.glow-orange{ color: var(--orange);text-shadow: 0 0 4px currentColor; }
+.row { display: grid; gap: 14px; }
+.row.c2 { grid-template-columns: 1fr 1fr; }
+.row.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.row.c4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.tag { font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  color: var(--muted); letter-spacing: 0.18em; }
+"""
+
+
+def _wordmark(size: int = 14) -> str:
+    """Render the official STRATEX wordmark at the given pixel size."""
+    return f"""<span class="wm" style="font-size:{size}px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:{int(size*0.36)}px;">™</span>
+    </span>"""
+
+
+def _glyph(size: int = 40) -> str:
+    """Render the STRATEX roof+facet brand glyph as inline SVG."""
+    return f"""<svg viewBox="0 0 80 64" width="{size}" height="{int(size*0.8)}"
+      style="filter: drop-shadow(0 0 {size//6}px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>"""
+
+
+def _hdr(crumb: str, project: dict) -> str:
+    pid = escape(project.get("id", "—"))
+    addr = escape(project.get("address", "—"))
+    city = escape(project.get("city_state", ""))
+    return f"""
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        {_glyph(34)}
+        {_wordmark(20)}
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT {pid} · {addr} · {city}
+        </div>
+      </div>
+      <div class="crumb">{escape(crumb)}</div>
+    </div>
+    """
+
+
+def _gauge_svg(pct: int, color: str) -> str:
+    # half-donut gauge
+    pct = max(0, min(100, int(pct)))
+    angle = pct * 1.8 - 90  # -90..+90
+    return f"""<svg viewBox="0 0 120 70">
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="rgba(255,255,255,0.10)" stroke-width="10" fill="none"/>
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="{color}" stroke-width="10" fill="none"
+            stroke-dasharray="{pct * 1.57} 1000" filter="url(#g)"/>
+      <defs><filter id="g"><feGaussianBlur stdDeviation="2"/></filter></defs>
+      <text x="60" y="62" text-anchor="middle" fill="#fff"
+            font-family="JetBrains Mono" font-size="14" font-weight="700">{pct}%</text>
+    </svg>"""
+
+
+def page_cover(a: dict) -> str:
+    p = a["project"]; q = a["quant"]; t = a["totals"]
+    return f"""
+    <div class="page">
+      {_hdr("CONFIDENTIAL · STRATEGIC FORENSIC AUDIT", p)}
+      <div style="display:flex;align-items:flex-end;gap:24px;margin-bottom:18px;">
+        {_glyph(80)}
+        {_wordmark(72)}
+      </div>
+      <div class="eyebrow">FORENSIC ENVELOPE AUDIT · V1.0</div>
+      <h1>Strategic Thermal<br/><span class="glow-cyan">Reconnaissance Report</span></h1>
+      <div class="mono" style="color:var(--muted);font-size:11px;margin-top:14px;letter-spacing:.18em;">
+        {escape(p['address'])} · {escape(p.get('city_state',''))} · Scan {escape(p.get('scan_date',''))}
+        · Ground-truth accuracy <span class="glow-green">±{p.get('ground_truth_cm',0.78)} cm</span>
+      </div>
+      <div class="row c4" style="margin-top:40px;">
+        <div class="frame cyan kpi"><div class="l">TOTAL SQUARES</div><div class="v">{q['total_squares']:.2f}</div><div class="u">SQ (100 sf)</div></div>
+        <div class="frame amber kpi"><div class="l">SHINGLE LAYERS</div><div class="v">{q['shingle_layers_detected']} / {q['code_max_layers']}</div><div class="u">DETECTED / CODE MAX</div></div>
+        <div class="frame green kpi"><div class="l">FACETS</div><div class="v">{q['facet_count']}</div><div class="u">DISTINCT PLANES</div></div>
+        <div class="frame mag kpi"><div class="l">ANOMALIES FLAGGED</div><div class="v">{len(a['anomalies'])}</div><div class="u">FORENSIC HOTSPOTS</div></div>
+      </div>
+      <div class="row c2" style="margin-top:28px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">EXECUTIVE SUMMARY · GRAND TOTAL RANGE</h2>
+          <div class="mono" style="font-size:42px;color:#fff;letter-spacing:-0.02em;">
+            <span class="glow-cyan">{_usd(t['grand_total_low_usd'])}</span>
+            <span style="color:var(--muted);font-size:18px;"> &nbsp;→&nbsp; </span>
+            <span class="glow-amber">{_usd(t['grand_total_high_usd'])}</span>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:10px;letter-spacing:.14em;">
+            MATERIALS {_usd(t['materials_usd'])} · LABOR {_usd(t['labor_usd'])}
+            {'· TEAR-OFF ' + _usd(t['tear_off_usd']) if t['tear_off_usd'] else ''}
+            · UNFORESEEN {_usd(t['side_quote_low_usd'])}–{_usd(t['side_quote_high_usd'])}
+          </div>
+        </div>
+        <div class="frame {'mag' if a['water_retention']['tear_off_recommended'] else 'green'}">
+          <h2 style="color:{'var(--mag)' if a['water_retention']['tear_off_recommended'] else 'var(--green)'};">
+            STRATEX RECOMMENDATION
+          </h2>
+          <div style="font-family:'Space Grotesk';font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.01em;">
+            {escape(a['shingle_recommendation']['action'].replace('_',' '))}
+          </div>
+          <div class="mono" style="color:var(--silver);font-size:10px;margin-top:8px;line-height:1.5;">
+            {escape(a['water_retention']['tear_off_rationale'])}
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_executive(a: dict) -> str:
+    p = a["project"]; e = a["envelope_scores"]; tasks = a["priority_tasks"]; thermal = a["thermal_findings"]
+    tasks_html = "".join(
+        f"""<div class="row" style="grid-template-columns: 18px 70px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div class="mono" style="color:var(--muted);font-size:11px;">{t['rank']}</div>
+          <div class="pill" style="color:{_sev_color(t['severity'])};">{escape(t['severity'])}</div>
+          <div style="font-size:11px;color:#fff;">{escape(t['task'])}</div>
+          <div class="mono right glow-green" style="font-size:10px;">${t['annual_savings_usd']:,.0f}/yr</div>
+        </div>""" for t in tasks)
+    therm_html = "".join(
+        f"""<div class="row" style="grid-template-columns: 1fr 90px 70px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:10px;color:var(--silver);">{escape(tf['label'])}</div>
+          <div class="mono right" style="font-size:10px;color:#fff;">{escape(tf['reading'])}</div>
+          <div class="pill right" style="color:{_sev_color(tf['severity'])};">{escape(tf['severity'])}</div>
+        </div>""" for tf in thermal)
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 01 · EXECUTIVE ENVELOPE SUMMARY", p)}
+      <div class="eyebrow">01 · EXECUTIVE ENVELOPE SUMMARY</div>
+      <h1 style="font-size:34px;">Building <span class="glow-amber">Envelope Score</span></h1>
+      <div class="row c3" style="margin-top:24px;">
+        <div class="frame mag" style="text-align:center;">
+          <h2 style="color:var(--mag);">ENERGY DEFICIENCY</h2>
+          <div class="gauge">{_gauge_svg(e['energy_deficiency_pct'], '#FF2D78')}</div>
+          <div class="mono" style="color:var(--mag);font-size:10px;margin-top:6px;letter-spacing:.18em;">DEFICIENT</div>
+        </div>
+        <div class="frame amber" style="text-align:center;">
+          <h2 style="color:var(--amber);">VENTILATION</h2>
+          <div class="gauge">{_gauge_svg(e['ventilation_pct'], '#FFB020')}</div>
+          <div class="mono" style="color:var(--amber);font-size:10px;margin-top:6px;letter-spacing:.18em;">POOR</div>
+        </div>
+        <div class="frame cyan" style="text-align:center;">
+          <h2 style="color:var(--cyan);">OVERALL ENVELOPE</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;margin:14px 0 4px;">
+            {e['overall_envelope']}<span style="color:var(--muted);font-size:24px;">/100</span>
+          </div>
+          <div class="mono" style="color:var(--cyan);font-size:10px;letter-spacing:.18em;">COMPOSITE</div>
+        </div>
+      </div>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">AI-PRIORITIZED MAINTENANCE QUEUE</h2>
+          {tasks_html}
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">THERMAL FORENSIC FINDINGS</h2>
+          {therm_html}
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_facade(a: dict) -> str:
+    p = a["project"]
+    anomalies_html = "".join(
+        f"""<tr>
+          <td><span class="pill" style="color:{_sev_color(an['severity'])};">{escape(an['severity'])}</span></td>
+          <td>{escape(an['id'])}</td>
+          <td>{escape(an['type'])}</td>
+          <td>{escape(an['location'])}</td>
+          <td class="right">{an['confidence_pct']:.1f}%</td>
+          <td class="right">{an['area_sqft']:.1f}</td>
+          <td>{escape(an['diagnosis'])}</td>
+          <td class="right glow-amber">{_usd(an['repair_estimate_usd'])}</td>
+        </tr>""" for an in a["anomalies"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 02 · ROOF VENTILATION & FACADE FORENSIC ANALYSIS", p)}
+      <div class="eyebrow">02 · FORENSIC OVERLAY</div>
+      <h1 style="font-size:30px;">Sub-surface <span class="glow-mag">Anomaly Atlas</span></h1>
+      <div class="row c2" style="margin-top:22px;align-items:start;">
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">RADIOMETRIC OVERLAY · ROOF</h2>
+          <img src="assets/render_full_twin.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:8px;letter-spacing:.14em;">
+            CYAN: scan-vector overlay · ORANGE: thermal hotspot · Confidence threshold ≥ 85%
+          </div>
+        </div>
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">ANOMALY LEDGER</h2>
+          <table>
+            <thead><tr><th>SEV</th><th>ID</th><th>TYPE</th><th>LOCATION</th><th class="right">CONF</th><th class="right">SF</th><th>DIAGNOSIS</th><th class="right">EST</th></tr></thead>
+            <tbody>{anomalies_html}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_digital_twin(a: dict) -> str:
+    p = a["project"]; q = a["quant"]
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 03 · TRIPLE-LAYER DIGITAL TWIN", p)}
+      <div class="eyebrow">03 · TRIPLE-LAYER DIGITAL TWIN</div>
+      <h1 style="font-size:30px;">Layered <span class="glow-cyan">CAD/BIM Twin</span></h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">LAYER 01 · FINISHED SLATE</h2>
+          <img src="assets/render_layer1_shingle.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            Squares <span style="color:#fff">{q['total_squares']:.2f}</span> · Pitch <span style="color:#fff">{escape(q['pitch_predominant'])}</span>
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">LAYER 02 · DECKING + UNDERLAYMENT</h2>
+          <img src="assets/render_layer2_decking.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            7/16" CDX · I&amp;W shield at valleys/eaves · {q['shingle_layers_detected']} existing shingle layer(s)
+          </div>
+        </div>
+        <div class="frame green">
+          <h2 style="color:var(--green);">LAYER 03 · STRUCTURAL FRAMING</h2>
+          <img src="assets/render_layer3_framing.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            2x8 rafters @ 16" o.c. · LVL ridge · Hurricane ties <span class="glow-green">VERIFIED</span>
+          </div>
+        </div>
+      </div>
+      <div class="row c4" style="margin-top:18px;">
+        <div class="frame kpi"><div class="l">VALLEYS</div><div class="v">{q['valleys_lf']:.1f}</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">GABLES</div><div class="v">{q['gables_lf']:.1f}</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">RIDGES</div><div class="v">{q['ridges_lf']:.1f}</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">EAVES</div><div class="v">{q['eaves_lf']:.1f}</div><div class="u">LINEAR FT</div></div>
+      </div>
+    </div>
+    """
+
+
+def page_window_schedule(a: dict) -> str:
+    p = a["project"]
+    rows = "".join(
+        f"""<tr>
+          <td class="mono glow-cyan">{escape(w['id'])}</td>
+          <td>{escape(w['location'])}</td>
+          <td>{escape(w['shape'])}</td>
+          <td class="right">{w['width_in']:.0f}"</td>
+          <td class="right">{w['height_in']:.0f}"</td>
+          <td class="right">{w['qty']}</td>
+          <td class="right">{w['u_factor']:.2f}</td>
+          <td><span class="pill" style="color:{_sev_color(w['leak_severity'])};">{escape(w['leak_severity'])}</span></td>
+        </tr>""" for w in a["window_schedule"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 04 · WINDOW SCHEDULE", p)}
+      <div class="eyebrow">04 · WINDOW SCHEDULE</div>
+      <h1 style="font-size:30px;">Fenestration <span class="glow-cyan">Schedule</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ID</th><th>LOCATION</th><th>SHAPE</th><th class="right">W</th><th class="right">H</th><th class="right">QTY</th><th class="right">U-FACTOR</th><th>LEAK SEV</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_door_schedule(a: dict) -> str:
+    p = a["project"]
+    rows = "".join(
+        f"""<tr>
+          <td class="mono glow-amber">{escape(d['id'])}</td>
+          <td>{escape(d['location'])}</td>
+          <td>{escape(d['shape'])}</td>
+          <td class="right">{d['width_in']:.0f}"</td>
+          <td class="right">{d['height_in']:.0f}"</td>
+          <td class="right">{d['qty']}</td>
+          <td><span class="pill" style="color:{_sev_color(d['weatherstrip_status'])};">{escape(d['weatherstrip_status'])}</span></td>
+        </tr>""" for d in a["door_schedule"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 05 · DOOR SCHEDULE", p)}
+      <div class="eyebrow">05 · EXTERIOR DOOR SCHEDULE</div>
+      <h1 style="font-size:30px;">Exterior Door <span class="glow-amber">Schedule</span></h1>
+      <div class="frame amber" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ID</th><th>LOCATION</th><th>SHAPE</th><th class="right">W</th><th class="right">H</th><th class="right">QTY</th><th>WEATHERSTRIP</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_bom(a: dict) -> str:
+    p = a["project"]
+    rows = "".join(
+        f"""<tr>
+          <td>{escape(b['category'])}</td>
+          <td>{escape(b['material'])}</td>
+          <td class="mono">{escape(b['sku'])}</td>
+          <td class="right">{b['qty']:g}</td>
+          <td>{escape(b['unit'])}</td>
+          <td class="right">{_usd(b['unit_cost_usd'])}</td>
+          <td class="right glow-cyan">{_usd(b['line_total_usd'])}</td>
+        </tr>""" for b in a["bom"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 06 · BILL OF MATERIALS", p)}
+      <div class="eyebrow">06 · STRATEX QUANT™ BOM</div>
+      <h1 style="font-size:30px;">Bill of <span class="glow-cyan">Materials</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>CATEGORY</th><th>MATERIAL</th><th>SKU</th><th class="right">QTY</th><th>UNIT</th><th class="right">UNIT COST</th><th class="right">LINE TOTAL</th></tr></thead>
+          <tbody>{rows}</tbody>
+          <tfoot><tr><td colspan="6" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">MATERIALS TOTAL</td>
+            <td class="right" style="padding-top:10px;font-size:13px;color:#fff;font-weight:700;">{_usd(a['totals']['materials_usd'])}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_labor(a: dict) -> str:
+    p = a["project"]; l = a["labor"]
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 07 · LABOR · NATIONAL & REGIONAL AVERAGES", p)}
+      <div class="eyebrow">07 · LABOR ALLOCATION</div>
+      <h1 style="font-size:30px;">Crew <span class="glow-green">Economics</span></h1>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame green">
+          <h2 style="color:var(--green);">RATE BENCHMARK</h2>
+          <div class="row c2" style="margin-top:6px;">
+            <div class="kpi"><div class="l">NATIONAL AVG / SQ</div><div class="v">{_usd(l['national_avg_per_sq'])}</div></div>
+            <div class="kpi"><div class="l">REGIONAL AVG / SQ</div><div class="v glow-green">{_usd(l['regional_avg_per_sq'])}</div></div>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:14px;letter-spacing:.16em;">
+            REGION: <span style="color:#fff">{escape(l['region'])}</span> · APPLIED:
+            <span class="glow-green">{_usd(l['applied_per_sq'])}/SQ</span>
+          </div>
+        </div>
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">CREW PLAN</h2>
+          <div class="row c3" style="margin-top:6px;">
+            <div class="kpi"><div class="l">CREW SIZE</div><div class="v">{l['crew_size']}</div></div>
+            <div class="kpi"><div class="l">DAYS</div><div class="v">{l['days_estimated']:.1f}</div></div>
+            <div class="kpi"><div class="l">LABOR TOTAL</div><div class="v glow-cyan">{_usd(l['labor_total_usd'])}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_side_quote(a: dict) -> str:
+    p = a["project"]; t = a["totals"]
+    rows = "".join(
+        f"""<tr>
+          <td>{escape(x['item'])}</td>
+          <td class="right">{x['probability_pct']}%</td>
+          <td class="right">{_usd(x['low_usd'])}</td>
+          <td class="right">{_usd(x['high_usd'])}</td>
+          <td>{escape(x['note'])}</td>
+        </tr>""" for x in a["side_quote_unforeseen"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 08 · SIDE QUOTE · UNFORESEEN REPAIRS", p)}
+      <div class="eyebrow">08 · CONTINGENCY ENVELOPE</div>
+      <h1 style="font-size:30px;">Unforeseen <span class="glow-amber">Repair Reserve</span></h1>
+      <div class="frame amber" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ITEM</th><th class="right">PROB</th><th class="right">LOW</th><th class="right">HIGH</th><th>NOTE</th></tr></thead>
+          <tbody>{rows}</tbody>
+          <tfoot><tr><td colspan="2" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">RESERVE RANGE</td>
+            <td class="right glow-amber" style="padding-top:10px;font-size:13px;font-weight:700;">{_usd(t['side_quote_low_usd'])}</td>
+            <td class="right glow-mag" style="padding-top:10px;font-size:13px;font-weight:700;">{_usd(t['side_quote_high_usd'])}</td>
+            <td></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_tearoff(a: dict) -> str:
+    if not a["water_retention"]["tear_off_recommended"]:
+        return ""
+    p = a["project"]; w = a["water_retention"]; t = a["totals"]
+    return f"""
+    <div class="page">
+      {_hdr("PAGE 09 · TEAR-OFF RECOMMENDATION", p)}
+      <div class="eyebrow">09 · TEAR-OFF MANDATE</div>
+      <h1 style="font-size:32px;">Full <span class="glow-mag">Tear-Off + New Install</span> Required</h1>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">WATER RETENTION PROBABILITY</h2>
+          <div style="font-family:'Space Grotesk';font-size:90px;font-weight:700;color:#fff;line-height:1;">
+            {w['probability_pct']}%
+          </div>
+          <div class="mono" style="color:var(--mag);font-size:11px;margin-top:8px;letter-spacing:.18em;">
+            DEPTH EST {w['depth_estimate_in']:.2f}" · MULTI-SEASON ENTRAPMENT
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">RATIONALE</h2>
+          <p style="font-size:13px;color:var(--silver);line-height:1.55;">{escape(w['tear_off_rationale'])}</p>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,176,32,0.25);">
+            <div class="tag">TEAR-OFF COST INCLUDED</div>
+            <div style="font-family:'Space Grotesk';font-size:32px;font-weight:700;color:#fff;margin-top:4px;">
+              {_usd(t['tear_off_usd'])}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_wall_envelope(a: dict) -> str:
+    if "walls" not in a or "siding_package" not in a:
+        return ""
+    p = a["project"]; w = a["walls"]; s = a["siding_package"]
+    elev_rows = "".join(
+        f"""<tr>
+          <td class="mono glow-cyan">{escape(e['label'])}</td>
+          <td class="right">{e['gross_sf']:.1f}</td>
+          <td class="right">{e['net_sf']:.1f}</td>
+          <td class="right">
+            <span class="pill" style="color:{_sev_color('HIGH' if e['moisture_saturation_pct']>25 else 'MED' if e['moisture_saturation_pct']>12 else 'LOW')};">
+              {e['moisture_saturation_pct']}%
+            </span>
+          </td>
+        </tr>""" for e in w["elevations"])
+    acc_rows = "".join(
+        f"""<tr>
+          <td>{escape(x['name'])}</td>
+          <td class="right">{x['qty']:g}</td>
+          <td>{escape(x['unit'])}</td>
+          <td class="right">{_usd(x['unit_cost_usd'])}</td>
+          <td class="right glow-cyan">{_usd(x['line_total_usd'])}</td>
+        </tr>""" for x in s["accessories"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · WALL ENVELOPE + SIDING PACKAGE", p)}
+      <div class="eyebrow">· WALL ENVELOPE & SIDING PACKAGE · GEOMETRY + MATERIAL AGENT</div>
+      <h1 style="font-size:30px;">Vertical <span class="glow-cyan">Envelope</span> +
+        <span class="glow-amber">{escape(s['primary_material'])}</span> Package</h1>
+      <div class="row c4" style="margin-top:22px;">
+        <div class="frame kpi"><div class="l">GROSS WALL SF</div><div class="v">{w['total_gross_wall_sf']:.0f}</div><div class="u">PRE-SUBTRACTION</div></div>
+        <div class="frame kpi"><div class="l">FENESTRATION</div><div class="v glow-amber">{w['fenestration_subtraction_sf']:.0f}</div><div class="u">WINDOWS + DOORS</div></div>
+        <div class="frame kpi"><div class="l">NET WALL SF</div><div class="v glow-cyan">{w['net_wall_sf']:.0f}</div><div class="u">SIDING TARGET</div></div>
+        <div class="frame kpi"><div class="l">WALL HEIGHT</div><div class="v">{w['wall_height_ft']:.1f}'</div><div class="u">EAVE-TO-GRADE</div></div>
+      </div>
+      <div class="row c2" style="margin-top:18px;align-items:start;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">ELEVATION BREAKDOWN</h2>
+          <table>
+            <thead><tr><th>ELEV.</th><th class="right">GROSS SF</th><th class="right">NET SF</th><th class="right">MOISTURE</th></tr></thead>
+            <tbody>{elev_rows}</tbody>
+          </table>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">SIDING PACKAGE · {escape(s['primary_material'])}</h2>
+          <div class="mono" style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:.14em;">
+            PROFILE: <span style="color:#fff">{escape(s['profile'])}</span> ·
+            COLOR: <span style="color:#fff">{escape(s['color'])}</span>
+          </div>
+          <table>
+            <thead><tr><th>ACCESSORY</th><th class="right">QTY</th><th>UNIT</th><th class="right">UNIT</th><th class="right">LINE</th></tr></thead>
+            <tbody>{acc_rows}</tbody>
+            <tfoot><tr><td colspan="4" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">SIDING SUBTOTAL</td>
+              <td class="right" style="padding-top:10px;font-size:13px;color:#fff;font-weight:700;">{_usd(s['subtotal_usd'])}</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def page_wall_moisture(a: dict) -> str:
+    if "moisture_vapor" not in a:
+        return ""
+    p = a["project"]; m = a["moisture_vapor"]
+    rows = "".join(
+        f"""<tr>
+          <td class="mono glow-mag">{escape(z['id'])}</td>
+          <td>{escape(z['elevation'])}</td>
+          <td class="right">{z['area_sf']:.1f}</td>
+          <td class="right"><span class="pill" style="color:{_sev_color('HIGH' if z['moisture_pct']>30 else 'MED' if z['moisture_pct']>20 else 'LOW')};">{z['moisture_pct']}%</span></td>
+          <td class="right"><span class="pill" style="color:{_sev_color('URGENT' if z['damage_probability_pct']>60 else 'HIGH' if z['damage_probability_pct']>40 else 'MED')};">{z['damage_probability_pct']}%</span></td>
+          <td>{escape(z['remediation_action'])}</td>
+          <td class="right glow-amber">{_usd(z['estimate_usd'])}</td>
+        </tr>""" for z in m["thermal_saturation_zones"])
+    vc = m["vapor_barrier_condition"]
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · WALL MOISTURE + VAPOR BARRIER ANALYSIS", p)}
+      <div class="eyebrow">· WALL MOISTURE + VAPOR BARRIER · THERMAL AGENT</div>
+      <h1 style="font-size:30px;">Sub-Siding <span class="glow-mag">Moisture Atlas</span></h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame {'mag' if vc != 'OK' else 'green'}">
+          <h2 style="color:{'var(--mag)' if vc != 'OK' else 'var(--green)'};">VAPOR BARRIER STATUS</h2>
+          <div style="font-family:'Space Grotesk';font-size:34px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            {escape(vc)}
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">
+            {'BARRIER PRESENT' if m['vapor_barrier_present'] else 'BARRIER ABSENT'} · INFRARED-CONFIRMED
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">ZONES FLAGGED</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;">
+            {len(m['thermal_saturation_zones'])}
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">THERMAL ANOMALY ZONES · WALL CAVITY</div>
+        </div>
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">REMEDIATION TOTAL</h2>
+          <div style="font-family:'Space Grotesk';font-size:34px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            {_usd(m['total_remediation_usd'])}
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">ROLLED INTO MATERIALS TOTAL</div>
+        </div>
+      </div>
+      <div class="frame mag" style="margin-top:18px;">
+        <h2 style="color:var(--mag);">THERMAL SATURATION ZONES · WALL CAVITY</h2>
+        <table>
+          <thead><tr><th>ID</th><th>ELEV.</th><th class="right">AREA SF</th><th class="right">MOISTURE</th><th class="right">DAMAGE PROB.</th><th>REMEDIATION</th><th class="right">EST.</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def page_energy_leakage(a: dict) -> str:
+    if "energy_leakage" not in a:
+        return ""
+    p = a["project"]; e = a["energy_leakage"]
+    rows = "".join(
+        f"""<tr>
+          <td>{escape(s['label'])}</td>
+          <td>{escape(s['location'])}</td>
+          <td class="right"><span class="pill" style="color:{_sev_color('HIGH' if s['btu_loss_pct']>15 else 'MED' if s['btu_loss_pct']>10 else 'LOW')};">{s['btu_loss_pct']}%</span></td>
+          <td class="right glow-mag">${s['annual_dollar_loss']:.0f}/yr</td>
+          <td>{escape(s['remediation'])}</td>
+        </tr>""" for s in e["leak_sources"])
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · ENERGY LEAKAGE ATLAS", p)}
+      <div class="eyebrow">· ENERGY LEAKAGE ATLAS · ENERGY AGENT</div>
+      <h1 style="font-size:30px;">Envelope <span class="glow-amber">Air-Leak</span> Profile</h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">BLOWER-DOOR ACH₅₀ (EST.)</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            {e['blower_door_ach50_estimated']:.1f}
+          </div>
+          <div class="mono" style="color:var(--mag);font-size:10px;margin-top:6px;letter-spacing:.16em;">TARGET ≤ 3.0 · LEAKY ENVELOPE</div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">ANNUAL ENERGY LOSS</h2>
+          <div style="font-family:'Space Grotesk';font-size:40px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            {e['annual_kbtu_lost_estimated']:,.0f}<span style="font-size:14px;color:var(--muted);"> kBTU</span>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">SEASONAL LOSS · CONDITIONED ENVELOPE</div>
+        </div>
+        <div class="frame green">
+          <h2 style="color:var(--green);">ANNUAL DOLLAR LOSS</h2>
+          <div style="font-family:'Space Grotesk';font-size:40px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            {_usd(e['annual_dollar_loss'])}<span style="font-size:14px;color:var(--muted);"> /yr</span>
+          </div>
+          <div class="mono" style="color:var(--green);font-size:10px;margin-top:8px;letter-spacing:.16em;">RECOVERABLE WITH REMEDIATION</div>
+        </div>
+      </div>
+      <div class="frame amber" style="margin-top:18px;">
+        <h2 style="color:var(--amber);">LEAK-SOURCE LEDGER</h2>
+        <table>
+          <thead><tr><th>SOURCE</th><th>LOCATION</th><th class="right">BTU LOSS</th><th class="right">$/YR</th><th>RECOMMENDED FIX</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def build_html(a: dict) -> str:
+    pages = [
+        page_cover(a),
+        page_executive(a),
+        page_facade(a),
+        page_digital_twin(a),
+        page_window_schedule(a),
+        page_door_schedule(a),
+        page_wall_envelope(a),
+        page_wall_moisture(a),
+        page_energy_leakage(a),
+        page_bom(a),
+        page_labor(a),
+        page_side_quote(a),
+        page_tearoff(a),
+    ]
+    body = "\n".join(p for p in pages if p)
+    return f"""<!doctype html>
+<html><head>
+<meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>{CSS}</style>
+</head><body>{body}</body></html>"""

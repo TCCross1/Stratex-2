@@ -1,0 +1,35 @@
+{
+  "scan_id": "ebfcfccfd2",
+  "raw_data_path": null,
+  "dispatched_at": "2026-06-24T19:48:54.247580+00:00",
+  "status": "IN_PROGRESS",
+  "experts_assigned": [
+    "GEOMETRY_AGENT",
+    "MATERIAL_AGENT",
+    "THERMAL_AGENT",
+    "ENERGY_AGENT",
+    "BIM_RENDER_AGENT"
+  ],
+  "agent_registry": [
+    {
+      "id": "GEOMETRY_AGENT",
+      "desc": "Wall + Roof surface areas minus fenestration"
+    },
+    {
+      "id": "MATERIAL_AGENT",
+      "desc": "Multi-material siding & accessory BOM"
+    },
+    {
+      "id": "THERMAL_AGENT",
+      "desc": "Saturation + Probability-of-Damage correlation"
+    },
+    {
+      "id": "ENERGY_AGENT",
+      "desc": "BTU loss / air-leakage modeling"
+    },
+    {
+      "id": "BIM_RENDER_AGENT",
+      "desc": "Finish / Vapor / Framing digital-twin renderer"
+    }
+  ]
+}
