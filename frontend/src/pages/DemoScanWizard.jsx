@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { StratexWordmark, StratexGlyph } from "@/components/StratexBrand";
+import { StratexLogo } from "@/components/StratexBrand";
 import ParametricTwin from "@/components/ParametricTwin";
 import StratexTwinGallery from "@/components/StratexTwinGallery";
 
@@ -107,15 +107,13 @@ export default function DemoScanWizard({ initialStep = 1 }) {
       background: "radial-gradient(ellipse at 80% 5%, rgba(0,229,255,0.10) 0%, transparent 50%), radial-gradient(ellipse at 0% 100%, rgba(255,123,0,0.07) 0%, transparent 50%), #02060B",
     }}>
       {/* Top rail */}
-      <div className="border-b border-cyan-400/15 px-8 py-4 flex items-center justify-between">
-        <button onClick={() => nav("/")} className="flex items-center gap-3 hover:opacity-80 transition" data-testid="back-switchboard">
+      <div className="border-b border-cyan-400/15 px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
+        <button onClick={() => nav("/")} className="flex items-center gap-2 hover:opacity-80 transition shrink-0" data-testid="back-switchboard">
           <span className="text-cyan-400 text-lg">←</span>
-          <StratexGlyph size={32}/>
-          <StratexWordmark size="sm"/>
-          <span className="font-mono text-[9px] tracking-[0.22em] text-slate-500 ml-2 hidden sm:inline">SWITCHBOARD</span>
+          <StratexLogo height={34}/>
         </button>
-        <div className="font-mono text-[9px] text-slate-400 tracking-widest">
-          DEMO MODE · NO AUTHENTICATION · SCAN → REPORT
+        <div className="font-mono text-[8px] sm:text-[9px] text-slate-400 tracking-widest text-right">
+          DEMO MODE · NO AUTH · SCAN → REPORT
         </div>
       </div>
 

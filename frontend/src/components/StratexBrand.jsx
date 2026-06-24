@@ -23,6 +23,20 @@ export const PRODUCT = {
   recon: "STRATEX Recon™",
 };
 
+// Official logo PNG — same one used on the landing page.
+// USE THIS in every header across the app for brand consistency.
+export function StratexLogo({ height = 32, className = "" }) {
+  return (
+    <img
+      src="/stratex_logo.png"
+      alt="STRATEX"
+      className={className}
+      style={{ height, width: "auto", display: "block" }}
+      data-testid="stratex-logo"
+    />
+  );
+}
+
 export function StratexWordmark({ size = "md", trademark = true }) {
   const fz = { xs: 12, sm: 16, md: 22, lg: 36, xl: 64, hero: 84 }[size] || 22;
   return (

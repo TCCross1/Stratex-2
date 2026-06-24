@@ -10,10 +10,8 @@
 // via the bottom rail for normal day-to-day use.
 
 import { useNavigate } from "react-router-dom";
-import { StratexWordmark, StratexGlyph } from "@/components/StratexBrand";
+import { StratexLogo } from "@/components/StratexBrand";
 
-function StratexWordmarkLocal() { return null; } // unused — see StratexBrand
-function StratexGlyphLocal() { return null; }    // unused — see StratexBrand
 const TILES = [
   {
     id: "scan",
@@ -126,27 +124,19 @@ export default function Switchboard() {
       background: "radial-gradient(ellipse at 70% 10%, rgba(0,229,255,0.10) 0%, transparent 55%), radial-gradient(ellipse at 10% 90%, rgba(255,123,0,0.08) 0%, transparent 55%), #02060B",
     }}>
       {/* Top rail */}
-      <div className="border-b border-cyan-400/15 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <StratexGlyph size={36}/>
-          <StratexWordmark size="md"/>
-          <div className="font-mono text-[10px] text-slate-400 tracking-widest hidden sm:block ml-2">
-            STRATEGIC THERMAL RECONNAISSANCE · MASTER SWITCHBOARD
-          </div>
+      <div className="border-b border-cyan-400/15 px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
+        <StratexLogo height={36}/>
+        <div className="font-mono text-[8px] sm:text-[9px] text-slate-400 tracking-widest hidden sm:block">
+          STRATEGIC THERMAL RECONNAISSANCE · MASTER SWITCHBOARD
         </div>
-        <div className="flex items-center gap-3">
-          <div className="font-mono text-[9px] tracking-widest text-emerald-400 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/> SYS · OPERATIONAL
-          </div>
+        <div className="font-mono text-[9px] tracking-widest text-emerald-400 flex items-center gap-2 shrink-0">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/> SYS · OPERATIONAL
         </div>
       </div>
 
       {/* Hero brand lock-up */}
-      <div className="px-8 pt-12 pb-2 max-w-[1480px] mx-auto flex flex-col items-start">
-        <div className="flex items-end gap-5 mb-6">
-          <StratexGlyph size={84}/>
-          <StratexWordmark size="xl"/>
-        </div>
+      <div className="px-4 sm:px-8 pt-10 pb-2 max-w-[1480px] mx-auto flex flex-col items-start">
+        <StratexLogo height={96} className="mb-6"/>
         <div className="font-mono text-[10px] tracking-[0.32em] text-cyan-400 mb-3">
           // MASTER PORTAL SWITCHBOARD · DEMO MODE ACTIVE
         </div>
@@ -249,7 +239,7 @@ export default function Switchboard() {
           ))}
         </div>
         <div className="font-mono text-[8px] tracking-widest text-slate-600 mt-8 flex items-center gap-3">
-          <StratexWordmark size="sm"/>
+          <StratexLogo height={20}/>
           <span>· STRATEGIC THERMAL RECONNAISSANCE · GROUND-TRUTH ACCURACY ±0.78 CM · PATENT PENDING · CONFIDENTIAL &amp; PROPRIETARY</span>
         </div>
       </div>

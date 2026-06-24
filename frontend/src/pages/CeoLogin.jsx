@@ -64,21 +64,14 @@ export default function CeoLogin() {
           borderRadius: 4,
           boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(16,185,129,0.05)",
         }}>
-          <div className="flex items-center gap-3 mb-7">
-            <div className="flex items-center justify-center" style={{
-              width: 46, height: 46, borderRadius: 4,
-              background: "rgba(16,185,129,0.08)",
-              border: "1px solid rgba(16,185,129,0.55)",
-              boxShadow: "0 0 12px rgba(16,185,129,0.25)",
-            }}>
-              <Lock size={20} color="#10b981"/>
-            </div>
-            <div>
+          <div className="flex items-center gap-4 mb-7">
+            <img src="/stratex_logo.png" alt="STRATEX" style={{ height: 44, width: "auto", display: "block" }}/>
+            <div className="flex flex-col">
               <div className="font-mono text-[10px] tracking-[0.4em] uppercase" style={{ color: "#10b981" }}>
-                // STRATEX // CEO PORTAL
+                CEO PORTAL · COMMAND CLEARANCE
               </div>
-              <h1 className="font-bold text-[22px] tracking-wide" style={{ color: "#e2e8f0" }}>
-                Command Clearance
+              <h1 className="font-bold text-[20px] tracking-wide" style={{ color: "#e2e8f0" }}>
+                Restricted Access
               </h1>
             </div>
           </div>
