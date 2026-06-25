@@ -236,22 +236,11 @@ export default function CommandDeck() {
     }
   }, []);
 
-  const currentProjects = [
-    { id: "LX_ROOF_001",   trade: "Roofing", status: "IN PROGRESS", color: "#FFB020" },
-    { id: "LX_SIDING_002", trade: "Siding",  status: "COMPLETED",   color: "#00FF9C" },
-    { id: "LX_WIN_003",    trade: "Windows", status: "SCHEDULED",   color: "#00E5FF" },
-  ];
+  const currentProjects = [];
 
-  const completedJobs = [
-    { addr: "2440 Regency Road",      city: "Lexington, KY",    compliance: true, start: "07/20/2025" },
-    { addr: "1185 Harrodsburg Pike",  city: "Lexington, KY",    compliance: true, start: "09/19/2025" },
-    { addr: "808 Tates Creek Rd",     city: "Lexington, KY",    compliance: true, start: "10/14/2025" },
-  ];
+  const completedJobs = [];
 
-  const recentInvoices = [
-    { id: "INV-0045", desc: "Moisture Scan · LX_ROOF_001",  due: "01/14/2026", amount: 1250.00 },
-    { id: "INV-0046", desc: "Fleet Deployment",             due: "01/14/2026", amount: 10.00 },
-  ];
+  const recentInvoices = [];
 
   const vendors = [
     { name: "GAF",          line: "ROOFING",  approved: true },
@@ -262,10 +251,7 @@ export default function CommandDeck() {
     { name: "Pella",        line: "WINDOWS",  approved: true },
   ];
 
-  const clientPortfolio = [
-    { name: "Bingham Family Trust",     contact: "client-link", jobs: 10, projects: 2, color: "#FFB020" },
-    { name: "Bluegrass Property Group", contact: "client-link", jobs: 20, projects: 1, color: "#00E5FF" },
-  ];
+  const clientPortfolio = [];
 
   return (
     <div

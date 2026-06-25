@@ -21,7 +21,7 @@ const ANGLES = [
   { id: 3, label: "FRONT · LEFT",  clip: "inset(50% 50% 0 0)", origin: "0% 100%" },
 ];
 
-export default function StratexTwinGallery({ height = 360, autoRotate = true }) {
+export default function StratexTwinGallery({ height = 320, autoRotate = true }) {
   const [angle, setAngle] = useState(0);
 
   useEffect(() => {
@@ -34,17 +34,20 @@ export default function StratexTwinGallery({ height = 360, autoRotate = true }) 
   return (
     <div data-testid="stratex-twin-gallery" style={{
       position: "relative", width: "100%", height,
+      maxWidth: 640, margin: "0 auto",
       borderRadius: 6, overflow: "hidden",
       border: "1px solid rgba(77,246,255,0.25)",
       boxShadow: "inset 0 0 60px rgba(77,246,255,0.06)",
       background: "#02060B",
     }}>
-      {/* Image — single source, clipped to one of 4 quadrants, scaled 2x */}
+      {/* Image — clipped quadrant, contained to preserve crisp aspect */}
       <div style={{
         position: "absolute", inset: 0,
         backgroundImage: "url(/twin/quad.jpeg)",
         backgroundSize: "200% 200%",
         backgroundPosition: a.origin,
+        backgroundRepeat: "no-repeat",
+        imageRendering: "high-quality",
         transition: "background-position 1.6s cubic-bezier(0.4,0,0.2,1)",
       }}/>
 

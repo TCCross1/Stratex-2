@@ -13,6 +13,7 @@ import ReportsBinder from "@/pages/ReportsBinder";
 import PassportPortal from "@/pages/PassportPortal";
 import ContractorVerify from "@/pages/ContractorVerify";
 import GmRoster from "@/pages/GmRoster";
+import MissionControl from "@/pages/MissionControl";
 import DemoScanWizard from "@/pages/DemoScanWizard";
 import AuthPage from "@/pages/AuthPage";
 import AuthCallback from "@/pages/AuthCallback";
@@ -85,7 +86,7 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster";
+  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster" || loc.pathname === "/mission-control";
   const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
@@ -99,6 +100,7 @@ function AppShell() {
         <Route path="/passport/:hash" element={<PassportPortal/>}/>
         <Route path="/contractor/verify" element={<ContractorVerify/>}/>
         <Route path="/gm/roster" element={<GmRoster/>}/>
+        <Route path="/mission-control" element={<MissionControl/>}/>
         <Route path="/switchboard" element={<Switchboard/>}/>
         <Route path="/demo/scan" element={<DemoScanWizard/>}/>
         <Route path="/demo/twin" element={<DemoScanWizard initialStep={3}/>}/>

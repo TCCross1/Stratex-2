@@ -27,7 +27,7 @@ import { useContractor } from "@/lib/contractor";
 import {
   Crosshair, Cpu, Activity, Radar, Shield, Zap, Cloud, Satellite, Sun, Box,
   Info, X, Truck, LayoutDashboard, FileText, ShieldCheck, FolderOpen, Boxes,
-  ChevronRight, Layers, Sparkles, Hexagon,
+  ChevronRight, Layers, Sparkles, Hexagon, Plane,
 } from "lucide-react";
 
 const ACCENTS = {
@@ -48,6 +48,7 @@ const APPS = [
   { id: "switchboard", kind: "window", label: "Switchboard",      icon: LayoutDashboard, accent: "volt",   desc: "Every operational dashboard surface" },
 
   // ── OPERATIONAL APPS — open the full pages
+  { id: "mission",     kind: "route",  label: "Mission Control",  icon: Plane,       accent: "green",   desc: "Pre-Flight ATC · Doppler · Calendar · Fleet Map", to: "/mission-control" },
   { id: "deck",        kind: "route",  label: "Command Deck",     icon: ShieldCheck, accent: "gold",    desc: "Contractor command portal",                  to: "/deck" },
   { id: "binder",      kind: "route",  label: "Reports Binder",   icon: FolderOpen,  accent: "cyan",    desc: "Open every report page individually",       to: "/reports/binder" },
   { id: "passport",    kind: "route",  label: "Property Passport", icon: Sparkles,    accent: "gold",   desc: "Public homeowner certificate",              to: "/passport/877D9E3C8FC3" },
@@ -293,9 +294,10 @@ function FleetWindow() {
             </HudCard>
           ))}
         </div>
-        <HudCard scanline className="p-2">
+        <HudCard scanline className="p-2 flex items-center justify-center">
           <img src={ASSETS.trailer_engineering} alt="STRATEX Trailer Engineering"
-               className="w-full h-auto rounded-sm"/>
+               className="w-full h-auto rounded-sm"
+               style={{ maxHeight: 320, objectFit: "contain", imageRendering: "high-quality" }}/>
         </HudCard>
       </div>
     </div>
@@ -309,7 +311,7 @@ function MeshWindow({ demo, isMobile }) {
   return (
     <div>
       <SectionTitle eyebrow="// VOLUMETRIC LAYERING ENGINE" title="STRATEX Vision™ — Sub-Surface Mesh" />
-      <div className="mt-4">
+      <div className="mt-4 max-w-3xl mx-auto">
         <HudCard scanline className="p-2">
           <RoofModel3D
             telemetry={demo || {
@@ -317,7 +319,7 @@ function MeshWindow({ demo, isMobile }) {
               facets: [], edges: [], framing: { rafters: [], sub_fascia: [] }, gutters: { polylines: [], downspouts: [] },
             }}
             anomalies={demo?.anomalies || []}
-            height={isMobile ? 280 : 460}
+            height={isMobile ? 240 : 340}
             showLabels={!isMobile}
             layers={null}
             primaryLayer="shingle"

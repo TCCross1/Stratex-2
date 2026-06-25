@@ -26,14 +26,15 @@ export const DEFAULT_CONTRACTOR = {
   email: "ops@americanroofing.co",
   website: "americanroofing.co",
   status: "ACTIVE",
-  // Demo numbers used across dashboards & deliverables.
+  // Demo numbers used across dashboards & deliverables. Reset to a
+  // clean slate so the UI reflects a freshly-onboarded tenant.
   metrics: {
-    current_balance_usd: 1250.0,
-    total_units: 5,
-    active_scans: 3,
-    queued: 2,
-    alerts: 1,
-    total_finalized_reports: 12,
+    current_balance_usd: 0,
+    total_units: 0,
+    active_scans: 0,
+    queued: 0,
+    alerts: 0,
+    total_finalized_reports: 0,
   },
 };
 

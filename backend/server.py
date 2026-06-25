@@ -2635,6 +2635,10 @@ app.include_router(phase34_router)
 from routes.tc_assistant import router as tc_router  # noqa: E402
 app.include_router(tc_router)
 
+# Mission Control — Pre-Flight ATC · Calendar · Fleet snapshot
+from routes.mission_control import router as mc_router  # noqa: E402
+app.include_router(mc_router)
+
 # Storm-watcher background loop — kicks in shortly after startup.
 @app.on_event("startup")
 async def _start_storm_watcher():
