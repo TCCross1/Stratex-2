@@ -16,6 +16,7 @@ import GmRoster from "@/pages/GmRoster";
 import MissionControl from "@/pages/MissionControl";
 import ClaimSnapshot from "@/pages/ClaimSnapshot";
 import CosignSign from "@/pages/CosignSign";
+import AndrewWelcome from "@/pages/AndrewWelcome";
 import DemoScanWizard from "@/pages/DemoScanWizard";
 import AuthPage from "@/pages/AuthPage";
 import AuthCallback from "@/pages/AuthCallback";
@@ -88,7 +89,7 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const isDemo = loc.pathname === "/" || loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname.startsWith("/claim-snapshot") || loc.pathname.startsWith("/cosign") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster" || loc.pathname === "/mission-control";
+  const isDemo = loc.pathname === "/" || loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname.startsWith("/claim-snapshot") || loc.pathname.startsWith("/cosign") || loc.pathname.startsWith("/andrew") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster" || loc.pathname === "/mission-control";
   const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
@@ -106,6 +107,8 @@ function AppShell() {
         <Route path="/claim-snapshot" element={<ClaimSnapshot/>}/>
         <Route path="/claim-snapshot/:hash" element={<ClaimSnapshot/>}/>
         <Route path="/cosign/:token" element={<CosignSign/>}/>
+        <Route path="/andrew" element={<AndrewWelcome/>}/>
+        <Route path="/andrew-kimbrough" element={<AndrewWelcome/>}/>
         <Route path="/switchboard" element={<Switchboard/>}/>
         <Route path="/demo/scan" element={<DemoScanWizard/>}/>
         <Route path="/demo/twin" element={<DemoScanWizard initialStep={3}/>}/>
