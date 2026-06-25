@@ -490,11 +490,11 @@ export default function CommandDeck() {
                 <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400">Final Adjuster Report</span>
                 <button
                   data-testid="cd-open-pdf"
-                  onClick={() => window.open("/api/demo/scan-report.pdf?audience=adjuster", "_blank")}
+                  onClick={() => nav("/reports/binder")}
                   className="font-mono text-[10px] tracking-[0.22em] uppercase px-3 py-1 rounded-md"
                   style={{ background: "rgba(0,255,156,0.12)", border: "1px solid #00FF9C99", color: "#00FF9C" }}
                 >
-                  Open PDF →
+                  Open Binder →
                 </button>
               </div>
             </Panel>

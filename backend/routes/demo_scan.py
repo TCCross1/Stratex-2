@@ -762,6 +762,137 @@ async def scan_report_pdf(session_id: str = "sample", audience: str = "adjuster"
     return _render_report_pdf(analysis, f"{session_id}-{audience}")
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# REPORT BINDER — open each page individually like files in a folder.
+#
+# /pages           → ordered metadata for every page (slug, title, accent)
+# /page/{slug}.png → cached PNG render of a single page
+# /page/{slug}.pdf → single-page PDF slice
+# ─────────────────────────────────────────────────────────────────────────
+BINDER_PAGES = [
+    {"slug": "cover",           "page": 1,  "title": "Strategic Reconnaissance Cover",  "eyebrow": "Forensic Audit · v1.0",        "section": "Overview",     "accent": "cyan",    "icon": "Layers"},
+    {"slug": "executive",       "page": 2,  "title": "Executive Summary",               "eyebrow": "Strategic Findings",           "section": "Overview",     "accent": "cyan",    "icon": "FileText"},
+    {"slug": "facade",          "page": 3,  "title": "Façade Audit · 4 Elevations",     "eyebrow": "Exterior Envelope",            "section": "Geometry",     "accent": "amber",   "icon": "Camera"},
+    {"slug": "twin",            "page": 4,  "title": "3D Digital Twin · All Layers",    "eyebrow": "Parametric Reconstruction",    "section": "Geometry",     "accent": "amber",   "icon": "Box"},
+    {"slug": "window-schedule", "page": 5,  "title": "Window Schedule",                 "eyebrow": "Dimensions & Counts",          "section": "Geometry",     "accent": "cyan",    "icon": "Grid3x3"},
+    {"slug": "door-schedule",   "page": 6,  "title": "Door Schedule",                   "eyebrow": "Dimensions & Counts",          "section": "Geometry",     "accent": "cyan",    "icon": "DoorOpen"},
+    {"slug": "wall-envelope",   "page": 7,  "title": "Wall Envelope · Thermal Imaging", "eyebrow": "Forensic Wall Audit",          "section": "Forensics",    "accent": "magenta", "icon": "Flame"},
+    {"slug": "wall-moisture",   "page": 8,  "title": "Wall Moisture Saturation",        "eyebrow": "Substrate Hydration Map",      "section": "Forensics",    "accent": "magenta", "icon": "Droplets"},
+    {"slug": "energy",          "page": 9,  "title": "Energy & Air Leakage",            "eyebrow": "Efficiency & Ventilation",     "section": "Forensics",    "accent": "green",   "icon": "Zap"},
+    {"slug": "bom",             "page": 10, "title": "Bill of Materials",               "eyebrow": "Quantified Take-off",          "section": "Materials",    "accent": "volt",    "icon": "Boxes"},
+    {"slug": "catalog",         "page": 11, "title": "3D Component Catalog",            "eyebrow": "Assembly Library",             "section": "Materials",    "accent": "volt",    "icon": "Layers3"},
+    {"slug": "labor",           "page": 12, "title": "Labor Pricing",                   "eyebrow": "Crew Burden & Rates",          "section": "Labor",        "accent": "amber",   "icon": "HardHat"},
+    {"slug": "gantt",           "page": 13, "title": "Labor Gantt · Sequencing",        "eyebrow": "Day-by-day Schedule",          "section": "Labor",        "accent": "amber",   "icon": "CalendarRange"},
+    {"slug": "profitability",   "page": 14, "title": "Profitability Sheet",             "eyebrow": "O&P · Margin Audit",           "section": "Financials",   "accent": "green",   "icon": "TrendingUp"},
+    {"slug": "side-quote",      "page": 15, "title": "Unforeseen / Side Quote",         "eyebrow": "Risk Envelope",                "section": "Financials",   "accent": "magenta", "icon": "AlertOctagon"},
+    {"slug": "tearoff",         "page": 16, "title": "Tear-off Plan",                   "eyebrow": "Maintenance Priority",         "section": "Action",       "accent": "amber",   "icon": "Wrench"},
+    {"slug": "certification",   "page": 17, "title": "Master Report · Certification",   "eyebrow": "Final Pricing · Comprehensive", "section": "Final",       "accent": "gold",    "icon": "ShieldCheck",  "is_final": True},
+]
+
+
+@router.get("/scan-report/pages")
+async def scan_report_pages():
+    """Ordered metadata for the binder. Front-end uses this to render the
+    folder-style tile grid + page-by-page navigator."""
+    return JSONResponse({"pages": BINDER_PAGES, "count": len(BINDER_PAGES)})
+
+
+def _binder_assets_dir() -> Path:
+    d = PITCH_DIR / "_binder_cache"
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def _ensure_binder_render(session_id: str, audience: str = "adjuster") -> Path:
+    """Render the full PDF if missing then slice into per-page PNG files
+    using PyMuPDF (fitz) — pure-python, no system binaries required.
+
+    Returns the cache directory containing `<slug>.png` for every page.
+    Cache key = session_id + audience.
+    """
+    cache = _binder_assets_dir() / f"{session_id}_{audience}"
+    cache.mkdir(exist_ok=True)
+    # If all expected pages already cached, short-circuit.
+    if all((cache / f"{p['slug']}.png").exists() for p in BINDER_PAGES):
+        return cache
+
+    # Build the source PDF (re-use the existing renderer).
+    if session_id == "sample":
+        analysis = _compute_totals(_sample_analysis())
+    else:
+        src = SAMPLES_DIR / f"{session_id}.json"
+        analysis = json.loads(src.read_text()) if src.exists() else _compute_totals(_sample_analysis())
+    analysis["_audience"] = audience.lower()
+    _render_report_pdf(analysis, f"{session_id}-{audience}")
+    src_pdf = PITCH_DIR / f"_demo_{session_id}-{audience}.pdf"
+
+    # Rasterise each page via PyMuPDF
+    import fitz  # PyMuPDF
+    doc = fitz.open(str(src_pdf))
+    zoom = 1.6  # ~115 DPI on tabloid landscape — sharp enough for the binder
+    matrix = fitz.Matrix(zoom, zoom)
+    for p in BINDER_PAGES:
+        page_idx = p["page"] - 1
+        if page_idx >= doc.page_count:
+            continue
+        try:
+            pix = doc.load_page(page_idx).get_pixmap(matrix=matrix, alpha=False)
+            pix.save(str(cache / f"{p['slug']}.png"))
+        except Exception:
+            continue
+    doc.close()
+    return cache
+
+
+@router.get("/scan-report/page/{slug}.png")
+async def scan_report_page_png(slug: str, session_id: str = "sample", audience: str = "adjuster"):
+    """Serve a single page of the report rendered as PNG."""
+    meta = next((p for p in BINDER_PAGES if p["slug"] == slug), None)
+    if not meta:
+        raise HTTPException(404, f"unknown page slug: {slug}")
+    cache = _ensure_binder_render(session_id, audience)
+    png = cache / f"{slug}.png"
+    if not png.exists():
+        raise HTTPException(500, f"page render missing: {slug}")
+    return FileResponse(png, media_type="image/png", headers={"Cache-Control": "public, max-age=900"})
+
+
+@router.get("/scan-report/page/{slug}.pdf")
+async def scan_report_page_pdf(slug: str, session_id: str = "sample", audience: str = "adjuster"):
+    """Serve a single page of the report sliced as its own PDF (PyMuPDF)."""
+    meta = next((p for p in BINDER_PAGES if p["slug"] == slug), None)
+    if not meta:
+        raise HTTPException(404, f"unknown page slug: {slug}")
+    # Ensure underlying multi-page PDF exists.
+    if session_id == "sample":
+        analysis = _compute_totals(_sample_analysis())
+    else:
+        src = SAMPLES_DIR / f"{session_id}.json"
+        analysis = json.loads(src.read_text()) if src.exists() else _compute_totals(_sample_analysis())
+    analysis["_audience"] = audience.lower()
+    _render_report_pdf(analysis, f"{session_id}-{audience}")
+    src_pdf = PITCH_DIR / f"_demo_{session_id}-{audience}.pdf"
+
+    out_pdf = _binder_assets_dir() / f"{session_id}_{audience}" / f"{slug}.pdf"
+    out_pdf.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        import fitz  # PyMuPDF
+        src_doc = fitz.open(str(src_pdf))
+        new_doc = fitz.open()
+        page_idx = meta["page"] - 1
+        if page_idx < src_doc.page_count:
+            new_doc.insert_pdf(src_doc, from_page=page_idx, to_page=page_idx)
+        new_doc.save(str(out_pdf))
+        new_doc.close()
+        src_doc.close()
+    except Exception:
+        # Fallback: serve full PDF with page anchor (browsers honor #page=N)
+        return FileResponse(src_pdf, media_type="application/pdf",
+                            filename=f"STRATEX_{slug}_p{meta['page']}.pdf")
+    return FileResponse(out_pdf, media_type="application/pdf",
+                        filename=f"STRATEX_{slug}.pdf")
+
+
 def _render_report_pdf(analysis: dict, session_id: str) -> FileResponse:
     """Build HTML report from template + run Playwright render."""
     import sys

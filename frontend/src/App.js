@@ -7,6 +7,7 @@ import Landing from "@/pages/Landing";
 import Switchboard from "@/pages/Switchboard";
 import CommandDeck from "@/pages/CommandDeck";
 import ContractorBranding from "@/pages/ContractorBranding";
+import ReportsBinder from "@/pages/ReportsBinder";
 import DemoScanWizard from "@/pages/DemoScanWizard";
 import AuthPage from "@/pages/AuthPage";
 import AuthCallback from "@/pages/AuthCallback";
@@ -79,7 +80,7 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand";
+  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder";
   const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
@@ -89,6 +90,7 @@ function AppShell() {
         <Route path="/" element={<Landing/>}/>
         <Route path="/deck" element={<CommandDeck/>}/>
         <Route path="/contractor/brand" element={<ContractorBranding/>}/>
+        <Route path="/reports/binder" element={<ReportsBinder/>}/>
         <Route path="/switchboard" element={<Switchboard/>}/>
         <Route path="/demo/scan" element={<DemoScanWizard/>}/>
         <Route path="/demo/twin" element={<DemoScanWizard initialStep={3}/>}/>
