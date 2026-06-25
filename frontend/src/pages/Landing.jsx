@@ -531,34 +531,25 @@ export default function Landing() {
 
       {/* ─── PARENT COMPANY BANNER · CROSS AI SOFTWARES INC. ─── */}
       <header data-testid="cross-ai-banner"
-              className="relative w-full flex items-center justify-center px-4 py-5 sm:py-6 border-b overflow-hidden"
+              className="relative w-full border-b overflow-hidden"
               style={{
-                background:
-                  "radial-gradient(ellipse at 50% 50%, rgba(0,229,255,0.10) 0%, transparent 65%), " +
-                  "linear-gradient(180deg, #02060B 0%, #050B16 100%)",
+                background: "#000",
                 borderColor: "rgba(0,229,255,0.22)",
-                boxShadow: "0 1px 28px rgba(0,229,255,0.10)",
+                boxShadow: "0 2px 32px rgba(0,229,255,0.12)",
               }}>
-        {/* subtle scanline overlay for a futuristic feel */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.06]"
-             style={{
-               backgroundImage:
-                 "repeating-linear-gradient(0deg, rgba(0,229,255,0.7) 0px, rgba(0,229,255,0.7) 1px, transparent 1px, transparent 3px)",
-             }}/>
         <img
-          src="/brand/cross_ai_logo.jpeg"
+          src="/brand/cross_ai_banner.jpeg"
           alt="CROSS AI SOFTWARES INC."
           data-testid="cross-ai-logo"
-          className="block w-auto select-none pointer-events-none relative z-10"
+          className="block w-full h-auto select-none pointer-events-none"
           style={{
-            height: "clamp(74px, 11vw, 140px)",
-            filter: "drop-shadow(0 0 22px rgba(0,229,255,0.45))",
+            // Slight crop so the logo sits at investor-banner height
+            // (~120px on desktop) without dominating the viewport.
+            maxHeight: "180px",
+            objectFit: "cover",
+            objectPosition: "center",
           }}
         />
-        <span className="hidden md:inline-block absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 font-mono text-[9px] tracking-[0.32em] uppercase z-10"
-              style={{ color: "rgba(0,229,255,0.55)" }}>
-          PARENT COMPANY · STRATEX™ IS A CROSS AI SOFTWARES INC. PRODUCT
-        </span>
       </header>
 
       <div className="flex flex-1 min-h-0">
