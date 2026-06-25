@@ -324,10 +324,10 @@ def _sample_analysis() -> dict:
     return {
         "project": {
             "id": "AD-KY041",
-            "address": "142 Bluegrass Ridge",
-            "city_state": "Lexington, KY",
+            "address": "2440 Regency Road",
+            "city_state": "Lexington, KY 40503",
             "year_built": 1998,
-            "ownership": "Anthony Cross",
+            "ownership": "American Roofing Company",
             "scan_date": datetime.now(timezone.utc).date().isoformat(),
             "drone": "DJI Matrice 4TD",
             "ground_truth_cm": 0.78,

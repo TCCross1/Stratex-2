@@ -119,8 +119,12 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [x] All typos fixed (STRATEX Quant™ — never STRATE)
 
 ### P1 — Post-demo polish
-- [x] **Command Deck (`/deck`) — vertical scrolling app rail with all 37 surfaces (Feb 2026)**
-- [x] **3D Component Catalog page added to Adjuster PDF — 8 isometric SVG cards (J/F-Channel · Starter · Finish Trim · Drip Edge · Soffit · Inside Corner · Utility Trim). PDF now 17 pages.**
+- [x] **Contractor Branding registry (`/contractor/brand`)** — logo upload + business profile form, persists to localStorage, flows to Deck + reports. Default: American Roofing Company.
+- [x] **Command Deck rebuilt as ornate "CONTRACTOR COMMAND // PROJECT OVERSIGHT PORTAL"** matching the supplied reference — gold filigree frame, crane glyph, cyan-bezel panels (Current Projects, Completed Reports, Invoice, Billing, Final Reports Box, Credentials, Vendor Network, Pre-Flight Gateway, Client Portfolio, Pre-Flight Gates, KPIs, Corporate).
+- [x] **PDF reports branded** — every page now leads with American Roofing logo + business band (license, primary contact, city, phone, website).
+- [x] **Demo project relocated** to American Roofing's "2440 Regency Road, Lexington KY 40503".
+- [x] **Command Deck (`/deck`) — vertical scrolling app rail with all 37 surfaces (Feb 2026)** — superseded by ornate contractor portal; Master Switchboard preserved at `/switchboard`.
+- [x] **3D Component Catalog page added to Adjuster PDF — 8 isometric SVG cards. PDF now 17 pages.**
 - [ ] True vision-grounded Gemini (attach uploaded images to the LLM call so
       the analysis reflects what's actually in the photos, not just the dossier)
 - [ ] Three.js parametric twin renderer driven by REAL scan data (Track B —

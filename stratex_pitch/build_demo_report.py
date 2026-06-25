@@ -113,6 +113,85 @@ tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
 """
 
 
+# ── CONTRACTOR BRANDING ──────────────────────────────────────────────────
+# Active contractor for the demo. Replace / extend by passing
+# `_contractor` in the analysis dict to override per-job.
+CONTRACTOR_DEFAULT = {
+    "business_name": "American Roofing Company",
+    "tagline": "Changing the Industry",
+    "primary_contact": "Anthony Cross",
+    "contact_title": "Master Contractor",
+    "license_no": "BC-0043",
+    "license_level": "MASTER · RESIDENTIAL & COMMERCIAL",
+    "address": "Lexington, KY · Regency Road District",
+    "phone": "(859) 555-0143",
+    "website": "americanroofing.co",
+}
+
+
+def _contractor_logo_svg(height: int = 44) -> str:
+    """Inline American Roofing Company logo (red double-gable + wordmark).
+    Inlined here so Playwright never needs an HTTP fetch during PDF render.
+    """
+    w = int(height * 760 / 320)
+    return f"""<svg viewBox="0 0 760 320" width="{w}" height="{height}" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="arSilver" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFFFFF"/>
+          <stop offset="60%" stop-color="#E2E8F0"/>
+          <stop offset="100%" stop-color="#94A3B8"/>
+        </linearGradient>
+      </defs>
+      <g transform="translate(40,30)">
+        <rect x="6"  y="56" width="22" height="118" fill="#9CA3AF"/>
+        <rect x="34" y="56" width="22" height="118" fill="#9CA3AF"/>
+        <rect x="60" y="56" width="22" height="118" fill="#9CA3AF"/>
+        <rect x="88" y="56" width="22" height="118" fill="#9CA3AF"/>
+        <path d="M 0 70 L 56 8 L 112 70 L 95 70 L 56 26 L 17 70 Z" fill="#D7282F"/>
+        <path d="M 8 90 L 56 32 L 104 90 L 96 96 L 56 50 L 16 96 Z" fill="#D7282F"/>
+        <rect x="0" y="92" width="112" height="10" fill="#D7282F"/>
+        <rect x="0" y="174" width="116" height="8" fill="#9CA3AF"/>
+      </g>
+      <g transform="translate(190,84)" font-family="'Helvetica Neue', Arial, sans-serif">
+        <text x="0" y="0" font-size="100" font-weight="800" letter-spacing="-2" fill="url(#arSilver)">American</text>
+        <line x1="0" y1="22" x2="540" y2="22" stroke="#D7282F" stroke-width="3"/>
+        <text x="0" y="78" font-size="56" font-weight="800" letter-spacing="6" fill="#D7282F">Roofing Company</text>
+      </g>
+    </svg>"""
+
+
+def _contractor_band(a: dict) -> str:
+    """Top contractor-branded band — sits above the STRATEX header on every page."""
+    ct = {**CONTRACTOR_DEFAULT, **a.get("_contractor", {})}
+    return f"""
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                gap:16px;padding:8px 14px;margin-bottom:10px;border-radius:6px;
+                background:linear-gradient(90deg, rgba(215,40,47,0.10) 0%, rgba(8,14,24,0.65) 60%, rgba(215,40,47,0.05) 100%);
+                border:1px solid rgba(215,40,47,0.45);">
+      <div style="display:flex;align-items:center;gap:14px;">
+        {_contractor_logo_svg(46)}
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;
+                       font-size:16px;color:#fff;letter-spacing:-0.01em;">
+            {escape(ct['business_name'])}
+            <span class="mono" style="color:#D7282F;font-size:9px;letter-spacing:.22em;margin-left:8px;">
+              · {escape(ct['tagline'])}
+            </span>
+          </div>
+          <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;margin-top:2px;">
+            {escape(ct['primary_contact'])} · {escape(ct['contact_title'])}
+            &nbsp;·&nbsp; LIC {escape(ct['license_no'])} · {escape(ct['license_level'])}
+          </div>
+        </div>
+      </div>
+      <div class="mono" style="text-align:right;font-size:9px;color:var(--muted);letter-spacing:.18em;line-height:1.5;">
+        {escape(ct['address'])}<br/>
+        {escape(ct['phone'])} · {escape(ct['website'])}
+      </div>
+    </div>
+    """
+
+
 def _wordmark(size: int = 14) -> str:
     """Render the official STRATEX wordmark at the given pixel size."""
     return f"""<span class="wm" style="font-size:{size}px;">
@@ -133,11 +212,13 @@ def _glyph(size: int = 40) -> str:
     </svg>"""
 
 
-def _hdr(crumb: str, project: dict) -> str:
+def _hdr(crumb: str, project: dict, contractor_band: bool = True) -> str:
     pid = escape(project.get("id", "—"))
     addr = escape(project.get("address", "—"))
     city = escape(project.get("city_state", ""))
+    band = _contractor_band({"project": project}) if contractor_band else ""
     return f"""
+    {band}
     <div class="hdr">
       <div style="display:flex;align-items:center;gap:14px;">
         {_glyph(34)}
