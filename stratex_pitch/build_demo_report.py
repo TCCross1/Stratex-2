@@ -130,34 +130,27 @@ CONTRACTOR_DEFAULT = {
 
 
 def _contractor_logo_svg(height: int = 44) -> str:
-    """Inline American Roofing Company logo (red double-gable + wordmark).
-    Inlined here so Playwright never needs an HTTP fetch during PDF render.
+    """Embed the OFFICIAL American Roofing Company logo (red house + USA map
+    background + 'Changing The Industry' tagline) as a base64 <img>.
+    Inlined so Playwright never needs an HTTP fetch during PDF render.
     """
-    w = int(height * 760 / 320)
-    return f"""<svg viewBox="0 0 760 320" width="{w}" height="{height}" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <linearGradient id="arSilver" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#FFFFFF"/>
-          <stop offset="60%" stop-color="#E2E8F0"/>
-          <stop offset="100%" stop-color="#94A3B8"/>
-        </linearGradient>
-      </defs>
-      <g transform="translate(40,30)">
-        <rect x="6"  y="56" width="22" height="118" fill="#9CA3AF"/>
-        <rect x="34" y="56" width="22" height="118" fill="#9CA3AF"/>
-        <rect x="60" y="56" width="22" height="118" fill="#9CA3AF"/>
-        <rect x="88" y="56" width="22" height="118" fill="#9CA3AF"/>
-        <path d="M 0 70 L 56 8 L 112 70 L 95 70 L 56 26 L 17 70 Z" fill="#D7282F"/>
-        <path d="M 8 90 L 56 32 L 104 90 L 96 96 L 56 50 L 16 96 Z" fill="#D7282F"/>
-        <rect x="0" y="92" width="112" height="10" fill="#D7282F"/>
-        <rect x="0" y="174" width="116" height="8" fill="#9CA3AF"/>
-      </g>
-      <g transform="translate(190,84)" font-family="'Helvetica Neue', Arial, sans-serif">
-        <text x="0" y="0" font-size="100" font-weight="800" letter-spacing="-2" fill="url(#arSilver)">American</text>
-        <line x1="0" y1="22" x2="540" y2="22" stroke="#D7282F" stroke-width="3"/>
-        <text x="0" y="78" font-size="56" font-weight="800" letter-spacing="6" fill="#D7282F">Roofing Company</text>
-      </g>
-    </svg>"""
+    from pathlib import Path
+    logo_b64_path = Path(__file__).parent / "_american_logo_b64.txt"
+    try:
+        b64 = logo_b64_path.read_text().strip()
+        return (
+            f'<img src="data:image/jpeg;base64,{b64}" '
+            f'alt="American Roofing Company" '
+            f'style="height:{height}px;width:auto;display:block;'
+            f'border-radius:4px;box-shadow:0 0 12px rgba(215,40,47,0.35);"/>'
+        )
+    except Exception:
+        # Fallback: text-only stamp if asset missing
+        return (
+            f'<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:800;'
+            f'font-size:{height}px;color:#fff;letter-spacing:-0.01em;">'
+            f'American<span style="color:#D7282F;"> Roofing Co.</span></span>'
+        )
 
 
 def _contractor_band(a: dict) -> str:
@@ -165,26 +158,26 @@ def _contractor_band(a: dict) -> str:
     ct = {**CONTRACTOR_DEFAULT, **a.get("_contractor", {})}
     return f"""
     <div style="display:flex;justify-content:space-between;align-items:center;
-                gap:16px;padding:8px 14px;margin-bottom:10px;border-radius:6px;
+                gap:16px;padding:10px 16px;margin-bottom:12px;border-radius:6px;
                 background:linear-gradient(90deg, rgba(215,40,47,0.10) 0%, rgba(8,14,24,0.65) 60%, rgba(215,40,47,0.05) 100%);
                 border:1px solid rgba(215,40,47,0.45);">
-      <div style="display:flex;align-items:center;gap:14px;">
-        {_contractor_logo_svg(46)}
+      <div style="display:flex;align-items:center;gap:18px;">
+        {_contractor_logo_svg(72)}
         <div>
           <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;
-                       font-size:16px;color:#fff;letter-spacing:-0.01em;">
+                       font-size:17px;color:#fff;letter-spacing:-0.01em;">
             {escape(ct['business_name'])}
-            <span class="mono" style="color:#D7282F;font-size:9px;letter-spacing:.22em;margin-left:8px;">
+            <span class="mono" style="color:#D7282F;font-size:9.5px;letter-spacing:.22em;margin-left:8px;">
               · {escape(ct['tagline'])}
             </span>
           </div>
-          <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;margin-top:2px;">
+          <div class="mono" style="font-size:9.5px;color:var(--muted);letter-spacing:.18em;margin-top:3px;">
             {escape(ct['primary_contact'])} · {escape(ct['contact_title'])}
             &nbsp;·&nbsp; LIC {escape(ct['license_no'])} · {escape(ct['license_level'])}
           </div>
         </div>
       </div>
-      <div class="mono" style="text-align:right;font-size:9px;color:var(--muted);letter-spacing:.18em;line-height:1.5;">
+      <div class="mono" style="text-align:right;font-size:9.5px;color:var(--muted);letter-spacing:.18em;line-height:1.55;">
         {escape(ct['address'])}<br/>
         {escape(ct['phone'])} · {escape(ct['website'])}
       </div>
@@ -251,23 +244,55 @@ def page_cover(a: dict) -> str:
     return f"""
     <div class="page">
       {_hdr("CONFIDENTIAL · STRATEGIC FORENSIC AUDIT", p)}
+      <!-- HERO CONTRACTOR LOCK-UP -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;
+                  padding:18px 22px;margin-bottom:18px;border-radius:8px;
+                  background:linear-gradient(120deg, rgba(215,40,47,0.16) 0%, rgba(8,14,24,0.85) 55%, rgba(0,229,255,0.10) 100%);
+                  border:1.5px solid rgba(215,40,47,0.55);
+                  box-shadow:0 0 28px rgba(215,40,47,0.20) inset;">
+        <div style="display:flex;align-items:center;gap:22px;">
+          {_contractor_logo_svg(120)}
+          <div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;
+                         font-size:30px;color:#fff;letter-spacing:-0.01em;line-height:1.05;">
+              American <span style="color:#D7282F;">Roofing Company</span>
+            </div>
+            <div class="mono" style="font-size:12px;color:#D7282F;letter-spacing:.28em;margin-top:6px;">
+              CHANGING THE INDUSTRY
+            </div>
+            <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:.18em;margin-top:8px;">
+              LICENSED MASTER CONTRACTOR · BC-0043 · OSHA · DRONE PILOT
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="mono" style="font-size:9px;color:var(--cyan);letter-spacing:.32em;">
+            COMMISSIONED FORENSIC AUDIT
+          </div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:#fff;margin-top:4px;">
+            {escape(p['address'])}
+          </div>
+          <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:.2em;margin-top:2px;">
+            {escape(p.get('city_state',''))}
+          </div>
+          <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;margin-top:8px;">
+            SCAN {escape(p.get('scan_date',''))} · GROUND-TRUTH <span class="glow-green">±{p.get('ground_truth_cm',0.78)} cm</span>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;align-items:flex-end;gap:24px;margin-bottom:18px;">
         {_glyph(80)}
         {_wordmark(72)}
       </div>
       <div class="eyebrow">FORENSIC ENVELOPE AUDIT · V1.0</div>
       <h1>Strategic Thermal<br/><span class="glow-cyan">Reconnaissance Report</span></h1>
-      <div class="mono" style="color:var(--muted);font-size:11px;margin-top:14px;letter-spacing:.18em;">
-        {escape(p['address'])} · {escape(p.get('city_state',''))} · Scan {escape(p.get('scan_date',''))}
-        · Ground-truth accuracy <span class="glow-green">±{p.get('ground_truth_cm',0.78)} cm</span>
-      </div>
-      <div class="row c4" style="margin-top:40px;">
+      <div class="row c4" style="margin-top:30px;">
         <div class="frame cyan kpi"><div class="l">TOTAL SQUARES</div><div class="v">{q['total_squares']:.2f}</div><div class="u">SQ (100 sf)</div></div>
         <div class="frame amber kpi"><div class="l">SHINGLE LAYERS</div><div class="v">{q['shingle_layers_detected']} / {q['code_max_layers']}</div><div class="u">DETECTED / CODE MAX</div></div>
         <div class="frame green kpi"><div class="l">FACETS</div><div class="v">{q['facet_count']}</div><div class="u">DISTINCT PLANES</div></div>
         <div class="frame mag kpi"><div class="l">ANOMALIES FLAGGED</div><div class="v">{len(a['anomalies'])}</div><div class="u">FORENSIC HOTSPOTS</div></div>
       </div>
-      <div class="row c2" style="margin-top:28px;">
+      <div class="row c2" style="margin-top:24px;">
         <div class="frame cyan">
           <h2 style="color:var(--cyan);">EXECUTIVE SUMMARY · GRAND TOTAL RANGE</h2>
           <div class="mono" style="font-size:42px;color:#fff;letter-spacing:-0.02em;">

@@ -14,7 +14,7 @@ const STORAGE_KEY = "stratex.contractor.brand.v1";
 export const DEFAULT_CONTRACTOR = {
   business_name: "American Roofing Company",
   tagline: "Changing the Industry",
-  logo_url: "/contractors/american_roofing.svg",
+  logo_url: "/contractors/american_roofing.jpg",
   primary_contact: "Anthony Cross",
   contact_title: "Master Contractor",
   license_no: "BC-0043",
