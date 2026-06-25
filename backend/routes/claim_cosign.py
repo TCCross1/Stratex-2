@@ -105,6 +105,10 @@ async def request_cosign(passport_id: str, body: CosignRequestIn):
 
     token = secrets.token_urlsafe(24)
     now = datetime.now(timezone.utc).isoformat()
+    # Snapshot the diff at mint time so the adjuster signs the exact
+    # payload they review — receipt becomes bit-stable across the
+    # verify→submit window.
+    pinned_diff = await diff_baseline_vs_latest(pid)
     row = {
         "token": token,
         "passport_id": pid,
@@ -115,6 +119,7 @@ async def request_cosign(passport_id: str, body: CosignRequestIn):
         "signed_at": None,
         "signer": None,
         "receipt_hash": None,
+        "pinned_diff": pinned_diff,
     }
     await db["claim_cosigns"].insert_one(row)
 
@@ -142,7 +147,9 @@ async def verify_cosign(token: str):
     cs = await _get_cosign(token)
     if not cs:
         raise HTTPException(404, "Co-sign token not found or expired")
-    diff = await diff_baseline_vs_latest(cs["passport_id"])
+    # Prefer the pinned diff captured at request-mint time so the adjuster
+    # always sees the exact payload they will sign.
+    diff = cs.get("pinned_diff") or await diff_baseline_vs_latest(cs["passport_id"])
     return {
         "token": token,
         "passport_id": cs["passport_id"],
@@ -165,7 +172,9 @@ async def submit_cosign(token: str, body: CosignSubmitIn):
         raise HTTPException(409, "Token already used — Claim Snapshot has been co-signed")
 
     pid = cs["passport_id"]
-    diff = await diff_baseline_vs_latest(pid)
+    # Sign the pinned diff (what the adjuster saw at verify-time).  Falls
+    # back to a fresh compute for legacy rows without pinned_diff.
+    diff = cs.get("pinned_diff") or await diff_baseline_vs_latest(pid)
     signed_at = datetime.now(timezone.utc).isoformat()
     signer = body.model_dump()
     receipt = _receipt_hash(diff, signer, signed_at)
