@@ -508,13 +508,13 @@ export default function CommandDeck() {
                 </div>
                 <a
                   data-testid="cd-open-passport"
-                  href={`${process.env.REACT_APP_BACKEND_URL}/api/demo/property-passport.pdf`}
+                  href={`/passport/877D9E3C8FC3`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono text-[10px] tracking-[0.22em] uppercase px-3 py-1 rounded-md"
                   style={{ background: "rgba(212,184,106,0.14)", border: "1px solid #D4B86A99", color: "#D4B86A" }}
                 >
-                  Issue →
+                  Open Portal →
                 </a>
               </div>
             </Panel>

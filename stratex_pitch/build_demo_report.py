@@ -1190,9 +1190,14 @@ def page_property_passport(a: dict) -> str:
                                ("#FFB020", "MONITOR · TIER B")
 
     # Deterministic Passport ID derived from project + issue date — feels official.
+    # Caller can override via `_passport_id_override` (e.g. stored DB record).
     import hashlib
     seed = f"{p.get('id','')}-{p.get('address','')}-{p.get('scan_date','')}"
-    passport_id = "STX-" + hashlib.sha1(seed.encode()).hexdigest()[:12].upper()
+    passport_id = a.get("_passport_id_override") or (
+        "STX-" + hashlib.sha1(seed.encode()).hexdigest()[:12].upper()
+    )
+    if not passport_id.startswith("STX-"):
+        passport_id = "STX-" + passport_id
     carrier_link = f"stratex.co/passport/{passport_id.lower()}"
 
     # Synthesized scan-history (chronological audit trail).
@@ -1214,13 +1219,31 @@ def page_property_passport(a: dict) -> str:
           </div>""" for s in scan_history if s['d']
     )
 
-    # 30-day weather-shield ribbon (mocked).
-    weather_events = [
-        {"d": "12/04/25", "type": "WIND",  "v": "47 mph", "ok": True},
-        {"d": "12/18/25", "type": "HAIL",  "v": "0.5 in", "ok": True},
-        {"d": "01/09/26", "type": "WIND",  "v": "61 mph", "ok": True},
-        {"d": "01/22/26", "type": "RAIN",  "v": "2.4 in", "ok": True},
-    ]
+    # 30-day weather-shield ribbon.
+    # If the caller passed `_weather_shield` (from a stored MongoDB passport
+    # backed by Open-Meteo), use that. Otherwise fall back to the mocked
+    # canonical demo set so the standalone demo PDF still looks correct.
+    live_shield = a.get("_weather_shield") or []
+    if live_shield:
+        def _fmt_date(s: str) -> str:
+            try:
+                y, m, d = s.split("-")
+                return f"{m}/{d}/{y[-2:]}"
+            except Exception:
+                return s
+        weather_events = [{
+            "d":    _fmt_date(ev.get("date", "")),
+            "type": ev.get("kind", "").upper() or "WIND",
+            "v":    ev.get("value", "—"),
+            "ok":   ev.get("severity", "PASS").upper() == "PASS",
+        } for ev in live_shield[:4]]
+    else:
+        weather_events = [
+            {"d": "12/04/25", "type": "WIND",  "v": "47 mph", "ok": True},
+            {"d": "12/18/25", "type": "HAIL",  "v": "0.5 in", "ok": True},
+            {"d": "01/09/26", "type": "WIND",  "v": "61 mph", "ok": True},
+            {"d": "01/22/26", "type": "RAIN",  "v": "2.4 in", "ok": True},
+        ]
     weather_html = "".join(
         f"""<div style="flex:1;text-align:center;padding:6px 8px;
                        border-right:1px solid rgba(0,229,255,0.18);">

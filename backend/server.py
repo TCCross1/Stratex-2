@@ -2623,6 +2623,10 @@ app.include_router(api)
 from routes.demo_scan import router as demo_router  # noqa: E402
 app.include_router(demo_router)
 
+# Property Passport — MongoDB-backed immutable archive + public portal
+from routes.passport import router as passport_router  # noqa: E402
+app.include_router(passport_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=False,
