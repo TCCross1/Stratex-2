@@ -52,6 +52,7 @@ const APPS = [
   { id: "deck",        kind: "route",  label: "Command Deck",     icon: ShieldCheck, accent: "gold",    desc: "Contractor command portal",                  to: "/deck" },
   { id: "binder",      kind: "route",  label: "Reports Binder",   icon: FolderOpen,  accent: "cyan",    desc: "Open every report page individually",       to: "/reports/binder" },
   { id: "passport",    kind: "route",  label: "Property Passport", icon: Sparkles,    accent: "gold",   desc: "Public homeowner certificate",              to: "/passport/877D9E3C8FC3" },
+  { id: "claim",       kind: "route",  label: "Claim Snapshot",   icon: ShieldCheck, accent: "magenta", desc: "Before/after diff · adjuster fast-track",   to: "/claim-snapshot/877D9E3C8FC3" },
   { id: "scan",        kind: "route",  label: "New Drone Scan",   icon: Radar,       accent: "teal",    desc: "5-Agent scan-to-report engine",             to: "/demo/scan" },
   { id: "twin",        kind: "route",  label: "Diagnostic Twin",  icon: Box,         accent: "orange",  desc: "3-D wireframe · framing · thermal",         to: "/demo/twin" },
   { id: "quant",       kind: "route",  label: "Quant™ Estimator", icon: Cpu,         accent: "magenta", desc: "Take-off analytics · valuation",            to: "/demo/quant" },

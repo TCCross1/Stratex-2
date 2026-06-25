@@ -559,6 +559,57 @@ function FleetMapPanel({ refreshKey }) {
 export default function MissionControl() {
   const nav = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [wsStatus, setWsStatus] = useState("connecting");
+
+  // Live ops WebSocket — listens for STORM_DETECTED + ATC_REPOLL pings
+  useEffect(() => {
+    const API = process.env.REACT_APP_BACKEND_URL;
+    if (!API) return;
+    const wsUrl = API.replace(/^http/, "ws") + "/api/ws/live-ops";
+    let ws;
+    let pingTimer;
+    let reconnectTimer;
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+          setWsStatus("live");
+          pingTimer = setInterval(() => {
+            try { ws.send("ping"); } catch { /* noop */ }
+          }, 30000);
+        };
+        ws.onmessage = (e) => {
+          try {
+            const j = JSON.parse(e.data);
+            if (j.type === "STORM_DETECTED") {
+              toast.warning(
+                `Storm detected · ${j.events?.[0]?.kind || "STORM"} · ${j.address || j.passport_id}`,
+                { duration: 8000 }
+              );
+              setRefreshKey((k) => k + 1);  // re-poll ATC + calendar
+            }
+            if (j.type === "ATC_REPOLL") {
+              setRefreshKey((k) => k + 1);
+            }
+          } catch { /* noop */ }
+        };
+        ws.onclose = () => {
+          setWsStatus("offline");
+          clearInterval(pingTimer);
+          reconnectTimer = setTimeout(connect, 5000);
+        };
+        ws.onerror = () => { try { ws.close(); } catch { /* noop */ } };
+      } catch {
+        setWsStatus("offline");
+      }
+    };
+    connect();
+    return () => {
+      clearInterval(pingTimer);
+      clearTimeout(reconnectTimer);
+      try { ws?.close(); } catch { /* noop */ }
+    };
+  }, []);
 
   return (
     <div
@@ -582,7 +633,23 @@ export default function MissionControl() {
           </button>
           <StratexLogo height={28}/>
         </div>
-        <div className="font-mono text-[10px] tracking-[0.32em] uppercase text-cyan-400">// MISSION CONTROL · LIVE OPS</div>
+        <div className="font-mono text-[10px] tracking-[0.32em] uppercase text-cyan-400 flex items-center gap-2">
+          // MISSION CONTROL · LIVE OPS
+          <span data-testid="ws-status"
+                className="px-2 py-0.5 rounded-full font-mono text-[8.5px] tracking-[0.22em]"
+                style={{
+                  background: wsStatus === "live" ? `${ACCENTS.green}15` :
+                              wsStatus === "connecting" ? `${ACCENTS.amber}15` :
+                                                          `${ACCENTS.magenta}15`,
+                  border: `1px solid ${wsStatus === "live" ? ACCENTS.green :
+                                       wsStatus === "connecting" ? ACCENTS.amber :
+                                                                    ACCENTS.magenta}88`,
+                  color: wsStatus === "live" ? ACCENTS.green :
+                         wsStatus === "connecting" ? ACCENTS.amber : ACCENTS.magenta,
+                }}>
+            {wsStatus === "live" ? "WS · LIVE" : wsStatus === "connecting" ? "WS · CONNECTING" : "WS · OFFLINE"}
+          </span>
+        </div>
         <button onClick={() => setRefreshKey((k) => k + 1)}
                 data-testid="refresh-all"
                 className="font-mono text-[10px] tracking-[0.22em] uppercase px-3 py-1.5 rounded-md flex items-center gap-1.5"

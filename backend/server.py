@@ -2639,6 +2639,19 @@ app.include_router(tc_router)
 from routes.mission_control import router as mc_router  # noqa: E402
 app.include_router(mc_router)
 
+# Claim Snapshot Engine — before/after diff between two stored scans
+from routes.claim_snapshot import router as claim_router  # noqa: E402
+app.include_router(claim_router)
+
+# Live ops bus — WebSocket push for storm-watcher + ATC + regional storms
+from routes.live_ops import router as live_ops_router, broadcast_loop  # noqa: E402
+app.include_router(live_ops_router)
+
+@app.on_event("startup")
+async def _start_live_ops_broadcast():
+    import asyncio as _aio
+    _aio.create_task(broadcast_loop())
+
 # Storm-watcher background loop — kicks in shortly after startup.
 @app.on_event("startup")
 async def _start_storm_watcher():

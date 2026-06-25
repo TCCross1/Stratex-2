@@ -443,20 +443,19 @@ export default function PassportPortal() {
           </div>
           <ChevronRight size={14} className="ml-auto" style={{ color: ACCENTS.cyan }}/>
         </button>
-        <a
+        <button
           data-testid="claim-snapshot-btn"
-          href={`${API}/api/passport/${hash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-md px-4 py-3 flex items-center gap-2 transition hover:brightness-125"
-          style={{ background: `${accent}14`, border: `1.5px solid ${accent}88` }}
+          onClick={() => nav(`/claim-snapshot/${hash}`)}
+          className="rounded-md px-4 py-3 flex items-center gap-2 transition hover:brightness-125 text-left"
+          style={{ background: `${ACCENTS.magenta}14`, border: `1.5px solid ${ACCENTS.magenta}88` }}
         >
-          <Hash size={14} style={{ color: accent }}/>
+          <Hash size={14} style={{ color: ACCENTS.magenta }}/>
           <div>
-            <div className="font-display text-[13px] tracking-[0.06em] uppercase text-white">Raw Passport JSON</div>
-            <div className="font-mono text-[8.5px] tracking-[0.18em] uppercase text-slate-500">Carrier-API consumable</div>
+            <div className="font-display text-[13px] tracking-[0.06em] uppercase text-white">Open Claim Snapshot</div>
+            <div className="font-mono text-[8.5px] tracking-[0.18em] uppercase text-slate-500">Before / after diff · LAE bypass</div>
           </div>
-        </a>
+          <ChevronRight size={14} className="ml-auto" style={{ color: ACCENTS.magenta }}/>
+        </button>
       </section>
 
       <footer className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-8">

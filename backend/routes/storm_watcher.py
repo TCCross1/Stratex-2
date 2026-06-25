@@ -87,7 +87,14 @@ async def _fetch_recent_storms(lat: float, lon: float, since: datetime) -> List[
 
 
 async def _tick_one_passport(coll, passport: Dict[str, Any]) -> int:
-    """Sweep a single passport.  Returns the number of events appended."""
+    """Sweep a single passport.  Returns the number of events appended.
+
+    For every newly-detected storm-grade event we also:
+      • Append a STORM entry to the passport's hash-chained ledger
+      • Insert a CHECKUP event in `calendar_events` so the operator's
+        Mission Control calendar surfaces it automatically — and the
+        Fleet/Jobs map can pin it via the passport's GPS.
+    """
     last_checked_raw = passport.get("storm_watcher_last_checked")
     last_checked = (
         datetime.fromisoformat(last_checked_raw)
@@ -99,13 +106,13 @@ async def _tick_one_passport(coll, passport: Dict[str, Any]) -> int:
 
     new_storms = await _fetch_recent_storms(lat, lon, since=last_checked)
 
-    # De-dupe vs storms already in the ledger (by date+kind+value)
     existing = {
         (e.get("payload") or {}).get("date") + "|" + (e.get("payload") or {}).get("kind", "")
         for e in passport.get("ledger", [])
         if e.get("event") == "STORM"
     }
     appended = 0
+    new_payloads: List[Dict[str, Any]] = []
     for s in new_storms:
         key = f"{s.date}|{s.kind}"
         if key in existing:
@@ -118,8 +125,8 @@ async def _tick_one_passport(coll, passport: Dict[str, Any]) -> int:
         )
         existing.add(key)
         appended += 1
+        new_payloads.append(s.model_dump())
 
-    # Always touch last_checked even if no events
     passport["storm_watcher_last_checked"] = datetime.now(timezone.utc).isoformat()
     await coll.update_one(
         {"passport_id": passport["passport_id"]},
@@ -129,6 +136,60 @@ async def _tick_one_passport(coll, passport: Dict[str, Any]) -> int:
             "storm_watcher_last_checked": passport["storm_watcher_last_checked"],
         }},
     )
+
+    # ── Storm → Calendar bridge ────────────────────────────────────
+    # Drop a CHECKUP event on the day after each new storm so the
+    # contractor sees it in the shared schedule and the fleet map.
+    if new_payloads:
+        from uuid import uuid4 as _uuid4
+        cal = db["calendar_events"]
+        for s in new_payloads:
+            try:
+                storm_date = datetime.fromisoformat(s["date"])
+            except Exception:
+                storm_date = datetime.now(timezone.utc)
+            checkup_start = (storm_date + timedelta(days=1)).replace(
+                hour=14, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+            )
+            rec = {
+                "id": str(_uuid4()),
+                "title": f"Post-storm Check-up · {passport.get('owner', 'Passport')}",
+                "kind": "CHECKUP",
+                "start": checkup_start.isoformat(),
+                "end":   (checkup_start + timedelta(hours=2)).isoformat(),
+                "location": passport.get("address", ""),
+                "lat": lat, "lon": lon,
+                "crew": None,
+                "job_id": passport["passport_id"],
+                "notes": f"Auto-scheduled after {s['kind']} {s['value']} crossed property GPS.",
+                "color": "#D4B86A",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "source": "storm_watcher",
+                "storm_payload": s,
+            }
+            # Idempotent — never duplicate the same storm checkup
+            await cal.update_one(
+                {"job_id": passport["passport_id"], "kind": "CHECKUP",
+                 "storm_payload.date": s["date"], "storm_payload.kind": s["kind"]},
+                {"$setOnInsert": rec},
+                upsert=True,
+            )
+
+        # ── WebSocket push — fan out to every Mission Control client ─
+        try:
+            from routes.live_ops import fan_out
+            await fan_out({
+                "type": "STORM_DETECTED",
+                "passport_id": passport["passport_id"],
+                "owner": passport.get("owner"),
+                "address": passport.get("address"),
+                "lat": lat, "lon": lon,
+                "events": new_payloads,
+                "at": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as _e:
+            logger.warning("live-ops fan-out failed: %s", _e)
+
     return appended
 
 
