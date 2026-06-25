@@ -202,7 +202,12 @@ async def _ai_narrative(passport: Dict[str, Any], diff: Dict[str, Any]) -> str:
             session_id=f"claim-snapshot-{passport.get('passport_id')}",
             system_message=system,
         ).with_model("anthropic", "claude-sonnet-4-6")
-        resp = await chat.send_message(UserMessage(text=f"DATA:\n{json.dumps(payload, default=str)}"))
+        # 10s timeout guards the investor demo against a slow upstream
+        import asyncio as _asyncio
+        resp = await _asyncio.wait_for(
+            chat.send_message(UserMessage(text=f"DATA:\n{json.dumps(payload, default=str)}")),
+            timeout=12.0,
+        )
         text = str(resp).strip()
         # Strip any accidental wrapping JSON / code fences
         text = re.sub(r"^```[a-z]*\n?|```$", "", text).strip()

@@ -207,7 +207,9 @@ async def storm_tick(payload: Dict[str, Any]):
 # ──────────────────────────────────────────────────────────────────────
 async def broadcast_loop(interval_seconds: int = 60):
     """Lightweight loop: every minute push an ATC_REPOLL signal so all
-    connected Mission Control panels know to refresh the live verdict."""
+    connected Mission Control panels know to refresh the live verdict.
+    Self-respawning — if any tick raises, sleep briefly and resume so a
+    single transient error never silences the channel until restart."""
     while True:
         try:
             await fan_out({
@@ -215,6 +217,9 @@ async def broadcast_loop(interval_seconds: int = 60):
                 "at": datetime.now(timezone.utc).isoformat(),
                 "clients": len(_clients),
             })
+            await asyncio.sleep(interval_seconds)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            logger.warning("broadcast loop tick failed: %s", e)
-        await asyncio.sleep(interval_seconds)
+            logger.warning("broadcast loop tick failed: %s — resuming in 5s", e)
+            await asyncio.sleep(5)

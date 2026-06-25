@@ -125,6 +125,10 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [x] **Demo project relocated** to American Roofing's "2440 Regency Road, Lexington KY 40503".
 - [x] **Command Deck (`/deck`) — vertical scrolling app rail with all 37 surfaces (Feb 2026)** — superseded by ornate contractor portal; Master Switchboard preserved at `/switchboard`.
 - [x] **3D Component Catalog page added to Adjuster PDF — 8 isometric SVG cards. PDF now 17 pages.**
+- [x] **Claim Snapshot Engine (Feb 2026)** — Backend diff engine (`/api/claim-snapshot/*`) compares baseline vs post-storm scans of a Property Passport. Returns CLAIM_SUPPORTABLE / MONITOR / NO_CHANGE verdict, Claude-Sonnet adjuster narrative (timeout-hardened), KPI deltas (envelope, moisture, area, repair-$), NEW / WORSENED / RESOLVED anomaly clusters, and storm correlation. Tabloid PDF (`/api/claim-snapshot/:pid/pdf`). Frontend page `/claim-snapshot/:hash` + tile on App Launcher + CTA on Passport Portal.
+- [x] **Live-Ops WebSocket (Feb 2026)** — `/api/ws/live-ops` fan-out channel pushes `STORM_DETECTED` events from storm-watcher and `ATC_REPOLL` pings every 60s. Mission Control surfaces a `WS · LIVE` pill and re-polls all panels on each ping. Self-respawning broadcast loop.
+- [x] **Regional Storms endpoint (Feb 2026)** — `/api/storms/active?lat&lon&radius_miles=100` scans every passport inside a 100-mile radius and returns the freshest storms per property + region.
+- [x] **Storm → Calendar bridge** — `storm_watcher` upserts a `CHECKUP` calendar event the day after each detected storm crossing a passport's GPS (idempotent on storm date + kind).
 - [ ] True vision-grounded Gemini (attach uploaded images to the LLM call so
       the analysis reflects what's actually in the photos, not just the dossier)
 - [ ] Three.js parametric twin renderer driven by REAL scan data (Track B —

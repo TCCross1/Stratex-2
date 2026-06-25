@@ -135,7 +135,8 @@ function ScanColumn({ scan, accent, title, kind }) {
 function AnomalyTable({ rows, accent, emptyText, kind }) {
   if (!rows?.length) {
     return (
-      <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-500 py-4 text-center">
+      <div data-testid={`anomaly-table-${kind}`}
+           className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-500 py-4 text-center">
         {emptyText}
       </div>
     );
@@ -401,7 +402,8 @@ export default function ClaimSnapshot() {
       {/* STORM CORRELATION */}
       {diff.storm_correlated && (
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-4">
-          <div className="rounded-xl p-5 flex flex-wrap items-center gap-6"
+          <div data-testid="storm-correlation-row"
+               className="rounded-xl p-5 flex flex-wrap items-center gap-6"
                style={{ background: "rgba(8,14,24,0.86)",
                         border: `1.5px solid ${ACCENTS.magenta}66`,
                         boxShadow: `inset 0 0 32px ${ACCENTS.magenta}10` }}>
