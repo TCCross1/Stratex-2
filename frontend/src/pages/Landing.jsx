@@ -1,387 +1,570 @@
+// STRATEX™ — APP LAUNCHER (home shell)
+//
+// Replaces the long-scroll marketing landing with a desktop-OS-style
+// launcher: persistent app rail on the left (vertical, scrollable),
+// large display screen on the right that defaults to the official
+// STRATEX™ logo and is replaced by the active app window when an icon
+// is clicked.  Every window carries a red [X] cancel pill in its top
+// corner that pops back to the logo splash.
+//
+// Mobile: the rail collapses to a thin scrollable column on the left
+// (44px wide) so the launcher fits in a phone viewport without ever
+// triggering a long vertical scroll.
+//
+// IMPORTANT: nothing from the previous landing is removed — every
+// section (Recon Stack, Scientific Rigor, Fleet Command, Mesh Engine,
+// Switchboard) lives inside one of the app windows below.
+
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
 import ValidationReport from "@/components/ValidationReport";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { api } from "@/lib/api";
-import { Crosshair, Cpu, Activity, Radar, ArrowRight, Shield, Zap, Cloud, Satellite, Sun, Box } from "lucide-react";
+import { useContractor } from "@/lib/contractor";
+import {
+  Crosshair, Cpu, Activity, Radar, Shield, Zap, Cloud, Satellite, Sun, Box,
+  Info, X, Truck, LayoutDashboard, FileText, ShieldCheck, FolderOpen, Boxes,
+  ChevronRight, Layers, Sparkles, Hexagon,
+} from "lucide-react";
 
-const PORTAL_TILES = [
-  { id: "scan",   label: "New Drone Scan",            sub: "Upload imagery → CAD/BIM report", to: "/demo/scan",          accent: "teal",   primary: true, icon: Radar },
-  { id: "twin",   label: "Diagnostic Twin Command",   sub: "3D wireframe · framing · thermal",  to: "/demo/twin",          accent: "orange", icon: Box },
-  { id: "maint",  label: "AI Maintenance Priority",   sub: "Urgency-ranked task queue",         to: "/demo/maintenance",   accent: "teal",   icon: Activity },
-  { id: "quant",  label: "STRATEX Quant™ Estimator",  sub: "Take-off analytics · valuation",    to: "/demo/quant",         accent: "volt",   icon: Cpu },
-  { id: "supply", label: "Supply Chain Security",     sub: "Geofence · pipeline · encryption",  to: "/demo/supply-chain",  accent: "orange", icon: Shield },
+const ACCENTS = {
+  teal: "#00F5D4", orange: "#FF5400", volt: "#A6FF00",
+  cyan: "#00E5FF", gold: "#D4B86A", magenta: "#FF2D78", green: "#00FF9C",
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// App registry — every icon on the rail, in display order.
+// `kind: "window"` apps open inline (red X returns to logo splash)
+// `kind: "route"`  apps navigate to a separate full-page experience
+// ─────────────────────────────────────────────────────────────────────
+const APPS = [
+  // ── INFO cluster: marketing content lifted out of the old landing scroll
+  { id: "info",        kind: "window", label: "Info Hub",         icon: Info,            accent: "teal",   desc: "Recon stack · scientific rigor · everything that was on the landing page" },
+  { id: "fleet",       kind: "window", label: "Fleet Trailer",    icon: Truck,           accent: "orange", desc: "Autonomous DJI Dock 2 trailer · Starlink · Solar core" },
+  { id: "mesh",        kind: "window", label: "Vision Mesh",      icon: Hexagon,         accent: "teal",   desc: "Volumetric layering · 3D photogrammetry · radiometric overlay" },
+  { id: "switchboard", kind: "window", label: "Switchboard",      icon: LayoutDashboard, accent: "volt",   desc: "Every operational dashboard surface" },
+
+  // ── OPERATIONAL APPS — open the full pages
+  { id: "deck",        kind: "route",  label: "Command Deck",     icon: ShieldCheck, accent: "gold",    desc: "Contractor command portal",                  to: "/deck" },
+  { id: "binder",      kind: "route",  label: "Reports Binder",   icon: FolderOpen,  accent: "cyan",    desc: "Open every report page individually",       to: "/reports/binder" },
+  { id: "passport",    kind: "route",  label: "Property Passport", icon: Sparkles,    accent: "gold",   desc: "Public homeowner certificate",              to: "/passport/877D9E3C8FC3" },
+  { id: "scan",        kind: "route",  label: "New Drone Scan",   icon: Radar,       accent: "teal",    desc: "5-Agent scan-to-report engine",             to: "/demo/scan" },
+  { id: "twin",        kind: "route",  label: "Diagnostic Twin",  icon: Box,         accent: "orange",  desc: "3-D wireframe · framing · thermal",         to: "/demo/twin" },
+  { id: "quant",       kind: "route",  label: "Quant™ Estimator", icon: Cpu,         accent: "magenta", desc: "Take-off analytics · valuation",            to: "/demo/quant" },
+  { id: "verify",      kind: "route",  label: "Verify Wall",      icon: Shield,      accent: "amber",   desc: "3-contact contractor verification",         to: "/contractor/verify" },
+  { id: "gm",          kind: "route",  label: "GM Roster",        icon: Boxes,       accent: "amber",   desc: "Brand roster · pricing inventory",          to: "/gm/roster" },
+  { id: "supply",      kind: "route",  label: "Supply Security",  icon: Shield,      accent: "orange",  desc: "Geofence · pipeline · encryption",          to: "/demo/supply-chain" },
 ];
 
-// Full dashboard switchboard — every operational surface in STRATEX™,
-// grouped by audience.
-const DASHBOARD_GROUPS = [
-  {
-    title: "Demo Modules",
-    sub: "Auth-free walkthroughs for live prospect demonstrations",
-    accent: "teal",
-    items: [
-      { id: "demo-scan",  label: "New Drone Scan",          to: "/demo/scan",         icon: Radar },
-      { id: "demo-twin",  label: "Diagnostic Twin",         to: "/demo/twin",         icon: Box },
-      { id: "demo-maint", label: "AI Maintenance Priority", to: "/demo/maintenance",  icon: Activity },
-      { id: "demo-quant", label: "STRATEX Quant™ Estimator", to: "/demo/quant",        icon: Cpu },
-      { id: "demo-supply",label: "Supply Chain Security",   to: "/demo/supply-chain", icon: Shield },
-    ],
-  },
-  {
-    title: "Executive Cockpits",
-    sub: "Single-tenant command centers",
-    accent: "volt",
-    items: [
-      { id: "ceo-ops",       label: "CEO Cockpit",          to: "/ceo/ops",       icon: Satellite },
-      { id: "ceo-suppliers", label: "Supplier Registry",    to: "/ceo/suppliers", icon: Cloud },
-      { id: "ceo-login",     label: "CEO Secure Portal",    to: "/ceo/login",     icon: Shield },
-    ],
-  },
-  {
-    title: "Operations",
-    sub: "GM · Admin · Pricing — branch and tenant ops",
-    accent: "orange",
-    items: [
-      { id: "gm-ops",     label: "GM Ops Dashboard",    to: "/gm/ops",   icon: Activity },
-      { id: "admin-ops",  label: "Admin Operations",    to: "/admin/ops", icon: Cpu },
-      { id: "pricing",    label: "Pricing & Plans",     to: "/pricing",  icon: Zap },
-    ],
-  },
-  {
-    title: "Field & Contractor",
-    sub: "Contractor portal · drone operator · pilot terminal",
-    accent: "teal",
-    items: [
-      { id: "contractor", label: "Contractor Portal",   to: "/auth",     icon: Crosshair },
-      { id: "pilot",      label: "Pilot Terminal",      to: "/pilot",    icon: Sun },
-      { id: "operator",   label: "Operator Console",    to: "/operator", icon: Radar },
-    ],
-  },
-];
-
-function PortalTile({ tile }) {
-  const accentClass = tile.accent === "orange" ? "text-plasma" : tile.accent === "volt" ? "text-volt" : "text-teal";
-  const accentColor = tile.accent === "orange" ? "#FF5400" : tile.accent === "volt" ? "#A6FF00" : "#00F5D4";
-  const Icon = tile.icon;
+// ─────────────────────────────────────────────────────────────────────
+// Vertical rail — one icon per app · accent-colored · active highlight
+// ─────────────────────────────────────────────────────────────────────
+function AppRail({ activeId, onPick }) {
   return (
-    <Link to={tile.to} data-testid={`portal-tile-${tile.id}`} className="block group">
-      <HudCard scanline className={`p-5 md:p-6 h-full transition-all hover:brightness-110 hover:scale-[1.01] ${tile.primary ? "ring-1 ring-teal/40" : ""}`}>
-        <div className={`flex items-center gap-3 mb-4 ${accentClass}`}>
-          <Icon size={20} strokeWidth={1.5}/>
-          <span className="font-mono text-[10px] tracking-[0.28em] uppercase">{tile.primary ? "PRIMARY OPERATION" : `MODULE · ${tile.id.toUpperCase()}`}</span>
-        </div>
-        <h3 className="font-display text-base md:text-lg uppercase tracking-[0.12em] text-silver">{tile.label}</h3>
-        <p className="font-body text-xs text-muted-hud leading-relaxed mt-2">{tile.sub}</p>
-        <div className="mt-4 font-mono text-[10px] tracking-[0.22em] uppercase" style={{ color: accentColor }}>
-          Launch →
-        </div>
-      </HudCard>
-    </Link>
+    <aside
+      data-testid="app-rail"
+      className="shrink-0 sticky top-0 self-start h-screen overflow-y-auto deck-rail-scroll
+                 w-[68px] sm:w-[80px] lg:w-[96px] py-3
+                 border-r"
+      style={{
+        borderColor: "rgba(0,229,255,0.18)",
+        background: "linear-gradient(180deg, rgba(8,14,24,0.92) 0%, rgba(2,6,11,0.96) 100%)",
+        backdropFilter: "blur(14px)",
+      }}
+    >
+      {/* logo top */}
+      <button
+        data-testid="rail-home"
+        onClick={() => onPick(null)}
+        className="block w-full px-2 mb-3"
+        title="Home — STRATEX™ splash"
+      >
+        <img src={ASSETS.logo} alt="STRATEX" className="w-full h-auto rounded-md"
+             style={{ filter: "drop-shadow(0 0 8px rgba(0,245,212,0.5))" }}/>
+      </button>
+
+      <div className="border-t mx-2 mb-3" style={{ borderColor: "rgba(0,229,255,0.18)" }}/>
+
+      <div className="space-y-2 px-2">
+        {APPS.map((a) => {
+          const c = ACCENTS[a.accent] || ACCENTS.cyan;
+          const isActive = activeId === a.id;
+          const Icon = a.icon;
+          return (
+            <button
+              key={a.id}
+              data-testid={`app-icon-${a.id}`}
+              onClick={() => onPick(a)}
+              title={a.label}
+              className="group relative w-full aspect-square rounded-xl transition-all hover:scale-105"
+              style={{
+                background: isActive
+                  ? `linear-gradient(135deg, ${c}28 0%, ${c}10 100%)`
+                  : "rgba(8,14,24,0.85)",
+                border: `1.5px solid ${isActive ? c : `${c}44`}`,
+                boxShadow: isActive
+                  ? `0 0 18px ${c}66, inset 0 0 18px ${c}18`
+                  : `inset 0 0 10px ${c}08`,
+              }}
+            >
+              {/* corner brackets — futuristic touch */}
+              <span className="absolute top-1 left-1 w-2 h-2 border-t border-l" style={{ borderColor: c }}/>
+              <span className="absolute bottom-1 right-1 w-2 h-2 border-b border-r" style={{ borderColor: c }}/>
+              <Icon size={20} strokeWidth={1.7} color={c}
+                    style={{ filter: `drop-shadow(0 0 6px ${c}aa)` }}
+                    className="mx-auto"/>
+              <div className="font-mono text-[7.5px] tracking-[0.16em] uppercase mt-1 px-1 leading-tight"
+                   style={{ color: c }}>
+                {a.label.split(" ")[0]}
+              </div>
+              {isActive && (
+                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r"
+                      style={{ background: c, boxShadow: `0 0 8px ${c}` }}/>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 px-3 font-mono text-[8px] tracking-[0.22em] uppercase text-slate-600 text-center">
+        STRATEX™ · v4.0
+      </div>
+    </aside>
   );
 }
 
-const Pillar = ({ tag, title, blurb, icon: Icon, accent, testid }) => (
-  <HudCard scanline className="p-6 md:p-8" data-testid={testid}>
-    <div className={`flex items-center gap-3 mb-6 ${accent === "orange" ? "text-plasma" : accent === "volt" ? "text-volt" : "text-teal"}`}>
-      <Icon size={22} strokeWidth={1.5} />
-      <span className="font-mono text-[11px] tracking-[0.3em] uppercase">{tag}</span>
-    </div>
-    <h3 className="font-display text-2xl uppercase tracking-[0.14em] text-silver mb-3">{title}</h3>
-    <p className="text-sm text-muted-hud leading-relaxed font-body">{blurb}</p>
-  </HudCard>
-);
-
-export default function Landing() {
-  const isMobile = useIsMobile(900);
-  const [demo, setDemo] = useState(null);
-  useEffect(() => {
-    api.get("/public/demo-topology").then((r) => setDemo(r.data)).catch(() => setDemo(null));
-  }, []);
+// ─────────────────────────────────────────────────────────────────────
+// Generic window chrome — every in-place app uses this so they share
+// the same red [X] cancel pill and visual frame.
+// ─────────────────────────────────────────────────────────────────────
+function WindowFrame({ app, onClose, children }) {
+  const c = ACCENTS[app.accent] || ACCENTS.cyan;
+  const Icon = app.icon;
   return (
-    <div data-testid="landing-page">
-      {/* HERO */}
-      <section className="relative px-4 md:px-12 pt-10 md:pt-16 pb-16 md:pb-24 overflow-hidden">
-        <div className="absolute inset-0 grid-floor opacity-30 pointer-events-none" />
-        <div className="max-w-[1500px] mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-8 md:gap-12 items-center relative">
+    <div
+      data-testid={`window-${app.id}`}
+      className="rounded-xl relative overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, rgba(8,14,24,0.94) 0%, rgba(4,8,14,0.96) 100%)",
+        border: `1.5px solid ${c}88`,
+        boxShadow:
+          `inset 0 0 40px ${c}10, ` +
+          `0 0 0 1px ${c}22, ` +
+          `0 16px 48px rgba(0,0,0,0.5)`,
+      }}
+    >
+      {/* TITLE BAR */}
+      <div className="sticky top-0 z-10 px-4 sm:px-5 py-3 flex items-center justify-between gap-3 border-b backdrop-blur"
+           style={{ borderColor: `${c}44`, background: "rgba(2,6,11,0.85)" }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="grid place-items-center rounded-sm shrink-0"
+                style={{ width: 32, height: 32, background: `${c}14`,
+                         border: `1px solid ${c}88`, color: c }}>
+            <Icon size={16} strokeWidth={1.7}/>
+          </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-3 mb-4 md:mb-6">
-              <span className="led led-teal" />
-              <span className="font-mono text-[10px] md:text-[11px] tracking-[0.32em] text-teal uppercase">STRATEX™ • STRATEGIC THERMAL RECONNAISSANCE • v1.2.0</span>
+            <div className="font-mono text-[9px] tracking-[0.28em] uppercase" style={{ color: c }}>
+              // APP · {app.id.toUpperCase()}
             </div>
-            <h1 className="font-display text-[1.75rem] leading-[1.04] sm:text-5xl md:text-6xl lg:text-7xl uppercase tracking-[0.02em] sm:tracking-[0.06em] sm:leading-[0.95] text-silver" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
-              <span className="block">STRATEGIC</span>
-              <span className="block">THERMAL</span>
-              <span className="block text-teal glow-teal">RECONNAISSANCE</span>
-            </h1>
-            <p className="mt-5 md:mt-6 max-w-xl text-sm md:text-lg text-muted-hud font-body leading-relaxed">
-              STRATEX™ does not display surface anomalies — it <span className="text-teal">quantifies them</span>.
-              Radiometric drone telemetry is cross-referenced with localized weather data and a proprietary thermal
-              capacitance model to calculate the <span className="text-silver">true moisture volume and depth beneath the roof membrane</span> —
-              not what reflects off the surface, but the actual sub-surface mass entrapment, measured to the cubic inch.
-            </p>
-            <div className="mt-8 md:mt-10">
-              <div className="font-mono text-[10px] tracking-[0.32em] text-teal uppercase mb-3">// MASTER PORTAL SWITCHBOARD</div>
-              <Link
-                to="/deck"
-                data-testid="landing-cta-deck"
-                className="group block mb-4 rounded-md p-4 transition-all hover:scale-[1.005] hover:brightness-110"
-                style={{
-                  border: "1px solid rgba(0,245,212,0.55)",
-                  background: "linear-gradient(135deg, rgba(0,245,212,0.10) 0%, rgba(15,22,34,0.65) 50%, rgba(255,84,0,0.08) 100%)",
-                  boxShadow: "0 0 36px rgba(0,245,212,0.18), inset 0 0 48px rgba(0,245,212,0.04)",
-                }}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-teal mb-1">// NEW · COMMAND DECK</div>
-                    <div className="font-display text-base md:text-lg uppercase tracking-[0.12em] text-silver leading-tight">
-                      Every Surface · One Vertical Rail
-                    </div>
-                    <div className="font-mono text-[10.5px] text-muted-hud mt-1 tracking-wide">
-                      Investor-grade dashboard with sidebar app menu · all 38 surfaces
-                    </div>
-                  </div>
-                  <span className="font-mono text-[11px] tracking-[0.22em] uppercase text-teal shrink-0">LAUNCH →</span>
-                </div>
-              </Link>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
-                {PORTAL_TILES.slice(0, 1).map((t) => <PortalTile key={t.id} tile={t}/>)}
-                {PORTAL_TILES.slice(1, 3).map((t) => <PortalTile key={t.id} tile={t}/>)}
-              </div>
-            </div>
-            <div className="mt-10 md:mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 max-w-2xl">
-              <DataReadout label="Trailer Rigs" value="24/7" testid="stat-trailers" />
-              <DataReadout label="Uplink" value="STARLINK" accent="volt" testid="stat-uplink" />
-              <DataReadout label="O&P Lock" value="20 / 25" accent="orange" testid="stat-op" />
-              <DataReadout label="MVP Sprint" value="14 DAYS" testid="stat-sprint" />
+            <div className="font-display text-[14px] uppercase tracking-[0.1em] text-white truncate">
+              {app.label}
             </div>
           </div>
+        </div>
+        <button
+          data-testid={`window-close-${app.id}`}
+          onClick={onClose}
+          title="Close — back to STRATEX™ logo"
+          className="grid place-items-center rounded-full transition hover:brightness-125 shrink-0"
+          style={{
+            width: 32, height: 32,
+            background: "#FF2D2D",
+            color: "#fff",
+            boxShadow: "0 0 14px rgba(255,45,45,0.65)",
+            border: "1px solid #FF5555",
+          }}>
+          <X size={14} strokeWidth={3}/>
+        </button>
+      </div>
 
-          <div className="relative">
-            <HudCard scanline className="p-3">
-              <img src={ASSETS.logo} alt="STRATEX Neon Nexus" className="w-full h-auto" data-testid="hero-logo" />
-            </HudCard>
-            <div className="absolute -bottom-6 -left-6 hidden md:block">
-              <HudCard className="px-4 py-3">
-                <span className="font-mono text-[11px] text-muted-hud tracking-widest uppercase">Luxury-Corporate Palette</span>
-                <div className="flex gap-2 mt-2" data-testid="palette-swatches">
-                  <span className="w-6 h-6" style={{background:"#00F5D4", boxShadow:"0 0 8px #00F5D4"}} title="Electric Teal" data-testid="swatch-electric-teal" />
-                  <span className="w-6 h-6" style={{background:"#FF5400", boxShadow:"0 0 8px #FF5400"}} title="Neon Orange" data-testid="swatch-neon-orange" />
-                  <span className="w-6 h-6" style={{background:"#3A4350", border:"1px solid rgba(0,245,212,0.35)"}} title="Metallic Nickel" data-testid="swatch-metallic-nickel" />
+      {/* WINDOW BODY */}
+      <div className="p-4 sm:p-6 md:p-8 max-h-[calc(100vh-180px)] overflow-y-auto deck-rail-scroll">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Window content — INFO HUB (Recon Stack + Scientific Rigor)
+// ─────────────────────────────────────────────────────────────────────
+function InfoWindow() {
+  return (
+    <div className="space-y-10">
+      <div>
+        <SectionTitle eyebrow="// THREE OPERATIONAL MODULES" title="The STRATEX™ Recon Stack" />
+        <div className="grid md:grid-cols-3 gap-4 mt-6">
+          <Pillar tag="MODULE 01" accent="teal"   icon={Crosshair} title="STRATEX Vision™"
+                  blurb="3-D spatial photogrammetry & live mesh engine. Drone-captured orthomosaics stitched into millimeter-accurate roof topology." />
+          <Pillar tag="MODULE 02" accent="orange" icon={Activity}  title="STRATEX Thermal™"
+                  blurb="Sub-surface radiometric mass quantization. Cross-references diurnal temperature shift cycles with thermal capacitance modeling to isolate true moisture entrapment from surface reflectivity." />
+          <Pillar tag="MODULE 03" accent="teal"   icon={Cpu}       title="STRATEX Quant™"
+                  blurb="Multi-agent actuarial estimating engine. Auto-maps every line-item to Xactimate tags under a locked 20/25 O&P envelope." />
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle eyebrow="// ABSOLUTE SCIENTIFIC RIGOR" title="Quantitative Sub-Surface Analytics" />
+        <p className="text-sm text-muted-hud font-body leading-relaxed max-w-3xl mt-4 mb-6">
+          Every STRATEX™ scan is a mathematical instrument. Radiometric drone telemetry is fused with localised
+          diurnal weather data and a proprietary thermal-capacitance model to compute the actual moisture volume
+          and depth beneath the membrane — never a generic heat-map approximation.
+        </p>
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            { eyebrow: "// SUB-SURFACE QUANTIZATION", title: "Sub-Surface Moisture Quantization",
+              icon: Activity,  accent: "teal",
+              body: "Calculates true thermodynamic mass anomalies beneath the roof substrate, isolating actual moisture entrapment from simple surface reflectivity." },
+            { eyebrow: "// MATHEMATICAL ACCURACY", title: "Absolute Mathematical Accuracy",
+              icon: Crosshair, accent: "orange",
+              body: "Cross-references radiometric drone telemetry with localised diurnal temperature shift cycles to eliminate false positives." },
+            { eyebrow: "// EDGE PRECISION", title: "Precision Edge-Mapping",
+              icon: Box, accent: "teal",
+              body: "High-contrast vector detailing ensures that moisture boundaries are calculated down to the exact square inch, giving field crews flawless repair lines." },
+          ].map((r, i) => {
+            const c = ACCENTS[r.accent];
+            const Icon = r.icon;
+            return (
+              <HudCard key={i} scanline className="p-5">
+                <div className="flex items-center gap-3 mb-3" style={{ color: c }}>
+                  <Icon size={16} strokeWidth={1.5}/>
+                  <span className="font-mono text-[9.5px] tracking-[0.3em] uppercase">{r.eyebrow}</span>
                 </div>
+                <h3 className="font-display text-base uppercase tracking-[0.12em] text-silver mb-2">{r.title}</h3>
+                <p className="text-[12px] text-muted-hud leading-relaxed font-body">{r.body}</p>
               </HudCard>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle eyebrow="// PROOF AT A GLANCE" title="The Numbers That Run the Engine" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          <DataReadout label="Ground Truth" value="±0.78 CM"/>
+          <DataReadout label="Drone Payload" value="DJI MATRICE 4TD"/>
+          <DataReadout label="Code Stack" value="REACT · FASTAPI · MONGO"/>
+          <DataReadout label="MVP Sprint" value="14 DAYS"/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Window content — FLEET TRAILER
+// ─────────────────────────────────────────────────────────────────────
+function FleetWindow() {
+  return (
+    <div>
+      <SectionTitle eyebrow="// AUTONOMOUS FIELD RIG" title="Fleet Command Trailer" />
+      <p className="text-sm text-muted-hud font-body leading-relaxed mt-3 mb-6">
+        A custom 5×8 enclosed cargo trailer outfitted with a motorised roof hatch, DJI Dock 2,
+        solar power core and Starlink Mini. STRATEX™ deploys autonomously — no pilots, no ladders,
+        no climbing.
+      </p>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 items-start">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { l: "Power Core", v: "400W Solar · 200Ah LiFePO4", icon: Sun },
+            { l: "Comms",      v: "Starlink Mini · Unlimited",  icon: Satellite },
+            { l: "Actuators",  v: "2× VEVOR 12V · 220 lb",      icon: Zap },
+            { l: "Drone",      v: "DJI Dock 2 + M3TD",          icon: Shield },
+          ].map((s) => (
+            <HudCard key={s.l} className="p-4">
+              <div className="flex items-center gap-2 text-teal mb-2">
+                <s.icon size={14}/>
+                <span className="font-mono text-[10px] tracking-widest uppercase">{s.l}</span>
+              </div>
+              <p className="text-silver font-heading text-sm">{s.v}</p>
+            </HudCard>
+          ))}
+        </div>
+        <HudCard scanline className="p-2">
+          <img src={ASSETS.trailer_engineering} alt="STRATEX Trailer Engineering"
+               className="w-full h-auto rounded-sm"/>
+        </HudCard>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Window content — VISION MESH (3D + feature grid)
+// ─────────────────────────────────────────────────────────────────────
+function MeshWindow({ demo, isMobile }) {
+  return (
+    <div>
+      <SectionTitle eyebrow="// VOLUMETRIC LAYERING ENGINE" title="STRATEX Vision™ — Sub-Surface Mesh" />
+      <div className="mt-4">
+        <HudCard scanline className="p-2">
+          <RoofModel3D
+            telemetry={demo || {
+              style: "stratex_demo", scale: 1.0,
+              facets: [], edges: [], framing: { rafters: [], sub_fascia: [] }, gutters: { polylines: [], downspouts: [] },
+            }}
+            anomalies={demo?.anomalies || []}
+            height={isMobile ? 280 : 460}
+            showLabels={!isMobile}
+            layers={null}
+            primaryLayer="shingle"
+            showGutters={true}
+          />
+        </HudCard>
+      </div>
+      <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body leading-relaxed">
+        Razor-sharp point clouds + high-contrast volumetric mesh overlays. Moisture boundaries pulse Neon
+        Orange against a Metallic Nickel substrate, with Electric Teal vector edges locked to the exact
+        square inch.
+      </p>
+      {demo?.validation && (
+        <div className="mt-5 max-w-2xl"><ValidationReport validation={demo.validation}/></div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+        {[
+          { icon: Cloud,    label: "Cloud Rendering",   v: "Real-time photogrammetry stitch" },
+          { icon: Activity, label: "Thermal Map",       v: "Radiometric anomaly overlay" },
+          { icon: Cpu,      label: "Multi-Agent Core",  v: "4 narrow AI specialists" },
+          { icon: Box,      label: "Xactimate Bridge",  v: "Supplement-ready billing tags" },
+        ].map((it) => (
+          <HudCard key={it.label} className="p-3">
+            <div className="flex items-center gap-2 mb-1.5 text-muted-hud">
+              <it.icon size={13}/>
+              <span className="font-mono text-[9.5px] tracking-widest uppercase">{it.label}</span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PILLARS */}
-      <section className="px-6 md:px-12 py-16 relative">
-        <div className="max-w-[1500px] mx-auto">
-          <SectionTitle eyebrow="// THREE OPERATIONAL MODULES" title="The STRATEX™ Recon Stack" />
-          <div className="grid md:grid-cols-3 gap-6">
-            <Pillar tag="MODULE 01" accent="teal" icon={Crosshair} title="STRATEX Vision™"
-              blurb="3D spatial photogrammetry & live mesh engine. Drone-captured orthomosaics stitched into millimeter-accurate roof topology."
-              testid="pillar-vision" />
-            <Pillar tag="MODULE 02" accent="orange" icon={Activity} title="STRATEX Thermal™"
-              blurb="Sub-surface radiometric mass quantization. Cross-references diurnal temperature shift cycles with thermal capacitance modeling to isolate true moisture entrapment from surface reflectivity — eliminating false positives at the substrate."
-              testid="pillar-thermal" />
-            <Pillar tag="MODULE 03" accent="teal" icon={Cpu} title="STRATEX Quant™"
-              blurb="Multi-agent actuarial estimating engine. Auto-maps every line-item to Xactimate tags under a locked 20/25 O&P envelope."
-              testid="pillar-quant" />
-          </div>
-        </div>
-      </section>
-
-      {/* SCIENTIFIC RIGOR — Sub-Surface Quantization · Mathematical Accuracy · Precision Edge-Mapping */}
-      <section className="px-6 md:px-12 py-16 relative" data-testid="scientific-rigor-section">
-        <div className="max-w-[1500px] mx-auto">
-          <SectionTitle eyebrow="// ABSOLUTE SCIENTIFIC RIGOR" title="Quantitative Sub-Surface Analytics" />
-          <p className="text-sm md:text-base text-muted-hud font-body leading-relaxed max-w-3xl mb-10">
-            Every STRATEX™ scan is a mathematical instrument. Radiometric drone telemetry is fused with localized
-            diurnal weather data and a proprietary thermal-capacitance model to compute the actual moisture volume
-            and depth beneath the membrane — never a generic heat-map approximation.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6" data-testid="rigor-tiles">
-            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-quantization">
-              <div className="flex items-center gap-3 mb-4 text-teal">
-                <Activity size={18} strokeWidth={1.5} />
-                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// SUB-SURFACE QUANTIZATION</span>
-              </div>
-              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
-                Sub-Surface Moisture Quantization
-              </h3>
-              <p className="text-sm text-muted-hud leading-relaxed font-body">
-                Calculates true thermodynamic mass anomalies beneath the roof substrate, isolating actual
-                moisture entrapment from simple surface reflectivity.
-              </p>
-            </HudCard>
-
-            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-accuracy">
-              <div className="flex items-center gap-3 mb-4" style={{ color: "#FF5400" }}>
-                <Crosshair size={18} strokeWidth={1.5} />
-                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// MATHEMATICAL ACCURACY</span>
-              </div>
-              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
-                Absolute Mathematical Accuracy
-              </h3>
-              <p className="text-sm text-muted-hud leading-relaxed font-body">
-                Cross-references radiometric drone telemetry with localized diurnal temperature shift cycles
-                to eliminate false positives.
-              </p>
-            </HudCard>
-
-            <HudCard scanline className="p-6 md:p-7" data-testid="rigor-edge-mapping">
-              <div className="flex items-center gap-3 mb-4 text-teal">
-                <Box size={18} strokeWidth={1.5} />
-                <span className="font-mono text-[10.5px] tracking-[0.3em] uppercase">// EDGE PRECISION</span>
-              </div>
-              <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.14em] text-silver mb-3">
-                Precision Edge-Mapping
-              </h3>
-              <p className="text-sm text-muted-hud leading-relaxed font-body">
-                High-contrast vector detailing ensures that moisture boundaries are calculated down to the
-                exact square inch, giving field crews flawless repair lines.
-              </p>
-            </HudCard>
-          </div>
-        </div>
-      </section>
-
-      {/* FLEET COMMAND */}
-      <section className="px-6 md:px-12 py-16">
-        <div className="max-w-[1500px] mx-auto grid lg:grid-cols-2 gap-10 items-center">
-          <div>
-            <SectionTitle eyebrow="// AUTONOMOUS FIELD RIG" title="Fleet Command Trailer" />
-            <p className="text-base text-muted-hud font-body leading-relaxed mb-6">
-              A custom 5×8 enclosed cargo trailer outfitted with a motorized roof hatch, DJI Dock 2, solar power core, and Starlink Mini. STRATEX™ deploys autonomously — no pilots, no ladders, no climbing.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <HudCard className="p-4"><div className="flex items-center gap-2 text-teal mb-2"><Sun size={16}/><span className="font-mono text-[11px] tracking-widest uppercase">Power Core</span></div><p className="text-silver font-heading text-lg">400W Solar • 200Ah LiFePO4</p></HudCard>
-              <HudCard className="p-4"><div className="flex items-center gap-2 text-teal mb-2"><Satellite size={16}/><span className="font-mono text-[11px] tracking-widest uppercase">Comms</span></div><p className="text-silver font-heading text-lg">Starlink Mini • Unlimited</p></HudCard>
-              <HudCard className="p-4"><div className="flex items-center gap-2 text-teal mb-2"><Zap size={16}/><span className="font-mono text-[11px] tracking-widest uppercase">Actuators</span></div><p className="text-silver font-heading text-lg">2× VEVOR 12V • 220 lb</p></HudCard>
-              <HudCard className="p-4"><div className="flex items-center gap-2 text-teal mb-2"><Shield size={16}/><span className="font-mono text-[11px] tracking-widest uppercase">Drone</span></div><p className="text-silver font-heading text-lg">DJI Dock 2 + M3TD</p></HudCard>
-            </div>
-          </div>
-          <HudCard scanline className="p-2">
-            <img src={ASSETS.trailer_engineering} alt="STRATEX Trailer Engineering" className="w-full h-auto" data-testid="fleet-trailer-image" />
+            <p className="text-silver font-heading text-[13px]">{it.v}</p>
           </HudCard>
-        </div>
-      </section>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      {/* DASHBOARD MONTAGE */}
-      <section className="px-6 md:px-12 py-16">
-        <div className="max-w-[1500px] mx-auto">
-          <SectionTitle eyebrow="// VOLUMETRIC LAYERING ENGINE" title="STRATEX Vision™ — Sub-Surface Mesh"/>
-          <HudCard scanline className="p-2">
-            <RoofModel3D
-              telemetry={demo || {
-                style: "stratex_demo", scale: 1.0,
-                facets: [], edges: [], framing: { rafters: [], sub_fascia: [] }, gutters: { polylines: [], downspouts: [] },
-              }}
-              anomalies={demo?.anomalies || []}
-              height={isMobile ? 360 : 560}
-              showLabels={!isMobile}
-              layers={null}
-              primaryLayer="shingle"
-              showGutters={true}
-            />
-          </HudCard>
-          <p className="text-sm text-muted-hud max-w-2xl mt-4 font-body">
-            Razor-sharp point clouds + high-contrast volumetric mesh overlays. Moisture boundaries pulse Neon
-            Orange against a Metallic Nickel substrate, with Electric Teal vector edges mathematically locked to
-            the exact square inch — the same geometry the Quant™ engine uses to lock every Xactimate line-item.
-          </p>
-          {demo?.validation && (
-            <div className="mt-6 max-w-2xl">
-              <ValidationReport validation={demo.validation} />
+// ─────────────────────────────────────────────────────────────────────
+// Window content — SWITCHBOARD (every dashboard, compact bento)
+// ─────────────────────────────────────────────────────────────────────
+function SwitchboardWindow() {
+  const groups = [
+    { title: "Demo Modules",        accent: "teal",   items: [
+        { id: "demo-scan",   label: "New Drone Scan",          to: "/demo/scan",          icon: Radar },
+        { id: "demo-twin",   label: "Diagnostic Twin",         to: "/demo/twin",          icon: Box },
+        { id: "demo-maint",  label: "Maintenance Priority",    to: "/demo/maintenance",   icon: Activity },
+        { id: "demo-quant",  label: "Quant™ Estimator",        to: "/demo/quant",         icon: Cpu },
+        { id: "demo-supply", label: "Supply Security",         to: "/demo/supply-chain",  icon: Shield },
+    ]},
+    { title: "Executive Cockpits",  accent: "volt",   items: [
+        { id: "ceo-ops",       label: "CEO Cockpit",       to: "/ceo/ops",       icon: Satellite },
+        { id: "ceo-suppliers", label: "Supplier Registry", to: "/ceo/suppliers", icon: Cloud },
+        { id: "ceo-login",     label: "CEO Secure Portal", to: "/ceo/login",     icon: Shield },
+    ]},
+    { title: "Operations",          accent: "orange", items: [
+        { id: "gm-roster", label: "GM Roster · Pricing",  to: "/gm/roster",   icon: Boxes },
+        { id: "admin-ops", label: "Admin Operations",     to: "/admin/ops",   icon: Cpu },
+        { id: "pricing",   label: "Pricing & Plans",      to: "/pricing",     icon: Zap },
+    ]},
+    { title: "Field & Contractor",  accent: "teal",   items: [
+        { id: "contractor", label: "Contractor Portal",  to: "/auth",                icon: Crosshair },
+        { id: "verify",     label: "Verify Wall",        to: "/contractor/verify",   icon: Shield },
+        { id: "pilot",      label: "Pilot Terminal",     to: "/pilot",               icon: Sun },
+        { id: "operator",   label: "Operator Console",   to: "/operator",            icon: Radar },
+    ]},
+    { title: "Reports & Passport",  accent: "gold",   items: [
+        { id: "deck",     label: "Command Deck",      to: "/deck",            icon: ShieldCheck },
+        { id: "binder",   label: "Reports Binder",    to: "/reports/binder",  icon: FolderOpen },
+        { id: "passport", label: "Property Passport", to: "/passport/877D9E3C8FC3", icon: Sparkles },
+    ]},
+  ];
+  return (
+    <div className="space-y-6">
+      <SectionTitle eyebrow="// MASTER PORTAL · ALL DASHBOARDS" title="Every Command Surface, One Switchboard"/>
+      <div className="space-y-6 mt-2">
+        {groups.map((g) => {
+          const dot = ACCENTS[g.accent];
+          return (
+            <div key={g.title}>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot, boxShadow: `0 0 6px ${dot}` }}/>
+                <h3 className="font-display text-[13px] uppercase tracking-[0.2em] text-silver">{g.title}</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                {g.items.map((it) => {
+                  const Icon = it.icon;
+                  return (
+                    <Link key={it.id} to={it.to}
+                          data-testid={`switchboard-${it.id}`}
+                          className="group block rounded-md p-3 transition-all hover:scale-[1.015] hover:brightness-110"
+                          style={{ background: "rgba(15,22,34,0.55)",
+                                   border: `1px solid ${dot}55`,
+                                   boxShadow: `inset 0 0 14px ${dot}10` }}>
+                      <Icon size={14} color={dot} style={{ filter: `drop-shadow(0 0 4px ${dot}99)` }}/>
+                      <div className="mt-2 font-display text-[11px] uppercase tracking-[0.08em] text-silver leading-tight">{it.label}</div>
+                      <div className="mt-0.5 font-mono text-[8px] tracking-[0.16em] uppercase" style={{ color: dot }}>{it.to}</div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          )}
-          <div className="grid md:grid-cols-4 gap-4 mt-8">
-            <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Cloud size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Cloud Rendering</span></div><p className="text-silver font-heading">Real-time photogrammetry stitch</p></HudCard>
-            <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Activity size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Thermal Map</span></div><p className="text-silver font-heading">Radiometric anomaly overlay</p></HudCard>
-            <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Cpu size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Multi-Agent Core</span></div><p className="text-silver font-heading">4 narrow AI specialists</p></HudCard>
-            <HudCard className="p-4"><div className="flex items-center gap-2 mb-2 text-muted-hud"><Box size={14}/><span className="font-mono text-[10px] tracking-widest uppercase">Xactimate Bridge</span></div><p className="text-silver font-heading">Supplement-ready billing tags</p></HudCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Default state — big STRATEX logo splash that fills the display screen
+// ─────────────────────────────────────────────────────────────────────
+function LogoSplash({ onPickInfo }) {
+  return (
+    <div data-testid="logo-splash"
+         className="relative rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-6 sm:p-10 min-h-[60vh]"
+         style={{
+           background: "linear-gradient(180deg, rgba(8,14,24,0.7) 0%, rgba(4,8,14,0.85) 100%)",
+           border: "1.5px solid rgba(0,229,255,0.30)",
+           boxShadow: "inset 0 0 60px rgba(0,229,255,0.08)",
+         }}>
+      {/* corner brackets */}
+      {[
+        "top-3 left-3 border-t-2 border-l-2",
+        "top-3 right-3 border-t-2 border-r-2",
+        "bottom-3 left-3 border-b-2 border-l-2",
+        "bottom-3 right-3 border-b-2 border-r-2",
+      ].map((cls, i) => (
+        <span key={i} className={`absolute ${cls} w-5 h-5`} style={{ borderColor: "#00E5FF" }}/>
+      ))}
+      <img src={ASSETS.logo} alt="STRATEX™"
+           className="w-full max-w-xs sm:max-w-md md:max-w-lg h-auto"
+           style={{ filter: "drop-shadow(0 0 40px rgba(0,245,212,0.45))" }}
+           data-testid="splash-logo"/>
+      <div className="font-mono text-[10px] tracking-[0.36em] text-cyan-300 uppercase mt-6">
+        STRATEGIC THERMAL RECONNAISSANCE · ±0.78 CM
+      </div>
+      <div className="font-mono text-[9px] tracking-[0.28em] text-slate-500 uppercase mt-2">
+        SELECT AN APP FROM THE LEFT RAIL TO BEGIN
+      </div>
+      <button
+        data-testid="splash-info-cta"
+        onClick={onPickInfo}
+        className="mt-6 font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md flex items-center gap-2 transition hover:brightness-125"
+        style={{ background: "rgba(0,229,255,0.10)", border: `1px solid ${ACCENTS.cyan}88`, color: ACCENTS.cyan }}>
+        Open Info Hub <ChevronRight size={12}/>
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Marketing Pillar tile (same look as before, kept inside Info Hub)
+// ─────────────────────────────────────────────────────────────────────
+function Pillar({ tag, accent, icon: Icon, title, blurb }) {
+  const c = ACCENTS[accent] || ACCENTS.teal;
+  return (
+    <HudCard scanline className="p-5">
+      <div className="flex items-center gap-3 mb-3" style={{ color: c }}>
+        <Icon size={18} strokeWidth={1.5}/>
+        <span className="font-mono text-[10px] tracking-[0.28em] uppercase">{tag}</span>
+      </div>
+      <h3 className="font-display text-base md:text-lg uppercase tracking-[0.12em] text-silver mb-2">{title}</h3>
+      <p className="text-[12.5px] text-muted-hud leading-relaxed font-body">{blurb}</p>
+    </HudCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Main shell
+// ─────────────────────────────────────────────────────────────────────
+export default function Landing() {
+  const isMobile = useIsMobile();
+  const nav = useNavigate();
+  const contractor = useContractor();
+  const [demo, setDemo] = useState(null);
+  const [activeApp, setActiveApp] = useState(null);
+
+  // Existing demo telemetry fetch — preserved.
+  useEffect(() => {
+    let dead = false;
+    api.get("/demo/sample-roof")
+       .then((r) => { if (!dead && r.data) setDemo(r.data); })
+       .catch(() => {});
+    return () => { dead = true; };
+  }, []);
+
+  const pickApp = (app) => {
+    if (!app) { setActiveApp(null); return; }
+    if (app.kind === "route") { nav(app.to); return; }
+    setActiveApp(app);
+  };
+
+  return (
+    <div className="min-h-screen text-silver flex"
+         style={{
+           background:
+             "radial-gradient(ellipse at 75% 8%, rgba(0,229,255,0.10) 0%, transparent 55%)," +
+             "radial-gradient(ellipse at 8% 92%, rgba(255,84,0,0.07) 0%, transparent 55%)," +
+             "#02060B",
+           fontFamily: "'Sora', sans-serif",
+         }}>
+      {/* faint grid */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 opacity-[0.05]"
+           style={{ backgroundImage:
+             "linear-gradient(rgba(0,229,255,0.6) 1px, transparent 1px),linear-gradient(90deg, rgba(0,229,255,0.6) 1px, transparent 1px)",
+             backgroundSize: "60px 60px",
+             maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
+             WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)" }}/>
+
+      <AppRail activeId={activeApp?.id} onPick={pickApp}/>
+
+      {/* Display screen — flex-1 */}
+      <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* tiny top status strip */}
+        <div className="flex items-center justify-between mb-4 px-1 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+                  style={{ boxShadow: "0 0 6px #00FF9C" }}/>
+            <span className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-500">
+              SYS · OPERATIONAL · TENANT {contractor.business_name.toUpperCase()}
+            </span>
+          </div>
+          <div className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-500">
+            APP LAUNCHER · v4.1
           </div>
         </div>
-      </section>
 
-      {/* SWITCHBOARD — every dashboard in STRATEX™ */}
-      <section className="px-6 md:px-12 py-16 md:py-24" id="switchboard">
-        <div className="max-w-[1500px] mx-auto">
-          <div className="text-center mb-10 md:mb-14">
-            <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-4">// MASTER PORTAL SWITCHBOARD · ALL DASHBOARDS</div>
-            <h2 className="font-display text-[1.5rem] sm:text-3xl md:text-5xl uppercase tracking-[0.04em] sm:tracking-[0.1em] text-silver leading-tight">
-              Every <span className="text-teal glow-teal">Command Surface</span>, One Switchboard
-            </h2>
-            <p className="mt-4 max-w-2xl mx-auto text-muted-hud font-body">
-              Demo modules · executive cockpits · branch operations · field contractor terminals.
-              Tap any tile to jump straight in.
-            </p>
-          </div>
+        {activeApp ? (
+          <WindowFrame app={activeApp} onClose={() => setActiveApp(null)}>
+            {activeApp.id === "info"        && <InfoWindow/>}
+            {activeApp.id === "fleet"       && <FleetWindow/>}
+            {activeApp.id === "mesh"        && <MeshWindow demo={demo} isMobile={isMobile}/>}
+            {activeApp.id === "switchboard" && <SwitchboardWindow/>}
+          </WindowFrame>
+        ) : (
+          <LogoSplash onPickInfo={() => setActiveApp(APPS[0])}/>
+        )}
 
-          {/* Hero row — primary demo tile + 2 standout demo tiles */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
-            {PORTAL_TILES.map((t) => <PortalTile key={t.id} tile={t}/>)}
-          </div>
+        <footer className="mt-6 px-1 font-mono text-[8.5px] tracking-[0.22em] uppercase text-slate-600 flex flex-col sm:flex-row justify-between gap-1">
+          <span>STRATEX™ 2026 · Strategic Thermal Reconnaissance</span>
+          <span style={{ color: ACCENTS.teal }}>v4.1 · APP LAUNCHER BUILD</span>
+        </footer>
+      </main>
 
-          {/* Full dashboard grid, grouped */}
-          <div className="space-y-10 md:space-y-12">
-            {DASHBOARD_GROUPS.map((grp) => {
-              const dot = grp.accent === "volt" ? "#A6FF00" : grp.accent === "orange" ? "#FF5400" : "#00F5D4";
-              return (
-                <div key={grp.title}>
-                  <div className="flex items-baseline gap-3 mb-4">
-                    <span className="w-2 h-2 rounded-full" style={{ background: dot, boxShadow: `0 0 8px ${dot}` }}/>
-                    <h3 className="font-display text-lg md:text-xl uppercase tracking-[0.18em] text-silver">{grp.title}</h3>
-                    <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-muted-hud hidden md:inline">// {grp.sub}</span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {grp.items.map((it) => {
-                      const Icon = it.icon;
-                      return (
-                        <Link
-                          key={it.id}
-                          to={it.to}
-                          data-testid={`dash-tile-${it.id}`}
-                          className="group block rounded-md p-4 transition-all hover:scale-[1.015] hover:brightness-110"
-                          style={{
-                            background: "rgba(15,22,34,0.55)",
-                            border: `1px solid ${dot}55`,
-                            boxShadow: `inset 0 0 20px ${dot}10`,
-                          }}
-                        >
-                          <div style={{ color: dot, filter: `drop-shadow(0 0 4px ${dot}99)` }}>
-                            <Icon size={18} strokeWidth={1.5}/>
-                          </div>
-                          <div className="mt-2 font-display text-[12px] sm:text-[13px] uppercase tracking-[0.1em] text-silver leading-tight break-words">
-                            {it.label}
-                          </div>
-                          <div className="mt-1 font-mono text-[9px] tracking-[0.18em] uppercase" style={{ color: dot }}>
-                            {it.to}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-[#00F0FF]/15 px-6 py-6 mt-8">
-        <div className="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono uppercase tracking-widest text-muted-hud">
-          <span>STRATEX™ 2026 • Strategic Thermal Reconnaissance</span>
-          <span className="text-teal">v3.7.0 • LUXURY-CORPORATE BUILD</span>
-        </div>
-      </footer>
+      <style>{`
+        .deck-rail-scroll::-webkit-scrollbar { width: 6px; }
+        .deck-rail-scroll::-webkit-scrollbar-track { background: transparent; }
+        .deck-rail-scroll::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.28); border-radius: 4px; }
+      `}</style>
     </div>
   );
 }
