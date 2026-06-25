@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Nav from "@/components/Nav";
+import TcAssistant from "@/components/TcAssistant";
+import BackToLauncher from "@/components/BackToLauncher";
 import Landing from "@/pages/Landing";
 import Switchboard from "@/pages/Switchboard";
 import CommandDeck from "@/pages/CommandDeck";
@@ -177,6 +179,8 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <AppShell/>
+          <BackToLauncher/>
+          <TcAssistant/>
           <Toaster theme="dark" position="top-right" toastOptions={{ style: { background: "#10141D", border: "1px solid rgba(0,240,255,0.35)", color: "#E2E8F0", fontFamily: "JetBrains Mono, monospace", fontSize: "12px", letterSpacing: "0.08em", textTransform: "uppercase" } }}/>
         </AuthProvider>
       </BrowserRouter>

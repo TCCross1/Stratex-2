@@ -2631,6 +2631,10 @@ app.include_router(passport_router)
 from routes.phase34 import router as phase34_router  # noqa: E402
 app.include_router(phase34_router)
 
+# TC — in-app AI Project Manager
+from routes.tc_assistant import router as tc_router  # noqa: E402
+app.include_router(tc_router)
+
 # Storm-watcher background loop — kicks in shortly after startup.
 @app.on_event("startup")
 async def _start_storm_watcher():
