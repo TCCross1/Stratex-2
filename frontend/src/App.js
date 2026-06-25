@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Nav from "@/components/Nav";
 import Landing from "@/pages/Landing";
 import Switchboard from "@/pages/Switchboard";
+import CommandDeck from "@/pages/CommandDeck";
 import DemoScanWizard from "@/pages/DemoScanWizard";
 import AuthPage from "@/pages/AuthPage";
 import AuthCallback from "@/pages/AuthCallback";
@@ -77,7 +78,7 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard";
+  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck";
   const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
@@ -85,6 +86,7 @@ function AppShell() {
       {!isCeoArea && !isDemo && <InvestorAssistant/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
+        <Route path="/deck" element={<CommandDeck/>}/>
         <Route path="/switchboard" element={<Switchboard/>}/>
         <Route path="/demo/scan" element={<DemoScanWizard/>}/>
         <Route path="/demo/twin" element={<DemoScanWizard initialStep={3}/>}/>

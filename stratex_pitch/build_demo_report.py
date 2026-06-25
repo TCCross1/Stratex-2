@@ -798,6 +798,166 @@ def page_labor_gantt(a: dict) -> str:
     """
 
 
+def _iso_component(label: str, code: str, spec: str, paths_svg: str, accent: str = "cyan") -> str:
+    """Render a single isometric component card (J/F-Channel · Starter · Finish Trim · etc.)."""
+    accent_hex = {
+        "cyan": "#4DF6FF", "amber": "#FFB020", "green": "#00FF9C",
+        "mag": "#FF2D78", "orange": "#FF7B00",
+    }.get(accent, "#4DF6FF")
+    return f"""
+    <div class="frame {accent}" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:{accent_hex};">CODE · {escape(code)}</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">{escape(label)}</div>
+        </div>
+        <span class="pill" style="color:{accent_hex};">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px {accent_hex}55);">
+          {paths_svg}
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        {escape(spec)}
+      </div>
+    </div>
+    """
+
+
+def page_assembly_catalog(a: dict) -> str:
+    """Page · 3D Component Catalog — isometric assembly grid for the bid envelope.
+
+    Cards: J-Channel · F-Channel · Starter Strip · Finish Trim · Drip Edge ·
+    Soffit Panel · Inside / Outside Corner · Utility Trim.  Each card carries an
+    isometric SVG mockup, a trade code, and gauge / dimension spec line.
+    """
+    p = a["project"]
+
+    # ──────────────────────────── Isometric SVG library ────────────────────────────
+    # All paths use a 200×110 viewBox.  Stroke colors are baked here so we can vary
+    # cyan / amber per card without rebuilding the whole SVG tree.
+
+    j_channel = """
+      <!-- J-Channel : isometric U-receiver -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M30 80 L130 30 L170 50 L170 76 L162 80 L162 56 L130 41 L38 86 Z"
+              fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.6"/>
+        <path d="M30 80 L162 80 L170 76" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M38 86 L130 41" stroke="#4DF6FF" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
+        <path d="M150 72 L150 64 M155 70 L155 62 M160 68 L160 60" stroke="#4DF6FF" stroke-width="1.0" opacity="0.5"/>
+      </g>"""
+
+    f_channel = """
+      <!-- F-Channel : isometric step section -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M30 84 L120 36 L172 56 L172 64 L130 48 L130 58 L86 80 L86 86 Z"
+              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
+        <path d="M86 80 L172 64" stroke="#FFB020" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
+        <path d="M40 88 L130 48" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
+        <circle cx="50" cy="84" r="1.2" fill="#FFB020"/>
+        <circle cx="78" cy="70" r="1.2" fill="#FFB020"/>
+        <circle cx="106" cy="56" r="1.2" fill="#FFB020"/>
+      </g>"""
+
+    starter_strip = """
+      <!-- Starter Strip : long ribbon with anchor flange -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M22 70 L160 30 L178 38 L178 50 L160 42 L24 82 Z"
+              fill="rgba(0,255,156,0.12)" stroke="#00FF9C" stroke-width="1.6"/>
+        <path d="M24 82 L24 88 L160 48 L160 42" stroke="#00FF9C" stroke-width="1.4"/>
+        <path d="M40 76 L44 68 M70 62 L74 54 M100 48 L104 40 M130 34 L134 26"
+              stroke="#00FF9C" stroke-width="1.0" opacity="0.6"/>
+      </g>"""
+
+    finish_trim = """
+      <!-- Finish Trim : capping bead -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M28 80 L120 32 L172 56 L172 72 L162 72 L162 60 L130 46 L40 88 Z"
+              fill="rgba(255,45,120,0.12)" stroke="#FF2D78" stroke-width="1.6"/>
+        <ellipse cx="100" cy="56" rx="58" ry="6" fill="none" stroke="#FF2D78" stroke-width="0.9" opacity="0.7"/>
+        <path d="M40 88 L162 60" stroke="#FF2D78" stroke-width="0.9" stroke-dasharray="1 3" opacity="0.6"/>
+      </g>"""
+
+    drip_edge = """
+      <!-- Drip Edge : L-flashing -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M28 72 L132 28 L170 44 L168 88 L160 92 L160 56 L36 100 Z"
+              fill="rgba(255,123,0,0.12)" stroke="#FF7B00" stroke-width="1.6"/>
+        <path d="M36 100 L160 56" stroke="#FF7B00" stroke-width="1.0" opacity="0.6"/>
+        <path d="M40 96 L40 100 M70 84 L70 88 M100 72 L100 76 M130 60 L130 64"
+              stroke="#FF7B00" stroke-width="1.0" opacity="0.7"/>
+      </g>"""
+
+    soffit_panel = """
+      <!-- Soffit Panel : grid -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M22 86 L132 26 L186 50 L78 100 Z"
+              fill="rgba(77,246,255,0.08)" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M50 84 L156 32 M70 88 L174 38 M90 92 L184 46"
+              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
+        <path d="M104 32 L62 88 M130 38 L88 94 M156 46 L114 100"
+              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
+      </g>"""
+
+    inside_corner = """
+      <!-- Inside Corner Post -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M70 18 L70 92 L40 100 L40 28 Z" fill="rgba(0,255,156,0.10)" stroke="#00FF9C" stroke-width="1.4"/>
+        <path d="M70 18 L100 28 L100 100 L70 92" fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M55 22 L55 96 M85 24 L85 96" stroke="#fff" stroke-width="0.6" opacity="0.3"/>
+      </g>"""
+
+    utility_trim = """
+      <!-- Utility Trim : channel cap -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M26 78 L130 30 L172 50 L150 56 L130 46 L40 86 Z"
+              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
+        <path d="M40 86 L40 92 L150 50 L150 56" stroke="#FFB020" stroke-width="1.4"/>
+        <path d="M80 70 L86 60 M108 58 L114 48 M134 46 L140 36" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
+      </g>"""
+
+    cards = [
+        ("J-Channel · 3/4″ Receiver",      "VS-JCH-075",    "0.044″ vinyl · 12'6\" stock · receives panel edges around openings & terminations.", j_channel,      "cyan"),
+        ("F-Channel · Soffit Receiver",    "VS-FCH-050",    "0.044″ vinyl · 12'6\" · holds soffit panels along wall & fascia line.",              f_channel,      "amber"),
+        ("Starter Strip · Lock-In",        "VS-STR-LCK",    "10' aluminum · interlocks first course; sets level reference for full elevation.",   starter_strip,  "green"),
+        ("Finish / Undersill Trim",        "VS-FNT-100",    "12'6\" vinyl · caps top course beneath J-channel or eave return.",                   finish_trim,    "mag"),
+        ("Drip Edge · 5″ L-Flashing",      "RF-DRP-500",    "0.019\" aluminum · 10' lengths · directs runoff into gutter trough.",                drip_edge,      "orange"),
+        ("Vented Soffit Panel",            "SF-VNT-V12",    "12'\" length · 0.044″ vinyl, integrally vented · NFA 10 sq.in./LF.",                 soffit_panel,   "cyan"),
+        ("Inside Corner Post · 3/4″",      "VS-ICP-075",    "10' vinyl · double-channel receives panel ends at inside corners.",                  inside_corner,  "green"),
+        ("Utility / Cap Trim",             "VS-UTL-CAP",    "12'6\" vinyl · caps J-channel returns & creates clean terminations.",                utility_trim,   "amber"),
+    ]
+
+    cards_html = "".join(_iso_component(lbl, code, spec, svg, acc) for lbl, code, spec, svg, acc in cards)
+
+    return f"""
+    <div class="page">
+      {_hdr("PAGE · 3D COMPONENT CATALOG · ASSEMBLY LIBRARY", p)}
+      <div class="eyebrow">· ASSEMBLY & COMPONENT LIBRARY</div>
+      <h1 style="font-size:30px;">Isometric <span class="glow-cyan">Component</span> Reference</h1>
+      <div class="mono" style="font-size:9.5px;color:var(--muted);letter-spacing:.18em;line-height:1.7;
+                              margin-top:8px;max-width:62%;">
+        Every assembly element specified for this scope-of-work, rendered isometrically with its trade
+        code and gauge / dimensional callout. Cross-reference each card to the Xactimate-tagged line
+        items on the Bill-of-Materials page.
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);grid-auto-rows:1fr;gap:10px;margin-top:18px;">
+        {cards_html}
+      </div>
+
+      <div class="frame cyan" style="margin-top:14px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:14px;">
+        <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">
+          PANEL THICKNESS · 0.044″ · NAIL FLANGE · ROLLED · ASTM D-3679 · CLASS 1 · WIND RATING 230 MPH
+        </div>
+        <div class="mono" style="font-size:9px;color:var(--cyan);letter-spacing:.22em;">// CATALOG · v4.0</div>
+      </div>
+    </div>
+    """
+
+
 def page_executive_certification(a: dict) -> str:
     if "certification" not in a:
         return ""
@@ -862,25 +1022,82 @@ def page_executive_certification(a: dict) -> str:
     """
 
 
+def page_homeowner_summary(a: dict) -> str:
+    """Plain-language one-page summary for homeowners."""
+    p = a["project"]; t = a["totals"]
+    urgent = [x for x in a.get("priority_tasks", []) if x["severity"] in ("URGENT", "HIGH")]
+    items = "".join(
+        f"""<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span class="pill" style="color:{_sev_color(x['severity'])};white-space:nowrap;">{escape(x['severity'])}</span>
+          <div style="font-size:13px;color:#fff;line-height:1.45;">{escape(x['task'])}</div>
+        </div>""" for x in urgent
+    )
+    tear = a.get("water_retention", {}).get("tear_off_recommended")
+    return f"""
+    <div class="page">
+      {_hdr("PLAIN-LANGUAGE SUMMARY FOR HOMEOWNERS", p)}
+      <div class="eyebrow">· FOR YOU · THE HOMEOWNER</div>
+      <h1 style="font-size:34px;">What We Found, In <span class="glow-cyan">Plain English</span></h1>
+      <div class="row c2" style="margin-top:22px;align-items:start;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">YOUR PROPERTY · BIG PICTURE</h2>
+          <ul style="margin-top:8px;color:var(--silver);font-size:13px;line-height:1.8;list-style:none;">
+            <li>• Your roof was scanned with a drone — every measurement is accurate to less than a centimeter.</li>
+            <li>• We found <strong style="color:#fff;">{len(a.get('anomalies',[]))} problem area(s)</strong> that need attention.</li>
+            <li>• Your home's overall envelope score is <strong style="color:#fff;">{a.get('envelope_scores',{}).get('overall_envelope',0)}/100</strong>.</li>
+            {'<li>• We strongly recommend a <strong style="color:#FF2D78;">complete tear-off and re-roof</strong>.</li>' if tear else ''}
+            <li>• You are losing about <strong style="color:#FFB020;">{_usd(a.get('energy_leakage',{}).get('annual_dollar_loss',0))}/year</strong> through air leaks.</li>
+          </ul>
+        </div>
+        <div class="frame green">
+          <h2 style="color:var(--green);">WHAT THIS WILL COST</h2>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:#fff;margin-top:4px;">
+            {_usd(t['grand_total_low_usd'])} – {_usd(t['grand_total_high_usd'])}
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.18em;">
+            ALL-IN · MATERIALS + LABOR + TEAR-OFF + RESERVE
+          </div>
+        </div>
+      </div>
+      <div class="frame mag" style="margin-top:18px;">
+        <h2 style="color:var(--mag);">PRIORITY · DO THESE FIRST</h2>
+        {items if items else '<div style="font-size:13px;color:var(--silver);">No urgent items.</div>'}
+      </div>
+    </div>
+    """
+
+
 def build_html(a: dict) -> str:
-    pages = [
-        page_cover(a),
-        page_executive(a),
-        page_facade(a),
-        page_digital_twin(a),
-        page_window_schedule(a),
-        page_door_schedule(a),
-        page_wall_envelope(a),
-        page_wall_moisture(a),
-        page_energy_leakage(a),
-        page_bom(a),
-        page_labor(a),
-        page_labor_gantt(a),
-        page_profitability(a),
-        page_side_quote(a),
-        page_tearoff(a),
-        page_executive_certification(a),
-    ]
+    audience = a.get("_audience", "adjuster")
+    if audience == "homeowner":
+        pages = [
+            page_cover(a),
+            page_homeowner_summary(a),
+            page_executive(a),
+            page_digital_twin(a),
+            page_labor_gantt(a),
+            page_executive_certification(a),
+        ]
+    else:
+        pages = [
+            page_cover(a),
+            page_executive(a),
+            page_facade(a),
+            page_digital_twin(a),
+            page_window_schedule(a),
+            page_door_schedule(a),
+            page_wall_envelope(a),
+            page_wall_moisture(a),
+            page_energy_leakage(a),
+            page_bom(a),
+            page_assembly_catalog(a),
+            page_labor(a),
+            page_labor_gantt(a),
+            page_profitability(a),
+            page_side_quote(a),
+            page_tearoff(a),
+            page_executive_certification(a),
+        ]
     body = "\n".join(p for p in pages if p)
     return f"""<!doctype html>
 <html><head>

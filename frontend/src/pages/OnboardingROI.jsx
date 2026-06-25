@@ -8,6 +8,7 @@ import {
   recommendTier,
 } from "@/lib/roiPricing";
 import CompetitiveIntelSection from "@/components/CompetitiveIntelSection";
+import { StratexLogo } from "@/components/StratexBrand";
 
 /**
  * /onboard — STRATEX™ ROI Onboarding & Pricing Funnel
@@ -114,8 +115,9 @@ export default function OnboardingROI() {
     <div className="min-h-screen bg-[#0B0F19] text-silver px-6 md:px-12 py-10" data-testid="onboard-root">
       <div className="max-w-[1400px] mx-auto">
         {/* ============== HEADER ============== */}
+        <StratexLogo height={40} className="mb-5"/>
         <div className="font-mono text-[11px] tracking-[0.36em] text-teal uppercase mb-2">
-          // STRATEX VISION • CONTRACTOR ONBOARDING • ROI MATRIX
+          // VISION • CONTRACTOR ONBOARDING • ROI MATRIX
         </div>
         <h1 className="font-display text-3xl md:text-5xl uppercase tracking-widest text-silver mb-3">
           Quantify Your Ladder-Free ROI

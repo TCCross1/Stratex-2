@@ -260,7 +260,8 @@ function AnalysisPulse() {
 }
 
 function AnalysisDashboard({ a, sessionId, onRestart }) {
-  const pdfUrl = `${API}/demo/scan-report.pdf?session_id=${sessionId}`;
+  const [audience, setAudience] = useState("adjuster"); // "adjuster" | "homeowner"
+  const pdfUrl = `${API}/demo/scan-report.pdf?session_id=${sessionId}&audience=${audience}`;
   const [layer, setLayer] = useState(0); // 0 finished / 1 deck / 2 framing
   const [renderMode, setRenderMode] = useState("gallery"); // "gallery" | "parametric" | "ai"
   const [topology, setTopology] = useState(null);
@@ -285,7 +286,23 @@ function AnalysisDashboard({ a, sessionId, onRestart }) {
           <div className="font-mono text-[9px] tracking-[0.28em] text-cyan-400 truncate">// PROJECT {a.project.id} · {a.project.city_state}</div>
           <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight break-words">{a.project.address}</h2>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <div className="flex gap-1 border border-slate-700 rounded p-0.5 text-[10px] font-mono">
+            <button data-testid="audience-adjuster"
+              onClick={() => setAudience("adjuster")}
+              className={"px-2.5 py-1 rounded tracking-[0.14em] " +
+                (audience === "adjuster" ? "bg-cyan-400 text-black" : "text-slate-400 hover:text-cyan-400")}
+              title="Full 16-page technical report">
+              ADJUSTER
+            </button>
+            <button data-testid="audience-homeowner"
+              onClick={() => setAudience("homeowner")}
+              className={"px-2.5 py-1 rounded tracking-[0.14em] " +
+                (audience === "homeowner" ? "bg-emerald-400 text-black" : "text-slate-400 hover:text-emerald-400")}
+              title="6-page plain-language homeowner version">
+              HOMEOWNER
+            </button>
+          </div>
           <a href={pdfUrl} target="_blank" rel="noreferrer" data-testid="open-pdf"
             className="px-4 py-2.5 rounded font-mono text-[11px] tracking-[0.18em] text-black bg-cyan-400 hover:brightness-110 whitespace-nowrap"
             style={{ boxShadow: "0 0 22px rgba(0,229,255,0.6)" }}>

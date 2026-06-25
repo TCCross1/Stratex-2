@@ -5,6 +5,7 @@ import { previewNDA, acceptNDA } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shield, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { StratexLogo } from "@/components/StratexBrand";
 
 export default function NDAPage() {
   const navigate = useNavigate();
@@ -31,7 +32,8 @@ export default function NDAPage() {
   };
 
   return (
-    <div data-testid="nda-page" className="min-h-screen px-4 py-10 max-w-3xl mx-auto">
+    <div data-testid="nda-page" className="min-h-screen px-4 py-8 max-w-3xl mx-auto">
+      <StratexLogo height={40} className="mb-6"/>
       <div className="flex items-center gap-2 text-teal font-mono text-[11px] tracking-widest uppercase mb-3"><Shield size={14}/> SECURE ONBOARDING • STEP 02</div>
       <h1 className="font-display text-2xl md:text-3xl uppercase tracking-[0.08em] text-silver mb-2" style={{ overflowWrap: "anywhere" }}>Mutual Non-Disclosure Agreement</h1>
       <p className="text-sm text-muted-hud font-body mb-5">Review the binding mutual NDA below, then affix your typed legal name to unlock the contractor portal. Your IP address and a UTC timestamp will be captured as part of the digital signature audit trail.</p>

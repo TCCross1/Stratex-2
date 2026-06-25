@@ -119,6 +119,8 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [x] All typos fixed (STRATEX Quant™ — never STRATE)
 
 ### P1 — Post-demo polish
+- [x] **Command Deck (`/deck`) — vertical scrolling app rail with all 37 surfaces (Feb 2026)**
+- [x] **3D Component Catalog page added to Adjuster PDF — 8 isometric SVG cards (J/F-Channel · Starter · Finish Trim · Drip Edge · Soffit · Inside Corner · Utility Trim). PDF now 17 pages.**
 - [ ] True vision-grounded Gemini (attach uploaded images to the LLM call so
       the analysis reflects what's actually in the photos, not just the dossier)
 - [ ] Three.js parametric twin renderer driven by REAL scan data (Track B —
@@ -127,6 +129,10 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [ ] BOM editor / supplier price overrides per region (GM tier)
 - [ ] Wire the new envelope domains into the live LLM prompt (currently the
       LLM doesn't yet ask for walls/siding/energy — only the sample includes them)
+- [ ] **Phase 3:** GM Brand Roster + GM Pricing Inventory (3-tier CRUD)
+- [ ] **Phase 4:** Contractor Dashboard rebuild (app-tile launcher + 3-contact verification wall)
+- [ ] **Phase 5:** Preferred Materials Brand App (Roofing/Gutters/Vinyl — draft list for user sign-off first)
+- [ ] **Phase 8:** Full Workflow Simulation + Tripwire breach test
 
 ### P2 — Future / refactor
 - [ ] App-wide `data-testid` audit

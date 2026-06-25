@@ -1,0 +1,1791 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+@page { size: 17in 11in; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #02060B; --bg2: #0B1320; --card: rgba(15,22,34,0.65);
+  --cyan: #4DF6FF; --amber: #FFB020; --green: #00FF9C;
+  --mag: #FF2D78; --orange: #FF7B00; --silver: #E2E8F0;
+  --muted: #7C8A9E; --line: rgba(77,246,255,0.18);
+}
+html, body { background: var(--bg); color: var(--silver);
+  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.page { width: 17in; height: 11in; padding: 0.55in 0.65in; position: relative;
+  background:
+    radial-gradient(ellipse at 80% 10%, rgba(77,246,255,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 10% 90%, rgba(255,123,0,0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #03070D 0%, #02060B 100%);
+  page-break-after: always; overflow: hidden; }
+.page:last-child { page-break-after: auto; }
+
+/* === STRATEX OFFICIAL WORDMARK === */
+.wm { font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+  letter-spacing: 0.04em; line-height: 1; display: inline-flex; align-items: baseline;
+  white-space: nowrap; }
+.wm .strat {
+  background: linear-gradient(180deg, #FFFFFF 0%, #B6BFCB 70%, #8A95A3 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.wm .ex {
+  color: transparent; -webkit-text-stroke: 1.4px #4DF6FF;
+  text-shadow: 0 0 5px rgba(77,246,255,0.85), 0 0 12px rgba(77,246,255,0.5);
+  font-style: italic; margin-left: 0.04em;
+}
+.wm .tm { color: #4DF6FF; opacity: 0.9; margin-left: 0.16em; }
+
+.hdr { display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px; }
+.hdr .crumb { font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--muted); letter-spacing: 0.22em; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--cyan); letter-spacing: 0.32em; }
+h1 { font-size: 42px; font-weight: 700; letter-spacing: -0.02em;
+  margin-top: 4px; color: #fff; }
+h2 { font-size: 11px; letter-spacing: 0.28em; color: var(--amber);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.frame { background: var(--card); border: 1px solid var(--line);
+  border-radius: 6px; padding: 16px; backdrop-filter: blur(8px); }
+.frame.cyan { border-color: rgba(0,229,255,0.45); box-shadow: 0 0 28px rgba(0,229,255,0.10) inset; }
+.frame.amber { border-color: rgba(255,176,32,0.45); box-shadow: 0 0 28px rgba(255,176,32,0.10) inset; }
+.frame.green { border-color: rgba(0,255,156,0.45); box-shadow: 0 0 28px rgba(0,255,156,0.10) inset; }
+.frame.mag   { border-color: rgba(255,45,120,0.45); box-shadow: 0 0 28px rgba(255,45,120,0.10) inset; }
+.kpi { display: flex; flex-direction: column; gap: 4px; }
+.kpi .l { font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  color: var(--muted); letter-spacing: 0.22em; }
+.kpi .v { font-family: 'Space Grotesk', sans-serif; font-size: 26px;
+  font-weight: 700; color: #fff; }
+.kpi .u { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; color: var(--silver); }
+thead th { text-align: left; padding: 8px 10px; color: var(--cyan);
+  font-size: 8.5px; letter-spacing: 0.18em; border-bottom: 1px solid rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.05); }
+tbody td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+.right { text-align: right; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.14em;
+  border: 1px solid currentColor; }
+.gauge { display: inline-block; width: 110px; height: 70px; position: relative; }
+.gauge svg { width: 100%; height: 100%; }
+.classif { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.28em;
+  color: var(--muted); }
+.glow-cyan  { color: var(--cyan);  text-shadow: 0 0 4px currentColor; }
+.glow-amber { color: var(--amber); text-shadow: 0 0 4px currentColor; }
+.glow-green { color: var(--green); text-shadow: 0 0 4px currentColor; }
+.glow-mag   { color: var(--mag);   text-shadow: 0 0 4px currentColor; }
+.glow-orange{ color: var(--orange);text-shadow: 0 0 4px currentColor; }
+.row { display: grid; gap: 14px; }
+.row.c2 { grid-template-columns: 1fr 1fr; }
+.row.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.row.c4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.tag { font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  color: var(--muted); letter-spacing: 0.18em; }
+</style>
+</head><body>
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">CONFIDENTIAL · STRATEGIC FORENSIC AUDIT</div>
+    </div>
+    
+      <div style="display:flex;align-items:flex-end;gap:24px;margin-bottom:18px;">
+        <svg viewBox="0 0 80 64" width="80" height="64"
+      style="filter: drop-shadow(0 0 13px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:72px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:25px;">™</span>
+    </span>
+      </div>
+      <div class="eyebrow">FORENSIC ENVELOPE AUDIT · V1.0</div>
+      <h1>Strategic Thermal<br/><span class="glow-cyan">Reconnaissance Report</span></h1>
+      <div class="mono" style="color:var(--muted);font-size:11px;margin-top:14px;letter-spacing:.18em;">
+        142 Bluegrass Ridge · Lexington, KY · Scan 2026-06-25
+        · Ground-truth accuracy <span class="glow-green">±0.78 cm</span>
+      </div>
+      <div class="row c4" style="margin-top:40px;">
+        <div class="frame cyan kpi"><div class="l">TOTAL SQUARES</div><div class="v">24.31</div><div class="u">SQ (100 sf)</div></div>
+        <div class="frame amber kpi"><div class="l">SHINGLE LAYERS</div><div class="v">2 / 2</div><div class="u">DETECTED / CODE MAX</div></div>
+        <div class="frame green kpi"><div class="l">FACETS</div><div class="v">11</div><div class="u">DISTINCT PLANES</div></div>
+        <div class="frame mag kpi"><div class="l">ANOMALIES FLAGGED</div><div class="v">3</div><div class="u">FORENSIC HOTSPOTS</div></div>
+      </div>
+      <div class="row c2" style="margin-top:28px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">EXECUTIVE SUMMARY · GRAND TOTAL RANGE</h2>
+          <div class="mono" style="font-size:42px;color:#fff;letter-spacing:-0.02em;">
+            <span class="glow-cyan">$32,491.38</span>
+            <span style="color:var(--muted);font-size:18px;"> &nbsp;→&nbsp; </span>
+            <span class="glow-amber">$33,996.38</span>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:10px;letter-spacing:.14em;">
+            MATERIALS $23,407.50 · LABOR $6,028.88
+            · TEAR-OFF $1,850.00
+            · UNFORESEEN $1,205.00–$2,710.00
+          </div>
+        </div>
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">
+            STRATEX RECOMMENDATION
+          </h2>
+          <div style="font-family:'Space Grotesk';font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.01em;">
+            TEAR OFF
+          </div>
+          <div class="mono" style="color:var(--silver);font-size:10px;margin-top:8px;line-height:1.5;">
+            Two existing shingle layers + 88% sub-surface moisture probability exceeds code re-roof limit. Full tear-off, decking remediation, and new-install is the only insurable path.
+          </div>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 01 · EXECUTIVE ENVELOPE SUMMARY</div>
+    </div>
+    
+      <div class="eyebrow">01 · EXECUTIVE ENVELOPE SUMMARY</div>
+      <h1 style="font-size:34px;">Building <span class="glow-amber">Envelope Score</span></h1>
+      <div class="row c3" style="margin-top:24px;">
+        <div class="frame mag" style="text-align:center;">
+          <h2 style="color:var(--mag);">ENERGY DEFICIENCY</h2>
+          <div class="gauge"><svg viewBox="0 0 120 70">
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="rgba(255,255,255,0.10)" stroke-width="10" fill="none"/>
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#FF2D78" stroke-width="10" fill="none"
+            stroke-dasharray="122.46000000000001 1000" filter="url(#g)"/>
+      <defs><filter id="g"><feGaussianBlur stdDeviation="2"/></filter></defs>
+      <text x="60" y="62" text-anchor="middle" fill="#fff"
+            font-family="JetBrains Mono" font-size="14" font-weight="700">78%</text>
+    </svg></div>
+          <div class="mono" style="color:var(--mag);font-size:10px;margin-top:6px;letter-spacing:.18em;">DEFICIENT</div>
+        </div>
+        <div class="frame amber" style="text-align:center;">
+          <h2 style="color:var(--amber);">VENTILATION</h2>
+          <div class="gauge"><svg viewBox="0 0 120 70">
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="rgba(255,255,255,0.10)" stroke-width="10" fill="none"/>
+      <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#FFB020" stroke-width="10" fill="none"
+            stroke-dasharray="70.65 1000" filter="url(#g)"/>
+      <defs><filter id="g"><feGaussianBlur stdDeviation="2"/></filter></defs>
+      <text x="60" y="62" text-anchor="middle" fill="#fff"
+            font-family="JetBrains Mono" font-size="14" font-weight="700">45%</text>
+    </svg></div>
+          <div class="mono" style="color:var(--amber);font-size:10px;margin-top:6px;letter-spacing:.18em;">POOR</div>
+        </div>
+        <div class="frame cyan" style="text-align:center;">
+          <h2 style="color:var(--cyan);">OVERALL ENVELOPE</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;margin:14px 0 4px;">
+            55<span style="color:var(--muted);font-size:24px;">/100</span>
+          </div>
+          <div class="mono" style="color:var(--cyan);font-size:10px;letter-spacing:.18em;">COMPOSITE</div>
+        </div>
+      </div>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">AI-PRIORITIZED MAINTENANCE QUEUE</h2>
+          <div class="row" style="grid-template-columns: 18px 70px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div class="mono" style="color:var(--muted);font-size:11px;">1</div>
+          <div class="pill" style="color:#FF2D78;">URGENT</div>
+          <div style="font-size:11px;color:#fff;">Replace Front Door Weatherstripping</div>
+          <div class="mono right glow-green" style="font-size:10px;">$150/yr</div>
+        </div><div class="row" style="grid-template-columns: 18px 70px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div class="mono" style="color:var(--muted);font-size:11px;">2</div>
+          <div class="pill" style="color:#FF7B00;">HIGH</div>
+          <div style="font-size:11px;color:#fff;">Remediate Blocked Attic Soffit Vents</div>
+          <div class="mono right glow-green" style="font-size:10px;">$110/yr</div>
+        </div><div class="row" style="grid-template-columns: 18px 70px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div class="mono" style="color:var(--muted);font-size:11px;">3</div>
+          <div class="pill" style="color:#FF7B00;">HIGH</div>
+          <div style="font-size:11px;color:#fff;">Inspect and Seal 2nd-Story Window Headers</div>
+          <div class="mono right glow-green" style="font-size:10px;">$95/yr</div>
+        </div><div class="row" style="grid-template-columns: 18px 70px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div class="mono" style="color:var(--muted);font-size:11px;">4</div>
+          <div class="pill" style="color:#FFB020;">MED</div>
+          <div style="font-size:11px;color:#fff;">Add Attic Baffles for Cross-Ventilation</div>
+          <div class="mono right glow-green" style="font-size:10px;">$70/yr</div>
+        </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">THERMAL FORENSIC FINDINGS</h2>
+          <div class="row" style="grid-template-columns: 1fr 90px 70px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:10px;color:var(--silver);">Ridge Vent Performance</div>
+          <div class="mono right" style="font-size:10px;color:#fff;">LOW FLOW</div>
+          <div class="pill right" style="color:#FFB020;">MED</div>
+        </div><div class="row" style="grid-template-columns: 1fr 90px 70px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:10px;color:var(--silver);">Soffit Vents Open</div>
+          <div class="mono right" style="font-size:10px;color:#fff;">8 / 22</div>
+          <div class="pill right" style="color:#FF7B00;">HIGH</div>
+        </div><div class="row" style="grid-template-columns: 1fr 90px 70px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:10px;color:var(--silver);">Front Door Seal Failure</div>
+          <div class="mono right" style="font-size:10px;color:#fff;">SEVERE</div>
+          <div class="pill right" style="color:#FF2D78;">SEVERE</div>
+        </div><div class="row" style="grid-template-columns: 1fr 90px 70px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:10px;color:var(--silver);">2nd-Story Window Headers</div>
+          <div class="mono right" style="font-size:10px;color:#fff;">WARM (+4.1°C)</div>
+          <div class="pill right" style="color:#FF7B00;">HIGH</div>
+        </div>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 02 · ROOF VENTILATION &amp; FACADE FORENSIC ANALYSIS</div>
+    </div>
+    
+      <div class="eyebrow">02 · FORENSIC OVERLAY</div>
+      <h1 style="font-size:30px;">Sub-surface <span class="glow-mag">Anomaly Atlas</span></h1>
+      <div class="row c2" style="margin-top:22px;align-items:start;">
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">RADIOMETRIC OVERLAY · ROOF</h2>
+          <img src="assets/render_full_twin.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:8px;letter-spacing:.14em;">
+            CYAN: scan-vector overlay · ORANGE: thermal hotspot · Confidence threshold ≥ 85%
+          </div>
+        </div>
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">ANOMALY LEDGER</h2>
+          <table>
+            <thead><tr><th>SEV</th><th>ID</th><th>TYPE</th><th>LOCATION</th><th class="right">CONF</th><th class="right">SF</th><th>DIAGNOSIS</th><th class="right">EST</th></tr></thead>
+            <tbody><tr>
+          <td><span class="pill" style="color:#FF2D78;">URGENT</span></td>
+          <td>AD-KY041-004</td>
+          <td>CDX Deck Rot</td>
+          <td>Facet F2 (Rear Hip)</td>
+          <td class="right">92.3%</td>
+          <td class="right">164.2</td>
+          <td>Trapped sub-surface moisture, multi-season propagation.</td>
+          <td class="right glow-amber">$17,645.00</td>
+        </tr><tr>
+          <td><span class="pill" style="color:#FF7B00;">HIGH</span></td>
+          <td>AD-KY041-007</td>
+          <td>Soffit Blockage</td>
+          <td>North eave run</td>
+          <td class="right">88.1%</td>
+          <td class="right">0.0</td>
+          <td>Cellulose insulation blocking 14 of 22 soffit vents.</td>
+          <td class="right glow-amber">$1,240.00</td>
+        </tr><tr>
+          <td><span class="pill" style="color:#FF7B00;">HIGH</span></td>
+          <td>AD-KY041-011</td>
+          <td>Window Header Leak</td>
+          <td>2nd story front bay</td>
+          <td class="right">86.0%</td>
+          <td class="right">0.0</td>
+          <td>Capillary water intrusion at flashing.</td>
+          <td class="right glow-amber">$980.00</td>
+        </tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 03 · TRIPLE-LAYER DIGITAL TWIN</div>
+    </div>
+    
+      <div class="eyebrow">03 · TRIPLE-LAYER DIGITAL TWIN</div>
+      <h1 style="font-size:30px;">Layered <span class="glow-cyan">CAD/BIM Twin</span></h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">LAYER 01 · FINISHED SLATE</h2>
+          <img src="assets/render_layer1_shingle.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            Squares <span style="color:#fff">24.31</span> · Pitch <span style="color:#fff">8/12</span>
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">LAYER 02 · DECKING + UNDERLAYMENT</h2>
+          <img src="assets/render_layer2_decking.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            7/16" CDX · I&amp;W shield at valleys/eaves · 2 existing shingle layer(s)
+          </div>
+        </div>
+        <div class="frame green">
+          <h2 style="color:var(--green);">LAYER 03 · STRUCTURAL FRAMING</h2>
+          <img src="assets/render_layer3_framing.png" style="width:100%;border-radius:4px;display:block;"/>
+          <div class="mono" style="font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.12em;">
+            2x8 rafters @ 16" o.c. · LVL ridge · Hurricane ties <span class="glow-green">VERIFIED</span>
+          </div>
+        </div>
+      </div>
+      <div class="row c4" style="margin-top:18px;">
+        <div class="frame kpi"><div class="l">VALLEYS</div><div class="v">148.7</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">GABLES</div><div class="v">192.3</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">RIDGES</div><div class="v">62.0</div><div class="u">LINEAR FT</div></div>
+        <div class="frame kpi"><div class="l">EAVES</div><div class="v">188.4</div><div class="u">LINEAR FT</div></div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 04 · WINDOW SCHEDULE</div>
+    </div>
+    
+      <div class="eyebrow">04 · WINDOW SCHEDULE</div>
+      <h1 style="font-size:30px;">Fenestration <span class="glow-cyan">Schedule</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ID</th><th>LOCATION</th><th>SHAPE</th><th class="right">W</th><th class="right">H</th><th class="right">QTY</th><th class="right">U-FACTOR</th><th>LEAK SEV</th></tr></thead>
+          <tbody><tr>
+          <td class="mono glow-cyan">W1</td>
+          <td>Front Bay (1st)</td>
+          <td>Double-Hung</td>
+          <td class="right">36"</td>
+          <td class="right">60"</td>
+          <td class="right">4</td>
+          <td class="right">0.32</td>
+          <td><span class="pill" style="color:#FFB020;">MED</span></td>
+        </tr><tr>
+          <td class="mono glow-cyan">W2</td>
+          <td>2nd Story Front</td>
+          <td>Double-Hung</td>
+          <td class="right">32"</td>
+          <td class="right">54"</td>
+          <td class="right">5</td>
+          <td class="right">0.32</td>
+          <td><span class="pill" style="color:#FF7B00;">HIGH</span></td>
+        </tr><tr>
+          <td class="mono glow-cyan">W3</td>
+          <td>Picture (Living)</td>
+          <td>Picture</td>
+          <td class="right">72"</td>
+          <td class="right">60"</td>
+          <td class="right">1</td>
+          <td class="right">0.28</td>
+          <td><span class="pill" style="color:#00FF9C;">LOW</span></td>
+        </tr><tr>
+          <td class="mono glow-cyan">W4</td>
+          <td>Bath / Kitchen</td>
+          <td>Awning</td>
+          <td class="right">28"</td>
+          <td class="right">32"</td>
+          <td class="right">3</td>
+          <td class="right">0.31</td>
+          <td><span class="pill" style="color:#00FF9C;">LOW</span></td>
+        </tr><tr>
+          <td class="mono glow-cyan">W5</td>
+          <td>Garage Service</td>
+          <td>Slider</td>
+          <td class="right">48"</td>
+          <td class="right">36"</td>
+          <td class="right">1</td>
+          <td class="right">0.34</td>
+          <td><span class="pill" style="color:#FFB020;">MED</span></td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 05 · DOOR SCHEDULE</div>
+    </div>
+    
+      <div class="eyebrow">05 · EXTERIOR DOOR SCHEDULE</div>
+      <h1 style="font-size:30px;">Exterior Door <span class="glow-amber">Schedule</span></h1>
+      <div class="frame amber" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ID</th><th>LOCATION</th><th>SHAPE</th><th class="right">W</th><th class="right">H</th><th class="right">QTY</th><th>WEATHERSTRIP</th></tr></thead>
+          <tbody><tr>
+          <td class="mono glow-amber">D1</td>
+          <td>Front Entry</td>
+          <td>Fiberglass 6-panel</td>
+          <td class="right">36"</td>
+          <td class="right">80"</td>
+          <td class="right">1</td>
+          <td><span class="pill" style="color:#FF2D78;">SEVERE</span></td>
+        </tr><tr>
+          <td class="mono glow-amber">D2</td>
+          <td>Rear / Patio</td>
+          <td>Sliding Glass</td>
+          <td class="right">72"</td>
+          <td class="right">80"</td>
+          <td class="right">1</td>
+          <td><span class="pill" style="color:#FF2D78;">FAILED</span></td>
+        </tr><tr>
+          <td class="mono glow-amber">D3</td>
+          <td>Garage to House</td>
+          <td>20-min Fire</td>
+          <td class="right">32"</td>
+          <td class="right">80"</td>
+          <td class="right">1</td>
+          <td><span class="pill" style="color:#FFB020;">WORN</span></td>
+        </tr><tr>
+          <td class="mono glow-amber">D4</td>
+          <td>Garage Vehicle</td>
+          <td>Sectional Insulated</td>
+          <td class="right">192"</td>
+          <td class="right">84"</td>
+          <td class="right">1</td>
+          <td><span class="pill" style="color:#00FF9C;">OK</span></td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · WALL ENVELOPE + SIDING PACKAGE</div>
+    </div>
+    
+      <div class="eyebrow">· WALL ENVELOPE & SIDING PACKAGE · GEOMETRY + MATERIAL AGENT</div>
+      <h1 style="font-size:30px;">Vertical <span class="glow-cyan">Envelope</span> +
+        <span class="glow-amber">James Hardie</span> Package</h1>
+      <div class="row c4" style="margin-top:22px;">
+        <div class="frame kpi"><div class="l">GROSS WALL SF</div><div class="v">2840</div><div class="u">PRE-SUBTRACTION</div></div>
+        <div class="frame kpi"><div class="l">FENESTRATION</div><div class="v glow-amber">286</div><div class="u">WINDOWS + DOORS</div></div>
+        <div class="frame kpi"><div class="l">NET WALL SF</div><div class="v glow-cyan">2554</div><div class="u">SIDING TARGET</div></div>
+        <div class="frame kpi"><div class="l">WALL HEIGHT</div><div class="v">18.5'</div><div class="u">EAVE-TO-GRADE</div></div>
+      </div>
+      <div class="row c2" style="margin-top:18px;align-items:start;">
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">ELEVATION BREAKDOWN</h2>
+          <table>
+            <thead><tr><th>ELEV.</th><th class="right">GROSS SF</th><th class="right">NET SF</th><th class="right">MOISTURE</th></tr></thead>
+            <tbody><tr>
+          <td class="mono glow-cyan">Front</td>
+          <td class="right">780.0</td>
+          <td class="right">642.0</td>
+          <td class="right">
+            <span class="pill" style="color:#FFB020;">
+              14%
+            </span>
+          </td>
+        </tr><tr>
+          <td class="mono glow-cyan">Rear</td>
+          <td class="right">780.0</td>
+          <td class="right">716.4</td>
+          <td class="right">
+            <span class="pill" style="color:#FF7B00;">
+              36%
+            </span>
+          </td>
+        </tr><tr>
+          <td class="mono glow-cyan">Left</td>
+          <td class="right">640.0</td>
+          <td class="right">597.6</td>
+          <td class="right">
+            <span class="pill" style="color:#00FF9C;">
+              9%
+            </span>
+          </td>
+        </tr><tr>
+          <td class="mono glow-cyan">Right</td>
+          <td class="right">640.0</td>
+          <td class="right">597.6</td>
+          <td class="right">
+            <span class="pill" style="color:#00FF9C;">
+              11%
+            </span>
+          </td>
+        </tr></tbody>
+          </table>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">SIDING PACKAGE · James Hardie</h2>
+          <div class="mono" style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:.14em;">
+            PROFILE: <span style="color:#fff">HardiePlank Lap · 8.25&quot; exposure</span> ·
+            COLOR: <span style="color:#fff">Iron Gray</span>
+          </div>
+          <table>
+            <thead><tr><th>ACCESSORY</th><th class="right">QTY</th><th>UNIT</th><th class="right">UNIT</th><th class="right">LINE</th></tr></thead>
+            <tbody><tr>
+          <td>HardiePlank Lap Siding</td>
+          <td class="right">2554</td>
+          <td>sf</td>
+          <td class="right">$2.85</td>
+          <td class="right glow-cyan">$7,278.90</td>
+        </tr><tr>
+          <td>HardieTrim 4/4 (corners)</td>
+          <td class="right">196</td>
+          <td>lf</td>
+          <td class="right">$4.40</td>
+          <td class="right glow-cyan">$862.40</td>
+        </tr><tr>
+          <td>HardieTrim Window/Door 4/4</td>
+          <td class="right">312</td>
+          <td>lf</td>
+          <td class="right">$4.40</td>
+          <td class="right glow-cyan">$1,372.80</td>
+        </tr><tr>
+          <td>Starter Strip 1.25&quot;</td>
+          <td class="right">188</td>
+          <td>lf</td>
+          <td class="right">$1.90</td>
+          <td class="right glow-cyan">$357.20</td>
+        </tr><tr>
+          <td>J-Channel (Window/Door)</td>
+          <td class="right">312</td>
+          <td>lf</td>
+          <td class="right">$1.45</td>
+          <td class="right glow-cyan">$452.40</td>
+        </tr><tr>
+          <td>Aluminum Soffit (vented)</td>
+          <td class="right">540</td>
+          <td>sf</td>
+          <td class="right">$3.10</td>
+          <td class="right glow-cyan">$1,674.00</td>
+        </tr><tr>
+          <td>Aluminum Fascia 8&quot;</td>
+          <td class="right">188</td>
+          <td>lf</td>
+          <td class="right">$4.20</td>
+          <td class="right glow-cyan">$789.60</td>
+        </tr><tr>
+          <td>5&quot; K-Style Aluminum Gutter</td>
+          <td class="right">188</td>
+          <td>lf</td>
+          <td class="right">$7.40</td>
+          <td class="right glow-cyan">$1,391.20</td>
+        </tr><tr>
+          <td>3x4 Downspout w/ kick-out</td>
+          <td class="right">6</td>
+          <td>ea</td>
+          <td class="right">$38.00</td>
+          <td class="right glow-cyan">$228.00</td>
+        </tr><tr>
+          <td>Tyvek HomeWrap 9&#x27; x 100&#x27; roll</td>
+          <td class="right">3</td>
+          <td>rolls</td>
+          <td class="right">$175.00</td>
+          <td class="right glow-cyan">$525.00</td>
+        </tr><tr>
+          <td>Hardie 6d Stainless Nail (pail)</td>
+          <td class="right">2</td>
+          <td>pails</td>
+          <td class="right">$92.00</td>
+          <td class="right glow-cyan">$184.00</td>
+        </tr><tr>
+          <td>Sealant · ColorPlus Touch-Up</td>
+          <td class="right">6</td>
+          <td>tubes</td>
+          <td class="right">$14.50</td>
+          <td class="right glow-cyan">$87.00</td>
+        </tr></tbody>
+            <tfoot><tr><td colspan="4" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">SIDING SUBTOTAL</td>
+              <td class="right" style="padding-top:10px;font-size:13px;color:#fff;font-weight:700;">$15,202.50</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · WALL MOISTURE + VAPOR BARRIER ANALYSIS</div>
+    </div>
+    
+      <div class="eyebrow">· WALL MOISTURE + VAPOR BARRIER · THERMAL AGENT</div>
+      <h1 style="font-size:30px;">Sub-Siding <span class="glow-mag">Moisture Atlas</span></h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">VAPOR BARRIER STATUS</h2>
+          <div style="font-family:'Space Grotesk';font-size:34px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            DEGRADED
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">
+            BARRIER PRESENT · INFRARED-CONFIRMED
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">ZONES FLAGGED</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;">
+            4
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">THERMAL ANOMALY ZONES · WALL CAVITY</div>
+        </div>
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">REMEDIATION TOTAL</h2>
+          <div style="font-family:'Space Grotesk';font-size:34px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            $3,120.00
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">ROLLED INTO MATERIALS TOTAL</div>
+        </div>
+      </div>
+      <div class="frame mag" style="margin-top:18px;">
+        <h2 style="color:var(--mag);">THERMAL SATURATION ZONES · WALL CAVITY</h2>
+        <table>
+          <thead><tr><th>ID</th><th>ELEV.</th><th class="right">AREA SF</th><th class="right">MOISTURE</th><th class="right">DAMAGE PROB.</th><th>REMEDIATION</th><th class="right">EST.</th></tr></thead>
+          <tbody><tr>
+          <td class="mono glow-mag">WMZ-01</td>
+          <td>Rear</td>
+          <td class="right">64.0</td>
+          <td class="right"><span class="pill" style="color:#FF7B00;">38%</span></td>
+          <td class="right"><span class="pill" style="color:#FF2D78;">72%</span></td>
+          <td>Open wall · replace OSB sheathing + Tyvek</td>
+          <td class="right glow-amber">$1,840.00</td>
+        </tr><tr>
+          <td class="mono glow-mag">WMZ-02</td>
+          <td>Rear</td>
+          <td class="right">32.0</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">28%</span></td>
+          <td class="right"><span class="pill" style="color:#FF7B00;">48%</span></td>
+          <td>Spot vapor-barrier patch + insulation dry-out</td>
+          <td class="right glow-amber">$620.00</td>
+        </tr><tr>
+          <td class="mono glow-mag">WMZ-03</td>
+          <td>Front</td>
+          <td class="right">18.0</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">22%</span></td>
+          <td class="right"><span class="pill" style="color:#FFB020;">34%</span></td>
+          <td>Re-flash bay window header · re-caulk</td>
+          <td class="right glow-amber">$480.00</td>
+        </tr><tr>
+          <td class="mono glow-mag">WMZ-04</td>
+          <td>Right</td>
+          <td class="right">12.0</td>
+          <td class="right"><span class="pill" style="color:#00FF9C;">19%</span></td>
+          <td class="right"><span class="pill" style="color:#FFB020;">26%</span></td>
+          <td>Replace exterior outlet gasket + spray-foam</td>
+          <td class="right glow-amber">$180.00</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · ENERGY LEAKAGE ATLAS</div>
+    </div>
+    
+      <div class="eyebrow">· ENERGY LEAKAGE ATLAS · ENERGY AGENT</div>
+      <h1 style="font-size:30px;">Envelope <span class="glow-amber">Air-Leak</span> Profile</h1>
+      <div class="row c3" style="margin-top:22px;">
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">BLOWER-DOOR ACH₅₀ (EST.)</h2>
+          <div style="font-family:'Space Grotesk';font-size:60px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            8.4
+          </div>
+          <div class="mono" style="color:var(--mag);font-size:10px;margin-top:6px;letter-spacing:.16em;">TARGET ≤ 3.0 · LEAKY ENVELOPE</div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">ANNUAL ENERGY LOSS</h2>
+          <div style="font-family:'Space Grotesk';font-size:40px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            21,450<span style="font-size:14px;color:var(--muted);"> kBTU</span>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:8px;letter-spacing:.16em;">SEASONAL LOSS · CONDITIONED ENVELOPE</div>
+        </div>
+        <div class="frame green">
+          <h2 style="color:var(--green);">ANNUAL DOLLAR LOSS</h2>
+          <div style="font-family:'Space Grotesk';font-size:40px;font-weight:700;color:#fff;line-height:1;margin-top:6px;">
+            $1,095.00<span style="font-size:14px;color:var(--muted);"> /yr</span>
+          </div>
+          <div class="mono" style="color:var(--green);font-size:10px;margin-top:8px;letter-spacing:.16em;">RECOVERABLE WITH REMEDIATION</div>
+        </div>
+      </div>
+      <div class="frame amber" style="margin-top:18px;">
+        <h2 style="color:var(--amber);">LEAK-SOURCE LEDGER</h2>
+        <table>
+          <thead><tr><th>SOURCE</th><th>LOCATION</th><th class="right">BTU LOSS</th><th class="right">$/YR</th><th>RECOMMENDED FIX</th></tr></thead>
+          <tbody><tr>
+          <td>Front Door Seal Failure</td>
+          <td>Front Entry D1</td>
+          <td class="right"><span class="pill" style="color:#FF7B00;">22%</span></td>
+          <td class="right glow-mag">$241/yr</td>
+          <td>Replace weatherstripping + door sweep</td>
+        </tr><tr>
+          <td>2nd-Story Window Headers</td>
+          <td>Front W2 (×5)</td>
+          <td class="right"><span class="pill" style="color:#FF7B00;">18%</span></td>
+          <td class="right glow-mag">$197/yr</td>
+          <td>Re-flash + foam-seal header cavities</td>
+        </tr><tr>
+          <td>Sliding Patio Door Track</td>
+          <td>Rear D2</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">14%</span></td>
+          <td class="right glow-mag">$153/yr</td>
+          <td>Replace track gaskets + adjust roller</td>
+        </tr><tr>
+          <td>Attic Hatch / Pull-Down</td>
+          <td>2nd-floor hall</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">11%</span></td>
+          <td class="right glow-mag">$120/yr</td>
+          <td>Install insulated hatch cover + weatherstripping</td>
+        </tr><tr>
+          <td>Rim-Joist Air Infiltration</td>
+          <td>Basement perimeter</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">13%</span></td>
+          <td class="right glow-mag">$142/yr</td>
+          <td>Closed-cell spray foam rim joists (188 lf)</td>
+        </tr><tr>
+          <td>Garage-to-House Door</td>
+          <td>D3</td>
+          <td class="right"><span class="pill" style="color:#00FF9C;">8%</span></td>
+          <td class="right glow-mag">$88/yr</td>
+          <td>New weatherstrip + auto-door-bottom</td>
+        </tr><tr>
+          <td>Recessed-Can Lights (un-rated)</td>
+          <td>Cathedral ceiling</td>
+          <td class="right"><span class="pill" style="color:#FFB020;">14%</span></td>
+          <td class="right glow-mag">$154/yr</td>
+          <td>Swap to IC-AT rated LED + air-seal</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 06 · BILL OF MATERIALS</div>
+    </div>
+    
+      <div class="eyebrow">06 · STRATEX QUANT™ BOM</div>
+      <h1 style="font-size:30px;">Bill of <span class="glow-cyan">Materials</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>CATEGORY</th><th>MATERIAL</th><th>SKU</th><th class="right">QTY</th><th>UNIT</th><th class="right">UNIT COST</th><th class="right">LINE TOTAL</th></tr></thead>
+          <tbody><tr>
+          <td>Underlayment</td>
+          <td>#15 Felt Roll</td>
+          <td class="mono">SKU-FELT-15</td>
+          <td class="right">16</td>
+          <td>rolls</td>
+          <td class="right">$49.00</td>
+          <td class="right glow-cyan">$784.00</td>
+        </tr><tr>
+          <td>Underlayment</td>
+          <td>Ice &amp; Water Shield 36&quot;</td>
+          <td class="mono">SKU-IW-75</td>
+          <td class="right">4</td>
+          <td>rolls</td>
+          <td class="right">$110.00</td>
+          <td class="right glow-cyan">$440.00</td>
+        </tr><tr>
+          <td>Metal Flashing</td>
+          <td>Aluminum Drip Edge 10&#x27; Black</td>
+          <td class="mono">SKU-DRIP-10</td>
+          <td class="right">17</td>
+          <td>10&#x27; sections</td>
+          <td class="right">$9.50</td>
+          <td class="right glow-cyan">$161.50</td>
+        </tr><tr>
+          <td>Metal Flashing</td>
+          <td>5x7 Aluminum Step Flashing</td>
+          <td class="mono">SKU-STEP-5F</td>
+          <td class="right">80</td>
+          <td>ea</td>
+          <td class="right">$0.85</td>
+          <td class="right glow-cyan">$68.00</td>
+        </tr><tr>
+          <td>Metal Flashing</td>
+          <td>Aluminum Roll Flashing 16&quot;</td>
+          <td class="mono">SKU-ROLL-ALU</td>
+          <td class="right">1</td>
+          <td>50&#x27; roll</td>
+          <td class="right">$64.00</td>
+          <td class="right glow-cyan">$64.00</td>
+        </tr><tr>
+          <td>Shingles</td>
+          <td>Starter Strip (Three-Tab)</td>
+          <td class="mono">SKU-STARTER</td>
+          <td class="right">3</td>
+          <td>bundles</td>
+          <td class="right">$34.00</td>
+          <td class="right glow-cyan">$102.00</td>
+        </tr><tr>
+          <td>Shingles</td>
+          <td>Hip &amp; Ridge Cap (Three-Tab)</td>
+          <td class="mono">SKU-HIP-CAP</td>
+          <td class="right">5</td>
+          <td>bundles</td>
+          <td class="right">$32.00</td>
+          <td class="right glow-cyan">$160.00</td>
+        </tr><tr>
+          <td>Shingles</td>
+          <td>Architectural Dimensional (Owens Corning Duration)</td>
+          <td class="mono">SKU-SHINGLE-V</td>
+          <td class="right">74</td>
+          <td>bundles</td>
+          <td class="right">$33.00</td>
+          <td class="right glow-cyan">$2,442.00</td>
+        </tr><tr>
+          <td>Ventilation</td>
+          <td>Continuous Shingle-Over Ridge Vent 4&#x27;</td>
+          <td class="mono">SKU-RIDGE-V-L</td>
+          <td class="right">12</td>
+          <td>4&#x27; sections</td>
+          <td class="right">$19.50</td>
+          <td class="right glow-cyan">$234.00</td>
+        </tr><tr>
+          <td>Ventilation</td>
+          <td>RV-28 Static Slant Back Vent (Black)</td>
+          <td class="mono">SKU-SLANT-BLK</td>
+          <td class="right">4</td>
+          <td>ea</td>
+          <td class="right">$19.50</td>
+          <td class="right glow-cyan">$78.00</td>
+        </tr><tr>
+          <td>Fasteners</td>
+          <td>1&quot; Plastic Cap Nails (7,500 ct)</td>
+          <td class="mono">SKU-CAP-1</td>
+          <td class="right">1</td>
+          <td>box</td>
+          <td class="right">$19.50</td>
+          <td class="right glow-cyan">$19.50</td>
+        </tr><tr>
+          <td>Decking</td>
+          <td>7/16&quot; CDX Plywood 4x8</td>
+          <td class="mono">SKU-CDX-716</td>
+          <td class="right">14</td>
+          <td>sheets</td>
+          <td class="right">$38.00</td>
+          <td class="right glow-cyan">$532.00</td>
+        </tr></tbody>
+          <tfoot><tr><td colspan="6" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">MATERIALS TOTAL</td>
+            <td class="right" style="padding-top:10px;font-size:13px;color:#fff;font-weight:700;">$23,407.50</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · 3D COMPONENT CATALOG · ASSEMBLY LIBRARY</div>
+    </div>
+    
+      <div class="eyebrow">· ASSEMBLY & COMPONENT LIBRARY</div>
+      <h1 style="font-size:30px;">Isometric <span class="glow-cyan">Component</span> Reference</h1>
+      <div class="mono" style="font-size:9.5px;color:var(--muted);letter-spacing:.18em;line-height:1.7;
+                              margin-top:8px;max-width:62%;">
+        Every assembly element specified for this scope-of-work, rendered isometrically with its trade
+        code and gauge / dimensional callout. Cross-reference each card to the Xactimate-tagged line
+        items on the Bill-of-Materials page.
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);grid-auto-rows:1fr;gap:10px;margin-top:18px;">
+        
+    <div class="frame cyan" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#4DF6FF;">CODE · VS-JCH-075</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">J-Channel · 3/4″ Receiver</div>
+        </div>
+        <span class="pill" style="color:#4DF6FF;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #4DF6FF55);">
+          
+      <!-- J-Channel : isometric U-receiver -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M30 80 L130 30 L170 50 L170 76 L162 80 L162 56 L130 41 L38 86 Z"
+              fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.6"/>
+        <path d="M30 80 L162 80 L170 76" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M38 86 L130 41" stroke="#4DF6FF" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
+        <path d="M150 72 L150 64 M155 70 L155 62 M160 68 L160 60" stroke="#4DF6FF" stroke-width="1.0" opacity="0.5"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        0.044″ vinyl · 12&#x27;6&quot; stock · receives panel edges around openings &amp; terminations.
+      </div>
+    </div>
+    
+    <div class="frame amber" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#FFB020;">CODE · VS-FCH-050</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">F-Channel · Soffit Receiver</div>
+        </div>
+        <span class="pill" style="color:#FFB020;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #FFB02055);">
+          
+      <!-- F-Channel : isometric step section -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M30 84 L120 36 L172 56 L172 64 L130 48 L130 58 L86 80 L86 86 Z"
+              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
+        <path d="M86 80 L172 64" stroke="#FFB020" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
+        <path d="M40 88 L130 48" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
+        <circle cx="50" cy="84" r="1.2" fill="#FFB020"/>
+        <circle cx="78" cy="70" r="1.2" fill="#FFB020"/>
+        <circle cx="106" cy="56" r="1.2" fill="#FFB020"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        0.044″ vinyl · 12&#x27;6&quot; · holds soffit panels along wall &amp; fascia line.
+      </div>
+    </div>
+    
+    <div class="frame green" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#00FF9C;">CODE · VS-STR-LCK</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Starter Strip · Lock-In</div>
+        </div>
+        <span class="pill" style="color:#00FF9C;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #00FF9C55);">
+          
+      <!-- Starter Strip : long ribbon with anchor flange -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M22 70 L160 30 L178 38 L178 50 L160 42 L24 82 Z"
+              fill="rgba(0,255,156,0.12)" stroke="#00FF9C" stroke-width="1.6"/>
+        <path d="M24 82 L24 88 L160 48 L160 42" stroke="#00FF9C" stroke-width="1.4"/>
+        <path d="M40 76 L44 68 M70 62 L74 54 M100 48 L104 40 M130 34 L134 26"
+              stroke="#00FF9C" stroke-width="1.0" opacity="0.6"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        10&#x27; aluminum · interlocks first course; sets level reference for full elevation.
+      </div>
+    </div>
+    
+    <div class="frame mag" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#FF2D78;">CODE · VS-FNT-100</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Finish / Undersill Trim</div>
+        </div>
+        <span class="pill" style="color:#FF2D78;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #FF2D7855);">
+          
+      <!-- Finish Trim : capping bead -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M28 80 L120 32 L172 56 L172 72 L162 72 L162 60 L130 46 L40 88 Z"
+              fill="rgba(255,45,120,0.12)" stroke="#FF2D78" stroke-width="1.6"/>
+        <ellipse cx="100" cy="56" rx="58" ry="6" fill="none" stroke="#FF2D78" stroke-width="0.9" opacity="0.7"/>
+        <path d="M40 88 L162 60" stroke="#FF2D78" stroke-width="0.9" stroke-dasharray="1 3" opacity="0.6"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        12&#x27;6&quot; vinyl · caps top course beneath J-channel or eave return.
+      </div>
+    </div>
+    
+    <div class="frame orange" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#FF7B00;">CODE · RF-DRP-500</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Drip Edge · 5″ L-Flashing</div>
+        </div>
+        <span class="pill" style="color:#FF7B00;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #FF7B0055);">
+          
+      <!-- Drip Edge : L-flashing -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M28 72 L132 28 L170 44 L168 88 L160 92 L160 56 L36 100 Z"
+              fill="rgba(255,123,0,0.12)" stroke="#FF7B00" stroke-width="1.6"/>
+        <path d="M36 100 L160 56" stroke="#FF7B00" stroke-width="1.0" opacity="0.6"/>
+        <path d="M40 96 L40 100 M70 84 L70 88 M100 72 L100 76 M130 60 L130 64"
+              stroke="#FF7B00" stroke-width="1.0" opacity="0.7"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        0.019&quot; aluminum · 10&#x27; lengths · directs runoff into gutter trough.
+      </div>
+    </div>
+    
+    <div class="frame cyan" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#4DF6FF;">CODE · SF-VNT-V12</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Vented Soffit Panel</div>
+        </div>
+        <span class="pill" style="color:#4DF6FF;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #4DF6FF55);">
+          
+      <!-- Soffit Panel : grid -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M22 86 L132 26 L186 50 L78 100 Z"
+              fill="rgba(77,246,255,0.08)" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M50 84 L156 32 M70 88 L174 38 M90 92 L184 46"
+              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
+        <path d="M104 32 L62 88 M130 38 L88 94 M156 46 L114 100"
+              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        12&#x27;&quot; length · 0.044″ vinyl, integrally vented · NFA 10 sq.in./LF.
+      </div>
+    </div>
+    
+    <div class="frame green" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#00FF9C;">CODE · VS-ICP-075</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Inside Corner Post · 3/4″</div>
+        </div>
+        <span class="pill" style="color:#00FF9C;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #00FF9C55);">
+          
+      <!-- Inside Corner Post -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M70 18 L70 92 L40 100 L40 28 Z" fill="rgba(0,255,156,0.10)" stroke="#00FF9C" stroke-width="1.4"/>
+        <path d="M70 18 L100 28 L100 100 L70 92" fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.4"/>
+        <path d="M55 22 L55 96 M85 24 L85 96" stroke="#fff" stroke-width="0.6" opacity="0.3"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        10&#x27; vinyl · double-channel receives panel ends at inside corners.
+      </div>
+    </div>
+    
+    <div class="frame amber" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div>
+          <div class="mono" style="font-size:8px;letter-spacing:.26em;color:#FFB020;">CODE · VS-UTL-CAP</div>
+          <div style="font-size:14px;color:#fff;font-weight:600;margin-top:2px;letter-spacing:.02em;">Utility / Cap Trim</div>
+        </div>
+        <span class="pill" style="color:#FFB020;">ASSEMBLY</span>
+      </div>
+      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
+        <svg viewBox="0 0 200 110" width="100%" height="100%"
+             style="filter: drop-shadow(0 0 6px #FFB02055);">
+          
+      <!-- Utility Trim : channel cap -->
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M26 78 L130 30 L172 50 L150 56 L130 46 L40 86 Z"
+              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
+        <path d="M40 86 L40 92 L150 50 L150 56" stroke="#FFB020" stroke-width="1.4"/>
+        <path d="M80 70 L86 60 M108 58 L114 48 M134 46 L140 36" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
+      </g>
+        </svg>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;line-height:1.55;">
+        12&#x27;6&quot; vinyl · caps J-channel returns &amp; creates clean terminations.
+      </div>
+    </div>
+    
+      </div>
+
+      <div class="frame cyan" style="margin-top:14px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:14px;">
+        <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">
+          PANEL THICKNESS · 0.044″ · NAIL FLANGE · ROLLED · ASTM D-3679 · CLASS 1 · WIND RATING 230 MPH
+        </div>
+        <div class="mono" style="font-size:9px;color:var(--cyan);letter-spacing:.22em;">// CATALOG · v4.0</div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 07 · LABOR · NATIONAL &amp; REGIONAL AVERAGES</div>
+    </div>
+    
+      <div class="eyebrow">07 · LABOR ALLOCATION</div>
+      <h1 style="font-size:30px;">Crew <span class="glow-green">Economics</span></h1>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame green">
+          <h2 style="color:var(--green);">RATE BENCHMARK</h2>
+          <div class="row c2" style="margin-top:6px;">
+            <div class="kpi"><div class="l">NATIONAL AVG / SQ</div><div class="v">$285.00</div></div>
+            <div class="kpi"><div class="l">REGIONAL AVG / SQ</div><div class="v glow-green">$248.00</div></div>
+          </div>
+          <div class="mono" style="color:var(--muted);font-size:10px;margin-top:14px;letter-spacing:.16em;">
+            REGION: <span style="color:#fff">KY / Mid-South</span> · APPLIED:
+            <span class="glow-green">$248.00/SQ</span>
+          </div>
+        </div>
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">CREW PLAN</h2>
+          <div class="row c3" style="margin-top:6px;">
+            <div class="kpi"><div class="l">CREW SIZE</div><div class="v">4</div></div>
+            <div class="kpi"><div class="l">DAYS</div><div class="v">2.5</div></div>
+            <div class="kpi"><div class="l">LABOR TOTAL</div><div class="v glow-cyan">$6,028.88</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · LABOR &amp; MAN-HOURS · GANTT SEQUENCE</div>
+    </div>
+    
+      <div class="eyebrow">· LABOR SEQUENCE · GANTT TIMELINE</div>
+      <h1 style="font-size:30px;">Crew <span class="glow-amber">Choreography</span></h1>
+      <div class="frame cyan" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>PHASE</th><th>CREW</th><th class="right">DURATION</th><th>TIMELINE · 2.7 d</th></tr></thead>
+          <tbody><tr>
+          <td style="width:34%;">Mobilization &amp; Site Setup</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Supervision</td>
+          <td style="width:8%;" class="right">0.25 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:0.0%;
+                width:9.3%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Tear-Off (existing 2 layers)</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Roof Crew</td>
+          <td style="width:8%;" class="right">0.50 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:9.3%;
+                width:18.5%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Decking Remediation (CDX rot)</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Carpentry</td>
+          <td style="width:8%;" class="right">0.50 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:27.8%;
+                width:18.5%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Underlayment + I&amp;W Shield</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Roof Crew</td>
+          <td style="width:8%;" class="right">0.40 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:46.3%;
+                width:14.8%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Shingle Install (24.3 sq)</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Roof Crew</td>
+          <td style="width:8%;" class="right">0.70 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:61.1%;
+                width:25.9%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Wall Cavity Vapor Repair</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Carpentry</td>
+          <td style="width:8%;" class="right">1.00 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:37.0%;
+                width:37.0%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Hardie Siding Hang + Trim</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Sheet-Metal</td>
+          <td style="width:8%;" class="right">0.90 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:66.7%;
+                width:33.3%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Gutter + Downspout Install</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Sheet-Metal</td>
+          <td style="width:8%;" class="right">0.20 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:88.9%;
+                width:7.4%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Weatherstrip / Energy Sealing</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Carpentry</td>
+          <td style="width:8%;" class="right">0.10 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:88.9%;
+                width:3.7%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr><tr>
+          <td style="width:34%;">Cleanup + Final Inspection</td>
+          <td class="mono" style="width:14%;color:var(--muted);">Supervision</td>
+          <td style="width:8%;" class="right">0.10 d</td>
+          <td>
+            <div style="position:relative;height:14px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="position:absolute;left:88.9%;
+                width:3.7%;height:14px;
+                background:linear-gradient(90deg,#4DF6FF,#FFB020);
+                box-shadow:0 0 8px rgba(77,246,255,0.45);border-radius:2px;"></div>
+            </div>
+          </td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · PROFITABILITY &amp; PROJECT MARGINS</div>
+    </div>
+    
+      <div class="eyebrow">· PROFITABILITY & PROJECT MARGINS</div>
+      <h1 style="font-size:30px;">Project <span class="glow-green">Margin</span> Overview</h1>
+      <div class="row c2" style="margin-top:22px;align-items:center;">
+        <div class="frame green" style="text-align:center;">
+          <h2 style="color:var(--green);">COST COMPOSITION</h2>
+          <div style="display:flex;justify-content:center;margin:16px 0;">
+            <div style="width:220px;height:220px;border-radius:50%;background:conic-gradient(#4DF6FF 0.0% 51.2%, #FFB020 51.2% 64.4%, #FF2D78 64.4% 72.7%, #FF7B00 72.7% 80.0%, #00FF9C 80.0% 100.0%);
+              box-shadow:0 0 32px rgba(77,246,255,0.18); position:relative;">
+              <div style="position:absolute;inset:50px;border-radius:50%;background:#02060B;
+                display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;">GROSS COST</div>
+                <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#fff;">
+                  $45,710.34
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:left;max-width:260px;margin:0 auto;"><div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:#4DF6FF;border-radius:2px;box-shadow:0 0 6px #4DF6FF;"></span>
+          <span style="flex:1;">MATERIALS</span>
+          <span style="color:#fff;font-weight:700;">51.2%</span>
+        </div><div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:#FFB020;border-radius:2px;box-shadow:0 0 6px #FFB020;"></span>
+          <span style="flex:1;">LABOR</span>
+          <span style="color:#fff;font-weight:700;">13.2%</span>
+        </div><div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:#FF2D78;border-radius:2px;box-shadow:0 0 6px #FF2D78;"></span>
+          <span style="flex:1;">CONTINGENCY</span>
+          <span style="color:#fff;font-weight:700;">8.3%</span>
+        </div><div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:#FF7B00;border-radius:2px;box-shadow:0 0 6px #FF7B00;"></span>
+          <span style="flex:1;">OVERHEAD</span>
+          <span style="color:#fff;font-weight:700;">7.3%</span>
+        </div><div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--silver);margin:6px 0;">
+          <span style="width:12px;height:12px;background:#00FF9C;border-radius:2px;box-shadow:0 0 6px #00FF9C;"></span>
+          <span style="flex:1;">PROFIT</span>
+          <span style="color:#fff;font-weight:700;">20.0%</span>
+        </div></div>
+        </div>
+        <div class="frame cyan">
+          <h2 style="color:var(--cyan);">FINANCIAL SUMMARY</h2>
+          <table>
+            <tbody>
+              <tr><td>GROSS PROJECT REVENUE</td><td class="right glow-cyan">$45,710.34</td></tr>
+              <tr><td>TOTAL MATERIALS</td><td class="right">$23,407.50</td></tr>
+              <tr><td>TOTAL LABOR</td><td class="right">$6,028.88</td></tr>
+              <tr><td>CONTINGENCY (tear-off + reserve)</td><td class="right">$3,807.50</td></tr>
+              <tr><td>OVERHEAD (10%)</td><td class="right">$3,324.39</td></tr>
+              <tr><td>PROJECTED NET PROFIT (20%)</td><td class="right glow-green">$9,142.07</td></tr>
+            </tbody>
+          </table>
+          <div class="mono" style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.5;">
+            Project margin reasonable for forensic insurance restoration: 20 % net under 10/20 O&amp;P caps. Retail equivalent would carry 28–32 % net.
+          </div>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 08 · SIDE QUOTE · UNFORESEEN REPAIRS</div>
+    </div>
+    
+      <div class="eyebrow">08 · CONTINGENCY ENVELOPE</div>
+      <h1 style="font-size:30px;">Unforeseen <span class="glow-amber">Repair Reserve</span></h1>
+      <div class="frame amber" style="margin-top:22px;">
+        <table>
+          <thead><tr><th>ITEM</th><th class="right">PROB</th><th class="right">LOW</th><th class="right">HIGH</th><th>NOTE</th></tr></thead>
+          <tbody><tr>
+          <td>Additional CDX sheets (rot discovery)</td>
+          <td class="right">65%</td>
+          <td class="right">$380.00</td>
+          <td class="right">$950.00</td>
+          <td>If hidden rot extends beyond Facet F2 once shingles are removed.</td>
+        </tr><tr>
+          <td>Chimney flashing rebuild</td>
+          <td class="right">45%</td>
+          <td class="right">$425.00</td>
+          <td class="right">$880.00</td>
+          <td>Existing flashing shows oxidation; may not survive tear-off.</td>
+        </tr><tr>
+          <td>Fascia replacement (rear elevation)</td>
+          <td class="right">30%</td>
+          <td class="right">$220.00</td>
+          <td class="right">$540.00</td>
+          <td>Sub-fascia rot suspected near AD-KY041-004 hotspot.</td>
+        </tr><tr>
+          <td>Bath fan vent re-route</td>
+          <td class="right">20%</td>
+          <td class="right">$180.00</td>
+          <td class="right">$340.00</td>
+          <td>Currently dumping into attic — code violation if discovered.</td>
+        </tr></tbody>
+          <tfoot><tr><td colspan="2" class="right" style="padding-top:10px;color:var(--muted);letter-spacing:.18em;">RESERVE RANGE</td>
+            <td class="right glow-amber" style="padding-top:10px;font-size:13px;font-weight:700;">$1,205.00</td>
+            <td class="right glow-mag" style="padding-top:10px;font-size:13px;font-weight:700;">$2,710.00</td>
+            <td></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE 09 · TEAR-OFF RECOMMENDATION</div>
+    </div>
+    
+      <div class="eyebrow">09 · TEAR-OFF MANDATE</div>
+      <h1 style="font-size:32px;">Full <span class="glow-mag">Tear-Off + New Install</span> Required</h1>
+      <div class="row c2" style="margin-top:22px;">
+        <div class="frame mag">
+          <h2 style="color:var(--mag);">WATER RETENTION PROBABILITY</h2>
+          <div style="font-family:'Space Grotesk';font-size:90px;font-weight:700;color:#fff;line-height:1;">
+            88%
+          </div>
+          <div class="mono" style="color:var(--mag);font-size:11px;margin-top:8px;letter-spacing:.18em;">
+            DEPTH EST 0.60" · MULTI-SEASON ENTRAPMENT
+          </div>
+        </div>
+        <div class="frame amber">
+          <h2 style="color:var(--amber);">RATIONALE</h2>
+          <p style="font-size:13px;color:var(--silver);line-height:1.55;">Two existing shingle layers + 88% sub-surface moisture probability exceeds code re-roof limit. Full tear-off, decking remediation, and new-install is the only insurable path.</p>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,176,32,0.25);">
+            <div class="tag">TEAR-OFF COST INCLUDED</div>
+            <div style="font-family:'Space Grotesk';font-size:32px;font-weight:700;color:#fff;margin-top:4px;">
+              $1,850.00
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+
+    <div class="page">
+      
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg viewBox="0 0 80 64" width="34" height="27"
+      style="filter: drop-shadow(0 0 5px rgba(77,246,255,0.55));">
+      <path d="M8 50 L40 12 L72 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 50 L16 56 L64 56 L64 50" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M8 50 Q4 56 12 60" fill="none" stroke="#4DF6FF" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M30 30 L52 22 L60 36 L52 50 L34 50 Z" fill="rgba(255,123,0,0.18)" stroke="#FF7B00" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="42" y1="30" x2="46" y2="50" stroke="#FF7B00" stroke-width="1" opacity="0.7"/>
+      <line x1="30" y1="40" x2="60" y2="36" stroke="#FF7B00" stroke-width="1" opacity="0.5"/>
+    </svg>
+        <span class="wm" style="font-size:20px;">
+      <span class="strat">STRAT</span><span class="ex">EX</span><span class="tm" style="font-size:7px;">™</span>
+    </span>
+        <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
+          PROJECT AD-KY041 · 142 Bluegrass Ridge · Lexington, KY
+        </div>
+      </div>
+      <div class="crumb">PAGE · EXECUTIVE SUMMARY · CERTIFICATION &amp; REPAIR PLAN</div>
+    </div>
+    
+      <div class="eyebrow">· EXECUTIVE SUMMARY · CERTIFICATION</div>
+      <h1 style="font-size:30px;">Final <span class="glow-cyan">Project</span> Summary</h1>
+
+      <div class="row c4" style="margin-top:22px;">
+        <div class="frame cyan kpi"><div class="l">TOTAL PROJECT COST</div><div class="v glow-cyan">$32,491.38</div><div class="u">LOW · GRAND TOTAL</div></div>
+        <div class="frame amber kpi"><div class="l">HIGH RANGE</div><div class="v glow-amber">$33,996.38</div><div class="u">HIGH · GRAND TOTAL</div></div>
+        <div class="frame green kpi"><div class="l">PROJECTED NET PROFIT</div><div class="v glow-green">$9,142.07</div><div class="u">20% TARGET</div></div>
+        <div class="frame mag kpi"><div class="l">URGENCY ITEMS</div><div class="v">3</div><div class="u">CRITICAL TASKS</div></div>
+      </div>
+
+      <div class="frame cyan" style="margin-top:18px;">
+        <h2 style="color:var(--cyan);">AI-PRIORITIZED REPAIR PLAN</h2>
+        <table>
+          <thead><tr><th>#</th><th>URGENCY</th><th>TASK</th><th class="right">EST. ANNUAL SAVINGS</th></tr></thead>
+          <tbody><tr>
+          <td class="mono">1</td>
+          <td><span class="pill" style="color:#FF2D78;">URGENT</span></td>
+          <td>Replace Front Door Weatherstripping</td>
+          <td class="right glow-green">$150/yr</td>
+        </tr><tr>
+          <td class="mono">2</td>
+          <td><span class="pill" style="color:#FF7B00;">HIGH</span></td>
+          <td>Remediate Blocked Attic Soffit Vents</td>
+          <td class="right glow-green">$110/yr</td>
+        </tr><tr>
+          <td class="mono">3</td>
+          <td><span class="pill" style="color:#FF7B00;">HIGH</span></td>
+          <td>Inspect and Seal 2nd-Story Window Headers</td>
+          <td class="right glow-green">$95/yr</td>
+        </tr><tr>
+          <td class="mono">4</td>
+          <td><span class="pill" style="color:#FFB020;">MED</span></td>
+          <td>Add Attic Baffles for Cross-Ventilation</td>
+          <td class="right glow-green">$70/yr</td>
+        </tr></tbody>
+        </table>
+      </div>
+
+      <div class="frame amber" style="margin-top:18px;">
+        <h2 style="color:var(--amber);">CERTIFICATION</h2>
+        <div style="font-size:11px;color:var(--silver);line-height:1.6;margin-bottom:14px;">
+          I certify the foregoing measurements, photographic evidence, thermal radiometry, and damage classifications were captured under STRATEX™ Phase-3 Expert Agent protocols with ground-truth accuracy of ±0.78 cm. This report is suitable for insurance carrier review.
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding-top:18px;border-top:1px solid rgba(255,176,32,0.25);">
+          <div>
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">INSPECTOR</div>
+            <div style="font-size:13px;color:#fff;margin-top:4px;">STRATEX™ Forensic Division · A. Cross, RRO</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.14em;">KY-RRO-08821 · NRCIA-CRI-7741</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.18em;">REPORT ID</div>
+            <div style="font-size:13px;color:#fff;margin-top:4px;">AD-KY041</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.14em;">ISSUED 2026-06-25</div>
+          </div>
+        </div>
+        <div class="mono" style="font-size:8px;color:var(--muted);margin-top:18px;letter-spacing:.14em;line-height:1.5;">
+          DISCLAIMER · This report is the proprietary work product of STRATEX™ Forensic
+          Division. Findings are based on aerial drone reconnaissance, photogrammetric
+          mesh reconstruction, and radiometric thermal analysis captured on the scan date.
+          Concealed conditions discoverable only after tear-off are documented in the
+          unforeseen-repair reserve. Reproduction or transmission without authorization
+          is prohibited.
+        </div>
+      </div>
+    </div>
+    </body></html>

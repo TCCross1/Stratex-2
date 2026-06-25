@@ -152,7 +152,7 @@ function Letterhead({ pkt }) {
           <circle cx="50" cy="60" r="6" fill={INK}/>
         </svg>
         <div>
-          <div className="text-2xl font-bold tracking-[0.18em]" style={{ color: PAPER_INK, fontFamily: "'JetBrains Mono', monospace" }}>STRATEX™</div>
+          <img src="/stratex_logo.png" alt="STRATEX" style={{ height: 32, width: "auto", display: "block", marginBottom: 4 }} data-testid="stratex-logo"/>
           <div className="text-[10px] tracking-[0.32em] uppercase" style={{ color: NICKEL }}>
             {pkt.platform.tagline}
           </div>

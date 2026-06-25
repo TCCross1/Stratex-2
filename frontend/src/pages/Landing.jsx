@@ -125,6 +125,29 @@ export default function Landing() {
             </p>
             <div className="mt-8 md:mt-10">
               <div className="font-mono text-[10px] tracking-[0.32em] text-teal uppercase mb-3">// MASTER PORTAL SWITCHBOARD</div>
+              <Link
+                to="/deck"
+                data-testid="landing-cta-deck"
+                className="group block mb-4 rounded-md p-4 transition-all hover:scale-[1.005] hover:brightness-110"
+                style={{
+                  border: "1px solid rgba(0,245,212,0.55)",
+                  background: "linear-gradient(135deg, rgba(0,245,212,0.10) 0%, rgba(15,22,34,0.65) 50%, rgba(255,84,0,0.08) 100%)",
+                  boxShadow: "0 0 36px rgba(0,245,212,0.18), inset 0 0 48px rgba(0,245,212,0.04)",
+                }}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-teal mb-1">// NEW · COMMAND DECK</div>
+                    <div className="font-display text-base md:text-lg uppercase tracking-[0.12em] text-silver leading-tight">
+                      Every Surface · One Vertical Rail
+                    </div>
+                    <div className="font-mono text-[10.5px] text-muted-hud mt-1 tracking-wide">
+                      Investor-grade dashboard with sidebar app menu · all 38 surfaces
+                    </div>
+                  </div>
+                  <span className="font-mono text-[11px] tracking-[0.22em] uppercase text-teal shrink-0">LAUNCH →</span>
+                </div>
+              </Link>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
                 {PORTAL_TILES.slice(0, 1).map((t) => <PortalTile key={t.id} tile={t}/>)}
                 {PORTAL_TILES.slice(1, 3).map((t) => <PortalTile key={t.id} tile={t}/>)}
