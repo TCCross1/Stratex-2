@@ -68,10 +68,11 @@ function AppRail({ activeId, onPick }) {
   return (
     <aside
       data-testid="app-rail"
-      className="shrink-0 sticky top-0 self-start h-screen overflow-y-auto deck-rail-scroll
+      className="shrink-0 sticky top-0 self-start overflow-y-auto deck-rail-scroll
                  w-[68px] sm:w-[80px] lg:w-[96px] py-3
                  border-r"
       style={{
+        height: "calc(100vh - 80px)",
         borderColor: "rgba(0,229,255,0.18)",
         background: "linear-gradient(180deg, rgba(8,14,24,0.92) 0%, rgba(2,6,11,0.96) 100%)",
         backdropFilter: "blur(14px)",
@@ -512,7 +513,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen text-silver flex"
+    <div className="min-h-screen text-silver flex flex-col"
          style={{
            background:
              "radial-gradient(ellipse at 75% 8%, rgba(0,229,255,0.10) 0%, transparent 55%)," +
@@ -528,6 +529,39 @@ export default function Landing() {
              maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
              WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)" }}/>
 
+      {/* ─── PARENT COMPANY BANNER · CROSS AI SOFTWARES INC. ─── */}
+      <header data-testid="cross-ai-banner"
+              className="relative w-full flex items-center justify-center px-4 py-5 sm:py-6 border-b overflow-hidden"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 50% 50%, rgba(0,229,255,0.10) 0%, transparent 65%), " +
+                  "linear-gradient(180deg, #02060B 0%, #050B16 100%)",
+                borderColor: "rgba(0,229,255,0.22)",
+                boxShadow: "0 1px 28px rgba(0,229,255,0.10)",
+              }}>
+        {/* subtle scanline overlay for a futuristic feel */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.06]"
+             style={{
+               backgroundImage:
+                 "repeating-linear-gradient(0deg, rgba(0,229,255,0.7) 0px, rgba(0,229,255,0.7) 1px, transparent 1px, transparent 3px)",
+             }}/>
+        <img
+          src="/brand/cross_ai_logo.jpeg"
+          alt="CROSS AI SOFTWARES INC."
+          data-testid="cross-ai-logo"
+          className="block w-auto select-none pointer-events-none relative z-10"
+          style={{
+            height: "clamp(74px, 11vw, 140px)",
+            filter: "drop-shadow(0 0 22px rgba(0,229,255,0.45))",
+          }}
+        />
+        <span className="hidden md:inline-block absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 font-mono text-[9px] tracking-[0.32em] uppercase z-10"
+              style={{ color: "rgba(0,229,255,0.55)" }}>
+          PARENT COMPANY · STRATEX™ IS A CROSS AI SOFTWARES INC. PRODUCT
+        </span>
+      </header>
+
+      <div className="flex flex-1 min-h-0">
       <AppRail activeId={activeApp?.id} onPick={pickApp}/>
 
       {/* Display screen — flex-1 */}
@@ -558,10 +592,11 @@ export default function Landing() {
         )}
 
         <footer className="mt-6 px-1 font-mono text-[8.5px] tracking-[0.22em] uppercase text-slate-600 flex flex-col sm:flex-row justify-between gap-1">
-          <span>STRATEX™ 2026 · Strategic Thermal Reconnaissance</span>
+          <span>STRATEX™ 2026 · Strategic Thermal Reconnaissance · A CROSS AI SOFTWARES INC. PRODUCT</span>
           <span style={{ color: ACCENTS.teal }}>v4.1 · APP LAUNCHER BUILD</span>
         </footer>
       </main>
+      </div>
 
       <style>{`
         .deck-rail-scroll::-webkit-scrollbar { width: 6px; }

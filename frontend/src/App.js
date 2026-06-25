@@ -88,7 +88,7 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const isDemo = loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname.startsWith("/claim-snapshot") || loc.pathname.startsWith("/cosign") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster" || loc.pathname === "/mission-control";
+  const isDemo = loc.pathname === "/" || loc.pathname.startsWith("/demo") || loc.pathname === "/switchboard" || loc.pathname === "/deck" || loc.pathname === "/contractor/brand" || loc.pathname === "/reports/binder" || loc.pathname.startsWith("/passport/") || loc.pathname.startsWith("/claim-snapshot") || loc.pathname.startsWith("/cosign") || loc.pathname === "/contractor/verify" || loc.pathname === "/gm/roster" || loc.pathname === "/mission-control";
   const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
   return (
     <>
