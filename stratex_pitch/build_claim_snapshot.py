@@ -230,9 +230,17 @@ def _build_html(diff: Dict[str, Any]) -> str:
 
 def render_claim_snapshot_pdf(diff: Dict[str, Any]) -> Path:
     pid = diff["passport"]["passport_id"]
+    pdf_path = CACHE_DIR / f"claim_{pid}.pdf"
+
+    # Production-safe fast path: if a pre-built PDF already lives in the
+    # cache (committed alongside the repo), serve it directly. This means
+    # production containers without Playwright/Chromium still ship the
+    # Claim Snapshot PDF perfectly.
+    if pdf_path.exists() and pdf_path.stat().st_size > 50_000:
+        return pdf_path
+
     html = _build_html(diff)
     html_path = CACHE_DIR / f"claim_{pid}.html"
-    pdf_path = CACHE_DIR / f"claim_{pid}.pdf"
     html_path.write_text(html, encoding="utf-8")
 
     # Build through Playwright (sync API in a subprocess so we don't block the event loop)

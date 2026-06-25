@@ -917,18 +917,38 @@ async def scan_report_page_pdf(slug: str, session_id: str = "sample", audience: 
 
 
 def _render_report_pdf(analysis: dict, session_id: str) -> FileResponse:
-    """Build HTML report from template + run Playwright render."""
+    """Build HTML report from template + run Playwright render.
+
+    Production-safe: if a pre-built PDF is already on disk (committed to
+    the repo as a static asset), serve it directly without invoking
+    Playwright.  This means production containers without Chromium
+    binaries still ship the demo report perfectly.
+    """
+    out_pdf = PITCH_DIR / f"_demo_{session_id}.pdf"
+
+    # ── 1. Fast path: pre-built PDF on disk (production) ──────────────
+    if out_pdf.exists() and out_pdf.stat().st_size > 100_000:
+        return FileResponse(
+            out_pdf, media_type="application/pdf",
+            filename=f"STRATEX_Report_{analysis['project']['id']}.pdf",
+        )
+
+    # ── 2. Render path: build HTML + invoke Playwright ────────────────
     import sys
     sys.path.insert(0, str(PITCH_DIR))
     from build_demo_report import build_html  # type: ignore
     html = build_html(analysis)
     work = PITCH_DIR / f"_demo_{session_id}.html"
     work.write_text(html, encoding="utf-8")
-    out_pdf = PITCH_DIR / f"_demo_{session_id}.pdf"
 
-    # Render inline via asyncio (Playwright supports being called from a
-    # running event loop via the async API).
-    from playwright.async_api import async_playwright
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        raise HTTPException(
+            503,
+            "PDF renderer unavailable on this environment. "
+            "Pre-built demo report not found and Playwright is not installed.",
+        )
 
     async def _go():
         async with async_playwright() as p:
