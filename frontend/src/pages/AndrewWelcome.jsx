@@ -35,7 +35,7 @@ const ACCENTS = {
 function IdentityGate({ onYes, onNo }) {
   return (
     <div data-testid="identity-gate"
-         className="min-h-screen flex flex-col items-center justify-center px-5 py-10 relative overflow-hidden"
+         className="min-h-screen flex flex-col relative overflow-hidden"
          style={{
            background:
              "radial-gradient(ellipse at 50% 0%, rgba(0,229,255,0.10) 0%, transparent 60%)," +
@@ -44,10 +44,16 @@ function IdentityGate({ onYes, onNo }) {
          }}>
       <img src="/brand/cross_ai_banner.jpeg"
            alt="CROSS AI SOFTWARES INC."
-           className="w-full max-w-2xl mb-6 select-none pointer-events-none"
-           style={{ filter: "drop-shadow(0 0 24px rgba(0,229,255,0.30))" }}/>
+           className="w-full mb-6 select-none pointer-events-none"
+           style={{
+             maxHeight: 180,
+             objectFit: "cover",
+             objectPosition: "center",
+             filter: "drop-shadow(0 0 24px rgba(0,229,255,0.30))",
+           }}/>
 
-      <div className="font-mono text-[9px] tracking-[0.36em] uppercase text-slate-500 mb-2">
+      <div className="flex-1 flex flex-col items-center justify-center px-5 pb-10">
+      <div className="font-mono text-[9px] tracking-[0.36em] uppercase text-slate-500 mb-2 text-center">
         // STRATEX™ · PERSONAL BRIEF · DELIVERED BY THE AI PM
       </div>
 
@@ -100,6 +106,7 @@ function IdentityGate({ onYes, onNo }) {
 
       <div className="font-mono text-[8.5px] tracking-[0.28em] uppercase text-slate-600 mt-6 text-center">
         STRATEX™ IS A CROSS AI SOFTWARES INC. PRODUCT · CONFIDENTIAL
+      </div>
       </div>
     </div>
   );
