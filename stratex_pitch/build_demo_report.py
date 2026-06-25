@@ -1173,9 +1173,336 @@ def page_homeowner_summary(a: dict) -> str:
     """
 
 
+def page_property_passport(a: dict) -> str:
+    """STRATEX™ PROPERTY PASSPORT — single tabloid-landscape certificate.
+
+    Designed to be handed to the homeowner as a tangible 'Certified Healthy'
+    asset.  Includes immutable Passport ID, scan history slot, weather-shield
+    correlation strip, carrier-link QR placeholder, and the issuing
+    contractor + STRATEX co-stamp.
+    """
+    p = a["project"]; q = a["quant"]
+    env_score = a.get("envelope_scores", {}).get("overall_envelope", 92)
+    moist = a.get("water_retention", {}).get("subsurface_moisture_pct", 12)
+    tear_off = a.get("water_retention", {}).get("tear_off_recommended", False)
+    badge_color, badge_label = ("#FF2D78", "ACTION REQUIRED") if tear_off else \
+                               ("#00FF9C", "CERTIFIED HEALTHY") if env_score >= 80 else \
+                               ("#FFB020", "MONITOR · TIER B")
+
+    # Deterministic Passport ID derived from project + issue date — feels official.
+    import hashlib
+    seed = f"{p.get('id','')}-{p.get('address','')}-{p.get('scan_date','')}"
+    passport_id = "STX-" + hashlib.sha1(seed.encode()).hexdigest()[:12].upper()
+    carrier_link = f"stratex.co/passport/{passport_id.lower()}"
+
+    # Synthesized scan-history (chronological audit trail).
+    scan_history = [
+        {"d": "07/20/2025", "evt": "BASELINE SCAN",          "stat": "OK"},
+        {"d": "09/19/2025", "evt": "STORM · 47 mph wind",    "stat": "OK"},
+        {"d": "10/14/2025", "evt": "ANNUAL FORENSIC AUDIT",  "stat": "OK"},
+        {"d": p.get("scan_date",""), "evt": "CURRENT SCAN · FORENSIC",  "stat": badge_label.split()[0]},
+    ]
+    history_html = "".join(
+        f"""<div style="display:flex;justify-content:space-between;align-items:center;
+                      padding:5px 0;border-bottom:1px dashed rgba(255,255,255,0.08);
+                      font-size:10.5px;letter-spacing:.04em;">
+            <span class="mono" style="color:var(--cyan);letter-spacing:.18em;width:90px;">{escape(s['d'])}</span>
+            <span style="color:#fff;flex:1;padding:0 12px;">{escape(s['evt'])}</span>
+            <span class="mono pill" style="color:{badge_color if s['stat'] != 'OK' else '#00FF9C'};">
+              {escape(s['stat'])}
+            </span>
+          </div>""" for s in scan_history if s['d']
+    )
+
+    # 30-day weather-shield ribbon (mocked).
+    weather_events = [
+        {"d": "12/04/25", "type": "WIND",  "v": "47 mph", "ok": True},
+        {"d": "12/18/25", "type": "HAIL",  "v": "0.5 in", "ok": True},
+        {"d": "01/09/26", "type": "WIND",  "v": "61 mph", "ok": True},
+        {"d": "01/22/26", "type": "RAIN",  "v": "2.4 in", "ok": True},
+    ]
+    weather_html = "".join(
+        f"""<div style="flex:1;text-align:center;padding:6px 8px;
+                       border-right:1px solid rgba(0,229,255,0.18);">
+            <div class="mono" style="font-size:8px;color:var(--muted);letter-spacing:.22em;">{escape(w['d'])}</div>
+            <div style="font-family:'Space Grotesk';font-size:14px;color:#fff;font-weight:700;margin-top:3px;">{escape(w['v'])}</div>
+            <div class="mono" style="font-size:8px;color:{('#00FF9C' if w['ok'] else '#FF2D78')};letter-spacing:.22em;margin-top:2px;">
+              {escape(w['type'])} · {'PASS' if w['ok'] else 'FAIL'}
+            </div>
+          </div>""" for w in weather_events
+    )
+
+    # Pure-CSS QR-style block (placeholder visual — investor demo).
+    def _qr_block():
+        cells = []
+        # 21×21 quiet-zone-free 'QR' look using deterministic noise from passport_id
+        seed_bytes = (passport_id * 30).encode()
+        for r in range(21):
+            for c in range(21):
+                # corner alignment squares
+                in_align = (
+                    (r < 7 and c < 7) or (r < 7 and c > 13) or (r > 13 and c < 7)
+                )
+                if in_align:
+                    is_dark = ((r in (0,6)) or (c in (0,6) and r < 7) or
+                               (r < 7 and (c == 0 or c == 6)) or
+                               (2 <= r <= 4 and 2 <= c <= 4) or
+                               (r in (0,6) and r < 7 and c > 13) or
+                               (r > 13 and (c == 0 or c == 6)))
+                else:
+                    is_dark = bool(seed_bytes[(r*21+c) % len(seed_bytes)] & 1)
+                cells.append(f'<div style="background:{"#fff" if is_dark else "transparent"};"></div>')
+        return f"""<div style="display:grid;grid-template-columns:repeat(21,1fr);
+                                width:120px;height:120px;background:#02060B;
+                                padding:6px;border-radius:6px;
+                                border:1px solid rgba(0,229,255,0.4);">
+          {''.join(cells)}
+        </div>"""
+
+    return f"""
+    <div class="page">
+      {_hdr("PROPERTY PASSPORT · CERTIFIED RECORD OF CONDITION", p, contractor_band=False)}
+
+      <!-- ====== TOP LOCK-UP : two brands + ledger title ====== -->
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  padding:14px 18px;margin-bottom:14px;border-radius:8px;
+                  background:linear-gradient(120deg, rgba(215,40,47,0.14) 0%, rgba(8,14,24,0.85) 50%, rgba(0,229,255,0.10) 100%);
+                  border:1.5px solid rgba(212,184,106,0.55);
+                  box-shadow:inset 0 0 36px rgba(212,184,106,0.08);">
+        <div style="display:flex;align-items:center;gap:16px;">
+          {_contractor_logo_svg(58)}
+          <div style="border-left:1px solid rgba(255,255,255,0.18);padding-left:14px;">
+            {_glyph(38)}
+          </div>
+        </div>
+        <div style="text-align:center;flex:1;padding:0 18px;">
+          <div class="mono" style="font-size:9px;letter-spacing:.32em;color:#D4B86A;text-transform:uppercase;">
+            STRATEX™ PROPERTY PASSPORT
+          </div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;
+                      color:#fff;letter-spacing:-0.01em;line-height:1.05;margin-top:4px;">
+            Certified Record <span style="color:#D4B86A;">of Condition</span>
+          </div>
+          <div class="mono" style="font-size:9.5px;color:var(--muted);letter-spacing:.22em;margin-top:4px;">
+            IMMUTABLE · TRANSFERABLE · INSURER-VALIDATED
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="mono" style="font-size:8.5px;letter-spacing:.26em;color:var(--cyan);">PASSPORT ID</div>
+          <div class="mono" style="font-family:'JetBrains Mono';font-size:14px;color:#fff;letter-spacing:.12em;margin-top:2px;">
+            {escape(passport_id)}
+          </div>
+          <div class="mono" style="font-size:8.5px;color:var(--muted);letter-spacing:.18em;margin-top:4px;">
+            ISSUED {escape(p.get('scan_date',''))}
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== MAIN GRID : LEFT card · CENTER house · RIGHT seal & carrier ====== -->
+      <div style="display:grid;grid-template-columns:1.05fr 1.3fr 1fr;gap:14px;height:6.2in;">
+
+        <!-- LEFT : Owner block + Property facts -->
+        <div class="frame cyan" style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;">
+          <div>
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--cyan);">// PROPERTY OWNER OF RECORD</div>
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:22px;color:#fff;margin-top:6px;line-height:1.15;">
+              {escape(p.get('ownership','Homeowner of Record'))}
+            </div>
+            <div class="mono" style="font-size:10px;color:var(--silver);letter-spacing:.12em;margin-top:6px;line-height:1.55;">
+              {escape(p.get('address',''))}<br/>{escape(p.get('city_state',''))}
+            </div>
+          </div>
+
+          <div style="height:1px;background:linear-gradient(90deg, transparent 0%, rgba(0,229,255,0.45) 50%, transparent 100%);"></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">FACETS</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--cyan);">{q.get('facet_count','—')}</div>
+            </div>
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">SQUARES</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--cyan);">{q.get('total_squares',0):.1f}</div>
+            </div>
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">YEAR BUILT</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:18px;color:#fff;">{escape(str(p.get('year_built','—')))}</div>
+            </div>
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">ACCURACY</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--green);">±{p.get('ground_truth_cm',0.78)} cm</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:linear-gradient(90deg, transparent 0%, rgba(0,229,255,0.45) 50%, transparent 100%);"></div>
+
+          <div>
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--cyan);">// SCAN HISTORY · IMMUTABLE LEDGER</div>
+            <div style="margin-top:6px;">{history_html}</div>
+          </div>
+        </div>
+
+        <!-- CENTER : isometric house glyph + scores -->
+        <div class="frame amber" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px;">
+          <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--amber);align-self:flex-start;">// DIGITAL TWIN · STAMP</div>
+
+          <!-- isometric house -->
+          <svg viewBox="0 0 320 240" width="100%" height="240" style="margin-top:6px;">
+            <defs>
+              <linearGradient id="roofGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"  stop-color="#4DF6FF" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0.55"/>
+              </linearGradient>
+              <linearGradient id="wallGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#1E293B"/>
+                <stop offset="100%" stop-color="#0F172A"/>
+              </linearGradient>
+              <radialGradient id="seal" cx="50%" cy="50%" r="55%">
+                <stop offset="0%" stop-color="{badge_color}" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="{badge_color}" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <!-- ground -->
+            <ellipse cx="160" cy="220" rx="140" ry="8" fill="rgba(0,229,255,0.10)"/>
+            <!-- left wall -->
+            <path d="M 60 150 L 60 210 L 160 240 L 160 180 Z" fill="url(#wallGrad)" stroke="#4DF6FF" stroke-width="1.5"/>
+            <!-- right wall -->
+            <path d="M 260 150 L 260 210 L 160 240 L 160 180 Z" fill="rgba(15,22,34,0.92)" stroke="#4DF6FF" stroke-width="1.5"/>
+            <!-- roof left -->
+            <path d="M 60 150 L 160 100 L 160 180 Z" fill="url(#roofGrad)" stroke="#4DF6FF" stroke-width="1.5"/>
+            <!-- roof right -->
+            <path d="M 260 150 L 160 100 L 160 180 Z" fill="rgba(77,246,255,0.35)" stroke="#4DF6FF" stroke-width="1.5"/>
+            <!-- ridge -->
+            <line x1="160" y1="100" x2="160" y2="180" stroke="#4DF6FF" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
+            <!-- shingle hatching -->
+            {''.join(f'<line x1="{60 + i*5}" y1="{150 + i*1.2}" x2="{160 + i*0}" y2="{100 + i*1.6}" stroke="#0EA5E9" stroke-width="0.4" opacity="0.35"/>' for i in range(20))}
+            <!-- floating measurement labels -->
+            <text x="20" y="190" font-family="JetBrains Mono" font-size="9" fill="#FFB020" letter-spacing="2">42.0'</text>
+            <text x="265" y="200" font-family="JetBrains Mono" font-size="9" fill="#FFB020" letter-spacing="2">38.5'</text>
+            <text x="150" y="86" font-family="JetBrains Mono" font-size="9" fill="#00FF9C" letter-spacing="2">±0.78 cm</text>
+          </svg>
+
+          <!-- score bars -->
+          <div style="width:100%;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">ENVELOPE</div>
+              <div style="display:flex;align-items:baseline;gap:4px;">
+                <span style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#fff;">{env_score}</span>
+                <span class="mono" style="font-size:9px;color:var(--muted);">/ 100</span>
+              </div>
+              <div style="height:4px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;">
+                <div style="height:100%;width:{env_score}%;background:linear-gradient(90deg, #00FF9C 0%, #4DF6FF 100%);box-shadow:0 0 8px #4DF6FF;"></div>
+              </div>
+            </div>
+            <div>
+              <div class="mono" style="font-size:8.5px;letter-spacing:.22em;color:var(--muted);">MOISTURE</div>
+              <div style="display:flex;align-items:baseline;gap:4px;">
+                <span style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#fff;">{moist}</span>
+                <span class="mono" style="font-size:9px;color:var(--muted);">% sub-surface</span>
+              </div>
+              <div style="height:4px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;">
+                <div style="height:100%;width:{min(moist*4,100)}%;background:linear-gradient(90deg, #00FF9C 0%, #FFB020 60%, #FF2D78 100%);box-shadow:0 0 8px #FFB020;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT : Certified Healthy seal + Carrier Link QR -->
+        <div class="frame {'mag' if tear_off else 'green'}" style="display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14px;text-align:center;">
+          <!-- seal -->
+          <div style="position:relative;width:170px;height:170px;display:grid;place-items:center;">
+            <svg viewBox="0 0 200 200" width="170" height="170" style="position:absolute;inset:0;">
+              <defs>
+                <radialGradient id="sealBG" cx="50%" cy="50%" r="55%">
+                  <stop offset="0%" stop-color="{badge_color}" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="{badge_color}" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <circle cx="100" cy="100" r="95" fill="url(#sealBG)"/>
+              <circle cx="100" cy="100" r="86" fill="none" stroke="{badge_color}" stroke-width="2"/>
+              <circle cx="100" cy="100" r="78" fill="none" stroke="{badge_color}" stroke-width="0.6" stroke-dasharray="2 3" opacity="0.7"/>
+              <!-- starburst ticks -->
+              {''.join(f'<line x1="100" y1="10" x2="100" y2="18" transform="rotate({a} 100 100)" stroke="{badge_color}" stroke-width="1.6"/>' for a in range(0,360,15))}
+              <!-- curved label top -->
+              <defs>
+                <path id="topArc" d="M 30 100 a 70 70 0 0 1 140 0"/>
+                <path id="botArc" d="M 30 100 a 70 70 0 0 0 140 0"/>
+              </defs>
+              <text font-family="Space Grotesk" font-weight="700" font-size="10" fill="{badge_color}" letter-spacing="6">
+                <textPath xlink:href="#topArc" startOffset="50%" text-anchor="middle">STRATEX · PROPERTY GUARDIAN</textPath>
+              </text>
+              <text font-family="JetBrains Mono" font-size="8" fill="{badge_color}" letter-spacing="6">
+                <textPath xlink:href="#botArc" startOffset="50%" text-anchor="middle">FORENSIC AUDIT · SEALED</textPath>
+              </text>
+              <!-- center mark -->
+              <text x="100" y="92" text-anchor="middle" font-family="Space Grotesk" font-weight="900" font-size="22" fill="#fff" letter-spacing="1">{badge_label.split()[0]}</text>
+              <text x="100" y="112" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="{badge_color}" letter-spacing="6">{escape(' '.join(badge_label.split()[1:])) or 'CERTIFIED'}</text>
+              <text x="100" y="132" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#fff" opacity="0.7" letter-spacing="3">EST. 2025 · PATENT PENDING</text>
+            </svg>
+          </div>
+
+          <!-- Carrier Link block -->
+          <div style="width:100%;border-top:1px dashed rgba(255,255,255,0.18);padding-top:10px;">
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:{badge_color};">// INSURANCE CARRIER LINK</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;justify-content:center;">
+              {_qr_block()}
+              <div style="text-align:left;">
+                <div class="mono" style="font-size:8.5px;color:var(--muted);letter-spacing:.18em;">ONE-CLICK PROOF OF LOSS</div>
+                <div class="mono" style="font-family:'JetBrains Mono';font-size:10px;color:#fff;margin-top:4px;letter-spacing:.05em;">
+                  {escape(carrier_link)}
+                </div>
+                <div class="mono" style="font-size:8px;color:var(--muted);letter-spacing:.18em;margin-top:6px;line-height:1.6;">
+                  ADJUSTER-READY · SIGNED&nbsp;·&nbsp;HASH-VERIFIED<br/>
+                  TRANSFERABLE ON PROPERTY SALE
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== BOTTOM : Weather Shield ribbon + Co-signed footer ====== -->
+      <div style="margin-top:14px;display:grid;grid-template-columns:1.4fr 1fr;gap:14px;">
+        <div class="frame cyan" style="padding:10px 14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--cyan);">// WEATHER SHIELD · 30-DAY CORRELATION</div>
+            <div class="mono" style="font-size:9px;letter-spacing:.22em;color:var(--green);">ALL EVENTS · PASS</div>
+          </div>
+          <div style="display:flex;margin-top:8px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.18);border-radius:4px;">
+            {weather_html}
+          </div>
+          <div class="mono" style="font-size:8.5px;color:var(--muted);letter-spacing:.16em;margin-top:6px;line-height:1.5;">
+            GEO-CORRELATED TO {escape(p.get('city_state','—'))}. NEXT VIRTUAL CHECK-UP RECOMMENDED IN 6 MONTHS.
+          </div>
+        </div>
+
+        <div class="frame amber" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:14px;">
+          <div>
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--amber);">// CO-SIGNED BY</div>
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:#fff;margin-top:4px;">American Roofing Co.</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;margin-top:2px;">
+              ANTHONY CROSS · LIC BC-0043
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-size:9px;letter-spacing:.28em;color:var(--amber);">// VERIFIED BY</div>
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:#fff;margin-top:4px;">STRATEX™ Forensic Div.</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.16em;margin-top:2px;">
+              ±0.78 cm · CHAIN-OF-CUSTODY
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+
 def build_html(a: dict) -> str:
     audience = a.get("_audience", "adjuster")
-    if audience == "homeowner":
+    if audience == "passport":
+        # Single-page certificate variant.
+        pages = [page_property_passport(a)]
+    elif audience == "homeowner":
         pages = [
             page_cover(a),
             page_homeowner_summary(a),

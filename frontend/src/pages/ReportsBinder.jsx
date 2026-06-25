@@ -231,12 +231,27 @@ export default function ReportsBinder() {
           </div>
           <div className="flex items-center gap-2">
             <a
+              data-testid="binder-download-passport"
+              href={`${API}/api/demo/property-passport.pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md flex items-center gap-2 transition hover:brightness-125"
+              style={{
+                background: "linear-gradient(120deg, rgba(212,184,106,0.16) 0%, rgba(8,14,24,0.85) 100%)",
+                border: "1.5px solid #D4B86A",
+                color: "#F5E0A3",
+                boxShadow: "0 0 14px rgba(212,184,106,0.30)",
+              }}
+            >
+              <ShieldCheck size={12}/> Issue Property Passport
+            </a>
+            <a
               data-testid="binder-download-full"
               href={fullPdf}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md flex items-center gap-2 transition hover:brightness-125"
-              style={{ background: "rgba(212,184,106,0.10)", border: "1px solid #D4B86A88", color: "#D4B86A" }}
+              style={{ background: "rgba(0,229,255,0.10)", border: "1px solid #00E5FF88", color: "#00E5FF" }}
             >
               <FileDown size={12}/> Download Full Report
             </a>

@@ -497,6 +497,26 @@ export default function CommandDeck() {
                   Open Binder →
                 </button>
               </div>
+              <div className="mt-2 pt-2 border-t flex items-center justify-between" style={{ borderColor: "rgba(212,184,106,0.30)" }}>
+                <div>
+                  <div className="font-mono text-[9px] tracking-[0.22em] uppercase" style={{ color: "#D4B86A" }}>
+                    Property Passport
+                  </div>
+                  <div className="font-mono text-[8.5px] tracking-[0.18em] uppercase text-slate-500 mt-0.5">
+                    Homeowner certificate · Carrier link
+                  </div>
+                </div>
+                <a
+                  data-testid="cd-open-passport"
+                  href={`${process.env.REACT_APP_BACKEND_URL}/api/demo/property-passport.pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] tracking-[0.22em] uppercase px-3 py-1 rounded-md"
+                  style={{ background: "rgba(212,184,106,0.14)", border: "1px solid #D4B86A99", color: "#D4B86A" }}
+                >
+                  Issue →
+                </a>
+              </div>
             </Panel>
 
             {/* PROFESSIONAL CREDENTIALS */}

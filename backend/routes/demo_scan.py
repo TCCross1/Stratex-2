@@ -741,6 +741,29 @@ async def scan_analyze(
     return JSONResponse({"session_id": sid, "analysis": analysis})
 
 
+@router.get("/property-passport.pdf")
+async def property_passport_pdf(session_id: str = "sample", owner: str = "The Bingham Family Trust"):
+    """STRATEX Property Passport — single-page tabloid-landscape certificate
+    for the homeowner.  Includes immutable Passport ID, scan history ledger,
+    Carrier Link (QR-style) for one-click insurance proof-of-loss, and the
+    Weather Shield 30-day correlation ribbon.
+
+    Query params:
+      owner       → property owner of record (default: "The Bingham Family Trust")
+      session_id  → pull a specific scan session; defaults to demo sample
+    """
+    if session_id == "sample":
+        analysis = _compute_totals(_sample_analysis())
+    else:
+        src = SAMPLES_DIR / f"{session_id}.json"
+        analysis = json.loads(src.read_text()) if src.exists() else _compute_totals(_sample_analysis())
+    analysis["_audience"] = "passport"
+    # The Passport is homeowner-facing — override "ownership" so the
+    # certificate shows the property owner, not the contracting firm.
+    analysis["project"]["ownership"] = owner
+    return _render_report_pdf(analysis, f"{session_id}-passport")
+
+
 @router.get("/scan-report.pdf")
 async def scan_report_pdf(session_id: str = "sample", audience: str = "adjuster"):
     """Render the forensic PDF report.
