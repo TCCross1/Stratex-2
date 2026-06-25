@@ -2627,6 +2627,17 @@ app.include_router(demo_router)
 from routes.passport import router as passport_router  # noqa: E402
 app.include_router(passport_router)
 
+# Phase 3/4 — Storm watcher · 3-contact wall · GM roster · GM inventory
+from routes.phase34 import router as phase34_router  # noqa: E402
+app.include_router(phase34_router)
+
+# Storm-watcher background loop — kicks in shortly after startup.
+@app.on_event("startup")
+async def _start_storm_watcher():
+    import asyncio as _aio
+    from routes.storm_watcher import storm_watcher_loop
+    _aio.create_task(storm_watcher_loop())
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=False,

@@ -557,8 +557,7 @@ export default function CommandDeck() {
                   <div className="font-mono text-[9.5px] tracking-[0.16em] uppercase text-slate-400 mb-1">Network Compliance</div>
                   <ProgressBar pct={95} color="#00FF9C"/>
                 </div>
-                <span className="font-display" style={{ color: "#00FF9C", fontSize: 22, textShadow: "0 0 10px #00FF9Caa" }}>95%</span>
-              </div>
+                <span className="font-display" style={{ color: "#00FF9C", fontSize: 22, textShadow: "0 0 10px #00FF9Caa" }}>95%</span>              </div>
               <div className="grid grid-cols-2 gap-2">
                 {vendors.map((v) => (
                   <div key={v.name} className="px-2.5 py-1.5 rounded-md flex items-center justify-between gap-2"
@@ -581,6 +580,23 @@ export default function CommandDeck() {
               <CheckLine label="Mobile Trailer Power Supply"      sub="Mobile Trailer Inverter @ 90% Output · [STABLE]"/>
               <CheckLine label="DJI Matrice Battery Integrity"    sub="6× Matrice Batt Pods · [UNLOCKED & READY]"/>
               <CheckLine label="Automated Mechanized Box Hatch"   sub="FAA Matrice Mechanized Box Enclosure · [ACTIVE]"/>
+              <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2"
+                   style={{ borderColor: "rgba(255,123,0,0.25)" }}>
+                <button
+                  data-testid="cd-open-verify"
+                  onClick={() => nav("/contractor/verify")}
+                  className="font-mono text-[9.5px] tracking-[0.22em] uppercase px-2 py-1.5 rounded-md transition hover:brightness-125"
+                  style={{ background: "rgba(0,229,255,0.10)", border: "1px solid #00E5FF66", color: "#00E5FF" }}>
+                  3-Contact Wall →
+                </button>
+                <button
+                  data-testid="cd-open-gm-roster"
+                  onClick={() => nav("/gm/roster")}
+                  className="font-mono text-[9.5px] tracking-[0.22em] uppercase px-2 py-1.5 rounded-md transition hover:brightness-125"
+                  style={{ background: "rgba(255,176,32,0.10)", border: "1px solid #FFB02066", color: "#FFB020" }}>
+                  GM Roster →
+                </button>
+              </div>
             </Panel>
 
             {/* CLIENT PORTFOLIO */}
