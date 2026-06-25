@@ -2643,6 +2643,10 @@ app.include_router(mc_router)
 from routes.claim_snapshot import router as claim_router  # noqa: E402
 app.include_router(claim_router)
 
+# Carrier co-sign + cryptographic receipt for Claim Snapshots
+from routes.claim_cosign import router as cosign_router  # noqa: E402
+app.include_router(cosign_router)
+
 # Live ops bus — WebSocket push for storm-watcher + ATC + regional storms
 from routes.live_ops import router as live_ops_router, broadcast_loop  # noqa: E402
 app.include_router(live_ops_router)

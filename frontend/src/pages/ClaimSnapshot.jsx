@@ -191,18 +191,24 @@ export default function ClaimSnapshot() {
   const [diff, setDiff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  const [cosign, setCosign] = useState(null);
+  const [requestingCosign, setRequestingCosign] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch(`${API}/api/claim-snapshot/${passportHash}/latest`);
-      if (!r.ok) {
-        const t = await r.text();
-        setErr(`No snapshot available (${r.status}). ${t.slice(0, 100)}`);
+      const [diffR, csR] = await Promise.all([
+        fetch(`${API}/api/claim-snapshot/${passportHash}/latest`),
+        fetch(`${API}/api/claim-snapshot/${passportHash}/cosign/status`),
+      ]);
+      if (!diffR.ok) {
+        const t = await diffR.text();
+        setErr(`No snapshot available (${diffR.status}). ${t.slice(0, 100)}`);
         return;
       }
-      setDiff(await r.json());
+      setDiff(await diffR.json());
+      if (csR.ok) setCosign(await csR.json());
     } catch (e) {
       setErr(`Network error: ${e.message}`);
     } finally {
@@ -220,6 +226,35 @@ export default function ClaimSnapshot() {
       toast.error("Re-seed failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const requestCosign = async () => {
+    setRequestingCosign(true);
+    try {
+      const r = await fetch(`${API}/api/claim-snapshot/${passportHash}/cosign/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requester_name: "American Roofing Co.",
+          carrier_company: "State Farm Claims",
+        }),
+      });
+      const j = await r.json();
+      const url = `${window.location.origin}/cosign/${j.token}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success(`Co-sign link ${j.reused ? "re-used" : "minted"} · copied to clipboard`);
+      } catch {
+        toast.success(`Co-sign link ready: ${url}`);
+      }
+      // Open the adjuster surface in a new tab so the demo can sign live
+      window.open(`/cosign/${j.token}`, "_blank", "noopener,noreferrer");
+      await load();
+    } catch (e) {
+      toast.error(`Co-sign request failed: ${e.message}`);
+    } finally {
+      setRequestingCosign(false);
     }
   };
 
@@ -362,6 +397,26 @@ export default function ClaimSnapshot() {
                 <p className="mt-4 text-[13.5px] leading-[1.6] text-slate-200 max-w-3xl">
                   {diff.narrative}
                 </p>
+              )}
+              {cosign?.state === "SIGNED" && (
+                <div data-testid="cosign-badge"
+                     className="mt-4 inline-flex items-center gap-3 rounded-md px-3 py-2"
+                     style={{ background: `${ACCENTS.green}14`,
+                              border: `1px solid ${ACCENTS.green}88`,
+                              boxShadow: `0 0 14px ${ACCENTS.green}33` }}>
+                  <ShieldCheck size={14} color={ACCENTS.green}/>
+                  <div>
+                    <div className="font-mono text-[9px] tracking-[0.26em] uppercase" style={{ color: ACCENTS.green }}>
+                      CARRIER CO-SIGNED · {cosign.signer.decision}
+                    </div>
+                    <div className="font-mono text-[10px] tracking-[0.14em] text-slate-200 mt-0.5">
+                      {cosign.signer.adjuster_name} · {cosign.signer.adjuster_company}
+                    </div>
+                    <div className="font-mono text-[9px] text-cyan-300 mt-0.5 break-all max-w-md">
+                      Receipt · {cosign.receipt_hash?.slice(0, 32)}…
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex justify-center md:justify-end">
@@ -524,12 +579,29 @@ export default function ClaimSnapshot() {
         </button>
         <button onClick={() => toast.success("Claim Snapshot prepared for carrier dispatch")}
                 data-testid="cta-send-carrier"
-                className="rounded-md px-4 py-3 flex items-center gap-3 transition hover:brightness-125 text-left"
-                style={{ background: `${ACCENTS.magenta}14`, border: `1.5px solid ${ACCENTS.magenta}88` }}>
+                className="rounded-md px-4 py-3 flex items-center gap-3 transition hover:brightness-125 text-left disabled:opacity-50"
+                style={{ background: `${ACCENTS.magenta}14`, border: `1.5px solid ${ACCENTS.magenta}88`, display: "none" }}>
           <Send size={16} style={{ color: ACCENTS.magenta }}/>
           <div>
             <div className="font-display text-[13px] tracking-[0.06em] uppercase text-white">Send to Carrier</div>
             <div className="font-mono text-[8.5px] tracking-[0.18em] uppercase text-slate-500">One-Click Proof-of-Loss · LAE bypass</div>
+          </div>
+        </button>
+        <button onClick={requestCosign}
+                disabled={requestingCosign}
+                data-testid="cta-request-cosign"
+                className="rounded-md px-4 py-3 flex items-center gap-3 transition hover:brightness-125 text-left disabled:opacity-50"
+                style={{ background: `${ACCENTS.magenta}14`, border: `1.5px solid ${ACCENTS.magenta}88` }}>
+          <Send size={16} style={{ color: ACCENTS.magenta }}/>
+          <div>
+            <div className="font-display text-[13px] tracking-[0.06em] uppercase text-white">
+              {cosign?.state === "SIGNED" ? "View Carrier Co-Sign" : "Request Carrier Co-Sign"}
+            </div>
+            <div className="font-mono text-[8.5px] tracking-[0.18em] uppercase text-slate-500">
+              {cosign?.state === "SIGNED"
+                ? `Signed by ${cosign?.signer?.adjuster_name}`
+                : "One-time magic link · SHA-256 receipt → ledger"}
+            </div>
           </div>
         </button>
       </section>
