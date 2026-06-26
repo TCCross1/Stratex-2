@@ -185,6 +185,26 @@ def _contractor_band(a: dict) -> str:
     """
 
 
+def _stratex_hero_logo(height: int = 80) -> str:
+    """Embed the OFFICIAL Stratex logo (cyan neon house + orange faceted
+    prism + STRATEX wordmark) as a base64 <img>, inlined so Playwright
+    never needs an HTTP fetch during PDF render. This is the brand mark
+    that goes at the top of every page."""
+    from pathlib import Path
+    p = Path(__file__).parent / "_stratex_logo_b64.txt"
+    try:
+        b64 = p.read_text().strip()
+        return (
+            f'<img src="data:image/png;base64,{b64}" '
+            f'alt="STRATEX" '
+            f'style="height:{height}px;width:auto;display:block;'
+            f'filter:drop-shadow(0 0 14px rgba(77,246,255,0.45));"/>'
+        )
+    except Exception:
+        # Fallback: small inline glyph + text wordmark
+        return _glyph(height) + _wordmark(int(height * 0.55))
+
+
 def _wordmark(size: int = 14) -> str:
     """Render the official STRATEX wordmark at the given pixel size."""
     return f"""<span class="wm" style="font-size:{size}px;">
@@ -214,8 +234,7 @@ def _hdr(crumb: str, project: dict, contractor_band: bool = True) -> str:
     {band}
     <div class="hdr">
       <div style="display:flex;align-items:center;gap:14px;">
-        {_glyph(34)}
-        {_wordmark(20)}
+        {_stratex_hero_logo(76)}
         <div class="mono tag" style="margin-left:12px;color:#fff;letter-spacing:.18em;font-size:9px;color:var(--muted);">
           PROJECT {pid} · {addr} · {city}
         </div>
@@ -919,10 +938,10 @@ def _iso_component(label: str, code: str, spec: str, paths_svg: str, accent: str
         </div>
         <span class="pill" style="color:{accent_hex};">ASSEMBLY</span>
       </div>
-      <div style="background:rgba(2,6,11,0.55);border:1px solid rgba(255,255,255,0.06);border-radius:4px;
-                  padding:8px;display:flex;align-items:center;justify-content:center;height:104px;">
-        <svg viewBox="0 0 200 110" width="100%" height="100%"
-             style="filter: drop-shadow(0 0 6px {accent_hex}55);">
+      <div style="background:linear-gradient(180deg, #0E1620 0%, #060A11 100%);
+                  border:1px solid rgba(255,255,255,0.08);border-radius:4px;
+                  padding:8px;display:flex;align-items:center;justify-content:center;height:120px;">
+        <svg viewBox="0 0 240 130" width="100%" height="100%">
           {paths_svg}
         </svg>
       </div>
@@ -931,6 +950,65 @@ def _iso_component(label: str, code: str, spec: str, paths_svg: str, accent: str
       </div>
     </div>
     """
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Material-accurate SVG defs · used across all isometric component cards
+#
+# Each material is a linearGradient/filter the SVG paths reference by id.
+# This produces matte vinyl, brushed aluminum, etc. — not neon outlines.
+# ─────────────────────────────────────────────────────────────────────
+MATERIAL_DEFS = """
+  <defs>
+    <!-- Beige matte vinyl -->
+    <linearGradient id="mat-vinyl-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9DDC2"/>
+      <stop offset="1" stop-color="#B59C76"/>
+    </linearGradient>
+    <linearGradient id="mat-vinyl-side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#B59C76"/>
+      <stop offset="1" stop-color="#6F5B3B"/>
+    </linearGradient>
+    <linearGradient id="mat-vinyl-edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8E7549"/>
+      <stop offset="1" stop-color="#4D3D24"/>
+    </linearGradient>
+
+    <!-- Brushed aluminum -->
+    <linearGradient id="mat-alu-top" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"   stop-color="#A8B0B8"/>
+      <stop offset="0.4" stop-color="#E2E7EC"/>
+      <stop offset="0.7" stop-color="#9CA5AD"/>
+      <stop offset="1"   stop-color="#C9D0D6"/>
+    </linearGradient>
+    <linearGradient id="mat-alu-side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7E8790"/>
+      <stop offset="1" stop-color="#3A4148"/>
+    </linearGradient>
+    <linearGradient id="mat-alu-edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A5158"/>
+      <stop offset="1" stop-color="#22272C"/>
+    </linearGradient>
+
+    <!-- Matte black baked-enamel (gutters/downspouts) -->
+    <linearGradient id="mat-black-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A3F44"/>
+      <stop offset="1" stop-color="#15181B"/>
+    </linearGradient>
+
+    <!-- Subtle shadow filter -->
+    <filter id="iso-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.2"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Brushed-metal hatch overlay -->
+    <pattern id="brushed-alu" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(20)">
+      <line x1="0" y1="0" x2="3" y2="0" stroke="#FFFFFF" stroke-width="0.15" opacity="0.35"/>
+    </pattern>
+  </defs>"""
 
 
 def page_assembly_catalog(a: dict) -> str:
@@ -943,86 +1021,145 @@ def page_assembly_catalog(a: dict) -> str:
     p = a["project"]
 
     # ──────────────────────────── Isometric SVG library ────────────────────────────
-    # All paths use a 200×110 viewBox.  Stroke colors are baked here so we can vary
-    # cyan / amber per card without rebuilding the whole SVG tree.
+    # Each path uses a 240×130 viewBox. Material gradients are defined once in
+    # MATERIAL_DEFS and referenced by id — vinyl reads matte beige, aluminum
+    # reads brushed metal, with subtle drop shadows for depth.
 
-    j_channel = """
-      <!-- J-Channel : isometric U-receiver -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M30 80 L130 30 L170 50 L170 76 L162 80 L162 56 L130 41 L38 86 Z"
-              fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.6"/>
-        <path d="M30 80 L162 80 L170 76" stroke="#4DF6FF" stroke-width="1.4"/>
-        <path d="M38 86 L130 41" stroke="#4DF6FF" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
-        <path d="M150 72 L150 64 M155 70 L155 62 M160 68 L160 60" stroke="#4DF6FF" stroke-width="1.0" opacity="0.5"/>
+    j_channel = MATERIAL_DEFS + """
+      <!-- J-Channel · 3/4" vinyl receiver — extruded U-section -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top face (visible) -->
+        <path d="M28 78 L184 22 L210 36 L54 92 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Front face (under the receiver lip) -->
+        <path d="M54 92 L210 36 L210 50 L54 106 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Inner channel slot -->
+        <path d="M58 90 L182 46 L198 54 L74 98 Z" fill="url(#mat-vinyl-edge)" opacity="0.85"/>
+        <!-- Receiver lip (the J-curl) -->
+        <path d="M48 96 L188 40 L196 44 L196 62 L190 64 L190 50 L52 106 Z"
+              fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.55"/>
+        <!-- Subtle highlight ridge -->
+        <path d="M40 82 L196 26" stroke="#FFFFFF" stroke-width="0.5" opacity="0.45"/>
       </g>"""
 
-    f_channel = """
-      <!-- F-Channel : isometric step section -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M30 84 L120 36 L172 56 L172 64 L130 48 L130 58 L86 80 L86 86 Z"
-              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
-        <path d="M86 80 L172 64" stroke="#FFB020" stroke-width="1.0" stroke-dasharray="2 3" opacity="0.7"/>
-        <path d="M40 88 L130 48" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
-        <circle cx="50" cy="84" r="1.2" fill="#FFB020"/>
-        <circle cx="78" cy="70" r="1.2" fill="#FFB020"/>
-        <circle cx="106" cy="56" r="1.2" fill="#FFB020"/>
+    f_channel = MATERIAL_DEFS + """
+      <!-- F-Channel · vinyl soffit receiver — extruded step section -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top face of upper flange -->
+        <path d="M22 80 L130 32 L188 56 L80 104 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Vertical drop face -->
+        <path d="M80 104 L188 56 L188 70 L80 118 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Lower receiver lip (the F-pocket) -->
+        <path d="M120 96 L210 58 L218 62 L218 70 L210 74 L210 66 L128 102 Z"
+              fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.55"/>
+        <!-- Receiver channel slot (inner) -->
+        <path d="M132 96 L208 64 L214 66 L138 100 Z" fill="url(#mat-vinyl-edge)" opacity="0.85"/>
+        <!-- Top highlight -->
+        <path d="M34 84 L184 38" stroke="#FFFFFF" stroke-width="0.5" opacity="0.45"/>
       </g>"""
 
-    starter_strip = """
-      <!-- Starter Strip : long ribbon with anchor flange -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M22 70 L160 30 L178 38 L178 50 L160 42 L24 82 Z"
-              fill="rgba(0,255,156,0.12)" stroke="#00FF9C" stroke-width="1.6"/>
-        <path d="M24 82 L24 88 L160 48 L160 42" stroke="#00FF9C" stroke-width="1.4"/>
-        <path d="M40 76 L44 68 M70 62 L74 54 M100 48 L104 40 M130 34 L134 26"
-              stroke="#00FF9C" stroke-width="1.0" opacity="0.6"/>
+    starter_strip = MATERIAL_DEFS + """
+      <!-- Starter Strip · 10' aluminum lock-in ribbon -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top face -->
+        <path d="M14 76 L196 18 L224 30 L42 88 Z" fill="url(#mat-alu-top)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Brushed-metal hatch -->
+        <path d="M14 76 L196 18 L224 30 L42 88 Z" fill="url(#brushed-alu)"/>
+        <!-- Front face -->
+        <path d="M42 88 L224 30 L224 42 L42 100 Z" fill="url(#mat-alu-side)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Lock-in barb (lower lip) -->
+        <path d="M44 96 L218 38 L226 42 L226 50 L222 52 L222 46 L48 102 Z"
+              fill="url(#mat-alu-side)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Nail hole punches -->
+        <ellipse cx="74"  cy="71" rx="2.4" ry="1.4" fill="#15181B"/>
+        <ellipse cx="112" cy="60" rx="2.4" ry="1.4" fill="#15181B"/>
+        <ellipse cx="150" cy="48" rx="2.4" ry="1.4" fill="#15181B"/>
+        <ellipse cx="188" cy="36" rx="2.4" ry="1.4" fill="#15181B"/>
+        <!-- Top highlight -->
+        <path d="M22 80 L218 24" stroke="#FFFFFF" stroke-width="0.6" opacity="0.55"/>
       </g>"""
 
-    finish_trim = """
-      <!-- Finish Trim : capping bead -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M28 80 L120 32 L172 56 L172 72 L162 72 L162 60 L130 46 L40 88 Z"
-              fill="rgba(255,45,120,0.12)" stroke="#FF2D78" stroke-width="1.6"/>
-        <ellipse cx="100" cy="56" rx="58" ry="6" fill="none" stroke="#FF2D78" stroke-width="0.9" opacity="0.7"/>
-        <path d="M40 88 L162 60" stroke="#FF2D78" stroke-width="0.9" stroke-dasharray="1 3" opacity="0.6"/>
+    finish_trim = MATERIAL_DEFS + """
+      <!-- Finish / Undersill Trim · vinyl cap bead -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top cap (rounded bead) -->
+        <path d="M28 84 L190 24 L218 38 L56 98 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Front face -->
+        <path d="M56 98 L218 38 L218 56 L56 116 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Cap profile bead (slight rounded ridge) -->
+        <path d="M36 88 L192 32 L220 44 L66 100" fill="none" stroke="#FFFFFF" stroke-width="0.6" opacity="0.5"/>
+        <!-- Lock-in barb -->
+        <path d="M62 104 L210 50 L218 54 L218 64 L62 116 Z" fill="url(#mat-vinyl-edge)" opacity="0.7"/>
       </g>"""
 
-    drip_edge = """
-      <!-- Drip Edge : L-flashing -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M28 72 L132 28 L170 44 L168 88 L160 92 L160 56 L36 100 Z"
-              fill="rgba(255,123,0,0.12)" stroke="#FF7B00" stroke-width="1.6"/>
-        <path d="M36 100 L160 56" stroke="#FF7B00" stroke-width="1.0" opacity="0.6"/>
-        <path d="M40 96 L40 100 M70 84 L70 88 M100 72 L100 76 M130 60 L130 64"
-              stroke="#FF7B00" stroke-width="1.0" opacity="0.7"/>
+    drip_edge = MATERIAL_DEFS + """
+      <!-- Drip Edge · 5" L-flashing in 0.019" aluminum -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top horizontal face (lays on decking) -->
+        <path d="M20 56 L160 16 L196 30 L56 70 Z" fill="url(#mat-alu-top)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Brushed hatch overlay -->
+        <path d="M20 56 L160 16 L196 30 L56 70 Z" fill="url(#brushed-alu)"/>
+        <!-- Vertical drop face (the L) -->
+        <path d="M56 70 L196 30 L196 110 L56 118 Z" fill="url(#mat-alu-side)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Brushed hatch on side -->
+        <path d="M56 70 L196 30 L196 110 L56 118 Z" fill="url(#brushed-alu)"/>
+        <!-- Hemmed kick-out at the bottom -->
+        <path d="M56 118 L196 110 L208 116 L68 124 Z" fill="url(#mat-alu-edge)" stroke="#1F262C" stroke-width="0.5"/>
+        <!-- Top edge highlight -->
+        <path d="M22 58 L186 22" stroke="#FFFFFF" stroke-width="0.6" opacity="0.55"/>
+        <!-- Bend crease shadow -->
+        <path d="M56 70 L196 30" stroke="#000" stroke-width="0.5" opacity="0.55"/>
       </g>"""
 
-    soffit_panel = """
-      <!-- Soffit Panel : grid -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M22 86 L132 26 L186 50 L78 100 Z"
-              fill="rgba(77,246,255,0.08)" stroke="#4DF6FF" stroke-width="1.4"/>
-        <path d="M50 84 L156 32 M70 88 L174 38 M90 92 L184 46"
-              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
-        <path d="M104 32 L62 88 M130 38 L88 94 M156 46 L114 100"
-              stroke="#4DF6FF" stroke-width="0.7" opacity="0.55"/>
+    soffit_panel = MATERIAL_DEFS + """
+      <!-- Vented Soffit Panel · 12' vinyl, molded vent slots -->
+      <g filter="url(#iso-shadow)">
+        <!-- Panel face -->
+        <path d="M14 96 L138 18 L226 50 L102 128 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Panel edge (depth) -->
+        <path d="M102 128 L226 50 L226 60 L102 138 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.5"/>
+        <!-- Vent slot strips — three rows of perforations -->
+        <g fill="#2A2114" opacity="0.85">
+          <path d="M38 92 L154 36 L160 39 L44 95 Z"/>
+          <path d="M64 104 L180 48 L186 51 L70 107 Z"/>
+          <path d="M88 116 L204 60 L210 63 L94 119 Z"/>
+        </g>
+        <!-- Brushed highlight ridges -->
+        <path d="M30 96 L150 32 M58 110 L178 46 M88 122 L208 58"
+              stroke="#FFFFFF" stroke-width="0.35" opacity="0.5"/>
       </g>"""
 
-    inside_corner = """
-      <!-- Inside Corner Post -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M70 18 L70 92 L40 100 L40 28 Z" fill="rgba(0,255,156,0.10)" stroke="#00FF9C" stroke-width="1.4"/>
-        <path d="M70 18 L100 28 L100 100 L70 92" fill="rgba(77,246,255,0.10)" stroke="#4DF6FF" stroke-width="1.4"/>
-        <path d="M55 22 L55 96 M85 24 L85 96" stroke="#fff" stroke-width="0.6" opacity="0.3"/>
+    inside_corner = MATERIAL_DEFS + """
+      <!-- Inside Corner Post · double-channel vinyl -->
+      <g filter="url(#iso-shadow)">
+        <!-- Left web -->
+        <path d="M60 16 L60 116 L34 124 L34 24 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Right web -->
+        <path d="M60 16 L96 28 L96 128 L60 116 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Inner V-throat -->
+        <path d="M60 16 L60 116 L78 108 L78 22 Z" fill="url(#mat-vinyl-edge)" opacity="0.9"/>
+        <!-- Receiver channel left -->
+        <path d="M40 22 L40 122 L34 124 L34 24 Z" fill="url(#mat-vinyl-edge)" opacity="0.8"/>
+        <!-- Receiver channel right -->
+        <path d="M90 26 L90 126 L96 128 L96 28 Z" fill="url(#mat-vinyl-edge)" opacity="0.8"/>
+        <!-- Crease highlights -->
+        <path d="M60 16 L60 116" stroke="#FFFFFF" stroke-width="0.5" opacity="0.5"/>
+        <path d="M34 24 L34 124" stroke="#FFFFFF" stroke-width="0.4" opacity="0.4"/>
       </g>"""
 
-    utility_trim = """
-      <!-- Utility Trim : channel cap -->
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M26 78 L130 30 L172 50 L150 56 L130 46 L40 86 Z"
-              fill="rgba(255,176,32,0.12)" stroke="#FFB020" stroke-width="1.6"/>
-        <path d="M40 86 L40 92 L150 50 L150 56" stroke="#FFB020" stroke-width="1.4"/>
-        <path d="M80 70 L86 60 M108 58 L114 48 M134 46 L140 36" stroke="#FFB020" stroke-width="1.0" opacity="0.6"/>
+    utility_trim = MATERIAL_DEFS + """
+      <!-- Utility / Cap Trim · vinyl channel cap -->
+      <g filter="url(#iso-shadow)">
+        <!-- Top face -->
+        <path d="M22 82 L170 26 L210 42 L62 98 Z" fill="url(#mat-vinyl-top)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Front face -->
+        <path d="M62 98 L210 42 L210 58 L62 114 Z" fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.6"/>
+        <!-- Lock-in barb -->
+        <path d="M70 104 L202 52 L210 56 L210 64 L202 66 L202 60 L74 108 Z"
+              fill="url(#mat-vinyl-side)" stroke="#3D2F1A" stroke-width="0.55"/>
+        <!-- Receiver slot under the cap -->
+        <path d="M76 104 L200 60 L206 62 L82 110 Z" fill="url(#mat-vinyl-edge)" opacity="0.85"/>
+        <!-- Highlight -->
+        <path d="M32 86 L196 30" stroke="#FFFFFF" stroke-width="0.5" opacity="0.45"/>
       </g>"""
 
     cards = [
