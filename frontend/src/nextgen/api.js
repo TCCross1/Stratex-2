@@ -104,9 +104,25 @@ export const nxListHabitatGrants = (propertyId) =>
 export const nxRevokeGrant = (grantId) =>
   api.post(`${V1}/habitat-grants/${grantId}/revoke`).then((r) => r.data);
 export const nxHabitatReportHtmlUrl = (propertyId, template) => {
+  // NOTE: legacy caller shape — returns a full URL. New callers should prefer
+  // nxOpenReportHtml() below which does NOT embed the bearer token in the URL.
   const t = localStorage.getItem("stratex_token");
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
   return `${BACKEND_URL}/api${V1}/properties/${propertyId}/report/${template}/html?_t=${t}`;
+};
+// Directive 009: fetch HTML with Authorization header (no bearer in URL/history/referer),
+// then open the resulting blob in a new tab.
+export const nxOpenReportHtml = async (propertyId, template) => {
+  const r = await api.get(`${V1}/properties/${propertyId}/report/${template}/html`, {
+    responseType: "text",
+    headers: { Accept: "text/html" },
+  });
+  const blob = new Blob([r.data], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank", "noopener,noreferrer");
+  // Best-effort cleanup — revoke after tab loads (or ~2 min max).
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+  return w;
 };
 // Public — no auth
 export const nxHabitatPublicRead = (token) => {

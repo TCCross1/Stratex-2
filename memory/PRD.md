@@ -163,6 +163,7 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - Demo flow: **READY for live pitch** (`/` → "New Drone Scan" → analysis → PDF)
 - Production deployment (stratexdrone.com): **stale** — user must redeploy
 - NextGen Phase 1a: **DELIVERED** · 19/19 backend tests · full UI happy path passed (iteration_22)
+- **Directive 009 (Feb 2026): DELIVERED** — STRATEX CORE Premium Command Interface (presentation-layer rebuild only). New responsive shell (desktop rail + mobile bottom nav + More sheet), premium Home / Missions / Reports Binder / AWE / Habitat / Passport / Organization pages, new STRATEX CORE brand SVG assets. 100% pass on iteration_25 across desktop (1440x900) + mobile (390x844). Backend/DB/business logic untouched. Legacy untouched.
 
 ## Architecture
 - `/app/backend/` — FastAPI, MongoDB, Stripe, Emergent LLM key (Gemini), Twilio

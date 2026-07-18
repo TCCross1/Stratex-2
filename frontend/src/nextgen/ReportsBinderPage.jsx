@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   nxReportTemplates, nxListProperties, nxPropertyReport,
-  nxHabitatReportHtmlUrl,
+  nxOpenReportHtml,
 } from "@/nextgen/api";
 
 /* Reports Binder (Directive 009 · replaces ReportsStub).
@@ -135,9 +135,8 @@ export default function ReportsBinderPage() {
             <span className="rule" />
             <a
               className="nx-card-action"
-              href={nxHabitatReportHtmlUrl(pid, selected)}
-              target="_blank"
-              rel="noreferrer"
+              href="#"
+              onClick={(e) => { e.preventDefault(); nxOpenReportHtml(pid, selected); }}
               data-testid={`nx-report-html-${selected}`}
             >
               Open HTML <ExternalLink size={13} strokeWidth={1.8} />

@@ -7,7 +7,7 @@ import {
 import {
   nxListProperties, nxPropertyPassport, nxPropertyTimeline,
   nxPropertyReport, nxReportTemplates, nxPropertyAwe,
-  nxIssueHabitatLink, nxHabitatReportHtmlUrl,
+  nxIssueHabitatLink, nxOpenReportHtml,
 } from "@/nextgen/api";
 
 /* Property Passport (Directive 009 restyle).
@@ -171,7 +171,8 @@ export default function PassportPage() {
                 {linkBusy ? "Issuing…" : "Share with Homeowner"}
               </button>
               <a className="nx-btn ghost" target="_blank" rel="noreferrer"
-                href={nxHabitatReportHtmlUrl(pid, template)}
+                href="#"
+                onClick={(e) => { e.preventDefault(); nxOpenReportHtml(pid, template); }}
                 data-testid="nx-open-html-report">
                 <ExternalLink size={14} /> Open HTML Report
               </a>

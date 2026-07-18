@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   nxListProperties, nxIssueHabitatLink, nxListHabitatGrants,
-  nxRevokeGrant, nxHabitatReportHtmlUrl,
+  nxRevokeGrant, nxOpenReportHtml,
 } from "@/nextgen/api";
 
 /* Habitat Sync — internal control surface (Directive 009 · replaces HabitatStub).
@@ -148,8 +148,8 @@ export default function HabitatPage() {
             <span className="rule" />
             <a
               className="nx-card-action"
-              href={nxHabitatReportHtmlUrl(pid, "homeowner_summary")}
-              target="_blank" rel="noreferrer"
+              href="#"
+              onClick={(e) => { e.preventDefault(); nxOpenReportHtml(pid, "homeowner_summary"); }}
               data-testid="nx-habitat-preview-link"
             >
               Open HTML Preview <ExternalLink size={13} strokeWidth={1.8} />
