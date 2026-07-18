@@ -2647,6 +2647,10 @@ app.include_router(claim_router)
 from routes.claim_cosign import router as cosign_router  # noqa: E402
 app.include_router(cosign_router)
 
+# Executive-review documents (Blueprint + Appendix + PDF) — preview only
+from routes.blueprint import router as blueprint_router  # noqa: E402
+app.include_router(blueprint_router)
+
 # Live ops bus — WebSocket push for storm-watcher + ATC + regional storms
 from routes.live_ops import router as live_ops_router, broadcast_loop  # noqa: E402
 app.include_router(live_ops_router)
