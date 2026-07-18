@@ -44,6 +44,8 @@ from routes import suppliers as _suppliers_mod  # noqa: F401
 from routes import ops_dashboard as _ops_mod  # noqa: F401
 # Sales deck — Strategic Briefing PDF for Doug Piercy
 from routes import pitch_deck as _pitch_mod  # noqa: F401
+# NextGen Foundation — Blueprint v1.2 / SD v1.0 / Data Model v1.0 (Phase 1a)
+import nextgen as _nextgen_mod  # noqa: F401
 from stratex_auth import (
     hash_password, verify_password,
     create_access_token, create_refresh_token, decode_token,

@@ -1,0 +1,44 @@
+{
+  "summary": "Directive 005 · Phase 1a NextGen Foundation — end-to-end test PASSED. 19/19 backend pytest cases green and full UI happy path (Overview→Properties→New Mission→Advance→Audit) verified. Legacy Landing and CEO portal login gate unaffected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "NewMission property <select>",
+        "issues": [
+          "React console warning: 'In HTML, <span> cannot be a child of <option>' triggering a hydration error notice. Source is likely a global shadcn Select wrapper that injects a span into the <option>. Cosmetic/dev-only warning, does not affect flow, but should be resolved before Phase 1b."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_nextgen_phase1a.py",
+    "/app/test_reports/pytest/iter22_nextgen_phase1a.xml"
+  ],
+  "action_items": [
+    "Optional: eliminate hydration warning on NewMission property <select> by replacing raw <option> children (currently plain text — warning appears to come from a global shadcn Select portal). No functional impact."
+  ],
+  "critical_code_review_comments": [
+    "nextgen/db.py imports `core.db` — coupling is acceptable Phase 1a but should evolve into a dedicated NextGen connection when Phase 1c introduces the immutable Passport ledger.",
+    "resolve_property returns decision=auto_match when 1 candidate matches, but does not score candidates — Phase 1b should incorporate a fuzzy score threshold as designed in SD-002.",
+    "advance_mission uses `body.to_stage`; caller currently sends stage+1. Consider server-side `next_stage_only` semantics (accept no body → auto-advance by 1) to prevent accidental multi-stage jumps.",
+    "audit_events writes are best-effort (no transaction with the parent mutation). Phase 1c should introduce outbox pattern or transactional write to keep audit trail truly immutable/complete under partial failure."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_nextgen_phase1a.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19)",
+    "frontend": "100% — all Phase 1a UI acceptance criteria met, incl. legacy Landing + /ceo/login non-regression"
+  },
+  "test_credentials": "admin@stratex.io / StratexAdmin!2026 · TOTP fetched via GET /api/auth/totp-debug?email=… (DEMO_MFA_BYPASS=1). Token stored in localStorage['stratex_token'].",
+  "seed_data_creation": "Backend pytest creates 1 property (TEST_<epoch> Blueprint Ln) + 1 dayscan mission per run. UI test creates 1 additional TEST_<epoch> UI Ave property + 1 dayscan mission. All test data uses TEST_ prefix for identification.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend base URL is https://stratex-quant.preview.emergentagent.com. NextGen mounts under /api/nextgen/*. Admin login via TOTP-debug bypass is stable. Use localStorage key `stratex_token` for UI auth. Property duplicate check uses address_hash keyed on line1+line2+city+region+postal+country+unit_label; must match exactly for 409. Advance is forward-only and capped at 15. All UI data-testids are prefixed nx-*."
+}

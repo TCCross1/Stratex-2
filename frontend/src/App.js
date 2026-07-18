@@ -56,6 +56,14 @@ import CeoOpsPage from "@/pages/CeoOpsPage";
 import GmOpsPage from "@/pages/GmOpsPage";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
+// NextGen shell + workspaces — Directive 005 · Phase 1a
+import NextGenShell from "@/nextgen/NextGenShell";
+import NextGenOverview from "@/nextgen/OverviewPage";
+import NextGenProperties from "@/nextgen/PropertiesPage";
+import { MissionsList as NxMissionsList, NewMission as NxNewMission, MissionDetailRoute as NxMissionDetail } from "@/nextgen/MissionsPage";
+import NextGenAudit from "@/nextgen/AuditPage";
+import { PassportStub, AweStub, ReportsStub, HabitatStub, OrgStub } from "@/nextgen/StubPages";
+
 function Protected({ role, children }) {
   const { user } = useAuth();
   const loc = useLocation();
@@ -68,7 +76,8 @@ function Protected({ role, children }) {
   // CEO is an isolated portal — only ceo role can enter
   if (role === "ceo" && user.role !== "ceo") return <Navigate to="/" replace/>;
   // CEO role accessing non-CEO routes → bounce to /ceo/command (clean isolation)
-  if (user.role === "ceo" && !loc.pathname.startsWith("/ceo")) return <Navigate to="/ceo/command" replace/>;
+  // EXCEPT NextGen routes, which CEO may access as executive owner.
+  if (user.role === "ceo" && !loc.pathname.startsWith("/ceo") && !loc.pathname.startsWith("/nextgen")) return <Navigate to="/ceo/command" replace/>;
   // Admin (incl. investor tour-mode) gets full-app access — passes any role gate
   if (role && role !== "ceo" && user.role !== role && user.role !== "admin") {
     const home = user.role === "operator" ? "/operator" : "/contractor";
@@ -88,11 +97,13 @@ function AppShell() {
   }
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
-  const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea;
+  const isNextGenArea = loc.pathname.startsWith("/nextgen");
+  const isDemo = loc.pathname.startsWith("/demo/");
+  const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea || isNextGenArea;
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
-      {!isCeoArea && !isDemo && <InvestorAssistant/>}
+      {!isCeoArea && !isNextGenArea && !isDemo && <InvestorAssistant/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
         <Route path="/deck" element={<CommandDeck/>}/>
@@ -172,6 +183,22 @@ function AppShell() {
         <Route path="/gm/ops" element={<Protected role="gm"><GmOpsPage/></Protected>}/>
         <Route path="/admin/fleet" element={<Protected role="admin"><MduFleetPortal/></Protected>}/>
         <Route path="/admin/blacklist" element={<Protected role="admin"><BlacklistMatrix/></Protected>}/>
+
+        {/* ── NextGen Foundation (Directive 005 · Phase 1a) ────────────── */}
+        {/* Isolated at /nextgen/*. Legacy surfaces above are unaffected.  */}
+        <Route path="/nextgen" element={<Protected><NextGenShell/></Protected>}>
+          <Route index element={<NextGenOverview/>}/>
+          <Route path="properties" element={<NextGenProperties/>}/>
+          <Route path="missions" element={<NxMissionsList/>}/>
+          <Route path="missions/new" element={<NxNewMission/>}/>
+          <Route path="missions/:id" element={<NxMissionDetail/>}/>
+          <Route path="passport" element={<PassportStub/>}/>
+          <Route path="awe" element={<AweStub/>}/>
+          <Route path="reports" element={<ReportsStub/>}/>
+          <Route path="habitat" element={<HabitatStub/>}/>
+          <Route path="audit" element={<NextGenAudit/>}/>
+          <Route path="org" element={<OrgStub/>}/>
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>
