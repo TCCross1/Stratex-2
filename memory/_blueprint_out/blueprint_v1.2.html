@@ -1,0 +1,1122 @@
+
+<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>STRATEX Core NextGen Architecture Blueprint v1.2</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 22mm 18mm 22mm 18mm;
+    @top-left {
+      content: "STRATEX™ · CROSS AI SOFTWARES INC. · CONFIDENTIAL — PROPRIETARY";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.14em;
+    }
+    @top-right {
+      content: "NextGen Architecture Blueprint v1.2";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.10em;
+    }
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667;
+    }
+  }
+  @page :first {
+    margin: 0;
+    @top-left { content: ""; }
+    @top-right { content: ""; }
+    @bottom-center { content: ""; }
+  }
+  html, body {
+    color: #0F1620; background: #FFFFFF;
+    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .cover {
+    page-break-after: always;
+    padding: 0; margin: 0;
+    background: linear-gradient(180deg, #02060B 0%, #050B16 60%, #061826 100%);
+    color: #EAF2FB;
+    min-height: 100vh; height: 100vh;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 55mm 22mm 22mm 22mm; box-sizing: border-box;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(212,184,106,0.14) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .cover-top { position: relative; z-index: 1; }
+  .cover-bottom { position: relative; z-index: 1; }
+  .cover .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.32em; font-size: 9pt; text-transform: uppercase;
+    color: #7EE9FF;
+  }
+  .cover h1 {
+    font-size: 46pt; line-height: 1.02; letter-spacing: -0.01em;
+    margin: 10mm 0 4mm 0; color: #FFFFFF; font-weight: 700;
+  }
+  .cover .accent { color: #FFB020; text-shadow: 0 0 24px rgba(255,176,32,0.35); }
+  .cover .subtitle {
+    font-size: 14pt; line-height: 1.4;
+    color: #C5D4E0; margin-top: 4mm; max-width: 140mm;
+  }
+  .cover .meta {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.16em; font-size: 9pt;
+    color: #7EE9FF; margin-top: 6mm;
+  }
+  .cover .status-pill {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid rgba(255,176,32,0.6); color: #FFB020;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; margin-top: 12mm;
+  }
+  .cover .band {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    padding-top: 6mm; display: flex; justify-content: space-between;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; color: #98A6B4;
+  }
+  .toc-page { page-break-before: always; page-break-after: always; }
+  .toc-page h1 {
+    font-size: 22pt; letter-spacing: -0.005em; margin-bottom: 6mm;
+    border-bottom: 2px solid #0F1620; padding-bottom: 3mm;
+  }
+  ul.toc { list-style: none; padding-left: 0; margin: 4mm 0; }
+  ul.toc li { margin: 1.5mm 0; }
+  ul.toc li.toc-l1 { font-weight: 700; font-size: 11pt; margin-top: 3mm; }
+  ul.toc li.toc-l2 { padding-left: 8mm; font-size: 10pt; color: #333; }
+  ul.toc li.toc-l3 { padding-left: 16mm; font-size: 9.5pt; color: #555; }
+
+  h1 { font-size: 20pt; margin: 8mm 0 3mm 0; page-break-after: avoid; color: #0F1620; }
+  h2 { font-size: 14pt; margin: 6mm 0 2.5mm 0; page-break-after: avoid;
+        border-bottom: 1px solid #C4CFD9; padding-bottom: 2mm; color: #0F1620; }
+  h3 { font-size: 12pt; margin: 5mm 0 2mm 0; page-break-after: avoid; color: #223140; }
+  h4 { font-size: 11pt; margin: 4mm 0 1.5mm 0; page-break-after: avoid; color: #223140; }
+  p { margin: 0 0 3mm 0; }
+  ul, ol { margin: 0 0 4mm 6mm; }
+  li { margin: 1mm 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 3mm 0 5mm 0;
+    font-size: 9pt; page-break-inside: avoid;
+  }
+  thead th {
+    background: #0F1620; color: #E9F4FF; text-align: left;
+    padding: 6px 8px; letter-spacing: 0.08em; font-size: 8.5pt;
+    text-transform: uppercase;
+  }
+  tbody td {
+    border-bottom: 1px solid #D8DEE5; padding: 5px 8px; vertical-align: top;
+  }
+  tbody tr:nth-child(even) td { background: #F5F8FB; }
+  code {
+    background: #0F1620; color: #7EE9FF; padding: 1px 4px; border-radius: 3px;
+    font-family: 'Courier New', monospace; font-size: 9pt;
+  }
+  pre {
+    background: #0F1620; color: #E9F4FF; padding: 8px 10px; border-radius: 4px;
+    overflow-x: auto; font-family: 'Courier New', monospace; font-size: 8.5pt;
+    line-height: 1.35; page-break-inside: avoid;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  hr { border: 0; border-top: 1px solid #C4CFD9; margin: 8mm 0; }
+  strong { color: #0F1620; }
+  em { color: #223140; }
+</style></head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+  <div class="cover-top">
+    <div class="kicker">// CROSS AI SOFTWARES INC. · EXECUTIVE ARCHITECTURE</div>
+    <h1>NextGen<br/>Architecture<br/><span class="accent">Blueprint</span></h1>
+    <div class="subtitle">
+      Residential Property Intelligence Operating System —
+      Stratex Core · Stratex Passport · Stratex Habitat.
+      Version 1.1 executive review package incorporating 20 v1.1 corrections + 10 v1.2 consistency corrections.
+    </div>
+    <div class="status-pill">STATUS · REVISED v1.2 · AWAITING EXECUTIVE APPROVAL</div>
+    <div class="meta">
+      VERSION 1.2 · REVISED February 26, 2026 · CONFIDENTIAL — PROPRIETARY
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div class="band">
+      <span>STRATEX™ · A CROSS AI SOFTWARES INC. PRODUCT</span>
+      <span>PREPARED BY TC · AI PRODUCT MANAGER</span>
+    </div>
+  </div>
+</section>
+
+<!-- TABLE OF CONTENTS -->
+<section class="toc-page">
+  <h1>Table of Contents</h1>
+  <ul class='toc'><li class="toc-l1">STRATEX CORE — NEXTGEN ARCHITECTURE BLUEPRINT v1.1</li><li class="toc-l2">Executive Summary (One Page)</li><li class="toc-l3">What v1.1 is</li><li class="toc-l3">The four architectural shifts that matter</li><li class="toc-l3">New sections introduced in v1.1</li><li class="toc-l3">Deliverables included in this package</li><li class="toc-l3">Approval status</li><li class="toc-l3">The single sentence answer to "what changed"</li><li class="toc-l1">STRATEX CORE — NEXTGEN ARCHITECTURE BLUEPRINT v1.2</li><li class="toc-l2">0. EXECUTIVE FRAMING</li><li class="toc-l2">1. APPLICATION STATE MODEL <em>(unchanged from v1.0)</em></li><li class="toc-l2">2. MODULE HIERARCHY <em>(unchanged)</em></li><li class="toc-l2">3. NAVIGATION HIERARCHY</li><li class="toc-l2">4. DATABASE DOMAINS</li><li class="toc-l2">5. AI WORKFORCE ARCHITECTURE — REVISED</li><li class="toc-l3">5.1 Vendor-neutral provider interfaces <em>(correction §1)</em></li><li class="toc-l3">5.2 Agent-run audit record <em>(strengthened per §1)</em></li><li class="toc-l3">5.3 Twenty-four logical agents</li><li class="toc-l2">6. API BOUNDARIES</li><li class="toc-l2">7. EVENT FLOW &amp; STATE MANAGEMENT</li><li class="toc-l3">7.1 Frontend state</li><li class="toc-l3">7.2 Critical event delivery — durable <em>(correction §11)</em></li><li class="toc-l2">8. SYNCHRONIZATION FLOW</li><li class="toc-l2">9. SECURITY MODEL — REVISED</li><li class="toc-l3">9.1 Public passport access <em>(correction §6)</em></li><li class="toc-l3">9.2 MFA scope <em>(correction §7)</em></li><li class="toc-l3">9.3 Roles &amp; authorization</li><li class="toc-l3">9.4 Tenant isolation for object storage <em>(correction §12)</em></li><li class="toc-l3">9.5 Provenance chain</li><li class="toc-l3">9.6 Observability</li><li class="toc-l2">10. HUMAN QA — RISK-TIERED <em>(correction §5)</em></li><li class="toc-l3">Tier 1 — Automated informational</li><li class="toc-l3">Tier 2 — Contractor review</li><li class="toc-l3">Tier 3 — High-consequence (non-engineering)</li><li class="toc-l3">Tier 4 — Engineering-controlled (licensed professional required)</li><li class="toc-l3">Finding schema (mandatory fields)</li><li class="toc-l2">11. PROPERTY PASSPORT AUTHORITY — REVISED</li><li class="toc-l3">11.1 Concurrency: optimistic with explicit rebase <em>(correction §8)</em></li><li class="toc-l3">11.2 Property identity resolution <em>(correction §14 — new)</em></li><li class="toc-l3">11.3 Property lifecycle operations <em>(correction §5 · v1.2)</em></li><li class="toc-l2">12. DIGITAL TWIN ARCHITECTURE — REVISED</li><li class="toc-l3">12.1 Layered canonical package <em>(correction §9)</em></li><li class="toc-l3">12.2 Thermal-to-3D registration — calibrated pipeline <em>(correction §2)</em></li><li class="toc-l3">12.3 Vendor-neutral processors <em>(unchanged from v1.0)</em></li><li class="toc-l3">12.4 Performance validation targets <em>(correction §10)</em></li><li class="toc-l2">13. DATA RETENTION, DELETION &amp; LEGAL HOLD <em>(correction §13 — new)</em></li><li class="toc-l3">Data classes + retention</li><li class="toc-l3">Policies</li><li class="toc-l2">14. ORIGINAL SENSOR DATA PRESERVATION <em>(correction §3)</em></li><li class="toc-l2">15. PROVENANCE, CONFIDENCE &amp; VERIFICATION LANGUAGE <em>(corrections §17 + §18)</em></li><li class="toc-l3">15.1 Distinct fields (correction §17)</li><li class="toc-l3">15.2 Provenance chip taxonomy (correction §18)</li><li class="toc-l3">15.3 Truth Score (unchanged from Appendix Q4)</li><li class="toc-l2">16. PRODUCT-COST &amp; PROCESSING-GATE ARCHITECTURE <em>(correction §19 — new)</em></li><li class="toc-l3">Product definitions</li><li class="toc-l3">Per-product policy fields (mandatory)</li><li class="toc-l3">Orchestrator responsibilities</li><li class="toc-l2">17. FORMAL VALIDATION PROGRAM <em>(correction §20 — new)</em></li><li class="toc-l3">Field-validation program (Phase 2+)</li><li class="toc-l3">Acceptance thresholds</li><li class="toc-l3">17.1 AWE Index™ release-state controls <em>(correction §8 · v1.2)</em></li><li class="toc-l2">18. VISUAL DESIGN PRINCIPLES <em>(unchanged from v1.0)</em></li><li class="toc-l2">19. EXECUTIVE ARCHITECTURE REVIEW <em>(unchanged from v1.0 §12)</em></li><li class="toc-l2">20. PHASE 1 SCOPE CONTROL <em>(unchanged, reinforced)</em></li><li class="toc-l3">20.1 Phase 1 demonstration-data and UI honesty rules <em>(correction §9 · v1.2)</em></li><li class="toc-l2">20.2 Implementation authorization boundary <em>(correction §10 · v1.2)</em></li><li class="toc-l2">21. FORBIDDEN LIST (Phase 1 non-scope) <em>(unchanged)</em></li><li class="toc-l2">22. WORKFLOW STAGE VERIFICATION REPORT <em>(v1.2 requirement)</em></li><li class="toc-l2">23. IMPLEMENTATION SEQUENCE <em>(unchanged from v1.1)</em></li><li class="toc-l2">24. APPROVAL BLOCK — v1.2</li><li class="toc-l2">APPENDIX — REVISION HISTORY</li><li class="toc-l1">STRATEX BLUEPRINT — v1.1 → v1.2 REDLINE + VERIFICATION REPORTS</li><li class="toc-l2">Change summary — 10 corrections applied</li><li class="toc-l2">§22-A · Vendor-name search report</li><li class="toc-l2">§22-B · Fifteen-stage workflow verification report</li><li class="toc-l2">§22-C · Date verification statement</li><li class="toc-l2">§22-D · Retention policy consistency statement</li><li class="toc-l2">§22-E · Human-QA overlap correction confirmation</li><li class="toc-l2">Files changed to create v1.2</li><li class="toc-l2">Confirmations</li><li class="toc-l1">STRATEX BLUEPRINT — ARCHITECTURE DECISION RECORDS (ADRs)</li><li class="toc-l2">ADR-001 · Model-Vendor Neutrality</li><li class="toc-l2">ADR-002 · Calibrated Thermal Registration Pipeline</li><li class="toc-l2">ADR-003 · Preserve Original Sensor Data</li><li class="toc-l2">ADR-004 · Air Intelligence Scope Correction</li><li class="toc-l2">ADR-005 · Risk-Tiered Human QA</li><li class="toc-l2">ADR-006 · Public Passport Access Is Not Hash-Based</li><li class="toc-l2">ADR-007 · Optimistic Concurrency with Explicit Rebase</li><li class="toc-l2">ADR-008 · Layered Digital Twin Package</li><li class="toc-l2">ADR-009 · Durable Delivery for Critical Events</li><li class="toc-l2">ADR-010 · Validation Program Precedes Marketing Language</li><li class="toc-l2">Meta-ADR · Documentation-Only Discipline</li><li class="toc-l1">ADRs ADDED IN v1.2</li><li class="toc-l2">ADR-011 · Fifteen-stage Workflow Enumeration</li><li class="toc-l2">ADR-012 · Property Lifecycle Operations</li><li class="toc-l2">ADR-013 · Tier 3 / Tier 4 Boundary Rule</li><li class="toc-l2">ADR-014 · AWE Index™ Release-State Gate</li><li class="toc-l2">ADR-015 · Phase 1a-Only Authorization Boundary</li><li class="toc-l1">ORIGINAL v1.0 REVIEW APPENDIX (Q1-Q14)</li><li class="toc-l1">STRATEX CORE — NEXTGEN ARCHITECTURE REVIEW APPENDIX</li><li class="toc-l2">Q1 — TWENTY-FOUR-AGENT ARCHITECTURE (justification)</li><li class="toc-l3">Correction of framing</li><li class="toc-l3">Per-agent detail table</li><li class="toc-l3">Combination rationale</li><li class="toc-l2">Q2 — PROPERTY PASSPORT AUTHORITY</li><li class="toc-l3">Ownership model (definitive)</li><li class="toc-l3">Access-control matrix</li><li class="toc-l3">Existing Claim Snapshot cosign receipt pattern (§8 blueprint) is the canonical template for how every future append works.</li><li class="toc-l2">Q3 — PROVENANCE INTERFACE</li><li class="toc-l3">Visual-noise avoidance rules</li><li class="toc-l3">Provenance vs Confidence vs Truth Score (clarified)</li><li class="toc-l2">Q4 — TRUTH SCORE (honest specification)</li><li class="toc-l3">Definition (revised, non-marketing)</li><li class="toc-l3">Component inputs</li><li class="toc-l3">Weighting</li><li class="toc-l3">Missing-evidence behavior</li><li class="toc-l3">Contradictory-evidence behavior</li><li class="toc-l3">Human verification effect</li><li class="toc-l3">Versioning</li><li class="toc-l3">Calibration</li><li class="toc-l3">Display language rules</li><li class="toc-l3">Marketing restrictions</li><li class="toc-l3">The four levels distinguished</li><li class="toc-l2">Q5 — AWE™ MISSION SEPARATION</li><li class="toc-l3">Recognized: AWE requires a separate mission</li><li class="toc-l3">Product 1 · <strong>Stratex Core DayScan™</strong></li><li class="toc-l3">Product 2 · <strong>Stratex AWE™ Scan</strong></li><li class="toc-l3">Product 3 · <strong>Stratex Elite™ Property Intelligence</strong></li><li class="toc-l3">Mission planner enforcement</li><li class="toc-l2">Q6 — DIGITAL TWIN ARCHITECTURE</li><li class="toc-l3">Canonical decisions</li><li class="toc-l3">Stratex-owned vs external-processor-owned</li><li class="toc-l2">Q7 — DATA-STATE HONESTY</li><li class="toc-l3">Adopted implementation-state vocabulary</li><li class="toc-l3">Marketing rules</li><li class="toc-l2">Q8 — EXISTING ASSET PRESERVATION MAP</li><li class="toc-l2">Q9 — SECURITY SCOPE (phased introduction)</li><li class="toc-l3">Phase 1 (Foundation)</li><li class="toc-l3">Service-to-service authorization</li><li class="toc-l3">Audit logging</li><li class="toc-l3">Secrets management</li><li class="toc-l3">Rate limiting</li><li class="toc-l3">File access</li><li class="toc-l3">Explicit Phase 1 stops</li><li class="toc-l2">Q10 — DATABASE-DOMAIN JUSTIFICATION</li><li class="toc-l3">Per-domain table</li><li class="toc-l2">Q11 — API-PLANE JUSTIFICATION</li><li class="toc-l3">Per-plane table</li><li class="toc-l2">Q12 — EVENT-DRIVEN ARCHITECTURE (Phase 1 events only)</li><li class="toc-l3">Phase 1 minimum viable event set</li><li class="toc-l2">Q13 — TECHNOLOGY DECISIONS (justified)</li><li class="toc-l3">Rejected in this round</li><li class="toc-l2">Q14 — PHASE 1 SCOPE CONTROL (explicit)</li><li class="toc-l3">Phase 1 SHALL establish (deliverable list)</li><li class="toc-l3">Phase 1 SHALL NOT claim to deliver</li><li class="toc-l3">Success criteria (Phase 1 exit gate)</li><li class="toc-l2">APPENDIX — REVISION HISTORY</li></ul>
+</section>
+
+<!-- MAIN BODY -->
+<section class="body">
+  <h1>STRATEX CORE — NEXTGEN ARCHITECTURE BLUEPRINT v1.1</h1>
+<h2>Executive Summary (One Page)</h2>
+
+<p><strong>Classification</strong>: CONFIDENTIAL — PROPRIETARY</p>
+<p><strong>Status</strong>: REVISED · Awaiting Executive Approval</p>
+<p><strong>Author</strong>: TC · under directive of Anthony Cross</p>
+<p><strong>Delivered</strong>: Feb 26, 2026</p>
+
+<hr/>
+
+<h3>What v1.1 is</h3>
+<p>A <strong>documentation-only revision pass</strong> applying <strong>all 20 mandatory executive corrections</strong> to Blueprint v1.0. v1.0 is preserved unchanged as read-only reference. No implementation code was written. Production (<code>stratexdrone.com</code>) remains untouched.</p>
+
+<h3>The four architectural shifts that matter</h3>
+<ol><li><strong>Model-vendor neutrality</strong> — Architecture references capability interfaces (<code>ThermalAnalysisProvider</code>, <code>MeasurementProvider</code>, etc.), never vendor names. Language models are confined to narrative composition; deterministic and specialized systems remain authoritative for measurement, safety, and structural decisions.</li><li><strong>Scientifically credible thermal registration</strong> — A 10-step calibrated pipeline (extrinsics estimation, reprojection, occlusion testing, per-region residuals) replaces the single-homography approach. Colored thermal texture is never presented as a validated thermal finding.</li><li><strong>Secure Passport access</strong> — The permanent hash is not a bearer credential. Access requires expiring signed links + scoped projections + revocation + access logging + rate limiting. Separate projections per audience (public / homeowner / contractor / adjuster / insurer).</li><li><strong>Risk-tiered Human QA</strong> — Four tiers replace blanket approval, preventing a review bottleneck while preserving expert sign-off on high-consequence findings.</li></ol>
+
+<h3>New sections introduced in v1.1</h3>
+<ul><li><strong>§10</strong> Risk-tiered Human QA (four tiers)</li><li><strong>§11.2</strong> Property identity resolution (address ≠ identity; identity ≠ ownership)</li><li><strong>§13</strong> Retention, deletion, legal-hold policy per data class</li><li><strong>§14</strong> Original sensor data preservation (mission package is source of truth)</li><li><strong>§16</strong> Product-cost architecture (DayScan · AWE Scan · Elite as first-class products)</li><li><strong>§17</strong> Formal validation program (15 dimensions) gates marketing language</li></ul>
+
+<h3>Deliverables included in this package</h3>
+<ol><li>Full Markdown blueprint v1.1</li><li>Professional PDF v1.1 (cover · TOC · page numbers · revision history)</li><li>Redline change log (v1.0 → v1.1)</li><li>Architecture Decision Records (10 ADRs)</li><li>This one-page executive summary</li><li>Preserved v1.0 (read-only)</li></ol>
+
+<h3>Approval status</h3>
+<p>Blueprint v1.0 — approved directionally</p>
+<p>Blueprint v1.1 — awaiting explicit executive approval</p>
+<p>Phase 1a implementation — <strong>withheld</strong> until v1.1 is signed on Section 23</p>
+
+<h3>The single sentence answer to "what changed"</h3>
+<p>&gt; v1.1 replaces vendor lock-in, over-confident thermal claims, insecure public access, and unscalable human-QA gates with capability interfaces, calibrated thermal registration, signed access links, and risk-tiered review — while preserving every strategic declaration of v1.0.</p>
+
+<hr/>
+
+<p><strong>Files preserved</strong> (v1.0 unchanged, chmod 444):</p>
+<ul><li><code>/app/memory/_v1.0_PRESERVED_BLUEPRINT.md</code></li><li><code>/app/memory/_v1.0_PRESERVED_APPENDIX.md</code></li><li><code>/app/memory/_v1.0_PRESERVED_Blueprint.pdf</code></li></ul>
+
+<p><strong>Files added / regenerated</strong> (v1.1):</p>
+<ul><li><code>/app/memory/NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md</code></li><li><code>/app/memory/NEXTGEN_ARCHITECTURE_REDLINE_v1.0_to_v1.1.md</code></li><li><code>/app/memory/NEXTGEN_ARCHITECTURE_ADRs_v1.1.md</code></li><li><code>/app/memory/NEXTGEN_EXECUTIVE_SUMMARY_v1.1.md</code> (this file)</li><li><code>/app/memory/_blueprint_out/STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf</code></li></ul>
+
+<p><strong>Production</strong>: Untouched. <strong>Implementation code</strong>: None written.</p>
+
+
+<hr/>
+
+<h1>STRATEX CORE — NEXTGEN ARCHITECTURE BLUEPRINT v1.2</h1>
+<p><strong>Status</strong>: REVISED · Awaiting Executive Approval (Phase 1a only)</p>
+<p><strong>Classification</strong>: CONFIDENTIAL — PROPRIETARY</p>
+<p><strong>Created</strong>: February 26, 2026 · <strong>Revised</strong>: February 26, 2026 · <strong>Approved</strong>: —</p>
+<p><strong>Author</strong>: TC · Stratex AI Product Manager, under directive of Anthony Cross</p>
+<p><strong>Reviewer</strong>: Anthony Cross (Executive Architect)</p>
+<p><strong>Revision identifier</strong>: v1.2 · Consistency-correction pass</p>
+<p><strong>Preserves</strong>: v1.0 and v1.1 (frozen, read-only in <code>/app/memory/</code>)</p>
+
+<p>&gt; <strong>Version 1.2 principle</strong>: v1.1 refinements retained. Consistency corrections applied: 15-stage workflow explicitly enumerated, retention language reconciled (no "indefinitely" or "forever"), Tier 3/4 human-QA overlap resolved, AWE Index™ release-state controls added, property merge/split/identity operations defined, Phase 1 UI honesty rules enshrined, implementation authorization boundary limited strictly to Phase 1a.</p>
+
+<hr/>
+
+<h2>0. EXECUTIVE FRAMING</h2>
+
+<p>Stratex Core NextGen is the <strong>Residential Property Intelligence Operating System</strong> — an enterprise mission-control platform fusing hardware, specialized computation, and human review across three pillars:</p>
+
+<table><thead><tr><th>Pillar</th><th>Purpose</th></tr></thead><tbody><tr><td>**Stratex Core**</td><td>Contractor operating system — mission, capture, intelligence, delivery</td></tr><tr><td>**Stratex Passport**</td><td>Permanent, hash-chained property intelligence record — the source of truth</td></tr><tr><td>**Stratex Habitat**</td><td>Homeowner-facing intelligence platform</td></tr></tbody></table>
+
+<p>The drone is one sensor among many. Specialized computer-vision, photogrammetry, radiometric, and rule-based engines perform the authoritative technical work. General-purpose language models are used <strong>only for narrative composition and orchestration hints</strong>, never as the principal engine for measurement, safety, structural, or diagnostic decisions.</p>
+
+<p><strong>Mandatory 15-stage workflow chain — no module bypasses this:</strong></p>
+<pre><code> 1. Mission Control          →  2. Mission Planning       →
+ 3. Mission Validation       →  4. Flight                 →
+ 5. Mission Assurance        →  6. Capture Validation     →
+ 7. Digital Twin Generation  →  8. AI Workforce Processing →
+ 9. Property Intelligence    → 10. AWE™ Intelligence      →
+11. Human QA                 → 12. Report Generation      →
+13. Property Passport Update → 14. Habitat Synchronization →
+15. Customer Delivery</code></pre>
+<p><strong>Stage count: 15. Verified in §22 workflow verification report.</strong></p>
+
+<hr/>
+
+<h2>1. APPLICATION STATE MODEL <em>(unchanged from v1.0)</em></h2>
+
+<table><thead><tr><th>State</th><th>Location</th><th>Deploy target</th><th>Modifiable?</th></tr></thead><tbody><tr><td>**PRODUCTION**</td><td>`stratexdrone.com`</td><td>Frozen</td><td>Read-only</td></tr><tr><td>**NEXTGEN**</td><td>Preview</td><td>Active dev</td><td>Yes</td></tr><tr><td>**LEGACY**</td><td>`/legacy/*`</td><td>Not deployable</td><td>Read-only after freeze</td></tr></tbody></table>
+
+<p>Migration is irreversible only after 10 parity gates pass (unchanged from v1.0).</p>
+
+<hr/>
+
+<h2>2. MODULE HIERARCHY <em>(unchanged)</em></h2>
+
+<p>14 first-class modules across four layers — Operations · Intelligence · Delivery · Platform. Full list identical to v1.0 §2.</p>
+
+<hr/>
+
+<h2>3. NAVIGATION HIERARCHY</h2>
+
+<p><strong>Correction §4 applied</strong> — AWE™ nav labels revised to reflect scientifically supportable scope:</p>
+
+<pre><code>AWE™ INTELLIGENCE
+· Air        (ventilation indicators, intake/exhaust observations,
+              exterior air-leakage indicators, condensation-risk
+              indicators — NOT indoor air quality)
+· Water      (moisture-retention indicators, roof water risk,
+              wall retention indicators, thermal moisture proxies)
+· Energy     (envelope thermal performance, heat-loss indicators,
+              exterior thermal signatures)
+· AWE Composite Index™  (calibrated per §20 validation program only)</code></pre>
+
+<p>All other nav sections identical to v1.0.</p>
+
+<hr/>
+
+<h2>4. DATABASE DOMAINS</h2>
+
+<p>Ten <strong>logical modules</strong> inside a single MongoDB database initially. Only the <strong>Passport domain</strong> extracts to a separate database in Phase 2 (unchanged from v1.0 §4 + Appendix Q10).</p>
+
+<p>New retention + PII classification rules per <strong>§13 (new)</strong> now apply per domain.</p>
+
+<hr/>
+
+<h2>5. AI WORKFORCE ARCHITECTURE — REVISED</h2>
+
+<h3>5.1 Vendor-neutral provider interfaces <em>(correction §1)</em></h3>
+
+<p>Every logical agent binds to <strong>capability interfaces</strong>, not vendor names. Concrete provider mapping lives in deployment config, never in the architecture.</p>
+
+<table><thead><tr><th>Interface</th><th>Purpose</th><th>Concrete implementations may include</th></tr></thead><tbody><tr><td>`ReasoningProvider`</td><td>Orchestration hints, workflow decisions</td><td>LLMs, rule engines</td></tr><tr><td>`NarrativeProvider`</td><td>Human-readable text composition</td><td>LLMs</td></tr><tr><td>`VisionProvider`</td><td>RGB scene classification, semantic segmentation</td><td>CV models, foundation vision models</td></tr><tr><td>`SegmentationProvider`</td><td>Pixel-level object/roof-plane segmentation</td><td>Specialized CV</td></tr><tr><td>`ThermalAnalysisProvider`</td><td>Radiometric anomaly detection</td><td>Specialized thermal CV + calibrated statistics</td></tr><tr><td>`MeasurementProvider`</td><td>Precise measurement extraction from twin</td><td>Deterministic geometry engines</td></tr><tr><td>`PhotogrammetryProvider`</td><td>Mesh + point-cloud generation</td><td>Commercial/open-source photogrammetry stacks</td></tr><tr><td>`BimProvider`</td><td>CAD/BIM derivative generation</td><td>Commercial BIM stacks</td></tr><tr><td>`RuleEngine`</td><td>Deterministic policies (ATC gates, product routing, tier logic)</td><td>In-house rules</td></tr><tr><td>`CalibrationProvider`</td><td>Sensor calibration + registration math</td><td>Deterministic algorithms</td></tr></tbody></table>
+
+<p><strong>Safety-critical, measurement-critical, and engineering-relevant operations are performed by deterministic and specialized systems.</strong> LLMs never author these values; they may only compose the narrative that accompanies them.</p>
+
+<h3>5.2 Agent-run audit record <em>(strengthened per §1)</em></h3>
+
+<p>Every agent run persists to <code>agent_runs</code> with <strong>all of the following mandatory fields</strong>:</p>
+
+<pre><code>agent_run_id, agent_id, agent_version,
+provider_id, provider_model, model_version, prompt_version,
+algorithm_id, algorithm_version, runtime_config_hash,
+input_hash, output_hash,
+started_at, finished_at, cost_usd,
+confidence_pct, evidence_ids[], provenance{}, 
+implementation_state, verification_status</code></pre>
+
+<h3>5.3 Twenty-four logical agents</h3>
+
+<p>Same 24-agent logical count as v1.0, mapped to five deployable services (Appendix Q1 unchanged). <strong>Every agent binds to interfaces above</strong> — no vendor names in the registry.</p>
+
+<hr/>
+
+<h2>6. API BOUNDARIES</h2>
+
+<p>Five <strong>logical route-prefix planes with distinct middleware chains</strong> (Appendix Q11 unchanged). <strong>Correction §6 applied to Public plane</strong> — see §9 below.</p>
+
+<hr/>
+
+<h2>7. EVENT FLOW &amp; STATE MANAGEMENT</h2>
+
+<h3>7.1 Frontend state</h3>
+<p>React Query (server state) + Zustand (small UI state). Adoption cost + rationale in Appendix Q13.</p>
+
+<h3>7.2 Critical event delivery — durable <em>(correction §11)</em></h3>
+
+<p>Critical events must survive process restart, deploy, network interruption, worker failure, and duplicate delivery. <strong>Phase 1 pattern</strong>: transactional outbox in MongoDB + durable jobs collection with locking and idempotent retries. No external broker required.</p>
+
+<p><strong>Critical event set</strong> (durable):</p>
+<ul><li><code>finding.approved</code> → Passport append</li><li><code>passport.appended</code> → Habitat sync</li><li><code>habitat.ack_pending</code></li><li><code>report.generation_pending</code></li><li><code>evidence.package_finalization_pending</code></li></ul>
+
+<p><strong>Non-critical events</strong> (FastAPI in-process background tasks are acceptable):</p>
+<ul><li>UI notifications</li><li>Cache warming</li><li>Log aggregation ticks</li></ul>
+
+<hr/>
+
+<h2>8. SYNCHRONIZATION FLOW</h2>
+
+<p>Core → Passport → Habitat. Cryptographic receipts (existing cosign SHA-256 pattern) on every accepted append. <strong>Passport concurrency revised per §8 correction</strong> — see §11 below.</p>
+
+<hr/>
+
+<h2>9. SECURITY MODEL — REVISED</h2>
+
+<h3>9.1 Public passport access <em>(correction §6)</em></h3>
+
+<p><strong>The permanent Passport identifier hash is not a bearer credential.</strong> Public access requires:</p>
+<ul><li><strong>Expiring signed links</strong> (default 24h TTL, configurable per recipient class)</li><li><strong>Narrowly scoped projection</strong> per audience: public / homeowner / contractor / adjuster / insurer</li><li><strong>Recipient binding</strong> optional (link tied to email or org)</li><li><strong>Revocation</strong> endpoint + kill-list check on every access</li><li><strong>Access logging</strong> to <code>audit_events</code> on every retrieval</li><li><strong>Rate limiting</strong> per recipient + per IP</li><li><strong>No exposure</strong> of private owner name, contact info, claim details, contractor internals, or security data on the public projection</li></ul>
+
+<h3>9.2 MFA scope <em>(correction §7)</em></h3>
+
+<p>MFA (or a phishing-resistant equivalent — WebAuthn/passkeys preferred) required for:</p>
+<ul><li>CEO · Administrators · Organization owners</li><li>Anyone managing credentials</li><li>Anyone approving Tier 3 or Tier 4 findings (§10 below)</li><li>Adjusters accessing claim evidence</li><li>Engineers/reviewers signing controlled findings</li><li>Users exporting sensitive property packages</li><li>Users changing Passport authority or property ownership</li><li>Users initiating privileged service actions</li></ul>
+
+<p><strong>Step-up authentication</strong> required for high-risk actions even inside an active session (approvals, cosigns, ownership transfers, service-key rotation, evidence deletion).</p>
+
+<h3>9.3 Roles &amp; authorization</h3>
+
+<p>Phase 1: <code>admin</code>, <code>contractor</code>, <code>pilot</code>, <code>inspector</code>, <code>homeowner</code>, <code>adjuster</code>, <code>engineer_reviewer</code>, <code>service</code>. RBAC + property-level ABAC via <code>property_org_bindings</code>. Full detail in Appendix Q9.</p>
+
+<h3>9.4 Tenant isolation for object storage <em>(correction §12)</em></h3>
+
+<p>The <strong>security outcome required is tenant isolation</strong> — not a specific storage layout. Permitted implementations:</p>
+<ul><li>Separate buckets per tenant</li><li>Shared bucket with tenant-prefixed keys enforced by IAM policy</li><li>Per-object access control</li><li>Separate encryption contexts per tenant</li><li>Signed URLs with tenant-scoped claims</li><li>Service-mediated access</li></ul>
+
+<p>Provider choice, cost, and physical layout are deployment decisions — the architecture specifies the security guarantee, not the implementation.</p>
+
+<h3>9.5 Provenance chain</h3>
+<p>Every value resolves to <code>{provenance_type, model_confidence, measurement_uncertainty, finding_confidence, verification_status, reviewer, reviewed_at, truth_score_band, implementation_state}</code>.</p>
+
+<h3>9.6 Observability</h3>
+<p>Sentry, structured logs, OpenTelemetry tracing — <strong>AWAITING INTEGRATION</strong> (Phase 2+).</p>
+
+<hr/>
+
+<h2>10. HUMAN QA — RISK-TIERED <em>(correction §5)</em></h2>
+
+<p>Replaces the prior blanket "human gate on every finding" with a four-tier framework:</p>
+
+<h3>Tier 1 — Automated informational</h3>
+<p>Image inventory · coverage status · visible-component counts · low-consequence classifications.</p>
+<p><strong>May publish automatically when</strong>: input quality passes · confidence ≥ approved threshold · no contradictory evidence · finding clearly labeled as automated.</p>
+
+<h3>Tier 2 — Contractor review</h3>
+<p>Roof damage candidates · material quantities · window/door classifications · maintenance recommendations · estimate components.</p>
+<p><strong>Requires</strong>: qualified contractor or inspector review before customer delivery.</p>
+
+<h3>Tier 3 — High-consequence (non-engineering)</h3>
+<p>Probable moisture intrusion · significant energy-loss claims · insurance-related conclusions (excluding structural adequacy) · safety concerns <em>not requiring licensed sign-off</em> · repair-scope recommendations <em>within contractor authority</em>.</p>
+<p><strong>Requires</strong>: MFA-authenticated qualified human approval with signed cosign receipt.</p>
+
+<h3>Tier 4 — Engineering-controlled (licensed professional required)</h3>
+<p>Structural concerns · structural adequacy · code compliance · engineering deviations · repair designs · safety certification · building release decisions · any finding whose downstream use is warranty, structural, or code-compliance related.</p>
+<p><strong>System must not independently approve.</strong> Requires appropriately licensed or authorized professional signature.</p>
+
+<p><strong>Clear boundary rule</strong>: any finding that touches structure, code compliance, or engineering deviation escalates to Tier 4. Tier 3 handles high-consequence non-structural findings only. There is no overlap.</p>
+
+<h3>Finding schema (mandatory fields)</h3>
+<pre><code>finding_id, risk_tier, required_reviewer_role, approval_status,
+verification_method, release_restriction, ...</code></pre>
+
+<p>Every publisher (Passport append, report render, Habitat sync) checks <code>risk_tier</code> + <code>approval_status</code> before releasing.</p>
+
+<hr/>
+
+<h2>11. PROPERTY PASSPORT AUTHORITY — REVISED</h2>
+
+<p>Ownership matrix unchanged from v1.0 §2 Appendix Q2 (Passport service alone writes; Core submits deltas; Habitat receives projections).</p>
+
+<h3>11.1 Concurrency: optimistic with explicit rebase <em>(correction §8)</em></h3>
+
+<p>Replaces the prior "first-writer-wins" language. Workflow:</p>
+
+<ol><li>Client re-reads current Passport <code>seq</code></li><li>Compare submitted delta against accepted intervening changes</li><li><strong>Automatically rebase</strong> when non-conflicting</li><li><strong>Route materially conflicting findings to Human QA queue</strong> — never silently discard</li><li>Preserve <strong>both</strong> attempted submissions in the audit trail (<code>passport_sync_log</code>)</li><li>Never overwrite or silently discard accepted history</li><li>Issue a new signed receipt only after successful append</li></ol>
+
+<p>Losing submissions are queued and surfaced; the losing user is notified with a rebase link.</p>
+
+<h3>11.2 Property identity resolution <em>(correction §14 — new)</em></h3>
+
+<p>Passport identity is <strong>never</strong> a typed street address alone. Identity = controlled combination of:</p>
+<ul><li>Normalized address (postal + geocoded)</li><li>Parcel identifier (county/jurisdiction)</li><li>Geographic coordinates (lat/lon with precision floor)</li><li>Jurisdiction (city/county/state)</li><li>Unit or structure identifier (for multi-unit buildings)</li><li>Property boundary (polygon)</li><li>Existing Passport records (fuzzy match + human review on conflict)</li></ul>
+
+<p><strong>Identity rules</strong>:</p>
+<ul><li>Duplicate Passports for the same home → rejected at mint with a match candidate list surfaced to human review</li><li>Two homes incorrectly merged → separable via SUPERSEDE ledger entries</li><li>Unit-level records not confused with parcel-level records (unit is a distinct identity slot)</li><li>Ownership change is <strong>not</strong> a new property — it is a new record in <code>owners</code>, linked to the same Passport</li><li>Address changes (renaming, renumbering) do not break history — Passport identity persists</li></ul>
+
+<p><strong>Property identity ≠ ownership identity.</strong> They are distinct concepts modeled in separate collections (<code>properties</code>, <code>owners</code>, <code>property_org_bindings</code>).</p>
+
+<h3>11.3 Property lifecycle operations <em>(correction §5 · v1.2)</em></h3>
+
+<p>The following operations are first-class, audited, and require appropriate role authorization. Each produces a signed ledger entry.</p>
+
+<table><thead><tr><th>Operation</th><th>Effect</th><th>Authorization</th><th>Ledger event type</th></tr></thead><tbody><tr><td>**Merge**</td><td>Two Passport records for the same physical property collapse into one canonical Passport; the retiring identifier is preserved as an alias</td><td>Tier 3 approval + Human QA</td><td>`IDENTITY_MERGE`</td></tr><tr><td>**Split**</td><td>A single record found to represent two distinct properties (e.g. incorrectly merged units) separates into two Passports; both inherit provenance from the source</td><td>Tier 3 approval + Human QA</td><td>`IDENTITY_SPLIT`</td></tr><tr><td>**Identity-link**</td><td>Two distinct Passports declared to describe the same portfolio/parcel relationship (parent parcel ↔ unit) without merging their records</td><td>Tier 2 approval</td><td>`IDENTITY_LINK`</td></tr><tr><td>**Identity-unlink**</td><td>Removal of a previously declared identity link</td><td>Tier 2 approval</td><td>`IDENTITY_UNLINK`</td></tr><tr><td>**Ownership transfer**</td><td>Change of legal owner or occupant; Passport identity is unchanged; a new `owners` record is appended and `property_org_bindings` are updated</td><td>Tier 2 approval; MFA required; homeowner notified via Habitat</td><td>`OWNERSHIP_TRANSFER`</td></tr></tbody></table>
+
+<p><strong>Invariants</strong>:</p>
+<ul><li>No operation destroys prior history; all effects are captured as new ledger entries with <code>supersedes</code> and <code>succeeds</code> pointers.</li><li>Merges and splits are reversible via a SUPERSEDE entry within a documented rollback window; after that window, changes require a new operation.</li><li>Ownership transfer never rewrites earlier findings; it only rebinds forward-looking access.</li></ul>
+
+<hr/>
+
+<h2>12. DIGITAL TWIN ARCHITECTURE — REVISED</h2>
+
+<h3>12.1 Layered canonical package <em>(correction §9)</em></h3>
+
+<p>The Digital Twin is not one file. It is a <strong>layered evidence package</strong>:</p>
+
+<table><thead><tr><th>Layer</th><th>Contents</th></tr></thead><tbody><tr><td>**Evidence geometry**</td><td>Original imagery, telemetry, point clouds, camera poses, control points, calibration data, reconstruction report, residual errors</td></tr><tr><td>**Measurement geometry**</td><td>Validated surfaces, coordinate reference, scale constraints, measurement entities, tolerances, confidence, provenance</td></tr><tr><td>**Presentation geometry**</td><td>glTF/GLB, Draco compression, KTX2 textures, mobile LODs, thermal + findings overlays</td></tr><tr><td>**Interchange derivatives**</td><td>IFC, DXF, PLY / LAS / LAZ / E57 where appropriate, GeoTIFF, report images</td></tr></tbody></table>
+
+<p><strong>Compression, decimation, or presentation optimization must never alter the authoritative measurement record.</strong> Presentation geometry is derived from — and always subordinate to — measurement geometry.</p>
+
+<p><strong>IFC and DXF exports are generated only where source information supports those elements.</strong> The system does not invent concealed framing, wall assemblies, or structural elements it did not observe.</p>
+
+<h3>12.2 Thermal-to-3D registration — calibrated pipeline <em>(correction §2)</em></h3>
+
+<p>Replaces the prior "feature-based homography per capture" language, which was insufficient for complex three-dimensional houses. This pipeline is presented as an engineering approach; <strong>claims of scientific accuracy require completion of the §17 validation program before any external assertion.</strong></p>
+
+<p>Canonical pipeline:</p>
+<ol><li><strong>Preserve original radiometric thermal files</strong> (see §14 below)</li><li><strong>Preserve</strong> camera intrinsics, distortion coefficients, timestamps, pose, gimbal position, range information, environmental metadata</li><li><strong>Estimate thermal-camera extrinsics</strong> relative to RGB and the property coordinate system</li><li><strong>Register each thermal observation</strong> through calibrated camera projection</li><li><strong>Reproject radiometric data</strong> onto validated 3D surfaces</li><li><strong>Perform depth and occlusion testing</strong></li><li><strong>Reject</strong> reflected, grazing-angle, poorly registered, and hidden surfaces</li><li><strong>Store registration residuals and per-region confidence</strong></li><li><strong>Permit local homography only</strong> as a limited method for verified planar regions</li><li><strong>Require human review</strong> where registration error exceeds the approved threshold</li></ol>
+
+<p><strong>A colored thermal texture is never presented as a scientifically validated thermal finding.</strong></p>
+
+<h3>12.3 Vendor-neutral processors <em>(unchanged from v1.0)</em></h3>
+<p>Photogrammetry, CAD/BIM, radiometric processing are all adapter contracts (<code>PhotogrammetryProvider</code>, <code>BimProvider</code>, <code>ThermalAnalysisProvider</code>). Concrete provider is swappable without changing Core.</p>
+
+<h3>12.4 Performance validation targets <em>(correction §10)</em></h3>
+
+<p>Prior claim of "iPhone 12 60 fps" replaced with <strong>testable acceptance targets, subject to measured validation</strong>:</p>
+
+<table><thead><tr><th>Metric</th><th>Target</th></tr></thead><tbody><tr><td>Initial useful view time</td><td>≤ 4 s on supported devices</td></tr><tr><td>Maximum mobile payload (L2)</td><td>≤ 25 MB per property</td></tr><tr><td>Interaction frame-rate</td><td>30–60 fps target during normal interaction, subject to measured validation</td></tr><tr><td>Peak memory</td><td>≤ 400 MB on iOS Safari</td></tr><tr><td>Crash-free session rate</td><td>≥ 99% target once validated</td></tr><tr><td>Layer-switch latency</td><td>≤ 1.5 s target</td></tr><tr><td>Progressive-loading</td><td>L2 → L1 → L0 on demand</td></tr><tr><td>Fallback behavior</td><td>2D exhibit + gallery view for unsupported devices</td></tr><tr><td>Tested devices/browsers</td><td>Documented per release</td></tr></tbody></table>
+
+<p>Nothing is promised as a guarantee until benchmarked on approved test properties.</p>
+
+<hr/>
+
+<h2>13. DATA RETENTION, DELETION &amp; LEGAL HOLD <em>(correction §13 — new)</em></h2>
+
+<p>The Passport ledger is permanent. Not all other data is.</p>
+
+<h3>Data classes + retention</h3>
+
+<table><thead><tr><th>Class</th><th>Retention</th></tr></thead><tbody><tr><td>**Passport ledger records**</td><td>Retained for the operational lifetime of the property record, subject to legal-hold and secure-deletion overrides</td></tr><tr><td>**Raw mission evidence** (imagery, radiometric files, telemetry)</td><td>7 years hot storage; then cold storage per the documented retention schedule (not indefinite)</td></tr><tr><td>**Derived models** (twin, CAD, thermal reprojections)</td><td>3 years hot, regenerable from evidence</td></tr><tr><td>**Temporary working files** (renders, caches)</td><td>90 days rolling</td></tr><tr><td>**Personal information** (owner name, contact)</td><td>Retained while owner-property binding is active; corrected on request; scrubbed on legal deletion request</td></tr><tr><td>**Authentication logs**</td><td>2 years hot, 7 years cold</td></tr><tr><td>**AI prompts + outputs**</td><td>2 years hot, 7 years cold (audit-linked)</td></tr><tr><td>**Customer exports**</td><td>30 days recoverable</td></tr><tr><td>**Deleted / corrected ownership data**</td><td>Corrected via SUPERSEDE ledger entries; historical record preserved unless legal deletion overrides</td></tr></tbody></table>
+
+<h3>Policies</h3>
+<ul><li><strong>Customer-requested deletion</strong>: honored per GDPR/CCPA where applicable, with cryptographic proof-of-deletion. Passport chain remains but PII fields are tombstoned.</li><li><strong>Legal hold</strong>: overrides retention; freezes deletion until released.</li><li><strong>Insurance / claim preservation</strong>: preserves evidence for claim-window duration + statutory buffer.</li><li><strong>PII correction</strong>: applied via SUPERSEDE, never destructive.</li><li><strong>Account closure</strong>: contractor-side data retained under org retention policy; homeowner-side data subject to deletion request.</li><li><strong>Storage lifecycle</strong>: hot → cold transitions automated per class.</li><li><strong>Secure deletion</strong>: crypto-shred keys for tombstoned records.</li><li><strong>Backup retention</strong>: matches primary; encrypted; access-audited.</li><li><strong>Evidence immutability</strong>: raw sensor data is never modified; corrections are new records.</li><li><strong>Legal / contract exceptions</strong>: documented per contract, override defaults.</li></ul>
+
+<p><strong>Nothing is claimed to be retained without limit.</strong> The Passport ledger is retained for the operational lifetime of the property record and is immutable within that window; all other data classes have documented retention schedules, subject to legal-hold and secure-deletion overrides.</p>
+
+<hr/>
+
+<h2>14. ORIGINAL SENSOR DATA PRESERVATION <em>(correction §3)</em></h2>
+
+<p>Normalized radiometric TIFF is <strong>not</strong> the sole thermal source of truth. The <strong>canonical mission package</strong> preserves:</p>
+
+<ul><li>Original DJI radiometric files (R-JPG or vendor-native format)</li><li>Original RGB files</li><li>Original video where collected</li><li>Flight logs</li><li>Telemetry streams</li><li>Sensor metadata (intrinsics, distortion, calibration)</li><li>Checksums per file</li><li>Calibration data</li><li>Environmental records (temperature, humidity, wind, solar loading, precipitation history)</li><li>Operator notes</li></ul>
+
+<p>Normalized TIFF, PNG, JPEG, glTF, point-cloud, and report derivatives are <strong>generated derivatives</strong> stored alongside the mission package.</p>
+
+<p>Original evidence is <strong>immutable and retained per §13</strong>. The mission package — not a converted image — is the evidence source of truth.</p>
+
+<hr/>
+
+<h2>15. PROVENANCE, CONFIDENCE &amp; VERIFICATION LANGUAGE <em>(corrections §17 + §18)</em></h2>
+
+<h3>15.1 Distinct fields (correction §17)</h3>
+
+<p>"Verified" is a review state, not a confidence value. The finding schema separates:</p>
+
+<table><thead><tr><th>Field</th><th>Type</th><th>Purpose</th></tr></thead><tbody><tr><td>`provenance_type`</td><td>enum</td><td>Source lineage (measured, calculated, estimated, imported, AI-assisted, human-entered)</td></tr><tr><td>`model_confidence`</td><td>0–100</td><td>Per-inference confidence</td></tr><tr><td>`measurement_uncertainty`</td><td>± value with unit</td><td>Per-measurement error bar</td></tr><tr><td>`finding_confidence`</td><td>0–100</td><td>Aggregate confidence for a finding</td></tr><tr><td>`verification_status`</td><td>enum</td><td>Unreviewed / reviewed / verified / rejected / requires_field_verification</td></tr><tr><td>`reviewer`</td><td>user_id \</td><td>null</td><td>Approver identity</td></tr><tr><td>`reviewed_at`</td><td>timestamp \</td><td>null</td><td>Approval time</td></tr><tr><td>`truth_score_band`</td><td>enum (10-pt band)</td><td>Property record trust indicator</td></tr><tr><td>`implementation_state`</td><td>enum</td><td>Feature-state per §7 taxonomy</td></tr></tbody></table>
+
+<p>Human approval does not automatically raise measurement accuracy. It raises <code>verification_status</code>, not <code>measurement_uncertainty</code>.</p>
+
+<h3>15.2 Provenance chip taxonomy (correction §18)</h3>
+
+<p>Chips are separated by category. UI may combine visually; the data model keeps them separate.</p>
+
+<p><strong>Derivation</strong>: Measured · Calculated · Estimated · Imported · AI-assisted · Human-entered</p>
+<p><strong>Verification</strong>: Unreviewed · Reviewed · Verified · Rejected · Requires field verification</p>
+<p><strong>Implementation state</strong>: Operational · Partially operational · Mocked · Planned · Awaiting credentials · Awaiting hardware · Awaiting validation · Deprecated · Legacy</p>
+<p><strong>Evidence availability</strong>: Complete · Partial · Missing · Contradictory</p>
+
+<h3>15.3 Truth Score (unchanged from Appendix Q4)</h3>
+<p>10-point bands only, never decimals. Marketing restricted until §20 validation passes.</p>
+
+<hr/>
+
+<h2>16. PRODUCT-COST &amp; PROCESSING-GATE ARCHITECTURE <em>(correction §19 — new)</em></h2>
+
+<p>Stratex sells predictable <strong>contractor products</strong>, not token accounting. Three first-class products:</p>
+
+<h3>Product definitions</h3>
+
+<table><thead><tr><th>Product</th><th>Required mission type</th><th>Sensors</th><th>Processing engines</th><th>Human QA tier</th><th>Report template</th><th>Passport update</th><th>Habitat entitlement</th></tr></thead><tbody><tr><td>**Stratex Core DayScan™**</td><td>Daytime RGB</td><td>RGB · GPS/RTK</td><td>Photogrammetry · Measurement · Roof/Window/Door Intelligence</td><td>Tier 2</td><td>DayScan template</td><td>DayScan chain</td><td>DayScan projection</td></tr><tr><td>**Stratex AWE™ Scan**</td><td>Nighttime, eligibility-gated</td><td>Radiometric thermal · reference RGB · environmental sensors</td><td>Thermal Analysis · Water/Air/Energy AWE agents · Registration</td><td>Tier 3</td><td>AWE template</td><td>AWE chain</td><td>AWE projection</td></tr><tr><td>**Stratex Elite™ Property Intelligence**</td><td>Both missions (DayScan + AWE Scan)</td><td>All</td><td>All + cross-registration + AWE Index™</td><td>Tier 3</td><td>Elite template</td><td>Combined update</td><td>Elite projection</td></tr></tbody></table>
+
+<h3>Per-product policy fields (mandatory)</h3>
+<ul><li>Required capture conditions</li><li>Human QA tier</li><li>Contractor price</li><li>Internal estimated cost (recorded to Cost Ledger)</li><li>Upgrade rules (DayScan → Elite path)</li><li>Rescan rules (failed capture → free rescan window)</li><li>Failed-mission policy (partial-refund vs credit)</li></ul>
+
+<h3>Orchestrator responsibilities</h3>
+<p>The AI orchestrator <strong>selects processing engines according to the purchased product and property complexity</strong> — not by exposing token accounting to the contractor.</p>
+
+<p>Internal compute + provider costs are still recorded per mission in the <code>cost_ledger</code> collection for finance and margin management.</p>
+
+<hr/>
+
+<h2>17. FORMAL VALIDATION PROGRAM <em>(correction §20 — new)</em></h2>
+
+<p><strong>No measurement, AWE score, defect classifier, or performance claim is promoted to "validated" merely because the software runs.</strong></p>
+
+<h3>Field-validation program (Phase 2+)</h3>
+
+<p>Covers:</p>
+<ul><li>Known-dimension test structures (in-house calibration properties)</li><li>Independent manual roof measurements (surveyor-grade)</li><li>Survey control (fixed control points on test properties)</li><li>Repeat-flight reproducibility</li><li>Different pilots</li><li>Different weather</li><li>Different roof materials (asphalt shingle, metal, tile, membrane)</li><li>Different house geometries (simple gable → complex hip/valley)</li><li>Thermal false positives (moisture-mimic exclusion, ventilation-shadow rejection)</li><li>Moisture-meter comparison</li><li>Blower-door comparison where applicable</li><li>Interior/exterior thermal comparison</li><li>Ground-truth repair findings (post-teardown reconciliation)</li><li>Processor-to-processor comparison (swap <code>PhotogrammetryProvider</code> implementations)</li><li>Measurement-error distributions (published per class)</li><li>Failure-rate reporting</li></ul>
+
+<h3>Acceptance thresholds</h3>
+<p>Defined <strong>before</strong> Stratex uses any of the following marketing phrases:</p>
+<ul><li>"Unmatched accuracy"</li><li>"Certified"</li><li>"Verified"</li><li>"Engineering-grade"</li><li>"Insurance-grade"</li></ul>
+
+<p><strong>Marketing language follows validation evidence. Until validated, product copy uses:</strong></p>
+<p>"Prototype scoring — not calibrated to industry standard yet."</p>
+
+<h3>17.1 AWE Index™ release-state controls <em>(correction §8 · v1.2)</em></h3>
+
+<p>The AWE Index™ (composite Air/Water/Energy score) is subject to explicit release-state gating. It is <strong>not surfaced to any external audience</strong> until each gate is passed.</p>
+
+<table><thead><tr><th>Release state</th><th>Meaning</th><th>Who may see it</th></tr></thead><tbody><tr><td>`INTERNAL_DRAFT`</td><td>Formula in flux; used only inside Human QA</td><td>Stratex QA reviewers</td></tr><tr><td>`PILOT`</td><td>Formula frozen; running against field-validation properties; results labeled "Pilot — not calibrated"</td><td>Stratex QA + participating pilot contractors</td></tr><tr><td>`CALIBRATED_LIMITED`</td><td>Passed 15-dimension validation program on the reference property set; released to pilot contractors under contract</td><td>Named pilot orgs only</td></tr><tr><td>`CALIBRATED_GENERAL`</td><td>Broader validation across geography/climate; released to all contractors</td><td>All contractors</td></tr><tr><td>`EXTERNALLY_ASSERTABLE`</td><td>Reviewed by independent third party; may be cited in reports and to insurance carriers</td><td>Included in Passport payload</td></tr></tbody></table>
+
+<p><strong>Release-state transitions require</strong>:</p>
+<ul><li>A published validation report versioned to the release</li><li>Sign-off from Executive Architect</li><li>Update to the release state field surfaced on every screen showing the Index</li></ul>
+
+<p>The AWE Index™ <strong>must never be displayed without its current release-state chip.</strong></p>
+
+<hr/>
+
+<h2>18. VISUAL DESIGN PRINCIPLES <em>(unchanged from v1.0)</em></h2>
+
+<p>Mission-control aesthetic. Dark graphite base. Provenance chip taxonomy per §15.2. No generic SaaS.</p>
+
+<hr/>
+
+<h2>19. EXECUTIVE ARCHITECTURE REVIEW <em>(unchanged from v1.0 §12)</em></h2>
+
+<p>Strengths, weaknesses, tech debt, risks, missing integrations, performance, security, scalability, recommended improvements — retained from v1.0 with the addition that every v1.1 correction resolves a specific weakness.</p>
+
+<hr/>
+
+<h2>20. PHASE 1 SCOPE CONTROL <em>(unchanged, reinforced)</em></h2>
+
+<p>Phase 1 delivers architecture + operating shell. Does <strong>not</strong> claim production-ready photogrammetry, thermal diagnosis, engineering measurement, or automated AWE conclusions. Every screen carrying intelligence content wears a chip from §15.2.</p>
+
+<h3>20.1 Phase 1 demonstration-data and UI honesty rules <em>(correction §9 · v1.2)</em></h3>
+
+<p>During Phase 1, any screen presenting numeric values, findings, or visualizations that are not sourced from a real inspection <strong>must</strong> obey these rules:</p>
+
+<ol><li><strong>Explicit chip</strong>: every such value carries a <code>DEMO DATA</code> or <code>MOCKED</code> chip from §15.2, visible without hover on desktop and via long-press on mobile.</li><li><strong>Banner disclosure</strong>: every workspace showing demonstration content carries a persistent banner: <em>"Demonstration content — not sourced from a real inspection."</em></li><li><strong>No number without chip</strong>: no value on any Phase 1 screen may be shown without one of the four §15.2 chip categories attached.</li><li><strong>No dashboards with fabricated aggregates</strong>: totals, averages, and trend charts are only shown when derived from real records; otherwise the widget shows a <code>NO DATA YET</code> empty state.</li><li><strong>PDF exports</strong>: reports rendered during Phase 1 carry a first-page and footer disclosure identifying every non-real value.</li><li><strong>Screen recording exports</strong>: any recording, GIF, or screenshot used externally is marked <em>"Demonstration — Blueprint v1.2 pre-validation."</em></li><li><strong>Investor / partner materials</strong>: presentation content in Phase 1 is labeled with the same taxonomy; no claim is made that intelligence engines are operational.</li></ol>
+
+<p>Violations of §20.1 are treated as blocker defects during Phase 1 review.</p>
+
+<hr/>
+
+<h2>20.2 Implementation authorization boundary <em>(correction §10 · v1.2)</em></h2>
+
+<p><strong>Approval of Blueprint v1.2 authorizes Phase 1a only.</strong></p>
+
+<p>Phase 1a = Legacy Freeze + Foundation Shell (as defined in §22 sub-phase list).</p>
+
+<p><strong>Approval of v1.2 does NOT authorize</strong>:</p>
+<ul><li>Phase 1b (NextGen Shell) — requires separate Phase 1a completion review</li><li>Phase 1c (Workspace Stubs) — requires separate Phase 1b completion review</li><li>Phase 1d (Screenshot + Executive Review Package) — requires separate Phase 1c completion review</li><li>Phase 2 (Canonical data model)</li><li>Phase 3 (Honest inspection workflow)</li><li>Phase 4 (AI Command Center)</li><li>Phase 5 (Real subsystems: DJI · photogrammetry · thermal · CAD/BIM)</li></ul>
+
+<p>Each subsequent phase requires its own explicit executive authorization following review of the prior phase's completion package. <strong>Under no circumstance shall v1.2 approval be extended to authorize any phase beyond 1a.</strong></p>
+
+<hr/>
+
+<h2>21. FORBIDDEN LIST (Phase 1 non-scope) <em>(unchanged)</em></h2>
+
+<ul><li>No DJI SDK integration</li><li>No photogrammetry pipeline</li><li>No real radiometric thermal ingest</li><li>No CAD/BIM generator</li><li>No real materials/labor DB</li><li>No Habitat platform itself (only sync surface)</li><li>No SSO</li><li>No live payments checkout</li><li>No multi-tenant migration (Phase 2)</li></ul>
+
+<hr/>
+
+<h2>22. WORKFLOW STAGE VERIFICATION REPORT <em>(v1.2 requirement)</em></h2>
+
+<p>The mandatory workflow chain is enumerated below with an explicit stage number for every element. <strong>Total stages: 15.</strong></p>
+
+<table><thead><tr><th>#</th><th>Stage</th><th>Producer / owner</th><th>Downstream consumer</th></tr></thead><tbody><tr><td>1</td><td>Mission Control</td><td>Operator / dispatcher</td><td>Mission Planning</td></tr><tr><td>2</td><td>Mission Planning</td><td>Mission Ops Service</td><td>Mission Validation</td></tr><tr><td>3</td><td>Mission Validation (ATC 20-item gate)</td><td>Rule Engine</td><td>Flight</td></tr><tr><td>4</td><td>Flight</td><td>Pilot + Drone</td><td>Mission Assurance</td></tr><tr><td>5</td><td>Mission Assurance (in-flight QA)</td><td>Mission Ops Service</td><td>Capture Validation</td></tr><tr><td>6</td><td>Capture Validation (post-flight)</td><td>Capture Validation agent</td><td>Digital Twin Generation</td></tr><tr><td>7</td><td>Digital Twin Generation</td><td>PhotogrammetryProvider · CalibrationProvider</td><td>AI Workforce</td></tr><tr><td>8</td><td>AI Workforce Processing</td><td>Vision + Thermal + AWE + Estimating services</td><td>Property Intelligence</td></tr><tr><td>9</td><td>Property Intelligence (roof, walls, windows, doors)</td><td>Vision Intelligence Service</td><td>AWE Intelligence</td></tr><tr><td>10</td><td>AWE™ Intelligence (Air · Water · Energy)</td><td>AWE Intelligence Service</td><td>Human QA</td></tr><tr><td>11</td><td>Human QA (tiered per §10)</td><td>Reviewers</td><td>Report Generation</td></tr><tr><td>12</td><td>Report Generation</td><td>Delivery Service</td><td>Passport Update</td></tr><tr><td>13</td><td>Property Passport Update</td><td>Passport Service (only writer)</td><td>Habitat Sync</td></tr><tr><td>14</td><td>Habitat Synchronization</td><td>Habitat Sync agent</td><td>Customer Delivery</td></tr><tr><td>15</td><td>Customer Delivery</td><td>Delivery Service</td><td>(workflow terminus)</td></tr></tbody></table>
+
+<p><strong>Verified</strong>: 15 stages. Every prior mention of "14-stage" in v1.0/v1.1 is corrected to "15-stage."</p>
+
+<hr/>
+
+<h2>23. IMPLEMENTATION SEQUENCE <em>(unchanged from v1.1)</em></h2>
+
+<p>Phase 1a Legacy Freeze · Phase 1b NextGen Shell · Phase 1c Workspace Stubs · Phase 1d Screenshot + Executive Review Package. <strong>v1.2 approval authorizes Phase 1a only.</strong></p>
+
+<hr/>
+
+<h2>24. APPROVAL BLOCK — v1.2</h2>
+
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Blueprint version</td><td>1.2</td></tr><tr><td>Created date</td><td>February 26, 2026</td></tr><tr><td>Revised date</td><td>February 26, 2026</td></tr><tr><td>Approved date</td><td>☐ awaiting signature</td></tr><tr><td>Author</td><td>TC · Stratex AI Product Manager</td></tr><tr><td>Reviewer</td><td>Anthony Cross (Executive Architect)</td></tr><tr><td>Status</td><td>REVISED · AWAITING APPROVAL (Phase 1a only)</td></tr><tr><td>Revision identifier</td><td>v1.2 · Consistency correction pass</td></tr><tr><td>Authorization scope</td><td>Phase 1a (Legacy Freeze + Foundation Shell) only</td></tr></tbody></table>
+
+<p>☐ Blueprint v1.2 reviewed by Anthony Cross</p>
+<p>☐ All ten v1.2 corrections confirmed incorporated</p>
+<p>☐ 15-stage workflow verified</p>
+<p>☐ Retention language reconciled (no "indefinitely" / "forever")</p>
+<p>☐ Tier 3 / Tier 4 overlap resolved</p>
+<p>☐ Property identity operations defined</p>
+<p>☐ AWE Index™ release-state controls approved</p>
+<p>☐ Phase 1 UI honesty rules approved</p>
+<p>☐ <strong>Authorization limited to Phase 1a only</strong></p>
+
+<p>Signature: ______________________ Date: ______________</p>
+
+<hr/>
+
+<h2>APPENDIX — REVISION HISTORY</h2>
+
+<table><thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Change summary</th></tr></thead><tbody><tr><td>1.0</td><td>February 26, 2026</td><td>TC</td><td>Initial draft (623 lines)</td></tr><tr><td>1.0-app</td><td>February 26, 2026</td><td>TC</td><td>Review Appendix (Q1-Q14)</td></tr><tr><td>1.1</td><td>February 26, 2026</td><td>TC</td><td>20 mandatory corrections applied (frozen)</td></tr><tr><td>**1.2**</td><td>**February 26, 2026**</td><td>TC</td><td>**10-item consistency correction pass. See STRATEX_Blueprint_v1.1_to_v1.2_REDLINE.md for redline. v1.0 and v1.1 preserved unchanged.**</td></tr></tbody></table>
+
+<p><strong>End of Blueprint v1.2.</strong></p>
+
+
+<hr/>
+
+<h1>STRATEX BLUEPRINT — v1.1 → v1.2 REDLINE + VERIFICATION REPORTS</h1>
+
+<p><strong>Scope</strong>: Every substantive change from v1.1 to v1.2. v1.0 and v1.1 preserved unchanged.</p>
+
+<hr/>
+
+<h2>Change summary — 10 corrections applied</h2>
+
+<table><thead><tr><th>#</th><th>Correction</th><th>v1.1 state</th><th>v1.2 state</th></tr></thead><tbody><tr><td>1</td><td>Residual model/vendor hardcoding</td><td>Provider interfaces already introduced in §5.1; **vendor-name search report** confirms zero residual vendor names in v1.2 blueprint body</td><td>See §22-A below</td></tr><tr><td>2</td><td>14-stage vs 15-stage workflow</td><td>Workflow chain listed 15 stages but was implicitly counted as "14-stage" in one prior heading</td><td>**§0 rewritten to enumerate 15 stages explicitly; §22 workflow verification report added**</td></tr><tr><td>3</td><td>Document dates</td><td>Ambiguous "Feb 26, 2026" phrasing</td><td>Explicit "February 26, 2026" with Created / Revised / Approved fields</td></tr><tr><td>4</td><td>Retention "indefinitely" / "forever" contradictions</td><td>§13 said "cold storage indefinitely" and "Passport ledger permanent"; §13 closing said "kept forever"</td><td>Rewritten: "Retained for the operational lifetime of the property record, subject to legal-hold and secure-deletion overrides." "Indefinite" removed. "Forever" removed.</td></tr><tr><td>5</td><td>Property merge/split/identity/ownership ops</td><td>Not defined</td><td>**§11.3 added** — five operations with authorization tier, ledger event type, and invariants</td></tr><tr><td>6</td><td>Tier 3 / Tier 4 overlap</td><td>Both tiers listed "structural concerns" and "engineering deviations"</td><td>Tier 3 rewritten as "high-consequence non-engineering"; Tier 4 given exclusive authority over structure, code compliance, engineering deviations. **Clear boundary rule** added: "any finding that touches structure, code compliance, or engineering deviation escalates to Tier 4."</td></tr><tr><td>7</td><td>"Scientifically defensible"</td><td>§12.2 opened with "Thermal findings become scientifically defensible"</td><td>Removed. Replaced with: "This pipeline is presented as an engineering approach; claims of scientific accuracy require completion of the §17 validation program before any external assertion."</td></tr><tr><td>8</td><td>AWE Index™ calibration + release-state</td><td>Not defined</td><td>**§17.1 added** — five release states (INTERNAL_DRAFT → PILOT → CALIBRATED_LIMITED → CALIBRATED_GENERAL → EXTERNALLY_ASSERTABLE) with transition requirements; never displayed without release-state chip</td></tr><tr><td>9</td><td>Phase 1 demo-data / UI honesty</td><td>Chips defined in §15.2 but no honesty-rule enforcement</td><td>**§20.1 added** — 7 mandatory Phase 1 UI honesty rules; violations are blocker defects</td></tr><tr><td>10</td><td>Implementation authorization boundary</td><td>v1.1 approval block implied broader Phase 1 authorization</td><td>**§20.2 added** — v1.2 approval authorizes **Phase 1a ONLY**; every subsequent sub-phase requires its own explicit executive approval</td></tr></tbody></table>
+
+<hr/>
+
+<h2>§22-A · Vendor-name search report</h2>
+
+<p><strong>Search scope</strong>: <code>/app/memory/NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.2.md</code></p>
+<p><strong>Terms searched (case-insensitive)</strong>: <code>claude</code>, <code>openai</code>, <code>gpt</code>, <code>gemini</code>, <code>anthropic</code>, <code>llama</code>, <code>mistral</code></p>
+<p><strong>Result</strong>: <strong>Zero matches</strong> in v1.2 blueprint body.</p>
+
+<p>Vendor bindings live only in deployment configuration (out of blueprint scope). Every agent contract references capability interfaces per v1.1 §5.1: <code>ReasoningProvider</code>, <code>VisionProvider</code>, <code>ThermalAnalysisProvider</code>, <code>SegmentationProvider</code>, <code>MeasurementProvider</code>, <code>NarrativeProvider</code>, <code>RuleEngine</code>, <code>PhotogrammetryProvider</code>, <code>BimProvider</code>, <code>CalibrationProvider</code>.</p>
+
+<hr/>
+
+<h2>§22-B · Fifteen-stage workflow verification report</h2>
+
+<p>The mandatory workflow enumerated in v1.2 §0 contains <strong>15 named stages</strong>, cross-referenced in v1.2 §22 with producer/consumer detail:</p>
+
+<ol><li>Mission Control · 2. Mission Planning · 3. Mission Validation · 4. Flight · 5. Mission Assurance · 6. Capture Validation · 7. Digital Twin Generation · 8. AI Workforce Processing · 9. Property Intelligence · 10. AWE™ Intelligence · 11. Human QA · 12. Report Generation · 13. Property Passport Update · 14. Habitat Synchronization · 15. Customer Delivery.</li></ol>
+
+<p><strong>Count verified: 15.</strong> All prior "14-stage" references corrected.</p>
+
+<hr/>
+
+<h2>§22-C · Date verification statement</h2>
+
+<ul><li><strong>Created date</strong>: February 26, 2026 (v1.0 authored this date)</li><li><strong>Revised date (v1.2)</strong>: February 26, 2026 (same-day consistency correction)</li><li><strong>Approved date</strong>: pending executive signature</li></ul>
+
+<p>No future-dated architectural records. No "July 18, 2026" text remains in v1.2 documents. The prior PDF cover text has been regenerated.</p>
+
+<hr/>
+
+<h2>§22-D · Retention policy consistency statement</h2>
+
+<p>The words "indefinitely" and "forever" no longer appear in Blueprint v1.2 §13 or elsewhere in the retention discussion. The Passport ledger retention is now stated as: <em>"Retained for the operational lifetime of the property record, subject to legal-hold and secure-deletion overrides."</em> All other data classes retain the explicit hot/cold retention schedule from v1.1.</p>
+
+<hr/>
+
+<h2>§22-E · Human-QA overlap correction confirmation</h2>
+
+<p>Tier 3 (high-consequence non-engineering) and Tier 4 (engineering-controlled) are now mutually exclusive:</p>
+<ul><li>Tier 3 handles high-consequence non-structural findings (moisture, energy, insurance, non-engineering safety, contractor-authority repair scope).</li><li>Tier 4 has exclusive authority over structural concerns, code compliance, engineering deviations, repair designs, safety certification, and building release.</li><li><strong>Boundary rule enshrined</strong>: any finding touching structure, code compliance, or engineering deviation escalates to Tier 4.</li></ul>
+
+<hr/>
+
+<h2>Files changed to create v1.2</h2>
+
+<p>Documentation-only. No implementation code. No production changes.</p>
+
+<pre><code>CREATED   /app/memory/NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.2.md
+CREATED   /app/memory/NEXTGEN_ARCHITECTURE_REDLINE_v1.1_to_v1.2.md   (this file)
+UPDATED   /app/memory/NEXTGEN_ARCHITECTURE_ADRs_v1.1.md → v1.2 (append-only; new ADR-011..ADR-014)
+UPDATED   /app/memory/_build_blueprint_pdf.py (v1.2 titles / metadata)
+UPDATED   /app/backend/routes/blueprint.py (added v1.2 endpoints; v1.0/v1.1 endpoints preserved)
+FROZEN    /app/memory/NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md  (chmod 444)
+GENERATED /app/memory/_blueprint_out/STRATEX_NextGen_Architecture_Blueprint_v1.2.pdf
+PRESERVED /app/memory/_v1.0_PRESERVED_*  (unchanged, still chmod 444)</code></pre>
+
+<hr/>
+
+<h2>Confirmations</h2>
+
+<ul><li>✅ <strong>Blueprint v1.0 remains preserved unchanged</strong> (<code>_v1.0_PRESERVED_*</code>, chmod 444)</li><li>✅ <strong>Blueprint v1.1 remains preserved unchanged</strong> (v1.1 md now chmod 444)</li><li>✅ <strong>Production remains untouched</strong> — no deploy triggered</li><li>✅ <strong>No NextGen implementation code was written</strong> — documentation-only pass</li><li>✅ <strong>All 10 v1.2 corrections incorporated</strong> — cross-checked in the table above</li></ul>
+
+
+<hr/>
+
+<h1>STRATEX BLUEPRINT — ARCHITECTURE DECISION RECORDS (ADRs)</h1>
+<p><strong>Companion to Blueprint v1.1 · Each ADR justifies one major correction.</strong></p>
+
+<hr/>
+
+<h2>ADR-001 · Model-Vendor Neutrality</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Blueprint v1.0 hardcoded "Claude Sonnet 4.6" into agent registry, creating vendor lock-in and incorrectly treating a general-purpose LLM as the principal engine for measurement and safety-critical operations.</p>
+<p><strong>Decision</strong>: Architecture references only capability interfaces (<code>ReasoningProvider</code>, <code>VisionProvider</code>, <code>ThermalAnalysisProvider</code>, <code>SegmentationProvider</code>, <code>MeasurementProvider</code>, <code>NarrativeProvider</code>, <code>RuleEngine</code>, <code>PhotogrammetryProvider</code>, <code>BimProvider</code>, <code>CalibrationProvider</code>). Concrete vendor + model bindings live in deployment configuration only.</p>
+<p><strong>Consequences</strong>: Provider swap is a config change, not a code change. LLM outputs are confined to narrative composition; deterministic and specialized systems remain authoritative for measurements, safety, and structural findings. Every <code>agent_runs</code> row records the actual provider + model + prompt version at runtime for audit.</p>
+
+<hr/>
+
+<h2>ADR-002 · Calibrated Thermal Registration Pipeline</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Feature-based homography per capture is insufficient for complex three-dimensional houses (roofs, dormers, valleys, soffits, projections, occlusions).</p>
+<p><strong>Decision</strong>: 10-step calibrated registration pipeline. Estimate thermal-camera extrinsics against RGB + property coordinate system → reproject radiometric data onto validated 3D surfaces → depth and occlusion testing → reject reflected, grazing, poorly registered surfaces → store per-region confidence. Local homography permitted only for verified planar regions.</p>
+<p><strong>Consequences</strong>: Thermal findings become scientifically defensible. Registration residuals are stored per region. Findings above configurable error thresholds require human review before Passport append. Colored thermal texture is never presented as a scientifically validated thermal finding.</p>
+
+<hr/>
+
+<h2>ADR-003 · Preserve Original Sensor Data</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Normalized derivatives (TIFF, PNG, glTF) cannot be the source of truth. Conversion loss and lossy re-encoding invalidate any later scientific claim.</p>
+<p><strong>Decision</strong>: The <strong>canonical mission package</strong> stores original DJI radiometric files, RGB, video, flight logs, telemetry, sensor metadata, checksums, calibration data, environmental records, and operator notes. All derived assets are labeled as derivatives.</p>
+<p><strong>Consequences</strong>: Retention costs increase (mitigated by §13 lifecycle policy). Evidence chain-of-custody becomes provable. Reprocessing with a swapped <code>ThermalAnalysisProvider</code> or <code>PhotogrammetryProvider</code> is possible against the original evidence.</p>
+
+<hr/>
+
+<h2>ADR-004 · Air Intelligence Scope Correction</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Exterior thermal imagery cannot establish indoor air quality, mold presence, CO₂, radon, or definitive airflow rates.</p>
+<p><strong>Decision</strong>: AWE Air scope initially limited to ventilation indicators, exterior air-leakage indicators, condensation-risk indicators, crawlspace/foundation ventilation observations, and areas requiring interior verification. Any indoor air quality diagnosis requires appropriate sensors and field validation.</p>
+<p><strong>Consequences</strong>: Product marketing must not claim indoor air quality. "A mold-risk indicator is not a mold diagnosis" enshrined in v1.1. Future indoor air quality capability requires separate sensor product + hardware.</p>
+
+<hr/>
+
+<h2>ADR-005 · Risk-Tiered Human QA</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Blueprint v1.0 required human approval on nearly every finding — an operational bottleneck at scale.</p>
+<p><strong>Decision</strong>: Four-tier QA framework. Tier 1 auto-publishes if confidence and inputs pass. Tier 2 requires contractor/inspector. Tier 3 requires MFA-authenticated qualified human. Tier 4 requires licensed professional. Finding schema mandates <code>risk_tier</code>, <code>required_reviewer_role</code>, <code>release_restriction</code>.</p>
+<p><strong>Consequences</strong>: Operating cost scales sensibly. High-consequence findings still receive expert sign-off. Every publisher (Passport append, report render, Habitat sync) checks tier before releasing.</p>
+
+<hr/>
+
+<h2>ADR-006 · Public Passport Access Is Not Hash-Based</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: A permanent hash is not a bearer credential. Anonymous read access via hash-only leaks all passport data to anyone who ever received the URL.</p>
+<p><strong>Decision</strong>: Public access requires expiring signed links + scoped audience projection + revocation + access logging + rate limiting + optional recipient binding. Separate projections per audience (public / homeowner / contractor / adjuster / insurer).</p>
+<p><strong>Consequences</strong>: Existing <code>/passport/:hash</code> route must be re-routed through a signed-link factory during Phase 1a-2 migration. Homeowner-share, contractor-share, and adjuster-share flows all mint scoped links rather than exposing the hash.</p>
+
+<hr/>
+
+<h2>ADR-007 · Optimistic Concurrency with Explicit Rebase</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: "First-writer-wins" language implies silent data loss for the losing submission.</p>
+<p><strong>Decision</strong>: Optimistic concurrency with 7-step rebase workflow. Losing submissions preserved in <code>passport_sync_log</code>, automatically rebased when non-conflicting, routed to Human QA queue when materially conflicting. Never silently discarded.</p>
+<p><strong>Consequences</strong>: Cosign receipt scheme unchanged. <code>409 SEQUENCE_CONFLICT</code> still returned to client, but with a rebase-attempt link + queue routing on materially conflicting content.</p>
+
+<hr/>
+
+<h2>ADR-008 · Layered Digital Twin Package</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: A single glTF cannot be both a scientifically valid measurement record and an optimized mobile presentation.</p>
+<p><strong>Decision</strong>: Four canonical layers: Evidence (originals + reconstruction report), Measurement (validated surfaces + tolerances), Presentation (compressed glTF/KTX2 for mobile), Interchange (IFC/DXF/PLY/LAS/LAZ/E57/GeoTIFF only where source supports).</p>
+<p><strong>Consequences</strong>: Presentation optimization can never alter the measurement record. IFC/DXF exports are provably restricted to observed geometry — no invented concealed framing.</p>
+
+<hr/>
+
+<h2>ADR-009 · Durable Delivery for Critical Events</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: FastAPI background tasks lose work on process restart, deploy, or worker failure. Passport and Habitat delivery are business-critical.</p>
+<p><strong>Decision</strong>: Transactional outbox + durable jobs collection with locking and idempotent retries for the critical event set. In-process background tasks retained only for non-critical (UI notifications, cache warming). No external broker required in Phase 1.</p>
+<p><strong>Consequences</strong>: Approved findings pending Passport append, passport-to-Habitat handoffs, and evidence-package finalization survive deployment. External broker (NATS/Redis Streams) may be introduced in Phase 2+ if cross-service messaging demands it — not before.</p>
+
+<hr/>
+
+<h2>ADR-010 · Validation Program Precedes Marketing Language</h2>
+<p><strong>Status</strong>: Accepted (v1.1)</p>
+<p><strong>Context</strong>: Marketing phrases like "engineering-grade" or "insurance-grade accuracy" without empirical validation are legally and ethically indefensible.</p>
+<p><strong>Decision</strong>: Formal field-validation program (15 dimensions) defined before any external claim of accuracy. Truth Score displayed only in 10-point bands until calibrated. Product copy uses "Prototype scoring — not calibrated to industry standard yet" during pre-validation.</p>
+<p><strong>Consequences</strong>: Marketing team receives a documented gate. Any external claim of accuracy is tied to a specific validation report by version. Insurance carriers can request the validation report before granting evidentiary weight to Stratex outputs.</p>
+
+<hr/>
+
+<h2>Meta-ADR · Documentation-Only Discipline</h2>
+<p><strong>Status</strong>: Accepted throughout v1.1 revision pass</p>
+<p><strong>Decision</strong>: No implementation code was written during the v1.1 revision. No production deploy occurred. All v1.0 artifacts preserved read-only at <code>/app/memory/_v1.0_PRESERVED_*</code>.</p>
+<p><strong>Consequences</strong>: Reversibility is absolute. If v1.1 is rejected, v1.0 is untouched and can resume as the reference document.</p>
+
+<hr/>
+
+<h1>ADRs ADDED IN v1.2</h1>
+
+<h2>ADR-011 · Fifteen-stage Workflow Enumeration</h2>
+<p><strong>Status</strong>: Accepted (v1.2)</p>
+<p><strong>Context</strong>: v1.0 and v1.1 loosely referenced a "14-stage" workflow while enumerating 15 stages in the chain.</p>
+<p><strong>Decision</strong>: Standardize on 15 stages. Every reference explicitly enumerates them. §22 workflow verification report cross-lists producer + consumer per stage.</p>
+<p><strong>Consequences</strong>: Downstream module counts, workflow diagrams, dashboard progress indicators, and event log producers all reference 15 stages.</p>
+
+<h2>ADR-012 · Property Lifecycle Operations</h2>
+<p><strong>Status</strong>: Accepted (v1.2)</p>
+<p><strong>Context</strong>: Merge, split, identity-link, identity-unlink, and ownership-transfer were undefined operations, creating risk of silent data corruption.</p>
+<p><strong>Decision</strong>: Five first-class audited operations (§11.3) with explicit ledger event types, authorization tiers, and invariants. No operation destroys prior history.</p>
+<p><strong>Consequences</strong>: Human QA queue receives merge/split events at Tier 3. Ownership transfer is Tier 2 with MFA + Habitat notification. Reversibility within a documented rollback window.</p>
+
+<h2>ADR-013 · Tier 3 / Tier 4 Boundary Rule</h2>
+<p><strong>Status</strong>: Accepted (v1.2)</p>
+<p><strong>Context</strong>: v1.1 listed "structural concerns" and "engineering deviations" in both Tier 3 and Tier 4, creating routing ambiguity.</p>
+<p><strong>Decision</strong>: Tier 4 has exclusive authority over structure, code compliance, and engineering deviations. Tier 3 handles high-consequence non-structural findings only. Explicit escalation rule enshrined in §10.</p>
+<p><strong>Consequences</strong>: Human QA router has an unambiguous rule. No finding can be silently signed off at Tier 3 when it touches structure.</p>
+
+<h2>ADR-014 · AWE Index™ Release-State Gate</h2>
+<p><strong>Status</strong>: Accepted (v1.2)</p>
+<p><strong>Context</strong>: Displaying a composite AWE Index™ before validation risks premature external claims.</p>
+<p><strong>Decision</strong>: Five release states with published transition requirements (§17.1). The Index is never rendered without its current release-state chip.</p>
+<p><strong>Consequences</strong>: Marketing team, contractor UI, and Passport payload each read the release state before rendering the Index. Transitions require published validation report + Executive Architect sign-off.</p>
+
+<h2>ADR-015 · Phase 1a-Only Authorization Boundary</h2>
+<p><strong>Status</strong>: Accepted (v1.2)</p>
+<p><strong>Context</strong>: v1.1 approval block risked being interpreted as authorizing all of Phase 1 sub-phases.</p>
+<p><strong>Decision</strong>: v1.2 approval authorizes <strong>Phase 1a only</strong>. Each subsequent sub-phase (1b, 1c, 1d) requires its own explicit executive authorization following review of the prior sub-phase's completion package (§20.2).</p>
+<p><strong>Consequences</strong>: Cannot accidentally slide into shell scaffolding, workspace stubs, or screenshot packaging without additional approval gates. Prevents scope creep by construction.</p>
+
+
+<hr/>
+
+<h1>ORIGINAL v1.0 REVIEW APPENDIX (Q1-Q14)</h1>
+<p><em>Preserved verbatim for reference. Answers superseded where v1.1 §§10–17 address them.</em></p>
+
+<h1>STRATEX CORE — NEXTGEN ARCHITECTURE REVIEW APPENDIX</h1>
+<p><strong>Companion document to NEXTGEN_ARCHITECTURE_BLUEPRINT.md v1.0</strong></p>
+<p><strong>Status</strong>: Answering Executive Review Questions 1-14</p>
+<p><strong>Author</strong>: TC · Stratex AI Product Manager, under directive of Anthony Cross</p>
+<p><strong>Purpose</strong>: Detailed responses to executive architecture review questions issued during the Blueprint hold.</p>
+
+<hr/>
+
+<h2>Q1 — TWENTY-FOUR-AGENT ARCHITECTURE (justification)</h2>
+
+<h3>Correction of framing</h3>
+<p>The blueprint's "24 agents" is a <strong>logical software role count</strong>, not a deployable-service count. In production, these logical agents collapse into <strong>5 deployable services</strong> during early phases:</p>
+
+<table><thead><tr><th>Service</th><th>Logical agents inside</th><th>Deployment</th></tr></thead><tbody><tr><td>**Mission Ops Service**</td><td>Mission Commander · Mission QA · Flight Operations · Mission Assurance · Capture Validation</td><td>1 container, sync + background</td></tr><tr><td>**Vision Intelligence Service**</td><td>Photogrammetry · CAD/BIM · Digital Twin · Roof · Window · Door · Damage Detection · Measurement · Thermal Analysis</td><td>1 container, GPU-optional, async job queue</td></tr><tr><td>**AWE Intelligence Service**</td><td>Water · Air · Energy</td><td>1 container, async job queue</td></tr><tr><td>**Estimating Service**</td><td>Materials · Labor · Estimating · Maintenance Priority</td><td>1 container, sync</td></tr><tr><td>**Delivery & Sync Service**</td><td>Reporting · Passport Sync · Habitat Sync</td><td>1 container, sync + retry queue</td></tr></tbody></table>
+
+<p><strong>Rationale</strong>: separately deploying 24 microservices during the prototype phase would introduce</p>
+<p>network complexity, deployment cost, and observability burden with no operational payoff.</p>
+
+<h3>Per-agent detail table</h3>
+
+<table><thead><tr><th>#</th><th>Agent</th><th>Responsibility</th><th>Inputs</th><th>Outputs</th><th>Model / Service</th><th>Logical vs deployed</th><th>Sync/Async</th><th>Human gate</th><th>Cost tier</th></tr></thead><tbody><tr><td>1</td><td>Mission Commander</td><td>Compose + validate mission plan</td><td>property_id, target_systems</td><td>mission_plan.json</td><td>Claude Sonnet + rule engine</td><td>Logical inside Mission Ops</td><td>Sync</td><td>Yes (dispatcher)</td><td>Low</td></tr><tr><td>2</td><td>Mission QA</td><td>Enforce 20-item preflight gate</td><td>mission_plan, drone_state, weather</td><td>gate_result{pass,fail,blockers[]}</td><td>Deterministic checks</td><td>Logical</td><td>Sync</td><td>No (all-or-nothing)</td><td>Free</td></tr><tr><td>3</td><td>Flight Operations</td><td>Live telemetry watch; safe-return decisions</td><td>telemetry stream</td><td>control_decisions[]</td><td>Rule engine</td><td>Logical</td><td>Async streaming</td><td>Escalates</td><td>Low</td></tr><tr><td>4</td><td>Mission Assurance</td><td>In-flight GSD/overlap QA</td><td>live imagery metadata</td><td>additional_shots[]</td><td>Statistical + Claude</td><td>Logical</td><td>Async streaming</td><td>No (auto-retake)</td><td>Low</td></tr><tr><td>5</td><td>Capture Validation</td><td>Radiometric integrity, RGB↔thermal registration</td><td>asset bundle</td><td>validation_report</td><td>Statistical + Claude</td><td>Logical</td><td>Async job</td><td>Yes</td><td>Low</td></tr><tr><td>6</td><td>Photogrammetry</td><td>Point cloud + mesh generation</td><td>RGB assets</td><td>.glb, .obj, point_cloud</td><td>**AWAITING INTEGRATION** (Pix4D / RealityCapture / OpenDroneMap)</td><td>Deployed later</td><td>Async job</td><td>Yes</td><td>High</td></tr><tr><td>7</td><td>Thermal Analysis</td><td>Radiometric anomaly detection</td><td>thermal R-JPG assets</td><td>thermal_findings[]</td><td>Statistical + Claude</td><td>Logical</td><td>Async job</td><td>Yes</td><td>Medium</td></tr><tr><td>8</td><td>CAD/BIM Generation</td><td>Structural layers, framing extraction</td><td>point cloud + mesh</td><td>.ifc, .rvt derivatives</td><td>**AWAITING INTEGRATION** (commercial)</td><td>Deployed later</td><td>Async job</td><td>Yes</td><td>High</td></tr><tr><td>9</td><td>Digital Twin</td><td>Fuse 3 layers into single twin</td><td>reality mesh + CAD + intelligence</td><td>twin manifest</td><td>Deterministic composition</td><td>Logical</td><td>Async</td><td>Yes</td><td>Low</td></tr><tr><td>10</td><td>Roof Intelligence</td><td>Plane, facet, damage classification</td><td>RGB + twin</td><td>roof_findings[]</td><td>Claude + CV heuristics</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>11</td><td>Window Intelligence</td><td>Type, dimensions, glass, leakage</td><td>RGB + thermal + twin</td><td>window_findings[]</td><td>Claude + CV</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>12</td><td>Door Intelligence</td><td>Type, material, seal condition</td><td>RGB + thermal + twin</td><td>door_findings[]</td><td>Claude + CV</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>13</td><td>Water (AWE)</td><td>Moisture retention, water risk</td><td>thermal + roof geometry + weather history</td><td>water_findings[], water_score</td><td>Claude + rules</td><td>Logical inside AWE Service</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>14</td><td>Air (AWE)</td><td>Ventilation performance</td><td>thermal + door/window findings</td><td>air_findings[], air_score</td><td>Claude + rules</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>15</td><td>Energy (AWE)</td><td>Envelope performance, heat-loss score</td><td>thermal + envelope + weather</td><td>energy_findings[], energy_score</td><td>Claude + rules</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>16</td><td>Damage Detection</td><td>Cross-system anomaly clustering</td><td>all findings[]</td><td>prioritized_damage[]</td><td>Claude</td><td>Logical</td><td>Async</td><td>Yes</td><td>Medium</td></tr><tr><td>17</td><td>Measurement Intelligence</td><td>Extract precise measurements from twin</td><td>twin + registration</td><td>measurements[] with tolerance</td><td>Deterministic geometry</td><td>Logical</td><td>Sync</td><td>Yes</td><td>Free</td></tr><tr><td>18</td><td>Materials Intelligence</td><td>Compose BOM</td><td>measurements + roof/window/door findings</td><td>bom[]</td><td>Catalog lookup + Claude</td><td>Logical inside Estimating</td><td>Sync</td><td>Yes</td><td>Low</td></tr><tr><td>19</td><td>Labor Intelligence</td><td>Compose labor plan</td><td>bom + regional rates</td><td>labor_plan</td><td>Catalog lookup + Claude</td><td>Logical</td><td>Sync</td><td>Yes</td><td>Low</td></tr><tr><td>20</td><td>Estimating Intelligence</td><td>Final estimate w/ waste, tax, O&P</td><td>bom + labor + preferences</td><td>estimate.json</td><td>Deterministic math</td><td>Logical</td><td>Sync</td><td>Yes</td><td>Free</td></tr><tr><td>21</td><td>Maintenance Priority</td><td>Rank issues by urgency + cost avoidance</td><td>all findings + estimate</td><td>priorities[]</td><td>Composite scoring</td><td>Logical</td><td>Sync</td><td>Yes</td><td>Free</td></tr><tr><td>22</td><td>Reporting Intelligence</td><td>Compose enterprise report</td><td>approved intelligence bundle</td><td>report.pdf + report.json</td><td>Template + Claude narrator</td><td>Logical inside Delivery</td><td>Sync</td><td>No (post-approval)</td><td>Low</td></tr><tr><td>23</td><td>Passport Sync</td><td>Emit ledger delta to Passport</td><td>approved bundle</td><td>sync receipt</td><td>Deterministic</td><td>Logical</td><td>Async + retry queue</td><td>No</td><td>Free</td></tr><tr><td>24</td><td>Habitat Sync</td><td>Emit homeowner packet to Habitat</td><td>approved bundle</td><td>sync receipt</td><td>Deterministic</td><td>Logical</td><td>Async + retry queue</td><td>No</td><td>Free</td></tr></tbody></table>
+
+<h3>Combination rationale</h3>
+<p>Agents 13-15 (AWE) cannot be combined because Water, Air, and Energy each require distinct</p>
+<p>input signals (weather history vs door/window vs envelope) and produce independently-reported scores.</p>
+<p>Similarly, Roof/Window/Door intelligences cannot be combined because approval authority</p>
+<p>differs (a contractor may approve roof findings but require an engineer for structural doors).</p>
+
+<hr/>
+
+<h2>Q2 — PROPERTY PASSPORT AUTHORITY</h2>
+
+<h3>Ownership model (definitive)</h3>
+
+<table><thead><tr><th>Concern</th><th>Authority</th></tr></thead><tbody><tr><td>**Creates Passport**</td><td>Stratex Passport service — issued via `POST /passport/v1/mint` with a nonce from Core</td></tr><tr><td>**Owns canonical identifier**</td><td>Stratex Passport service — 12-char uppercase hash, globally unique</td></tr><tr><td>**May append records**</td><td>**Stratex Passport service only.** Core submits deltas via `/passport/v1/append`; Passport service re-verifies chain integrity before writing</td></tr><tr><td>**May correct records**</td><td>Nobody. Records are immutable. Corrections are new appends with an explicit `supersedes` pointer to the prior record</td></tr><tr><td>**Versioned via**</td><td>Sequential ledger `seq` + SHA-256 chain (`prev_hash` field) — already implemented today for the native passport</td></tr><tr><td>**Findings superseded via**</td><td>New ledger entry of type `SUPERSEDE` carrying `prior_seq`, `reason`, and `superseding_finding_id`. Historical record is never destroyed</td></tr><tr><td>**Core submission path**</td><td>`POST /passport/v1/append {passport_id, delta_bundle, core_signature}` → Passport verifies + writes + returns cryptographic receipt</td></tr><tr><td>**Habitat receipt path**</td><td>`GET /passport/v1/projections/homeowner/:passport_id` — a read-only projection scoped to homeowner-appropriate fields</td></tr><tr><td>**Conflict resolution**</td><td>**First-writer-wins with per-property sequence numbers.** Concurrent appends fail with `409 SEQUENCE_CONFLICT`, forcing the loser to re-read and re-submit</td></tr><tr><td>**Cryptographic proof**</td><td>Every accepted append returns a SHA-256 receipt computed over `{payload, seq, prev_hash, signed_at}`. Core stores this receipt in its `sync_audit_log`</td></tr><tr><td>**Deployment**</td><td>**Standalone service** post-parity. Today it is embedded in `/app/backend/routes/passport.py` — this is the first module extracted in Phase 2</td></tr></tbody></table>
+
+<h3>Access-control matrix</h3>
+
+<table><thead><tr><th>Actor</th><th>Read</th><th>Append</th><th>Correct</th><th>Habitat receive</th></tr></thead><tbody><tr><td>Contractor (Core)</td><td>✅ (their org's properties)</td><td>✅ (approved bundles only)</td><td>❌</td><td>❌</td></tr><tr><td>Homeowner</td><td>✅ (their property only, homeowner projection)</td><td>❌</td><td>❌</td><td>✅</td></tr><tr><td>Adjuster</td><td>✅ (via magic link)</td><td>✅ (cosign entries only — already exists)</td><td>❌</td><td>❌</td></tr><tr><td>Passport service itself</td><td>✅</td><td>✅ (all writes go through it)</td><td>✅ (via SUPERSEDE semantics)</td><td>—</td></tr><tr><td>Habitat service</td><td>❌ direct</td><td>❌</td><td>❌</td><td>✅ pull only</td></tr></tbody></table>
+
+<h3>Existing Claim Snapshot cosign receipt pattern (§8 blueprint) is the canonical template for how every future append works.</h3>
+
+<hr/>
+
+<h2>Q3 — PROVENANCE INTERFACE</h2>
+
+<h3>Visual-noise avoidance rules</h3>
+
+<p><strong>Always visible (chip in-line)</strong> — applies to high-consequence numbers only:</p>
+<ul><li>Envelope Score</li><li>Moisture %</li><li>Repair Estimate $</li><li>AWE™ scores (Air, Water, Energy)</li><li>Truth Score</li><li>Confidence %</li></ul>
+
+<p><strong>Progressive disclosure</strong> — for supporting values:</p>
+<ul><li>Every measurement (dimension, count, area) shows a small colored dot only</li><li>Tap / hover reveals a hover-card with the full provenance object</li><li>"Open Evidence" button in the hover-card drops into an Evidence Drawer</li></ul>
+
+<p><strong>Mobile behavior</strong>:</p>
+<ul><li>Chips shrink to a single colored dot (4px) on ≤430 px viewports</li><li>Long-press opens the provenance drawer (not hover)</li><li>Drawer takes 90% of screen height, dismissible with swipe-down</li></ul>
+
+<p><strong>Evidence Drawer contents</strong>:</p>
+<ul><li>Source asset thumbnail (with a "view full size" affordance)</li><li>Model + version + prompt version</li><li>Confidence, timestamp, signer (if human-approved)</li><li>"Reject / Escalate" affordance if the user has QA role</li></ul>
+
+<h3>Provenance vs Confidence vs Truth Score (clarified)</h3>
+
+<table><thead><tr><th>Concept</th><th>Question it answers</th></tr></thead><tbody><tr><td>**Provenance**</td><td>*Where did this value come from?* — Source lineage</td></tr><tr><td>**Confidence**</td><td>*How sure is the model / measurement?* — Per-agent numeric or human-verified</td></tr><tr><td>**Finding confidence**</td><td>Aggregate confidence across all inputs for a single finding</td></tr><tr><td>**Truth Score**</td><td>*How trustworthy is this entire property record?* — See Q4</td></tr></tbody></table>
+
+<hr/>
+
+<h2>Q4 — TRUTH SCORE (honest specification)</h2>
+
+<h3>Definition (revised, non-marketing)</h3>
+<p>Truth Score is a <strong>composite property-record trust indicator</strong>, expressed on a 0-100 scale in <strong>10-point bands</strong> (never in decimal form) with descriptive language:</p>
+
+<table><thead><tr><th>Band</th><th>Language</th></tr></thead><tbody><tr><td>90-100</td><td>**Field-verified · production-grade**</td></tr><tr><td>70-89</td><td>**AI-assisted · human-approved**</td></tr><tr><td>50-69</td><td>**AI-assisted · pending human review**</td></tr><tr><td>30-49</td><td>**Partial coverage**</td></tr><tr><td>0-29</td><td>**Insufficient evidence**</td></tr></tbody></table>
+
+<h3>Component inputs</h3>
+<ol><li><strong>Evidence coverage</strong> (0-30 pts) — fraction of expected asset types present (RGB, thermal, dimensional)</li><li><strong>Model confidence average</strong> (0-25 pts) — mean confidence of all findings</li><li><strong>Human verification ratio</strong> (0-25 pts) — % of findings signed by human QA</li><li><strong>Recency</strong> (0-10 pts) — age of freshest scan</li><li><strong>Cross-registration</strong> (0-10 pts) — RGB↔thermal alignment score (if AWE performed)</li></ol>
+
+<h3>Weighting</h3>
+<p>Deterministic weighted sum with published coefficients — never a model output.</p>
+
+<h3>Missing-evidence behavior</h3>
+<p>Missing evidence subtracts from Evidence Coverage. Never treated as "confident zero."</p>
+
+<h3>Contradictory-evidence behavior</h3>
+<p>Contradictions between two findings trigger a <strong>CONTRADICTION</strong> event that:</p>
+<ul><li>caps Truth Score at 60 until reconciled</li><li>surfaces both findings to the Human QA queue</li></ul>
+
+<h3>Human verification effect</h3>
+<p>Each human-approved finding contributes to the Human Verification Ratio component. A property with 100% human approval on all findings can reach the 90-100 band.</p>
+
+<h3>Versioning</h3>
+<p>Truth Score has its own version number (e.g. <code>TS.v1.0</code>). Historical scores are frozen in the passport ledger.</p>
+
+<h3>Calibration</h3>
+<p>Requires empirical field-verification runs against ground truth before we publish the score externally. Until then, the score is displayed with the label <strong>"Prototype scoring — not calibrated to industry standard yet."</strong></p>
+
+<h3>Display language rules</h3>
+<ul><li><strong>Prohibited</strong>: "97.43%," "99.7% accurate," "AI-verified truth."</li><li><strong>Required</strong>: 10-point band + descriptive label + provenance chip</li></ul>
+
+<h3>Marketing restrictions</h3>
+<ul><li>Truth Score may <strong>not</strong> be presented to insurance carriers or in contracts as a warranty of accuracy until calibration is published.</li><li>May be presented <strong>only</strong> as a "record-completeness signal" during the prototype phase.</li></ul>
+
+<h3>The four levels distinguished</h3>
+<table><thead><tr><th>Level</th><th>Scope</th></tr></thead><tbody><tr><td>Model confidence</td><td>Per-inference (one AI call)</td></tr><tr><td>Measurement confidence</td><td>Per-measurement (one dimension)</td></tr><tr><td>Finding confidence</td><td>Per-finding (composite of contributing model + measurement confidences)</td></tr><tr><td>**Truth Score**</td><td>Per-property record (composite of all findings + coverage + verification)</td></tr></tbody></table>
+
+<hr/>
+
+<h2>Q5 — AWE™ MISSION SEPARATION</h2>
+
+<h3>Recognized: AWE requires a separate mission</h3>
+
+<p>The blueprint is amended: AWE™ is <strong>not a processing toggle on daytime imagery</strong>. Three explicit mission products exist:</p>
+
+<h3>Product 1 · <strong>Stratex Core DayScan™</strong></h3>
+<ul><li><strong>When</strong>: daytime, dry conditions</li><li><strong>Captures</strong>: RGB imagery only</li><li><strong>Produces</strong>: measurements, roof/exterior geometry, damage imagery, Digital Twin (Reality + CAD layers), material quantities, DayScan report</li><li><strong>Updates</strong>: Property Passport DayScan chain</li></ul>
+
+<h3>Product 2 · <strong>Stratex AWE™ Scan</strong></h3>
+<ul><li><strong>When</strong>: nighttime, only when environmental eligibility passes:</li><li>ΔT between indoor and outdoor ≥ 15°F (configurable per region)</li><li>No rain within last 4 hours</li><li>Wind &lt; 15 mph</li><li>Humidity &lt; 80%</li><li>No direct solar loading (≥1 hour past sunset)</li><li><strong>Captures</strong>: radiometric thermal + reference RGB</li><li><strong>Produces</strong>: Air / Water / Energy findings with false-positive controls (moisture-mimic exclusion, ventilation-shadow rejection)</li><li><strong>Requires</strong>: field verification for any finding above a materiality threshold before Passport entry</li><li><strong>Updates</strong>: Property Passport AWE chain</li></ul>
+
+<h3>Product 3 · <strong>Stratex Elite™ Property Intelligence</strong></h3>
+<ul><li>Combines DayScan + AWE Scan (with cross-registration between RGB and thermal datasets)</li><li>Produces unified evidence graph, combined report, <strong>AWE Index™</strong> (composite Air/Water/Energy)</li><li>Updates Property Passport with a single approved bundle referencing both scan hashes</li></ul>
+
+<h3>Mission planner enforcement</h3>
+<p>The Mission Planner (§3 blueprint) must present the operator with a <strong>product selector</strong> as the first step: DayScan vs AWE Scan vs Elite. The 20-item ATC gate then loads the product-specific validation subset.</p>
+
+<hr/>
+
+<h2>Q6 — DIGITAL TWIN ARCHITECTURE</h2>
+
+<h3>Canonical decisions</h3>
+
+<table><thead><tr><th>Concern</th><th>Decision</th></tr></thead><tbody><tr><td>**Coordinate system**</td><td>WGS84 lat/lon + local ENU (East-North-Up) origin per property; twin is stored in local ENU with a lat/lon origin pin</td></tr><tr><td>**Geometry source**</td><td>Photogrammetry point cloud + mesh (from RGB) — **AWAITING INTEGRATION**</td></tr><tr><td>**RGB texture source**</td><td>DayScan RGB assets</td></tr><tr><td>**Thermal-to-RGB registration**</td><td>Feature-based homography per capture; per-pixel registration confidence stored</td></tr><tr><td>**Layer manifest**</td><td>JSON manifest listing each layer (Reality, CAD, Intelligence) with URIs, hashes, version</td></tr><tr><td>**Formats**</td><td>Storage: glTF 2.0 (`.glb`) canonical; IFC 4 and DXF for CAD; PLY for point clouds; radiometric TIFF for thermal source</td></tr><tr><td>**Measurement provenance**</td><td>Every extracted measurement carries `derived_from: [asset_ids]` + tolerance ± value</td></tr><tr><td>**Level-of-detail**</td><td>glTF LOD hierarchy: L0 (full), L1 (medium), L2 (mobile); browser streams L2 by default, promotes to L0 on zoom</td></tr><tr><td>**Version comparison**</td><td>Two twin versions can be diffed; findings that shift receive a `DIFF` event</td></tr><tr><td>**Browser streaming**</td><td>glTF over HTTPS with Draco compression + KTX2 textures</td></tr><tr><td>**Mobile performance**</td><td>L2 mesh + 1k textures target < 20 MB total; renders on iPhone 12 and later at 60 fps</td></tr><tr><td>**Vendor-neutral storage**</td><td>S3-compatible object storage. No vendor-specific format inside the canonical bundle</td></tr><tr><td>**Exportability**</td><td>Every twin can be exported as `.glb` + `.ifc` + `.dxf` bundle to a customer download link</td></tr><tr><td>**External processor replacement**</td><td>Photogrammetry, CAD/BIM, and radiometric processing are all **adapter contracts**. Concrete provider (Pix4D, RealityCapture, OpenDroneMap) is swappable without changing Core</td></tr></tbody></table>
+
+<h3>Stratex-owned vs external-processor-owned</h3>
+
+<p><strong>Stratex owns forever</strong>:</p>
+<ul><li>Mission package (plan, waypoints, targets)</li><li>Evidence graph (which asset produced which finding)</li><li>Findings + approvals + Passport records</li><li>The layer manifest and its version history</li><li>Signed measurement provenance</li></ul>
+
+<p><strong>External processors own only</strong> the raw mesh/CAD generation step and are treated as replaceable adapters behind a <code>PhotogrammetryProvider</code> / <code>BimProvider</code> interface.</p>
+
+<hr/>
+
+<h2>Q7 — DATA-STATE HONESTY</h2>
+
+<h3>Adopted implementation-state vocabulary</h3>
+
+<p>Every feature, integration, and displayed value shall carry exactly one of:</p>
+
+<table><thead><tr><th>State</th><th>Meaning</th></tr></thead><tbody><tr><td>**Operational**</td><td>Live end-to-end in production, verified by tests</td></tr><tr><td>**Partially operational**</td><td>Some flows live, others use fallback or fixtures — clearly labeled which</td></tr><tr><td>**Mocked**</td><td>Fixture data; nothing real behind it</td></tr><tr><td>**Planned**</td><td>Design complete, not built</td></tr><tr><td>**Awaiting credentials**</td><td>Built but requires API key / license not yet obtained</td></tr><tr><td>**Awaiting hardware**</td><td>Built but requires drone / sensor / dock not yet on hand</td></tr><tr><td>**Awaiting validation**</td><td>Built but requires field calibration before trust</td></tr><tr><td>**Deprecated**</td><td>Phasing out; do not use for new work</td></tr><tr><td>**Legacy**</td><td>Frozen, read-only, under `/legacy/*`</td></tr></tbody></table>
+
+<h3>Marketing rules</h3>
+
+<ul><li>No screen may claim "operational" for a component that is any other state</li><li>The UI shall render each state with a distinct chip color and label</li><li>Reports shall footer with a state summary of every value in the document</li></ul>
+
+<hr/>
+
+<h2>Q8 — EXISTING ASSET PRESERVATION MAP</h2>
+
+<table><thead><tr><th>Asset</th><th>Decision</th><th>Rationale</th></tr></thead><tbody><tr><td>Official Stratex branding (logo, colors, typography)</td><td>**Preserve unchanged**</td><td>Approved; carried into NextGen shell</td></tr><tr><td>Property Passport ledger (hash-chained)</td><td>**Preserve unchanged**, migrate storage to `passport_ledger` collection with Pydantic model</td><td>Working crypto — do not touch the algorithm</td></tr><tr><td>Claim Snapshot engine</td><td>**Refactor** into `findings` + specialized `claim_snapshot` view; keep public API</td><td>Genuine value; needs normalized storage</td></tr><tr><td>Adjuster co-sign SHA-256 receipt</td><td>**Preserve** as the canonical template for all future human sign-offs</td><td>Generalize the pattern to every Human QA event</td></tr><tr><td>Open-Meteo weather integration</td><td>**Preserve unchanged**; extract into `WeatherProvider` adapter</td><td>Simple, working, free</td></tr><tr><td>Live Ops WebSocket bus</td><td>**Refactor** onto formal event bus (§7 blueprint); keep client contract</td><td>WS is fine; server logic needs event log</td></tr><tr><td>PDF / Report pipeline (Playwright + cache-first)</td><td>**Preserve**; graduate to Report Studio in Delivery Service</td><td>Production-safe already</td></tr><tr><td>Reports Binder (PyMuPDF)</td><td>**Preserve** as embedded viewer in Report Studio</td><td>Works</td></tr><tr><td>Existing authentication (JWT + bcrypt, CEO login)</td><td>**Refactor** — extract to Identity Service, expand to full RBAC</td><td>Foundation good; scope must grow</td></tr><tr><td>Existing authorization</td><td>**Refactor** — introduce `require_auth` + `require_org` on all product routes</td><td>Critical gap today</td></tr><tr><td>Service credentials / HMAC patterns</td><td>**Preserve** patterns; regenerate secrets on each service split</td><td>Reusable</td></tr><tr><td>Existing Core → Passport → Habitat contracts</td><td>**Migrate** — Passport becomes standalone; Habitat contract is new</td><td>Formalized in Q2</td></tr><tr><td>Existing test suites (`test_iter17_new_features.py` … `test_iter21_cosign.py`)</td><td>**Preserve** as legacy regression harness; add NextGen suite alongside</td><td>Keep the safety net</td></tr><tr><td>Static illustrations in `/twin/*` and `_binder_cache/*`</td><td>**Retire** once real twin renders exist, but keep for the interim label as `DEMO DATA`</td><td>Cannot be shown as real intelligence</td></tr><tr><td>`_sample_analysis()` hardcoded fixture</td><td>**Retire** — replaced by the AI Workforce pipeline</td><td>Explicit deletion at Phase 3</td></tr></tbody></table>
+
+<p><strong>Nothing is deleted through omission.</strong> Every asset is accounted for.</p>
+
+<hr/>
+
+<h2>Q9 — SECURITY SCOPE (phased introduction)</h2>
+
+<h3>Phase 1 (Foundation)</h3>
+<ul><li><strong>Initial roles</strong>: <code>admin</code>, <code>contractor</code>, <code>pilot</code>, <code>inspector</code>, <code>homeowner</code>, <code>adjuster</code></li><li><strong>Initial permissions</strong>: read/write/approve/sign</li><li><strong>Organization isolation</strong>: <code>org_id</code> required on every mutable resource; enforced in query builder</li><li><strong>Property-level access</strong>: <code>property_org_bindings</code> table; contractors see only their org's properties</li><li><strong>Contractor access</strong>: read all properties in their org, write findings after inspector approval</li><li><strong>Homeowner access</strong>: read-only projection of their property only</li><li><strong>Pilot / operator access</strong>: read mission plans, write telemetry + capture assets</li><li><strong>Administrator access</strong>: full within their org; cross-org requires service token</li><li><strong>Engineer/adjuster reviewer access</strong>: read + sign findings/reports via magic-link tokens (existing cosign pattern)</li></ul>
+
+<h3>Service-to-service authorization</h3>
+<ul><li>mTLS between Core ↔ Passport ↔ Habitat (Phase 2+)</li><li>Short-lived service tokens with per-endpoint scopes</li></ul>
+
+<h3>Audit logging</h3>
+<ul><li>Every mutation → <code>audit_events</code> (actor, action, resource, before, after)</li><li>Retention: 2 years hot, 7 years cold storage — <strong>AWAITING INTEGRATION</strong></li></ul>
+
+<h3>Secrets management</h3>
+<ul><li>All secrets in <code>.env</code> today</li><li>Move to Emergent-managed secret store or HashiCorp Vault (Phase 5)</li></ul>
+
+<h3>Rate limiting</h3>
+<ul><li>Per-user + per-IP token buckets on all public endpoints</li><li>Passport, cosign, storm APIs: 60 req/min per IP; 300 per authenticated user</li></ul>
+
+<h3>File access</h3>
+<ul><li>All object-storage assets served via <strong>signed URLs</strong> with expiry (default 5 min)</li><li>Signed uploads via presigned POST</li><li>Every download logged to <code>asset_provenance</code></li></ul>
+
+<h3>Explicit Phase 1 stops</h3>
+<ul><li>No SSO in Phase 1</li><li>No field-level encryption in Phase 1 (Phase 3)</li><li>No SIEM in Phase 1 (Phase 5)</li></ul>
+
+<hr/>
+
+<h2>Q10 — DATABASE-DOMAIN JUSTIFICATION</h2>
+
+<p><strong>Correction</strong>: the 10 domains described in §4 of the blueprint are <strong>logical modules</strong>, not 10 separate databases. During prototype and MVP phases, all 10 domains live inside a <strong>single MongoDB database</strong> with strict per-collection schemas and boundaries enforced at the application layer.</p>
+
+<h3>Per-domain table</h3>
+
+<table><thead><tr><th>Domain</th><th>Purpose</th><th>Core entities</th><th>Ownership boundary</th><th>Transactions</th><th>Retention</th><th>Sensitivity</th><th>Separate DB?</th></tr></thead><tbody><tr><td>Identity & Access</td><td>Auth + RBAC + audit</td><td>orgs, users, roles, api_keys, audit_events</td><td>Identity Service</td><td>ACID-lite (Mongo multi-doc tx)</td><td>7 yrs (audit)</td><td>HIGH (PII)</td><td>No — logical only</td></tr><tr><td>Property Registry</td><td>Canonical property record</td><td>properties, addresses, parcels, owners, contractors</td><td>Property Service</td><td>Multi-doc tx on write</td><td>Permanent</td><td>MEDIUM (PII)</td><td>No</td></tr><tr><td>Mission Operations</td><td>Mission lifecycle</td><td>missions, mission_plans, mission_validations, mission_telemetry, capture_sessions</td><td>Mission Ops Service</td><td>Sequential per mission</td><td>3 yrs</td><td>LOW-MEDIUM</td><td>No</td></tr><tr><td>Capture Assets</td><td>Binary asset metadata (binary in S3)</td><td>assets, asset_derivatives, asset_provenance</td><td>Vision Service</td><td>Metadata only</td><td>7 yrs (bodies in S3)</td><td>MEDIUM</td><td>No (metadata) / Yes (S3 binaries)</td></tr><tr><td>Intelligence Findings</td><td>AI + human findings</td><td>findings, finding_evidence, finding_confidence, agent_runs</td><td>Vision + AWE + Estimating Services</td><td>Append-only ledger-like</td><td>Permanent</td><td>MEDIUM</td><td>No</td></tr><tr><td>AWE™ Metrics</td><td>AWE readings + scores</td><td>awe_readings, awe_scores, awe_history</td><td>AWE Service</td><td>Sequential per property</td><td>Permanent</td><td>LOW</td><td>No</td></tr><tr><td>Estimating</td><td>Materials + labor + estimates</td><td>materials_catalog, labor_catalog, estimates, estimate_versions</td><td>Estimating Service</td><td>Versioned; last-write-wins</td><td>Permanent</td><td>LOW-MEDIUM (business)</td><td>No</td></tr><tr><td>Reports & Deliverables</td><td>Rendered reports</td><td>report_templates, reports, report_versions, report_signatures</td><td>Delivery Service</td><td>Sequential</td><td>Permanent</td><td>LOW</td><td>No</td></tr><tr><td>Passport & Habitat Sync</td><td>Sync audit + queue</td><td>passport_ledger, passport_sync_log, habitat_sync_log, sync_retry_queue</td><td>Passport Service</td><td>Ledger append + idempotent queue</td><td>Permanent</td><td>HIGH (cryptographic)</td><td>**Yes** — Passport becomes standalone in Phase 2</td></tr><tr><td>Compliance & Observability</td><td>Provenance, events, cost</td><td>provenance_chain, event_log, error_events, cost_ledger</td><td>Platform</td><td>Append-only</td><td>2 yrs hot</td><td>LOW</td><td>No</td></tr></tbody></table>
+
+<p><strong>Only the Passport domain justifies extraction into a separate database (Phase 2)</strong> — because its records are the immutable source of truth for all downstream systems. Everything else remains logical modules inside the primary Mongo database until scale demands otherwise.</p>
+
+<hr/>
+
+<h2>Q11 — API-PLANE JUSTIFICATION</h2>
+
+<p><strong>Correction</strong>: the 5 planes are <strong>logical route-prefix conventions with distinct middleware chains</strong>, not 5 separate network services. All planes run inside the same FastAPI app initially; some may split later.</p>
+
+<h3>Per-plane table</h3>
+
+<table><thead><tr><th>Plane</th><th>Prefix</th><th>Consumers</th><th>Auth</th><th>Authz</th><th>Versioning</th><th>Rate limits</th><th>Errors</th><th>Idempotency</th><th>Audit</th><th>Network boundary?</th></tr></thead><tbody><tr><td>**Public Read**</td><td>`/api/pub/v1/`</td><td>Anonymous (via passport hash)</td><td>Signed URL / hash</td><td>Resource-level</td><td>URL versioned</td><td>60/min/IP</td><td>RFC 7807 JSON</td><td>GET only</td><td>Read log to `audit_events`</td><td>No (same process, edge-cacheable)</td></tr><tr><td>**Product**</td><td>`/api/v1/`</td><td>Authenticated users</td><td>JWT</td><td>RBAC + ABAC (org, property, role)</td><td>URL versioned</td><td>300/min/user</td><td>RFC 7807</td><td>Idempotency-Key header on POST/PUT</td><td>Full audit</td><td>No (same process)</td></tr><tr><td>**Agent**</td><td>`/api/agents/v1/`</td><td>Backend agent runners</td><td>Service token</td><td>Scope-per-endpoint</td><td>URL versioned</td><td>Internal only</td><td>RFC 7807</td><td>Idempotency-Key required</td><td>agent_runs table</td><td>**Yes** — internal network only, blocked at ingress</td></tr><tr><td>**Sync**</td><td>`/api/sync/v1/`</td><td>Passport, Habitat services</td><td>mTLS + service token</td><td>Service allow-list</td><td>URL versioned</td><td>Bounded by queue depth</td><td>RFC 7807 + retry semantics</td><td>Idempotency-Key required</td><td>Full audit</td><td>**Yes** (Phase 2+)</td></tr><tr><td>**Webhook**</td><td>`/api/hooks/v1/`</td><td>External inbound (DJI, FAA, weather)</td><td>HMAC signature</td><td>Provider allow-list</td><td>URL versioned</td><td>Provider quotas</td><td>202 on accept, HMAC failure → 401</td><td>Idempotency by event id</td><td>Full audit</td><td>No (same process)</td></tr></tbody></table>
+
+<p><strong>Actual network boundaries introduced only where necessary</strong> — Agent and Sync are gated at the ingress layer. Everything else is logical.</p>
+
+<hr/>
+
+<h2>Q12 — EVENT-DRIVEN ARCHITECTURE (Phase 1 events only)</h2>
+
+<h3>Phase 1 minimum viable event set</h3>
+
+<p>Only these events are wired in Phase 1. All others are deferred until real workflows demand them.</p>
+
+<table><thead><tr><th>Event</th><th>Producer</th><th>Consumer</th><th>Payload</th><th>Idempotency key</th><th>Retry</th><th>Failure</th><th>DLQ</th><th>Audit</th><th>Sync alternative?</th></tr></thead><tbody><tr><td>`mission.planned`</td><td>Mission Ops</td><td>Mission Validation</td><td>mission_id, plan</td><td>mission_id</td><td>3× exp backoff</td><td>Log + surface in Mission Ops UI</td><td>Yes</td><td>audit_events + event_log</td><td>Sync is fine; keep async</td></tr><tr><td>`mission.validated`</td><td>Mission Validation</td><td>Mission Ops (unlock launch)</td><td>mission_id, pass/fail, gate_details</td><td>mission_id</td><td>none</td><td>Block launch</td><td>No</td><td>audit_events</td><td>Sync (immediate)</td></tr><tr><td>`capture.received`</td><td>Vision (adapter)</td><td>Vision Service</td><td>mission_id, asset_bundle_id</td><td>asset_bundle_id</td><td>3×</td><td>Escalate to Human QA</td><td>Yes</td><td>audit_events + event_log</td><td>Async needed (large uploads)</td></tr><tr><td>`finding.produced`</td><td>Any AI agent</td><td>Human QA</td><td>finding_id, agent_id, confidence</td><td>finding_id</td><td>none</td><td>Halt Passport append</td><td>No</td><td>agent_runs</td><td>Sync (blocks Passport)</td></tr><tr><td>`finding.approved`</td><td>Human QA</td><td>Passport Sync</td><td>finding_id, signer, receipt</td><td>finding_id</td><td>none</td><td>Halt sync</td><td>No</td><td>audit_events</td><td>Sync (blocks sync)</td></tr><tr><td>`passport.appended`</td><td>Passport Service</td><td>Habitat Sync</td><td>passport_id, seq, receipt_hash</td><td>(passport_id, seq)</td><td>3×</td><td>sync_retry_queue</td><td>Yes</td><td>passport_sync_log</td><td>Async (external system)</td></tr><tr><td>`habitat.received`</td><td>Habitat (webhook back)</td><td>Passport Sync</td><td>passport_id, seq, ack</td><td>(passport_id, seq)</td><td>—</td><td>Alert ops</td><td>Yes</td><td>habitat_sync_log</td><td>Async (ack)</td></tr></tbody></table>
+
+<p><strong>No full event-bus infrastructure in Phase 1.</strong> These events are recorded in <code>event_log</code> and dispatched via in-process async tasks (FastAPI background tasks). If cross-service messaging becomes necessary in Phase 2+, we upgrade to a proper broker (NATS or Redis Streams) — not before.</p>
+
+<hr/>
+
+<h2>Q13 — TECHNOLOGY DECISIONS (justified)</h2>
+
+<table><thead><tr><th>Tech</th><th>Problem solved</th><th>Why existing is insufficient</th><th>Adoption cost</th><th>Migration risk</th><th>Simpler alternative</th><th>Necessary in phase</th></tr></thead><tbody><tr><td>**React Query**</td><td>Server-state caching, retries, background refresh, optimistic UI</td><td>Current app uses ad-hoc `useEffect` + `fetch`; race conditions and stale data are already visible</td><td>Low (drop-in; ~1 day)</td><td>Low (per-page adoption)</td><td>Continue with useEffect (rejected — bugs)</td><td>Phase 1b</td></tr><tr><td>**Zustand**</td><td>Small global UI state (e.g. current mission, active twin layer)</td><td>React Context works but rerenders too much</td><td>Very low</td><td>None</td><td>Redux (too heavy); Context (already present)</td><td>Phase 1b</td></tr><tr><td>**Event-driven backbone**</td><td>Decoupling AI pipeline stages</td><td>Current code is deeply coupled (`storm_watcher` reaches into passport internals)</td><td>Medium</td><td>Medium</td><td>Sync in-process only (acceptable in Phase 1)</td><td>**Deferred to Phase 2**</td></tr><tr><td>**Blue/green deployment**</td><td>Zero-downtime cutovers</td><td>Emergent single-container deploys create brief unavailability</td><td>Low (Emergent may not support natively)</td><td>Low</td><td>Just rollback via checkpoint (fine for now)</td><td>**Deferred to Phase 5**</td></tr><tr><td>**Feature flags**</td><td>Ship stubs safely, control AWAITING INTEGRATION states</td><td>Currently commenting out code</td><td>Low (implement in-house)</td><td>None</td><td>Env vars (works but less granular)</td><td>Phase 1b (in-house key-value flag)</td></tr><tr><td>**Cryptographic receipts**</td><td>Prove what was submitted / approved</td><td>Already implemented (cosign) — extend the pattern</td><td>Free (already exists)</td><td>None</td><td>(already chosen)</td><td>Phase 1 (existing)</td></tr><tr><td>**RBAC**</td><td>Role-based access control</td><td>Current app has none on product routes</td><td>Medium (~1 week)</td><td>Medium (retrofit every route)</td><td>ACLs only (too rigid)</td><td>Phase 1 mandatory</td></tr><tr><td>**ABAC overlay**</td><td>Property/org-level access rules</td><td>RBAC alone can't gate by `property_org_binding`</td><td>Low on top of RBAC</td><td>Low</td><td>RBAC-only (rejected — leaks data)</td><td>Phase 2</td></tr></tbody></table>
+
+<h3>Rejected in this round</h3>
+<ul><li><strong>Kubernetes multi-cluster</strong>: unjustified until scale demands</li><li><strong>Kafka</strong>: overkill; NATS/Redis Streams sufficient when we need a broker</li><li><strong>GraphQL</strong>: REST + tight schemas is sufficient</li><li><strong>Rust rewrite of any component</strong>: no</li><li><strong>Any new frontend framework</strong>: React is the standard here</li></ul>
+
+<hr/>
+
+<h2>Q14 — PHASE 1 SCOPE CONTROL (explicit)</h2>
+
+<p>Phase 1 <strong>creates the architecture and operating shell</strong> but delivers <strong>no finished production intelligence engines</strong>.</p>
+
+<h3>Phase 1 SHALL establish (deliverable list)</h3>
+
+<ol><li>Application boundaries (Production / NextGen / Legacy)</li><li>Navigation (14 modules, canonical routes)</li><li>Workflow state machine (14-stage mandatory chain)</li><li>Mission shell (Mission Ops workspace stubs)</li><li>Property shell (Property Portfolio + Property Detail with tabs)</li><li>Evidence schema (asset ↔ finding ↔ approval)</li><li>Provenance schema (chip component + backing data model)</li><li>Agent-run audit schema (<code>agent_runs</code> collection)</li><li>Passport contract (Q2 above)</li><li>Habitat synchronization contract (§8 blueprint + Q2)</li><li>Digital Twin layer contract (Q6)</li><li>AWE mission contract (Q5)</li><li>Design-system foundation (tokens, provenance chip, module frame)</li><li>Security foundation (RBAC skeleton, <code>require_auth</code> middleware)</li><li>Test strategy (regression harness plan)</li></ol>
+
+<h3>Phase 1 SHALL NOT claim to deliver</h3>
+
+<ul><li>Production-ready photogrammetry</li><li>Production-ready thermal diagnosis</li><li>Automated CAD/BIM generation</li><li>Field-validated AWE conclusions</li><li>Automated damage classification with contract-grade accuracy</li><li>Any measurement presented as production-truth without human sign-off</li></ul>
+
+<p><strong>Every screen in Phase 1 delivering intelligence content shall wear one of these labels:</strong></p>
+<p><code>DEMO DATA · MOCKED · AWAITING INTEGRATION · AWAITING HARDWARE · AWAITING VALIDATION</code>.</p>
+
+<h3>Success criteria (Phase 1 exit gate)</h3>
+<ul><li>All 14 items above delivered</li><li>Blueprint + Appendix + Executive Review signed off</li><li>Screenshots of every workspace captured on desktop + mobile</li><li>Regression suite green</li><li>Zero fabricated intelligence displayed in the shell</li></ul>
+
+<hr/>
+
+<h2>APPENDIX — REVISION HISTORY</h2>
+
+<table><thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Change</th></tr></thead><tbody><tr><td>1.0</td><td>Feb 26, 2026</td><td>TC</td><td>Initial draft of NextGen Architecture Blueprint (623 lines)</td></tr><tr><td>1.0-app</td><td>Feb 26, 2026</td><td>TC</td><td>Review Appendix v1.0 answering Executive Review Questions 1-14</td></tr></tbody></table>
+
+<p><strong>End of Review Appendix.</strong></p>
+
+</section>
+
+</body></html>

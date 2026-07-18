@@ -17,16 +17,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MEMORY = Path("/app/memory")
-BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md"
-REDLINE_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.0_to_v1.1.md"
+BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.2.md"
+REDLINE_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.1_to_v1.2.md"
 ADRs_MD = MEMORY / "NEXTGEN_ARCHITECTURE_ADRs_v1.1.md"
 SUMMARY_MD = MEMORY / "NEXTGEN_EXECUTIVE_SUMMARY_v1.1.md"
 APPENDIX_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REVIEW_APPENDIX.md"
 
 OUT_DIR = MEMORY / "_blueprint_out"
 OUT_DIR.mkdir(exist_ok=True)
-OUT_HTML = OUT_DIR / "blueprint_v1.1.html"
-OUT_PDF = OUT_DIR / "STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf"
+OUT_HTML = OUT_DIR / "blueprint_v1.2.html"
+OUT_PDF = OUT_DIR / "STRATEX_NextGen_Architecture_Blueprint_v1.2.pdf"
 
 
 def md_to_html(md: str) -> str:
@@ -164,7 +164,7 @@ def build_html():
     html = f"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
-<title>STRATEX Core NextGen Architecture Blueprint v1.1</title>
+<title>STRATEX Core NextGen Architecture Blueprint v1.2</title>
 <style>
   @page {{
     size: Letter;
@@ -175,7 +175,7 @@ def build_html():
       color: #667; letter-spacing: 0.14em;
     }}
     @top-right {{
-      content: "NextGen Architecture Blueprint v1.1";
+      content: "NextGen Architecture Blueprint v1.2";
       font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
       color: #667; letter-spacing: 0.10em;
     }}
@@ -303,11 +303,11 @@ def build_html():
     <div class="subtitle">
       Residential Property Intelligence Operating System —
       Stratex Core · Stratex Passport · Stratex Habitat.
-      Version 1.1 executive review package incorporating 20 mandatory corrections.
+      Version 1.1 executive review package incorporating 20 v1.1 corrections + 10 v1.2 consistency corrections.
     </div>
-    <div class="status-pill">STATUS · REVISED v1.1 · AWAITING EXECUTIVE APPROVAL</div>
+    <div class="status-pill">STATUS · REVISED v1.2 · AWAITING EXECUTIVE APPROVAL</div>
     <div class="meta">
-      VERSION 1.1 · REVISED {today} · CONFIDENTIAL — PROPRIETARY
+      VERSION 1.2 · REVISED {today} · CONFIDENTIAL — PROPRIETARY
     </div>
   </div>
   <div class="cover-bottom">

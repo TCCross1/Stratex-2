@@ -87,3 +87,37 @@
 **Status**: Accepted throughout v1.1 revision pass
 **Decision**: No implementation code was written during the v1.1 revision. No production deploy occurred. All v1.0 artifacts preserved read-only at `/app/memory/_v1.0_PRESERVED_*`.
 **Consequences**: Reversibility is absolute. If v1.1 is rejected, v1.0 is untouched and can resume as the reference document.
+
+---
+
+# ADRs ADDED IN v1.2
+
+## ADR-011 · Fifteen-stage Workflow Enumeration
+**Status**: Accepted (v1.2)
+**Context**: v1.0 and v1.1 loosely referenced a "14-stage" workflow while enumerating 15 stages in the chain.
+**Decision**: Standardize on 15 stages. Every reference explicitly enumerates them. §22 workflow verification report cross-lists producer + consumer per stage.
+**Consequences**: Downstream module counts, workflow diagrams, dashboard progress indicators, and event log producers all reference 15 stages.
+
+## ADR-012 · Property Lifecycle Operations
+**Status**: Accepted (v1.2)
+**Context**: Merge, split, identity-link, identity-unlink, and ownership-transfer were undefined operations, creating risk of silent data corruption.
+**Decision**: Five first-class audited operations (§11.3) with explicit ledger event types, authorization tiers, and invariants. No operation destroys prior history.
+**Consequences**: Human QA queue receives merge/split events at Tier 3. Ownership transfer is Tier 2 with MFA + Habitat notification. Reversibility within a documented rollback window.
+
+## ADR-013 · Tier 3 / Tier 4 Boundary Rule
+**Status**: Accepted (v1.2)
+**Context**: v1.1 listed "structural concerns" and "engineering deviations" in both Tier 3 and Tier 4, creating routing ambiguity.
+**Decision**: Tier 4 has exclusive authority over structure, code compliance, and engineering deviations. Tier 3 handles high-consequence non-structural findings only. Explicit escalation rule enshrined in §10.
+**Consequences**: Human QA router has an unambiguous rule. No finding can be silently signed off at Tier 3 when it touches structure.
+
+## ADR-014 · AWE Index™ Release-State Gate
+**Status**: Accepted (v1.2)
+**Context**: Displaying a composite AWE Index™ before validation risks premature external claims.
+**Decision**: Five release states with published transition requirements (§17.1). The Index is never rendered without its current release-state chip.
+**Consequences**: Marketing team, contractor UI, and Passport payload each read the release state before rendering the Index. Transitions require published validation report + Executive Architect sign-off.
+
+## ADR-015 · Phase 1a-Only Authorization Boundary
+**Status**: Accepted (v1.2)
+**Context**: v1.1 approval block risked being interpreted as authorizing all of Phase 1 sub-phases.
+**Decision**: v1.2 approval authorizes **Phase 1a only**. Each subsequent sub-phase (1b, 1c, 1d) requires its own explicit executive authorization following review of the prior sub-phase's completion package (§20.2).
+**Consequences**: Cannot accidentally slide into shell scaffolding, workspace stubs, or screenshot packaging without additional approval gates. Prevents scope creep by construction.

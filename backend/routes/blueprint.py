@@ -24,12 +24,17 @@ BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT.md"
 APPENDIX_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REVIEW_APPENDIX.md"
 PDF_PATH = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Architecture_Blueprint_v1.0.pdf"
 
-# v1.1 (current, revised)
+# v1.1 (preserved, frozen)
 BLUEPRINT_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md"
 REDLINE_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.0_to_v1.1.md"
 ADRs_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_ADRs_v1.1.md"
 SUMMARY_V11_MD = MEMORY / "NEXTGEN_EXECUTIVE_SUMMARY_v1.1.md"
 PDF_V11_PATH = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf"
+
+# v1.2 (current, revised)
+BLUEPRINT_V12_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.2.md"
+REDLINE_V12_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.1_to_v1.2.md"
+PDF_V12_PATH = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Architecture_Blueprint_v1.2.pdf"
 
 
 @router.get("/md")
@@ -144,4 +149,31 @@ async def blueprint_v10_preserved_pdf():
         str(p),
         media_type="application/pdf",
         filename="STRATEX_NextGen_Architecture_Blueprint_v1.0_PRESERVED.pdf",
+    )
+
+
+# ── Version 1.2 endpoints (current, revised) ─────────────────────────
+@router.get("/v1.2/md")
+async def blueprint_v12_md():
+    return _serve_md(BLUEPRINT_V12_MD, "STRATEX_NextGen_Architecture_Blueprint_v1.2.md")
+
+
+@router.get("/v1.2/redline")
+async def blueprint_v12_redline():
+    return _serve_md(REDLINE_V12_MD, "STRATEX_Blueprint_v1.1_to_v1.2_REDLINE.md")
+
+
+@router.get("/v1.2/adrs")
+async def blueprint_v12_adrs():
+    return _serve_md(ADRs_V11_MD, "STRATEX_Blueprint_v1.2_ADRs.md")
+
+
+@router.get("/v1.2/pdf")
+async def blueprint_v12_pdf():
+    if not PDF_V12_PATH.exists():
+        raise HTTPException(404, "v1.2 PDF not yet rendered.")
+    return FileResponse(
+        str(PDF_V12_PATH),
+        media_type="application/pdf",
+        filename="STRATEX_NextGen_Architecture_Blueprint_v1.2.pdf",
     )
