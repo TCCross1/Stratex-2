@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   nxListProperties, nxPropertyPassport, nxPropertyTimeline,
-  nxPropertyReport, nxReportTemplates,
+  nxPropertyReport, nxReportTemplates, nxPropertyAwe,
+  nxIssueHabitatLink, nxHabitatReportHtmlUrl,
 } from "@/nextgen/api";
 
 /* Property Passport + Timeline + Report projections — Directive 007.
@@ -17,6 +18,9 @@ export default function PassportPage() {
   const [templates, setTemplates] = useState([]);
   const [template, setTemplate] = useState("homeowner_summary");
   const [report, setReport] = useState(null);
+  const [awe, setAwe] = useState(null);
+  const [linkOut, setLinkOut] = useState(null);
+  const [linkBusy, setLinkBusy] = useState(false);
 
   useEffect(() => {
     nxListProperties().then((d) => {
@@ -30,6 +34,7 @@ export default function PassportPage() {
     if (!pid) return;
     nxPropertyPassport(pid, audience).then(setPassport);
     nxPropertyTimeline(pid).then((d) => setTimeline(d.items));
+    nxPropertyAwe(pid).then((d) => setAwe(d.awe));
   }, [pid, audience]);
 
   useEffect(() => {
@@ -59,6 +64,62 @@ export default function PassportPage() {
           ))}
         </select>
       </div>
+
+      {/* AWE Composite + Share */}
+      {awe && (
+        <>
+          <h2 className="nx-h2"><span className="num">§00</span>AWE Composite · Deterministic (Directive 008)</h2>
+          <div className="nx-grid cols-4" data-testid="nx-awe-panel">
+            {["air", "water", "energy"].map((k) => {
+              const score = awe[k].score;
+              const color = score >= 80 ? "#00FF9C" : score >= 60 ? "#FFB020" : "#FF5A5F";
+              return (
+                <div key={k} className="nx-stat">
+                  <div className="k">// {k}</div>
+                  <div className="v" style={{ color, fontSize: 34 }}>{score}</div>
+                  <div className="s">{awe[k].contributing_pios} contributing PIOs</div>
+                </div>
+              );
+            })}
+            <div className="nx-stat" style={{ borderColor: "#FFB020" }}>
+              <div className="k">// Composite Index</div>
+              <div className="v" style={{ color: "#FFB020", fontSize: 40 }}>{awe.composite_index}</div>
+              <div className="s">Release · <b style={{ color: "#FFB020" }}>{awe.release_state}</b> · Conf {awe.confidence_pct}% · Evidence {awe.evidence_completeness_pct}%</div>
+            </div>
+          </div>
+
+          <div className="nx-panel" style={{ marginTop: 14 }}>
+            <div className="corner">// DIRECTIVE 008 · HOMEOWNER DELIVERY</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <button className="nx-btn" disabled={linkBusy}
+                onClick={async () => {
+                  setLinkBusy(true);
+                  try {
+                    const r = await nxIssueHabitatLink(pid, 168, "homeowner");
+                    const url = `${window.location.origin}${r.public_url}`;
+                    await navigator.clipboard?.writeText(url).catch(() => {});
+                    setLinkOut({ url, ...r });
+                  } finally { setLinkBusy(false); }
+                }}
+                data-testid="nx-share-homeowner">
+                {linkBusy ? "Issuing…" : "Share with Homeowner (copy link)"}
+              </button>
+              <a className="nx-btn ghost" target="_blank" rel="noreferrer"
+                href={nxHabitatReportHtmlUrl(pid, template)}
+                data-testid="nx-open-html-report">Open HTML Report</a>
+              {linkOut && (
+                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                  color: "#00FF9C", marginLeft: 8, wordBreak: "break-all", flex: 1 }}>
+                  {linkOut.url}
+                  <div style={{ color: "#8A9BAE", fontSize: 10, marginTop: 4 }}>
+                    Expires {new Date(linkOut.expires_at).toLocaleString()} · copied to clipboard
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Passport ledger */}
       <h2 className="nx-h2"><span className="num">§01</span>Passport Ledger</h2>

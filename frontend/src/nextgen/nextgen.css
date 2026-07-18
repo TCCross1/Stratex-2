@@ -341,4 +341,12 @@
   .nx-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
   .nx-grid.cols-3 { grid-template-columns: 1fr; }
   .nx-stage-bar { grid-template-columns: repeat(5, 1fr); }
+  /* Directive 008 · tablet touch targets */
+  .nx-btn { padding: 14px 22px; min-height: 44px; font-size: 12px; }
+  .nx-btn.small { padding: 10px 14px; min-height: 40px; }
+  .nx-input, .nx-select { padding: 14px; font-size: 15px; min-height: 44px; }
+  .nx-nav a { padding: 14px 12px; min-height: 44px; }
+  .nx-table thead th, .nx-table tbody td { padding: 14px 10px; }
+  .nx-h1 { font-size: 26px; }
+  .nx-h2 { font-size: 13px; }
 }

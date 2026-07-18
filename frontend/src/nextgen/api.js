@@ -92,3 +92,24 @@ export const nxPropertyReport = (propertyId, template) =>
   api.get(`${V1}/properties/${propertyId}/report/${template}`).then((r) => r.data);
 export const nxReportTemplates = () =>
   api.get(`${V1}/report-templates`).then((r) => r.data);
+
+// ─── Directive 008 · Wave 2C · AWE + Habitat + HTML report ───
+export const nxPropertyAwe = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/awe`).then((r) => r.data);
+export const nxIssueHabitatLink = (propertyId, ttl_hours = 168, audience = "homeowner") =>
+  api.post(`${V1}/properties/${propertyId}/habitat-link`,
+    { ttl_hours, audience }).then((r) => r.data);
+export const nxListHabitatGrants = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/habitat-grants`).then((r) => r.data);
+export const nxRevokeGrant = (grantId) =>
+  api.post(`${V1}/habitat-grants/${grantId}/revoke`).then((r) => r.data);
+export const nxHabitatReportHtmlUrl = (propertyId, template) => {
+  const t = localStorage.getItem("stratex_token");
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+  return `${BACKEND_URL}/api${V1}/properties/${propertyId}/report/${template}/html?_t=${t}`;
+};
+// Public — no auth
+export const nxHabitatPublicRead = (token) => {
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+  return fetch(`${BACKEND_URL}/api${V1}/habitat/${token}`).then((r) => r.json());
+};

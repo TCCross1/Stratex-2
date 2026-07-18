@@ -65,6 +65,7 @@ import NextGenAudit from "@/nextgen/AuditPage";
 import NextGenEvidence from "@/nextgen/EvidencePage";
 import NextGenIntelligence from "@/nextgen/IntelligencePage";
 import NextGenPassport from "@/nextgen/PassportPage";
+import HabitatPublic from "@/nextgen/HabitatPublic";
 import { AweStub, ReportsStub, HabitatStub, OrgStub } from "@/nextgen/StubPages";
 
 function Protected({ role, children }) {
@@ -101,12 +102,13 @@ function AppShell() {
 
   const isCeoArea = loc.pathname.startsWith("/ceo");
   const isNextGenArea = loc.pathname.startsWith("/nextgen");
+  const isHabitat = loc.pathname.startsWith("/habitat/");
   const isDemo = loc.pathname.startsWith("/demo/");
-  const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea || isNextGenArea;
+  const hideNav = isDemo || ["/auth", "/nda", "/onboard", "/launch", "/deliverable/demo", "/deck/demo"].includes(loc.pathname) || loc.pathname.startsWith("/operator/launch/") || loc.pathname.startsWith("/contractor/deliverable/") || loc.pathname.endsWith("/deck") || isCeoArea || isNextGenArea || isHabitat;
   return (
     <>
       {!hideNav && <Nav role={user?.role}/>}
-      {!isCeoArea && !isNextGenArea && !isDemo && <InvestorAssistant/>}
+      {!isCeoArea && !isNextGenArea && !isDemo && !isHabitat && <InvestorAssistant/>}
       <Routes>
         <Route path="/" element={<Landing/>}/>
         <Route path="/deck" element={<CommandDeck/>}/>
@@ -186,6 +188,9 @@ function AppShell() {
         <Route path="/gm/ops" element={<Protected role="gm"><GmOpsPage/></Protected>}/>
         <Route path="/admin/fleet" element={<Protected role="admin"><MduFleetPortal/></Protected>}/>
         <Route path="/admin/blacklist" element={<Protected role="admin"><BlacklistMatrix/></Protected>}/>
+
+        {/* Habitat public — no auth (magic-link token). */}
+        <Route path="/habitat/:token" element={<HabitatPublic/>}/>
 
         {/* ── NextGen Foundation (Directive 005 · Phase 1a) ────────────── */}
         {/* Isolated at /nextgen/*. Legacy surfaces above are unaffected.  */}
