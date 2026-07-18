@@ -41,6 +41,9 @@ const ACCENTS = {
 // `kind: "route"`  apps navigate to a separate full-page experience
 // ─────────────────────────────────────────────────────────────────────
 const APPS = [
+  // ── PRIMARY PRODUCT — STRATEX CORE (Directive 009)
+  { id: "core",        kind: "route",  label: "Stratex Core",     icon: Sparkles,        accent: "cyan",   desc: "Property Intelligence Platform · Mission command · Passport · AWE", to: "/nextgen", primary: true },
+
   // ── INFO cluster: marketing content lifted out of the old landing scroll
   { id: "info",        kind: "window", label: "Info Hub",         icon: Info,            accent: "teal",   desc: "Recon stack · scientific rigor · everything that was on the landing page" },
   { id: "fleet",       kind: "window", label: "Fleet Trailer",    icon: Truck,           accent: "orange", desc: "Autonomous DJI Dock 2 trailer · Starlink · Solar core" },
@@ -429,16 +432,21 @@ function SwitchboardWindow() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Default state — big STRATEX logo splash that fills the display screen
+// Default state — STRATEX CORE hero (Directive 009) with primary entry CTA.
+// Cross AI is the parent company but Stratex Core is the dominant product.
 // ─────────────────────────────────────────────────────────────────────
 function LogoSplash({ onPickInfo }) {
+  const nav = useNavigate();
   return (
     <div data-testid="logo-splash"
-         className="relative rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-6 sm:p-10 min-h-[60vh]"
+         className="relative rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-6 sm:p-10 min-h-[62vh]"
          style={{
-           background: "linear-gradient(180deg, rgba(8,14,24,0.7) 0%, rgba(4,8,14,0.85) 100%)",
-           border: "1.5px solid rgba(0,229,255,0.30)",
-           boxShadow: "inset 0 0 60px rgba(0,229,255,0.08)",
+           background:
+             "radial-gradient(700px 320px at 50% 0%, rgba(77,246,255,0.10), transparent 60%)," +
+             "radial-gradient(500px 260px at 90% 110%, rgba(255,123,0,0.07), transparent 60%)," +
+             "linear-gradient(180deg, rgba(8,14,24,0.7) 0%, rgba(4,8,14,0.9) 100%)",
+           border: "1.5px solid rgba(77,246,255,0.32)",
+           boxShadow: "inset 0 0 80px rgba(77,246,255,0.10)",
          }}>
       {/* corner brackets */}
       {[
@@ -447,25 +455,51 @@ function LogoSplash({ onPickInfo }) {
         "bottom-3 left-3 border-b-2 border-l-2",
         "bottom-3 right-3 border-b-2 border-r-2",
       ].map((cls, i) => (
-        <span key={i} className={`absolute ${cls} w-5 h-5`} style={{ borderColor: "#00E5FF" }}/>
+        <span key={i} className={`absolute ${cls} w-5 h-5`} style={{ borderColor: "#4DF6FF" }}/>
       ))}
-      <img src={ASSETS.logo} alt="STRATEX™"
-           className="w-full max-w-xs sm:max-w-md md:max-w-lg h-auto"
-           style={{ filter: "drop-shadow(0 0 40px rgba(0,245,212,0.45))" }}
-           data-testid="splash-logo"/>
-      <div className="font-mono text-[10px] tracking-[0.36em] text-cyan-300 uppercase mt-6">
-        STRATEGIC THERMAL RECONNAISSANCE · ±0.78 CM
-      </div>
-      <div className="font-mono text-[9px] tracking-[0.28em] text-slate-500 uppercase mt-2">
-        SELECT AN APP FROM THE LEFT RAIL TO BEGIN
-      </div>
+
+      {/* STRATEX CORE hero */}
+      <img
+        src="/brand/stratex-core-full.svg"
+        alt="STRATEX CORE — Property Intelligence Platform"
+        className="w-full max-w-xs sm:max-w-md md:max-w-xl h-auto"
+        style={{ filter: "drop-shadow(0 0 40px rgba(77,246,255,0.35))" }}
+        data-testid="splash-stratex-core-logo"
+      />
+
+      {/* Primary CTA — Enter Stratex Core */}
       <button
-        data-testid="splash-info-cta"
-        onClick={onPickInfo}
-        className="mt-6 font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md flex items-center gap-2 transition hover:brightness-125"
-        style={{ background: "rgba(0,229,255,0.10)", border: `1px solid ${ACCENTS.cyan}88`, color: ACCENTS.cyan }}>
-        Open Info Hub <ChevronRight size={12}/>
+        data-testid="splash-enter-core-cta"
+        onClick={() => nav("/nextgen")}
+        className="mt-8 font-mono uppercase tracking-[0.24em] text-[13px] px-8 py-4 rounded-lg flex items-center gap-3 transition hover:brightness-110 active:translate-y-[1px]"
+        style={{
+          background: "linear-gradient(180deg, #FF9A3D 0%, #FF7B00 100%)",
+          color: "#0B0F14",
+          fontWeight: 700,
+          boxShadow: "0 12px 32px rgba(255,123,0,0.30), inset 0 1px 0 rgba(255,255,255,0.2)",
+          border: "none",
+          minHeight: 56,
+        }}>
+        Enter Stratex Core <ChevronRight size={16} strokeWidth={2.4}/>
       </button>
+
+      <div className="font-mono text-[10px] tracking-[0.32em] uppercase mt-5" style={{ color: "#4DF6FF" }}>
+        Property Intelligence Platform · Preview Build
+      </div>
+
+      {/* Secondary — legacy explore */}
+      <div className="mt-8 pt-6 border-t max-w-md w-full" style={{ borderColor: "rgba(77,246,255,0.15)" }}>
+        <div className="font-mono text-[9px] tracking-[0.28em] uppercase mb-3" style={{ color: "#6D7B8F" }}>
+          // Explore Legacy Modules
+        </div>
+        <button
+          data-testid="splash-info-cta"
+          onClick={onPickInfo}
+          className="font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md inline-flex items-center gap-2 transition hover:brightness-125"
+          style={{ background: "rgba(0,229,255,0.08)", border: `1px solid ${ACCENTS.cyan}66`, color: ACCENTS.cyan }}>
+          Open Info Hub <ChevronRight size={12}/>
+        </button>
+      </div>
     </div>
   );
 }
@@ -529,23 +563,20 @@ export default function Landing() {
              maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
              WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)" }}/>
 
-      {/* ─── PARENT COMPANY BANNER · CROSS AI SOFTWARES INC. ─── */}
+      {/* ─── Parent-company attribution — subordinate to Stratex Core (Directive 009 §6) ─── */}
       <header data-testid="cross-ai-banner"
               className="relative w-full border-b overflow-hidden"
               style={{
                 background: "#000",
-                borderColor: "rgba(0,229,255,0.22)",
-                boxShadow: "0 2px 32px rgba(0,229,255,0.12)",
+                borderColor: "rgba(0,229,255,0.15)",
               }}>
         <img
           src="/brand/cross_ai_banner.jpeg"
-          alt="CROSS AI SOFTWARES INC."
+          alt="A Cross AI Softwares Inc. product"
           data-testid="cross-ai-logo"
-          className="block w-full h-auto select-none pointer-events-none"
+          className="block w-full h-auto select-none pointer-events-none opacity-70"
           style={{
-            // Slight crop so the logo sits at investor-banner height
-            // (~120px on desktop) without dominating the viewport.
-            maxHeight: "180px",
+            maxHeight: "56px",
             objectFit: "cover",
             objectPosition: "center",
           }}
@@ -579,7 +610,7 @@ export default function Landing() {
             {activeApp.id === "switchboard" && <SwitchboardWindow/>}
           </WindowFrame>
         ) : (
-          <LogoSplash onPickInfo={() => setActiveApp(APPS[0])}/>
+          <LogoSplash onPickInfo={() => setActiveApp(APPS.find((a) => a.id === "info"))}/>
         )}
 
         <footer className="mt-6 px-1 font-mono text-[8.5px] tracking-[0.22em] uppercase text-slate-600 flex flex-col sm:flex-row justify-between gap-1">

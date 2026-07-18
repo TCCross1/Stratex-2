@@ -1,0 +1,45 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "Why does everything still look the same in Preview and I just gave you commands to change the design",
+  "summary": "Focused bug verification passed. No relevant testing skill found. On the public Preview root `/`, the redesigned STRATEX CORE hero is visible with `/brand/stratex-core-full.svg`, the orange `ENTER STRATEX CORE` CTA is prominent, and the CROSS AI banner is subordinate at 56px max-height with opacity 0.7. After real CEO login via `/ceo/login` using Tony@Stratexdrone.com / 1111, both the root CTA and the new top rail tile `app-icon-core` navigate to `/nextgen`, where the STRATEX CORE command interface renders required shell, hero, status strip, primary CTA, and AWE band. Legacy `Open Info Hub` still opens the legacy InfoWindow.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Root `/` console",
+        "issues": [
+          "Pre-existing/non-blocking 404s for `/api/demo/sample-roof` still appear while loading the landing page; the request is caught in Landing.jsx and did not affect the STRATEX CORE hero, CTA, Info Hub, or navigation verification."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/bug_verification_26_playwright_steps.py",
+    "/app/test_reports/bug_verification_26.json",
+    "/app/test_reports/iteration_26.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Code review confirmed the root-cause fix is localized to `/app/frontend/src/pages/Landing.jsx`: `APPS[0]` is now the `core` route to `/nextgen`, LogoSplash renders `/brand/stratex-core-full.svg` plus `splash-enter-core-cta`, and `cross-ai-logo` is constrained to maxHeight 56px with opacity 0.7.",
+    "`/app/frontend/src/pages/Landing.jsx` remains an uncommitted modified product file in git status at test time; runtime preview already served the change successfully."
+  ],
+  "updated_files": [
+    "/app/tests/bug_verification_26_playwright_steps.py",
+    "/app/test_reports/bug_verification_26.json",
+    "/app/test_reports/iteration_26.json"
+  ],
+  "success_rate": {
+    "backend": "not tested (frontend-only bug verification)",
+    "frontend": "100% for requested root entry-point and /nextgen click-through checks"
+  },
+  "seed_data_creation": "None. Used existing CEO account Tony@Stratexdrone.com / 1111.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "No relevant testing skill found. Browser automation against https://stratex-quant.preview.emergentagent.com/ verified unauthenticated root, legacy Info Hub, CEO login, root CTA to /nextgen, required /nextgen elements, and app-icon-core routing. Console contained only pre-existing/non-blocking `/api/demo/sample-roof` 404s and Cloudflare RUM aborts.",
+  "rca_of_the_issue": "Original symptom was caused by Preview root `/` still surfacing the legacy launcher with a dominant CROSS AI banner and no obvious route to the redesigned `/nextgen` interface. The Landing.jsx changes now make STRATEX CORE the dominant root experience and expose explicit authenticated entry points to `/nextgen`."
+}
