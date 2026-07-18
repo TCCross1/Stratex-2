@@ -1,0 +1,1063 @@
+
+<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>NextGen Canonical Data Model v1.0</title>
+
+<style>
+  @page {
+    size: Letter;
+    margin: 22mm 18mm 22mm 18mm;
+    @top-left {
+      content: "STRATEX™ · CROSS AI SOFTWARES INC. · CONFIDENTIAL — PROPRIETARY";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.14em;
+    }
+    @top-right {
+      content: "NextGen Canonical Data Model v1.0";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.10em;
+    }
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667;
+    }
+  }
+  @page :first {
+    margin: 0;
+    @top-left { content: ""; }
+    @top-right { content: ""; }
+    @bottom-center { content: ""; }
+  }
+  html, body {
+    color: #0F1620; background: #FFFFFF;
+    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .cover {
+    page-break-after: always;
+    padding: 0; margin: 0;
+    background: linear-gradient(180deg, #02060B 0%, #050B16 60%, #061826 100%);
+    color: #EAF2FB;
+    min-height: 100vh; height: 100vh;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 55mm 22mm 22mm 22mm; box-sizing: border-box;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(212,184,106,0.14) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .cover-top { position: relative; z-index: 1; }
+  .cover-bottom { position: relative; z-index: 1; }
+  .cover .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.32em; font-size: 9pt; text-transform: uppercase;
+    color: #7EE9FF;
+  }
+  .cover h1 {
+    font-size: 46pt; line-height: 1.02; letter-spacing: -0.01em;
+    margin: 10mm 0 4mm 0; color: #FFFFFF; font-weight: 700;
+  }
+  .cover .accent { color: #FFB020; text-shadow: 0 0 24px rgba(255,176,32,0.35); }
+  .cover .subtitle {
+    font-size: 14pt; line-height: 1.4;
+    color: #C5D4E0; margin-top: 4mm; max-width: 140mm;
+  }
+  .cover .meta {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.16em; font-size: 9pt;
+    color: #7EE9FF; margin-top: 6mm;
+  }
+  .cover .status-pill {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid rgba(255,176,32,0.6); color: #FFB020;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; margin-top: 12mm;
+  }
+  .cover .band {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    padding-top: 6mm; display: flex; justify-content: space-between;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; color: #98A6B4;
+  }
+  .toc-page { page-break-before: always; page-break-after: always; }
+  .toc-page h1 {
+    font-size: 22pt; letter-spacing: -0.005em; margin-bottom: 6mm;
+    border-bottom: 2px solid #0F1620; padding-bottom: 3mm;
+  }
+  ul.toc { list-style: none; padding-left: 0; margin: 4mm 0; }
+  ul.toc li { margin: 1.5mm 0; }
+  ul.toc li.toc-l1 { font-weight: 700; font-size: 11pt; margin-top: 3mm; }
+  ul.toc li.toc-l2 { padding-left: 8mm; font-size: 10pt; color: #333; }
+  ul.toc li.toc-l3 { padding-left: 16mm; font-size: 9.5pt; color: #555; }
+
+  h1 { font-size: 20pt; margin: 8mm 0 3mm 0; page-break-after: avoid; color: #0F1620; }
+  h2 { font-size: 14pt; margin: 6mm 0 2.5mm 0; page-break-after: avoid;
+        border-bottom: 1px solid #C4CFD9; padding-bottom: 2mm; color: #0F1620; }
+  h3 { font-size: 12pt; margin: 5mm 0 2mm 0; page-break-after: avoid; color: #223140; }
+  h4 { font-size: 11pt; margin: 4mm 0 1.5mm 0; page-break-after: avoid; color: #223140; }
+  p { margin: 0 0 3mm 0; }
+  ul, ol { margin: 0 0 4mm 6mm; }
+  li { margin: 1mm 0; }
+  blockquote {
+    border-left: 3px solid #7EE9FF; margin: 3mm 0; padding: 2mm 4mm;
+    background: #F5F8FB; color: #223140; font-size: 10pt;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin: 3mm 0 5mm 0;
+    font-size: 8.5pt; page-break-inside: avoid;
+    table-layout: fixed; word-wrap: break-word;
+  }
+  thead th {
+    background: #0F1620; color: #E9F4FF; text-align: left;
+    padding: 5px 6px; letter-spacing: 0.08em; font-size: 7.5pt;
+    text-transform: uppercase;
+  }
+  tbody td {
+    border-bottom: 1px solid #D8DEE5; padding: 4px 6px; vertical-align: top;
+    word-break: break-word;
+  }
+  tbody tr:nth-child(even) td { background: #F5F8FB; }
+  code {
+    background: #0F1620; color: #7EE9FF; padding: 1px 4px; border-radius: 3px;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+  }
+  pre {
+    background: #0F1620; color: #E9F4FF; padding: 8px 10px; border-radius: 4px;
+    overflow-x: auto; font-family: 'Courier New', monospace; font-size: 8pt;
+    line-height: 1.35; page-break-inside: avoid; white-space: pre-wrap;
+  }
+  pre.mermaid-block {
+    background: #050B16; color: #7EE9FF; border: 1px solid #1E2A38;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  hr { border: 0; border-top: 1px solid #C4CFD9; margin: 8mm 0; }
+  strong { color: #0F1620; }
+  em { color: #223140; }
+</style>
+
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-top">
+    <div class="kicker">// CROSS AI SOFTWARES INC. · EXECUTIVE DOCUMENTATION</div>
+    <h1>NextGen<br/>Canonical<br/><span class='accent'>Data Model</span></h1>
+    <div class="subtitle">Ten logical domains · entities · fields · invariants · traceability. Logical specification only. No migrations.</div>
+    <div class="status-pill">STATUS · DRAFT v1.0 · AWAITING EXECUTIVE REVIEW</div>
+    <div class="meta">
+      VERSION 1.0 · CREATED February 26, 2026 · CONFIDENTIAL — PROPRIETARY
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div class="band">
+      <span>STRATEX™ · A CROSS AI SOFTWARES INC. PRODUCT</span>
+      <span>PREPARED BY TC · AI PRODUCT MANAGER</span>
+    </div>
+  </div>
+</section>
+
+<section class="toc-page">
+  <h1>Table of Contents</h1>
+  <ul class='toc'><li class="toc-l1">STRATEX CORE — NEXTGEN CANONICAL DATA MODEL SPECIFICATION v1.0</li><li class="toc-l2">§1 — READING THIS SPECIFICATION</li><li class="toc-l3">§1.1 Universal field pattern</li><li class="toc-l3">§1.2 Notation</li><li class="toc-l3">§1.3 Writer/reader vocabulary</li><li class="toc-l3">§1.4 Legal holds &amp; soft delete</li><li class="toc-l2">§2 — SHARED VALUE OBJECTS</li><li class="toc-l3"><code>Address</code></li><li class="toc-l3"><code>GeoCoordinate</code></li><li class="toc-l3"><code>ParcelIdentifier</code></li><li class="toc-l3"><code>Measurement</code></li><li class="toc-l3"><code>MeasurementUncertainty</code></li><li class="toc-l3"><code>Money</code></li><li class="toc-l3"><code>DateTime</code> (UTC)</li><li class="toc-l3"><code>FileChecksum</code></li><li class="toc-l3"><code>DigitalSignature</code></li><li class="toc-l3"><code>Provenance</code></li><li class="toc-l3"><code>VerificationStatus</code></li><li class="toc-l3"><code>ImplementationState</code></li><li class="toc-l3"><code>EvidenceAvailability</code></li><li class="toc-l3"><code>Confidence</code></li><li class="toc-l3"><code>TruthScoreBand</code></li><li class="toc-l3"><code>RiskTier</code></li><li class="toc-l3"><code>ProductEntitlement</code></li><li class="toc-l3"><code>RetentionPolicy</code></li><li class="toc-l3"><code>LegalHold</code></li><li class="toc-l3"><code>AccessScope</code></li><li class="toc-l3"><code>IdentityOperationReceipt</code></li><li class="toc-l2">§3 — DOMAIN 1: TENANTS AND IDENTITY</li><li class="toc-l3"><code>organizations</code></li><li class="toc-l3"><code>users</code></li><li class="toc-l3"><code>organization_memberships</code></li><li class="toc-l3"><code>roles</code></li><li class="toc-l3"><code>permissions</code></li><li class="toc-l3"><code>role_permissions</code></li><li class="toc-l3"><code>user_attributes</code></li><li class="toc-l3"><code>service_identities</code></li><li class="toc-l3"><code>authentication_events</code></li><li class="toc-l3"><code>access_grants</code></li><li class="toc-l2">§4 — DOMAIN 2: PROPERTIES</li><li class="toc-l3"><code>properties</code></li><li class="toc-l3"><code>property_identifiers</code></li><li class="toc-l3"><code>property_addresses</code></li><li class="toc-l3"><code>property_parcels</code></li><li class="toc-l3"><code>property_structures</code></li><li class="toc-l3"><code>property_units</code></li><li class="toc-l3"><code>property_identity_candidates</code></li><li class="toc-l3"><code>property_identity_decisions</code></li><li class="toc-l3"><code>property_ownership_periods</code></li><li class="toc-l3"><code>property_relationships</code></li><li class="toc-l2">§5 — DOMAIN 3: MISSIONS</li><li class="toc-l3"><code>missions</code></li><li class="toc-l3"><code>mission_products</code></li><li class="toc-l3"><code>mission_requirements</code></li><li class="toc-l3"><code>mission_plans</code></li><li class="toc-l3"><code>mission_readiness_checks</code></li><li class="toc-l3"><code>mission_environment</code></li><li class="toc-l3"><code>mission_equipment</code></li><li class="toc-l3"><code>mission_flights</code></li><li class="toc-l3"><code>mission_telemetry</code></li><li class="toc-l3"><code>mission_failures</code></li><li class="toc-l3"><code>mission_rescans</code></li><li class="toc-l3"><code>mission_costs</code></li><li class="toc-l2">§6 — DOMAIN 4: INSPECTIONS</li><li class="toc-l3"><code>inspections</code></li><li class="toc-l3"><code>inspection_versions</code></li><li class="toc-l3"><code>inspection_participants</code></li><li class="toc-l3"><code>inspection_status_history</code></li><li class="toc-l3"><code>inspection_approvals</code></li><li class="toc-l3"><code>inspection_property_links</code></li><li class="toc-l2">§7 — DOMAIN 5: EVIDENCE</li><li class="toc-l3"><code>evidence_items</code></li><li class="toc-l3"><code>evidence_files</code></li><li class="toc-l3"><code>evidence_manifests</code></li><li class="toc-l3"><code>evidence_checksums</code></li><li class="toc-l3"><code>evidence_metadata</code></li><li class="toc-l3"><code>evidence_calibrations</code></li><li class="toc-l3"><code>evidence_derivatives</code></li><li class="toc-l3"><code>evidence_relationships</code></li><li class="toc-l3"><code>evidence_access_logs</code></li><li class="toc-l3"><code>evidence_retention_actions</code></li><li class="toc-l3"><code>legal_holds</code></li><li class="toc-l2">§8 — DOMAIN 6: FINDINGS</li><li class="toc-l3"><code>findings</code></li><li class="toc-l3"><code>finding_versions</code></li><li class="toc-l3"><code>finding_evidence_links</code></li><li class="toc-l3"><code>finding_measurements</code></li><li class="toc-l3"><code>finding_classifications</code></li><li class="toc-l3"><code>finding_risk_tiers</code></li><li class="toc-l3"><code>finding_reviews</code></li><li class="toc-l3"><code>finding_approvals</code></li><li class="toc-l3"><code>finding_supersessions</code></li><li class="toc-l3"><code>finding_release_restrictions</code></li><li class="toc-l2">§9 — DOMAIN 7: AGENTS</li><li class="toc-l3"><code>agent_definitions</code></li><li class="toc-l3"><code>agent_capabilities</code></li><li class="toc-l3"><code>provider_configurations</code></li><li class="toc-l3"><code>agent_runs</code></li><li class="toc-l3"><code>agent_run_inputs</code></li><li class="toc-l3"><code>agent_run_outputs</code></li><li class="toc-l3"><code>agent_run_costs</code></li><li class="toc-l3"><code>agent_run_failures</code></li><li class="toc-l3"><code>prompt_versions</code></li><li class="toc-l3"><code>algorithm_versions</code></li><li class="toc-l3"><code>validation_rules</code></li><li class="toc-l2">§10 — DOMAIN 8: WORKFLOWS</li><li class="toc-l3"><code>workflow_definitions</code></li><li class="toc-l3"><code>workflow_versions</code></li><li class="toc-l3"><code>workflow_instances</code></li><li class="toc-l3"><code>workflow_stage_instances</code></li><li class="toc-l3"><code>workflow_transitions</code></li><li class="toc-l3"><code>workflow_human_tasks</code></li><li class="toc-l3"><code>workflow_failures</code></li><li class="toc-l3"><code>workflow_retries</code></li><li class="toc-l3"><code>outbox_events</code></li><li class="toc-l3"><code>inbox_receipts</code></li><li class="toc-l3"><code>dead_letter_events</code></li><li class="toc-l3"><code>idempotency_records</code></li><li class="toc-l2">§11 — DOMAIN 9: PASSPORTS</li><li class="toc-l3"><code>passports</code></li><li class="toc-l3"><code>passport_sequences</code></li><li class="toc-l3"><code>passport_entries</code></li><li class="toc-l3"><code>passport_deltas</code></li><li class="toc-l3"><code>passport_receipts</code></li><li class="toc-l3"><code>passport_projections</code></li><li class="toc-l3"><code>passport_access_grants</code></li><li class="toc-l3"><code>passport_identity_operations</code></li><li class="toc-l3"><code>passport_conflicts</code></li><li class="toc-l3"><code>passport_rebases</code></li><li class="toc-l3"><code>claim_snapshots</code></li><li class="toc-l3"><code>adjuster_cosigns</code></li><li class="toc-l2">§12 — DOMAIN 10: AUDIT</li><li class="toc-l3"><code>audit_events</code></li><li class="toc-l3"><code>audit_actors</code></li><li class="toc-l3"><code>audit_resources</code></li><li class="toc-l3"><code>audit_changes</code></li><li class="toc-l3"><code>audit_access_events</code></li><li class="toc-l3"><code>audit_security_events</code></li><li class="toc-l3"><code>audit_export_events</code></li><li class="toc-l2">§13 — SEPARATED ENUMS (never fused into a single "status" field)</li><li class="toc-l3">Derivation</li><li class="toc-l3">Verification</li><li class="toc-l3">Implementation state</li><li class="toc-l3">Evidence availability</li><li class="toc-l3">AWE Index state (Blueprint §17.1)</li><li class="toc-l2">§14 — RELATIONSHIP DIAGRAMS</li><li class="toc-l3">§14.1 Global domain relationships</li><li class="toc-l3">§14.2 Property identity ER</li><li class="toc-l3">§14.3 Mission and inspection ER</li><li class="toc-l3">§14.4 Evidence and finding ER</li><li class="toc-l3">§14.5 Agent execution ER</li><li class="toc-l3">§14.6 Workflow and durable-event ER</li><li class="toc-l3">§14.7 Passport ledger ER</li><li class="toc-l3">§14.8 Claim snapshot and adjuster co-sign ER</li><li class="toc-l3">§14.9 Tenant authorization ER</li><li class="toc-l3">§14.10 Retention and legal-hold ER</li><li class="toc-l2">§15 — INVARIANTS</li><li class="toc-l2">§16 — NORMALIZATION AND PRAGMATISM REVIEW</li><li class="toc-l3">§16.1 Tables that may be <strong>combined</strong> in Phase 1</li><li class="toc-l3">§16.2 Tables that <strong>must remain separate</strong> even in Phase 1</li><li class="toc-l3">§16.3 Fields suitable for JSON / structured JSON</li><li class="toc-l3">§16.4 Fields that must remain relational</li><li class="toc-l3">§16.5 Expected high-volume tables</li><li class="toc-l3">§16.6 Partitioning candidates</li><li class="toc-l3">§16.7 Archival candidates</li><li class="toc-l3">§16.8 Likely query patterns</li><li class="toc-l3">§16.9 Premature abstractions to avoid (Phase 1)</li><li class="toc-l3">§16.10 Entities that should <strong>not</strong> become microservices yet</li><li class="toc-l2">§17 — CROSS-ARTIFACT TRACEABILITY MATRIX</li><li class="toc-l2">§18 — DATA-MODEL SIMPLIFICATION RECOMMENDATIONS</li><li class="toc-l2">§19 — ARCHITECTURE CONFLICT REPORT (data-model side)</li><li class="toc-l2">§20 — CONFIRMATIONS</li><li class="toc-l2">§21 — REVISION HISTORY</li></ul>
+</section>
+
+<section class="body">
+  <h1>STRATEX CORE — NEXTGEN CANONICAL DATA MODEL SPECIFICATION v1.0</h1>
+<p><strong>Status</strong>: DRAFT · Awaiting Executive Review</p>
+<p><strong>Classification</strong>: CONFIDENTIAL — PROPRIETARY</p>
+<p><strong>Created</strong>: February 26, 2026</p>
+<p><strong>Author</strong>: TC · Stratex AI Product Manager, under Directive 003</p>
+<p><strong>Reviewer</strong>: Anthony Cross (Executive Architect)</p>
+<p><strong>Aligned to</strong>: Blueprint v1.2 · Sequence Diagrams Pack v1.0</p>
+<p><strong>Preserves</strong>: Blueprint v1.0, v1.1, v1.2 (unchanged)</p>
+
+<blockquote><strong>Purpose.</strong> Define the logical entities, fields, relationships, invariants, retention, and pragmatism boundaries required to support every flow in the Sequence Diagrams Pack v1.0. This is a <strong>logical and relational specification only</strong>. No migrations are authored. No production collection or table is created. Nothing is deployed.</blockquote>
+<p>&gt;</p>
+<blockquote><strong>Domain vs. service.</strong> These ten domains are <em>logical</em>. They do not mandate ten databases or ten services. Physical topology is a deployment decision constrained by Blueprint v1.2 §4 (single MongoDB in Phase 1, Passport extraction in Phase 2).</blockquote>
+
+<hr/>
+
+<h2>§1 — READING THIS SPECIFICATION</h2>
+
+<h3>§1.1 Universal field pattern</h3>
+
+<p>Every entity carries the following <strong>standard audit block</strong> unless otherwise stated:</p>
+
+<table><thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Notes</th></tr></thead><tbody><tr><td><code>_id</code> (canonical identifier)</td><td>ULID or UUIDv7 (string)</td><td>Yes</td><td>server-generated</td><td>Case-sensitive; monotonic; used in projections</td></tr><tr><td><code>tenant_id</code></td><td>organization_id (FK)</td><td>Yes</td><td>inherited</td><td>Every row is tenant-scoped except cross-tenant lookups explicitly noted</td></tr><tr><td><code>created_at</code></td><td>timestamp (UTC)</td><td>Yes</td><td>server clock</td><td>Immutable</td></tr><tr><td><code>created_by</code></td><td>user_id / service_id</td><td>Yes</td><td>session identity</td><td>Immutable</td></tr><tr><td><code>updated_at</code></td><td>timestamp (UTC)</td><td>Yes</td><td>server clock</td><td>Bumped on any write</td></tr><tr><td><code>updated_by</code></td><td>user_id / service_id</td><td>Yes</td><td>session identity</td><td>Bumped on any write</td></tr><tr><td><code>version</code></td><td>int</td><td>Yes</td><td>1</td><td>Optimistic-concurrency check-and-set</td></tr><tr><td><code>soft_deleted_at</code></td><td>timestamp \</td><td>null</td><td>No</td><td>null</td><td>Soft delete except entities explicitly marked <em>hard-delete only</em> or <em>no delete</em></td></tr><tr><td><code>retention_class</code></td><td>enum</td><td>Yes</td><td>inherited from domain</td><td>See §11</td></tr><tr><td><code>pii_class</code></td><td>enum</td><td>Yes</td><td>inherited from domain</td><td>See §11</td></tr></tbody></table>
+
+<p>Per-entity tables in §3–§12 list only the <strong>entity-specific fields</strong>; the standard audit block is implicit.</p>
+
+<h3>§1.2 Notation</h3>
+
+<ul><li><strong>Type</strong>: <code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>timestamp</code>, <code>enum</code>, <code>array&lt;T&gt;</code>, <code>object</code>, <code>FK(entity)</code>, <code>hash</code>, <code>uri</code>, <code>money</code>, <code>geo</code>, <code>measurement</code></li><li><strong>Required</strong>: <code>Y</code> / <code>N</code></li><li><strong>Immutability</strong>: <code>mut</code> (mutable), <code>imm</code> (immutable after first write), <code>sup</code> (mutable only via SUPERSEDE ledger entry)</li><li><strong>Unique</strong>: unique constraint (composite noted inline)</li><li><strong>Index</strong>: recommended index name / column</li><li><strong>Retention</strong>: see §11</li><li><strong>PII</strong>: <code>none</code> / <code>low</code> / <code>medium</code> / <code>high</code> / <code>restricted</code></li></ul>
+
+<h3>§1.3 Writer/reader vocabulary</h3>
+
+<ul><li><strong>Sole writer</strong>: exactly one logical service may INSERT/UPDATE.</li><li><strong>Restricted writers</strong>: named services.</li><li><strong>Any tenant</strong>: any authorized role within the tenant may write.</li><li><strong>Read audience</strong>: <code>internal</code>, <code>contractor</code>, <code>homeowner</code>, <code>adjuster</code>, <code>insurer</code>, <code>public_projection</code>, <code>regulator</code>.</li></ul>
+
+<h3>§1.4 Legal holds &amp; soft delete</h3>
+
+<ul><li>Soft delete is the default; hard delete requires legal-basis rows in <code>retention_actions</code>.</li><li>Any row with an active <code>legal_hold</code> cannot be soft- or hard-deleted.</li><li>Passport ledger rows are <strong>never</strong> deleted; they may only be superseded (§10 invariants).</li></ul>
+
+<hr/>
+
+<h2>§2 — SHARED VALUE OBJECTS</h2>
+
+<p>Reusable structures embedded in multiple entities. Value objects have no identity of their own except where noted.</p>
+
+<h3><code>Address</code></h3>
+<pre><code>line1: string(required)
+line2: string?
+city: string(required)
+region: string  # state/province/prefecture
+postal_code: string(required)
+country_iso: enum(ISO-3166-1 alpha-2, required)
+normalization_source: enum(user, geocoder, parcel_service, human_qa)
+normalized: bool(required)</code></pre>
+
+<h3><code>GeoCoordinate</code></h3>
+<pre><code>lat: float(-90..90, required)
+lon: float(-180..180, required)
+elevation_m: float?
+precision_m: float(required, ≥ 0.5)   # precision floor per Blueprint §11.2
+crs: enum(EPSG:4326, EPSG:3857, ...)
+source: enum(gps, rtk, parcel, geocoder, manual)
+captured_at: timestamp?</code></pre>
+
+<h3><code>ParcelIdentifier</code></h3>
+<pre><code>jurisdiction: string(required)   # county/city id
+parcel_number: string(required)
+issued_at: timestamp?
+source: enum(county_gis, contractor, imported)</code></pre>
+
+<h3><code>Measurement</code></h3>
+<pre><code>value: float(required)
+unit: enum(m, m2, m3, cm, ft, ft2, ft3, C, F, %, kWh, ...)  (required)
+method: enum(measured, calculated, estimated, imported)  (required)
+uncertainty: MeasurementUncertainty(required for measured/calculated)
+provenance: Provenance(required)</code></pre>
+
+<h3><code>MeasurementUncertainty</code></h3>
+<pre><code>absolute: float?
+relative_pct: float?
+confidence_interval_pct: float(0..100)?
+notes: string?</code></pre>
+
+<h3><code>Money</code></h3>
+<pre><code>amount: int  # minor units (cents)
+currency: enum(ISO-4217, required)</code></pre>
+
+<h3><code>DateTime</code> (UTC)</h3>
+<pre><code>value: timestamp(required)
+tz: string(IANA, required)</code></pre>
+
+<h3><code>FileChecksum</code></h3>
+<pre><code>algorithm: enum(sha256, sha512, blake3)  (required)
+value: hex-string(required)
+computed_at: timestamp(required)</code></pre>
+
+<h3><code>DigitalSignature</code></h3>
+<pre><code>algorithm: enum(sha256-hmac, ed25519, rsa-pss, ecdsa-secp256k1)  (required)
+value: base64-string(required)
+signer: user_id | service_id (required)
+signed_at: timestamp(required)</code></pre>
+
+<h3><code>Provenance</code></h3>
+<pre><code>provenance_type: enum(measured, calculated, estimated, imported, ai_assisted, human_entered)  (required)
+evidence_ids: array&lt;FK(evidence_items)&gt;
+agent_run_id: FK(agent_runs)?
+reviewer: FK(users)?
+reviewed_at: timestamp?</code></pre>
+
+<h3><code>VerificationStatus</code></h3>
+<pre><code>status: enum(unreviewed, reviewed, verified, rejected, requires_field_verification)  (required)
+reviewer: FK(users)?
+reviewed_at: timestamp?
+notes: string?</code></pre>
+
+<h3><code>ImplementationState</code></h3>
+<p>Blueprint §15.2:</p>
+<pre><code>enum(operational, partially_operational, mocked, planned, awaiting_credentials,
+     awaiting_hardware, awaiting_validation, deprecated, legacy)</code></pre>
+
+<h3><code>EvidenceAvailability</code></h3>
+<pre><code>enum(complete, partial, missing, contradictory)</code></pre>
+
+<h3><code>Confidence</code></h3>
+<pre><code>value_pct: int(0..100)
+scope: enum(model, aggregate_finding)</code></pre>
+
+<h3><code>TruthScoreBand</code></h3>
+<p>Blueprint §15.3:</p>
+<pre><code>enum(10_bands)   # discrete 10-point bands only; never decimals</code></pre>
+
+<h3><code>RiskTier</code></h3>
+<pre><code>enum(tier_1_automated_informational, tier_2_contractor_review,
+     tier_3_high_consequence_non_engineering, tier_4_engineering_controlled)</code></pre>
+
+<h3><code>ProductEntitlement</code></h3>
+<pre><code>product: enum(dayscan, awe_scan, elite)
+scope: enum(mission, property, org)
+capabilities: array&lt;enum&gt;</code></pre>
+
+<h3><code>RetentionPolicy</code></h3>
+<pre><code>class: enum(passport_ledger, raw_evidence, derived_model, temp_working, pii,
+            auth_log, ai_run, customer_export, tombstoned)
+hot_days: int
+cold_days: int
+tombstone_days: int
+legal_hold_active: bool</code></pre>
+
+<h3><code>LegalHold</code></h3>
+<pre><code>hold_id: string
+reason_code: string
+active: bool
+applied_at: timestamp
+released_at: timestamp?</code></pre>
+
+<h3><code>AccessScope</code></h3>
+<pre><code>audience: enum(public, homeowner, contractor, adjuster, insurer, regulator, internal)
+redaction_profile: string  # named profile
+ttl_seconds: int
+binding: string?   # recipient email / org</code></pre>
+
+<h3><code>IdentityOperationReceipt</code></h3>
+<pre><code>op_type: enum(IDENTITY_LINK, IDENTITY_UNLINK, IDENTITY_MERGE, IDENTITY_SPLIT,
+              ADDRESS_CORRECTION, PARCEL_CORRECTION, OWNERSHIP_TRANSFER, SUPERSEDE_FINDING, COSIGN)
+signature: DigitalSignature
+prior_hash: hex-string?
+new_hash: hex-string
+seq: int</code></pre>
+
+<hr/>
+
+<h2>§3 — DOMAIN 1: TENANTS AND IDENTITY</h2>
+
+<p>Sole authority for organizations, users, memberships, roles, MFA factors, and access grants.</p>
+
+<h3><code>organizations</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>name</code></td><td>string</td><td>Y</td><td>mut</td><td>Unique per jurisdiction</td></tr><tr><td><code>legal_name</code></td><td>string</td><td>N</td><td>mut</td><td></td></tr><tr><td><code>jurisdiction</code></td><td>string</td><td>Y</td><td>mut</td><td>ISO-3166-2</td></tr><tr><td><code>status</code></td><td>enum(active, suspended, closed)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>contact_email</code></td><td>string</td><td>Y</td><td>mut</td><td>PII: medium</td></tr><tr><td><code>contact_phone</code></td><td>string</td><td>N</td><td>mut</td><td>PII: medium</td></tr><tr><td><code>billing_status</code></td><td>enum(good, hold, delinquent)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>feature_flags</code></td><td>object</td><td>N</td><td>mut</td><td></td></tr><tr><td><code>attributes</code></td><td>object</td><td>N</td><td>mut</td><td>ABAC facts</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(name, jurisdiction)</code>; <code>contact_email</code></li><li><strong>Indexes</strong>: <code>jurisdiction</code>, <code>status</code></li><li><strong>Writers</strong>: admin_service (during onboarding), admin role</li><li><strong>Readers</strong>: internal</li><li><strong>Retention</strong>: <code>pii</code> for <code>contact_*</code>; <code>passport_ledger</code> for <code>_id</code></li><li><strong>PII</strong>: medium (contact fields)</li></ul>
+
+<h3><code>users</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>email</code></td><td>string (unique)</td><td>Y</td><td>mut</td><td>PII: high</td></tr><tr><td><code>full_name</code></td><td>string</td><td>Y</td><td>mut</td><td>PII: medium</td></tr><tr><td><code>phone</code></td><td>string</td><td>N</td><td>mut</td><td>PII: medium</td></tr><tr><td><code>status</code></td><td>enum(active, suspended, closed)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>identity_provider</code></td><td>enum(local, oidc, saml)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>primary_org_id</code></td><td>FK(organizations)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>attributes</code></td><td>object</td><td>N</td><td>mut</td><td>ABAC facts</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>email</code></li><li><strong>Indexes</strong>: <code>primary_org_id</code>, <code>status</code></li><li><strong>Writers</strong>: identity service</li><li><strong>Readers</strong>: internal</li><li><strong>PII</strong>: high</li></ul>
+
+<h3><code>organization_memberships</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>user_id</code></td><td>FK(users)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>organization_id</code></td><td>FK(organizations)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>role_ids</code></td><td>array&lt;FK(roles)&gt;</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>attributes</code></td><td>object</td><td>N</td><td>mut</td><td>ABAC</td></tr><tr><td><code>status</code></td><td>enum(active, revoked)</td><td>Y</td><td>mut</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(user_id, organization_id)</code></li><li><strong>Indexes</strong>: <code>organization_id</code>, <code>user_id</code></li><li><strong>Writers</strong>: admin role in target org</li><li><strong>PII</strong>: none</li></ul>
+
+<h3><code>roles</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td>Well-known: admin, contractor, pilot, inspector, homeowner, adjuster, engineer_reviewer, service</td></tr><tr><td><code>display_name</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>is_system</code></td><td>bool</td><td>Y</td><td>System roles cannot be deleted</td></tr></tbody></table>
+
+<h3><code>permissions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td>e.g. <code>passport.append</code>, <code>finding.approve.tier3</code></td></tr><tr><td><code>resource</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>action</code></td><td>string</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>role_permissions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>role_id</code></td><td>FK(roles)</td><td>Y</td><td></td></tr><tr><td><code>permission_id</code></td><td>FK(permissions)</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(role_id, permission_id)</code></li></ul>
+
+<h3><code>user_attributes</code></h3>
+<p>Free-form ABAC facts for property-level scoping.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>key</code></td><td>string</td><td>Y</td><td>e.g. <code>property_org_binding</code></td></tr><tr><td><code>value</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>source</code></td><td>enum(admin, self, integration)</td><td>Y</td><td></td></tr><tr><td><code>granted_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>service_identities</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>service_key</code></td><td>string</td><td>Y</td><td>Well-known: passport, sync, retention, orchestrator</td></tr><tr><td><code>credential_hash</code></td><td>hex</td><td>Y</td><td>never store plaintext</td></tr><tr><td><code>status</code></td><td>enum(active, rotating, revoked)</td><td>Y</td><td></td></tr><tr><td><code>rotation_last_at</code></td><td>timestamp</td><td>N</td><td></td></tr></tbody></table>
+
+<h3><code>authentication_events</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>user_id</code></td><td>FK(users)?</td><td></td><td></td></tr><tr><td><code>service_id</code></td><td>FK(service_identities)?</td><td></td><td></td></tr><tr><td><code>event_type</code></td><td>enum(login_ok, login_fail, mfa_ok, mfa_fail, step_up_ok, step_up_fail, token_issue, token_revoke)</td><td>Y</td><td></td></tr><tr><td><code>ip</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>user_agent</code></td><td>string</td><td>N</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Retention</strong>: <code>auth_log</code></li><li><strong>PII</strong>: medium</li></ul>
+
+<h3><code>access_grants</code></h3>
+<p>Passport-external access grants (see SD-022).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>grantor_user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>scope</code></td><td>AccessScope</td><td>Y</td><td></td></tr><tr><td><code>target_resource</code></td><td>string</td><td>Y</td><td>e.g. <code>passport:&lt;id&gt;</code></td></tr><tr><td><code>expires_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>revoked_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>kill_list_key</code></td><td>string</td><td>Y</td><td>server-generated; used on every access</td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>target_resource</code>, <code>expires_at</code></li><li><strong>Retention</strong>: <code>auth_log</code></li></ul>
+
+<hr/>
+
+<h2>§4 — DOMAIN 2: PROPERTIES</h2>
+
+<p>Canonical identity for the physical property. Ownership is <em>not</em> identity (§10 invariants).</p>
+
+<h3><code>properties</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>canonical_id</code></td><td>ULID</td><td>Y</td><td>imm</td><td>The Passport identity token</td></tr><tr><td><code>status</code></td><td>enum(active, superseded, merged_into, split_from)</td><td>Y</td><td>mut</td><td>Non-destructive lifecycle</td></tr><tr><td><code>superseded_by_id</code></td><td>FK(properties)?</td><td>N</td><td>sup</td><td></td></tr><tr><td><code>truth_score_band</code></td><td>TruthScoreBand</td><td>Y</td><td>mut</td><td>10-point bands only</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>canonical_id</code></li><li><strong>Retention</strong>: <code>passport_ledger</code></li></ul>
+
+<h3><code>property_identifiers</code></h3>
+<p>Composite identity slot values that establish canonical identity.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>slot</code></td><td>enum(address, parcel, coordinate, unit, jurisdiction, boundary)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>value_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>hash of normalized value for equality</td></tr><tr><td><code>active</code></td><td>bool</td><td>Y</td><td>mut</td><td>False after supersede</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(property_id, slot)</code> where <code>active=true</code></li></ul>
+
+<h3><code>property_addresses</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>address</code></td><td>Address</td><td>Y</td><td>sup</td><td>Corrections via SUPERSEDE</td></tr><tr><td><code>active_from</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>active_to</code></td><td>timestamp?</td><td></td><td>mut</td><td>Set on supersede</td></tr></tbody></table>
+
+<h3><code>property_parcels</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>parcel</code></td><td>ParcelIdentifier</td><td>Y</td><td>sup</td><td></td></tr><tr><td><code>active</code></td><td>bool</td><td>Y</td><td>mut</td><td></td></tr></tbody></table>
+
+<h3><code>property_structures</code></h3>
+<p>Optional structure-level detail (accessory buildings).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>structure_type</code></td><td>enum(primary_dwelling, adu, garage, shed, outbuilding, other)</td><td>Y</td><td></td></tr><tr><td><code>polygon</code></td><td>geo(polygon)</td><td>Y</td><td></td></tr><tr><td><code>attributes</code></td><td>object</td><td>N</td><td></td></tr></tbody></table>
+
+<h3><code>property_units</code></h3>
+<p>Distinct identity slot for multi-unit buildings.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>parent_property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>unit_property_id</code></td><td>FK(properties)</td><td>Y</td><td>Its own canonical id</td></tr><tr><td><code>unit_label</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>stack_position</code></td><td>object</td><td>N</td><td>floor / stack notation</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(parent_property_id, unit_label)</code></li></ul>
+
+<h3><code>property_identity_candidates</code></h3>
+<p>Duplicate-detection candidate list (SD-002).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>submission_id</code></td><td>string</td><td>Y</td><td>groups a resolution attempt</td></tr><tr><td><code>candidate_property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>score</code></td><td>float(0..1)</td><td>Y</td><td></td></tr><tr><td><code>signals</code></td><td>object</td><td>Y</td><td>matched slots</td></tr><tr><td><code>decision</code></td><td>enum(auto_match, review, reject)?</td><td></td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>submission_id</code></li></ul>
+
+<h3><code>property_identity_decisions</code></h3>
+<p>Human-QA outcomes for identity conflicts.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>submission_id</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>decided_by</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>decision</code></td><td>enum(link_existing, create_new, merge_into, split_from, reject)</td><td>Y</td><td></td></tr><tr><td><code>decided_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>notes</code></td><td>string</td><td>N</td><td></td></tr></tbody></table>
+
+<h3><code>property_ownership_periods</code></h3>
+<p>Ownership records — never property identity.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>owner_user_id</code></td><td>FK(users)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>role</code></td><td>enum(owner, occupant)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>starts_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>ends_at</code></td><td>timestamp?</td><td></td><td>mut</td><td></td></tr><tr><td><code>transfer_authorization_id</code></td><td>FK(passport_identity_operations)?</td><td></td><td>imm</td><td></td></tr></tbody></table>
+
+<h3><code>property_relationships</code></h3>
+<p>Parent-child / linked property associations.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>left_property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>right_property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>relationship</code></td><td>enum(parent_of, child_of, linked_via_parcel, linked_via_hoa, linked_via_portfolio)</td><td>Y</td><td></td></tr><tr><td><code>established_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§5 — DOMAIN 3: MISSIONS</h2>
+
+<h3><code>missions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td>Canonical identity</td></tr><tr><td><code>product_id</code></td><td>FK(mission_products)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>state</code></td><td>enum(planned, validated, in_flight, capture_finalized, processing, awaiting_qa, reported, closed, failed, canceled)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>pilot_user_id</code></td><td>FK(users)?</td><td></td><td>mut</td><td></td></tr><tr><td><code>dispatcher_user_id</code></td><td>FK(users)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>stage</code></td><td>enum(1..15)</td><td>Y</td><td>mut</td><td>matches Blueprint §22</td></tr><tr><td><code>parent_failed_mission_id</code></td><td>FK(missions)?</td><td></td><td>imm</td><td>rescan link</td></tr><tr><td><code>price</code></td><td>Money</td><td>Y</td><td>imm</td><td>contractor price</td></tr><tr><td><code>estimated_cost</code></td><td>Money</td><td>Y</td><td>mut</td><td>internal, recorded to ledger</td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>property_id</code>, <code>state</code>, <code>pilot_user_id</code>, <code>stage</code></li></ul>
+
+<h3><code>mission_products</code></h3>
+<p>Catalog of DayScan / AWE / Elite.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>product_key</code></td><td>enum(dayscan, awe_scan, elite)</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td>product policy version</td></tr><tr><td><code>capture_conditions</code></td><td>object</td><td>Y</td><td>day/night, env delta</td></tr><tr><td><code>sensor_requirements</code></td><td>object</td><td>Y</td><td>rgb, thermal, gps</td></tr><tr><td><code>human_qa_tier</code></td><td>RiskTier</td><td>Y</td><td></td></tr><tr><td><code>report_template</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>contractor_price</code></td><td>Money</td><td>Y</td><td></td></tr><tr><td><code>internal_cost_estimate</code></td><td>Money</td><td>Y</td><td></td></tr><tr><td><code>rescan_rules</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>failed_mission_policy</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>habitat_entitlement</code></td><td>ProductEntitlement</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(product_key, version)</code></li></ul>
+
+<h3><code>mission_requirements</code></h3>
+<p>Concrete requirements captured at mission-creation time (deep-copy for immutability).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>snapshot</code></td><td>object</td><td>Y</td><td>frozen policy at mission creation</td></tr></tbody></table>
+
+<h3><code>mission_plans</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>plan_version</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>route</code></td><td>geo(linestring/polygon)</td><td>Y</td><td></td></tr><tr><td><code>altitude_profile</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>sensor_plan</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>time_windows</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>pilot_acceptance_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>status</code></td><td>enum(draft, submitted, accepted, rejected)</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(mission_id, plan_version)</code></li></ul>
+
+<h3><code>mission_readiness_checks</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>pass</code></td><td>bool</td><td>Y</td><td></td></tr><tr><td><code>items</code></td><td>array&lt;object&gt;</td><td>Y</td><td>one entry per ATC item</td></tr><tr><td><code>overrides</code></td><td>array&lt;object&gt;</td><td>Y</td><td>pilot-acknowledged warnings</td></tr><tr><td><code>evaluated_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>mission_environment</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>forecast</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>observed</code></td><td>object</td><td>Y</td><td>temp, humidity, wind, solar</td></tr><tr><td><code>awe_delta_ok</code></td><td>bool</td><td>Y</td><td>AWE eligibility</td></tr></tbody></table>
+
+<h3><code>mission_equipment</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>drone_serial</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>sensor_configuration</code></td><td>object</td><td>Y</td><td>intrinsics + calibration references</td></tr><tr><td><code>edge_compute</code></td><td>object</td><td>N</td><td>Manifold or equivalent</td></tr></tbody></table>
+
+<h3><code>mission_flights</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>started_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>completed_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>outcome</code></td><td>enum(completed, aborted, insufficient)</td><td>Y</td><td></td></tr><tr><td><code>retake_count</code></td><td>int</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>mission_telemetry</code></h3>
+<p>High-volume; partition-candidate.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>frame_index</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>position</code></td><td>GeoCoordinate</td><td>Y</td><td></td></tr><tr><td><code>attitude</code></td><td>object</td><td>Y</td><td>roll/pitch/yaw</td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>(mission_id, frame_index)</code></li><li><strong>Retention</strong>: <code>raw_evidence</code></li></ul>
+
+<h3><code>mission_failures</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>class</code></td><td>enum(environmental, operator, hardware, insufficient_evidence, processing, cancellation)</td><td>Y</td><td></td></tr><tr><td><code>reason_codes</code></td><td>array&lt;string&gt;</td><td>Y</td><td></td></tr><tr><td><code>notes</code></td><td>string</td><td>N</td><td></td></tr></tbody></table>
+
+<h3><code>mission_rescans</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>failed_mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>new_mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>policy_applied</code></td><td>string</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>mission_costs</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>cost_class</code></td><td>enum(compute, provider, storage, human_qa, ops)</td><td>Y</td><td></td></tr><tr><td><code>amount</code></td><td>Money</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>mission_id</code>, <code>at</code></li></ul>
+
+<hr/>
+
+<h2>§6 — DOMAIN 4: INSPECTIONS</h2>
+
+<h3><code>inspections</code></h3>
+<p>An inspection is the review-and-approval envelope around one or more missions on a property.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>product</code></td><td>enum(dayscan, awe_scan, elite)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>status</code></td><td>enum(draft, awaiting_qa, approved, rejected, superseded)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>owner_user_id</code></td><td>FK(users)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>elite_link_id</code></td><td>FK(inspections)?</td><td></td><td>imm</td><td>For Elite pairing</td></tr></tbody></table>
+
+<h3><code>inspection_versions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>content_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>created_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(inspection_id, version)</code></li></ul>
+
+<h3><code>inspection_participants</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td></td></tr><tr><td><code>user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>role_at_inspection</code></td><td>enum(contractor, inspector, pilot, tier2_qa, tier3_qa, tier4_engineer, adjuster)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>inspection_status_history</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td></td></tr><tr><td><code>from_status</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>to_status</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>by_user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>inspection_approvals</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td></td></tr><tr><td><code>tier</code></td><td>RiskTier</td><td>Y</td><td></td></tr><tr><td><code>approver_user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>signature</code></td><td>DigitalSignature</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>inspection_property_links</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td></td></tr><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td></td></tr><tr><td><code>link_kind</code></td><td>enum(primary, elite_pair, unit_of)</td><td>Y</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§7 — DOMAIN 5: EVIDENCE</h2>
+
+<h3><code>evidence_items</code></h3>
+<p>Logical unit — one photograph, one radiometric capture, one telemetry file.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>kind</code></td><td>enum(rgb_original, rjpg_radiometric, video, flight_log, telemetry, calibration, environment, note)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>role</code></td><td>enum(source_of_truth, derivative)</td><td>Y</td><td>imm</td><td>Blueprint §14</td></tr><tr><td><code>content_hash</code></td><td>FileChecksum</td><td>Y</td><td>imm</td><td>idempotency key</td></tr><tr><td><code>size_bytes</code></td><td>int</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>captured_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>availability</code></td><td>EvidenceAvailability</td><td>Y</td><td>mut</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>content_hash</code> per mission</li><li><strong>Indexes</strong>: <code>(mission_id, kind, role)</code></li></ul>
+
+<h3><code>evidence_files</code></h3>
+<p>Physical storage locators (tenant-isolated per §9.4).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>storage_uri</code></td><td>uri</td><td>Y</td><td>tenant-scoped</td></tr><tr><td><code>encryption_context</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>signed_url_policy</code></td><td>string</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>evidence_manifests</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>mission_id</code></td><td>FK(missions)</td><td>Y</td><td></td></tr><tr><td><code>manifest_hash</code></td><td>FileChecksum</td><td>Y</td><td>over the whole manifest</td></tr><tr><td><code>finalized_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>item_count</code></td><td>int</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>manifest_hash</code></li></ul>
+
+<h3><code>evidence_checksums</code></h3>
+<p>Long-lived integrity records that outlive derivatives.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>algorithm</code></td><td>enum(sha256, sha512, blake3)</td><td>Y</td><td></td></tr><tr><td><code>value</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>verified_at</code></td><td>timestamp</td><td>N</td><td>recomputed on lifecycle transition</td></tr></tbody></table>
+
+<h3><code>evidence_metadata</code></h3>
+<p>Sensor + capture metadata (deep-copy of EXIF + custom).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>intrinsics</code></td><td>object</td><td>Y</td><td>camera model, distortion</td></tr><tr><td><code>pose</code></td><td>object</td><td>N</td><td></td></tr><tr><td><code>range_m</code></td><td>float</td><td>N</td><td></td></tr><tr><td><code>environmental</code></td><td>object</td><td>Y</td><td>temperature, humidity, solar loading</td></tr></tbody></table>
+
+<h3><code>evidence_calibrations</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>calibration_source_id</code></td><td>FK(evidence_items)?</td><td></td><td>calibration frames</td></tr><tr><td><code>residual</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>method</code></td><td>string</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>evidence_derivatives</code></h3>
+<p>Anything derived from originals (twin, PDF, textures).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>source_evidence_ids</code></td><td>array&lt;FK(evidence_items)&gt;</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>derivative_kind</code></td><td>enum(twin_gltf, twin_ifc, twin_dxf, twin_ply, twin_e57, report_pdf, thumbnail, thermal_reprojection, projection_texture)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>content_hash</code></td><td>FileChecksum</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>agent_run_id</code></td><td>FK(agent_runs)?</td><td></td><td>imm</td><td>derivation lineage</td></tr></tbody></table>
+
+<h3><code>evidence_relationships</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>left_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>right_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>relationship</code></td><td>enum(paired_rgb_thermal, replaced_by, cross_calibration_of)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>evidence_access_logs</code></h3>
+<p>Every retrieval writes here (SD-016, SD-022).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>by_user_id</code></td><td>FK(users)?</td><td></td><td></td></tr><tr><td><code>via_grant_id</code></td><td>FK(access_grants)?</td><td></td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Retention</strong>: <code>auth_log</code></li></ul>
+
+<h3><code>evidence_retention_actions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>action</code></td><td>enum(hot_to_cold, cold_to_archive, tombstone, restore)</td><td>Y</td><td></td></tr><tr><td><code>reason_code</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>by</code></td><td>FK(users)</td><td>service_id</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>legal_holds</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>subject_id</code></td><td>string</td><td>Y</td><td>evidence_item_id, finding_id, or property_id</td></tr><tr><td><code>subject_kind</code></td><td>enum(evidence, finding, property, mission, passport_entry)</td><td>Y</td><td></td></tr><tr><td><code>active</code></td><td>bool</td><td>Y</td><td></td></tr><tr><td><code>applied_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>released_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>reason_code</code></td><td>string</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>(subject_kind, subject_id)</code>, <code>active</code></li></ul>
+
+<hr/>
+
+<h2>§8 — DOMAIN 6: FINDINGS</h2>
+
+<h3><code>findings</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>inspection_id</code></td><td>FK(inspections)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>kind</code></td><td>enum(roof_damage, missing_shingle, moisture_intrusion, air_leakage, energy_loss, window_defect, door_defect, hazard, measurement, count, other)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>state</code></td><td>enum(candidate, evidence_linked, automated_informational, contractor_review, high_consequence_escalation, professionally_controlled_review, approved, rejected, superseded, customer_releasable, passport_eligible)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>risk_tier</code></td><td>RiskTier</td><td>Y</td><td>mut</td><td>RuleEngine assigns</td></tr><tr><td><code>required_reviewer_role</code></td><td>enum</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>approval_status</code></td><td>VerificationStatus</td><td>Y</td><td>mut</td><td>separated from confidence per §15.1</td></tr><tr><td><code>provenance</code></td><td>Provenance</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>model_confidence</code></td><td>Confidence</td><td>N</td><td>mut</td><td></td></tr><tr><td><code>measurement</code></td><td>Measurement?</td><td></td><td>mut</td><td>present when kind=measurement</td></tr><tr><td><code>finding_confidence</code></td><td>Confidence</td><td>N</td><td>mut</td><td>aggregate</td></tr><tr><td><code>implementation_state</code></td><td>ImplementationState</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>release_restriction</code></td><td>object</td><td>Y</td><td>mut</td><td>Phase 1 chip rules</td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>inspection_id</code>, <code>property_id</code>, <code>state</code>, <code>risk_tier</code></li></ul>
+
+<h3><code>finding_versions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>content_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>created_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_evidence_links</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>evidence_item_id</code></td><td>FK(evidence_items)</td><td>Y</td><td></td></tr><tr><td><code>role</code></td><td>enum(primary, supporting, contradictory)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_measurements</code></h3>
+<p>For measurement-typed findings.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>measurement</code></td><td>Measurement</td><td>Y</td><td></td></tr><tr><td><code>derivation_method</code></td><td>enum(photogrammetry, manual, calculated, imported)</td><td>Y</td><td></td></tr><tr><td><code>uncertainty</code></td><td>MeasurementUncertainty</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_classifications</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>classifier</code></td><td>string</td><td>Y</td><td>agent + version</td></tr><tr><td><code>label</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>score</code></td><td>float</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_risk_tiers</code></h3>
+<p>Tier history (RuleEngine may reclassify).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>tier</code></td><td>RiskTier</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>by</code></td><td>enum(rule_engine, human)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_reviews</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>reviewer_user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>decision</code></td><td>enum(approve, reject, request_field_verification, request_rework)</td><td>Y</td><td></td></tr><tr><td><code>notes</code></td><td>string</td><td>N</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>signature</code></td><td>DigitalSignature?</td><td></td><td>Tier 3+</td></tr></tbody></table>
+
+<h3><code>finding_approvals</code></h3>
+<p>Terminal approval record separate from <code>finding_reviews</code> for query performance.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>approver_user_id</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>tier</code></td><td>RiskTier</td><td>Y</td><td></td></tr><tr><td><code>signature</code></td><td>DigitalSignature</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>finding_supersessions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>superseding_finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>superseded_finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>reason</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>superseded_finding_id</code></li></ul>
+
+<h3><code>finding_release_restrictions</code></h3>
+<p>Phase 1 UI-honesty enforcement (§20.1).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>finding_id</code></td><td>FK(findings)</td><td>Y</td><td></td></tr><tr><td><code>chip</code></td><td>enum(demo, mocked, planned, verified, awaiting_validation)</td><td>Y</td><td></td></tr><tr><td><code>banner</code></td><td>string?</td><td></td><td>screen banner override</td></tr><tr><td><code>pdf_disclosure_required</code></td><td>bool</td><td>Y</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§9 — DOMAIN 7: AGENTS</h2>
+
+<p>Blueprint §5 requires that every agent execution be reproducible from persisted metadata. All fields in §5.2 are required on <code>agent_runs</code>.</p>
+
+<h3><code>agent_definitions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td>logical agent name</td></tr><tr><td><code>capability_interface</code></td><td>enum(ReasoningProvider, NarrativeProvider, VisionProvider, SegmentationProvider, ThermalAnalysisProvider, MeasurementProvider, PhotogrammetryProvider, BimProvider, RuleEngine, CalibrationProvider)</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>sla</code></td><td>object</td><td>Y</td><td>timeout, cost budget</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(key, version)</code></li></ul>
+
+<h3><code>agent_capabilities</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_definition_id</code></td><td>FK(agent_definitions)</td><td>Y</td><td></td></tr><tr><td><code>capability_interface</code></td><td>enum</td><td>Y</td><td></td></tr><tr><td><code>input_schema</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>output_schema</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>preconditions</code></td><td>object</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>provider_configurations</code></h3>
+<p>Deployment-config mapping from capability interface to concrete provider.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>capability_interface</code></td><td>enum</td><td>Y</td><td></td></tr><tr><td><code>provider_key</code></td><td>string</td><td>Y</td><td>vendor-neutral key</td></tr><tr><td><code>provider_model</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>model_version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>runtime_config_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>implementation_state</code></td><td>ImplementationState</td><td>Y</td><td></td></tr><tr><td><code>active</code></td><td>bool</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(capability_interface, active=true)</code> limited to one row per env</li></ul>
+
+<h3><code>agent_runs</code></h3>
+<p>The immutable audit-of-record for AI use.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_id</code></td><td>FK(agent_definitions)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>agent_version</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>provider_id</code></td><td>FK(provider_configurations)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>provider_model</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>model_version</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>prompt_version</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>algorithm_id</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>algorithm_version</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>runtime_config_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>input_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>output_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>started_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>finished_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>cost_usd</code></td><td>Money</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>confidence_pct</code></td><td>Confidence</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>evidence_ids</code></td><td>array&lt;FK(evidence_items)&gt;</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>provenance</code></td><td>Provenance</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>implementation_state</code></td><td>ImplementationState</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>verification_status</code></td><td>VerificationStatus</td><td>Y</td><td>mut</td><td>may be reviewed later</td></tr></tbody></table>
+
+<ul><li><strong>Immutability rule</strong>: never updated except <code>verification_status</code> and <code>soft_deleted_at</code> (never actually deleted)</li><li><strong>Indexes</strong>: <code>agent_id</code>, <code>provider_id</code>, <code>input_hash</code></li></ul>
+
+<h3><code>agent_run_inputs</code></h3>
+<p>Referenced payload; may be object-stored.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_run_id</code></td><td>FK(agent_runs)</td><td>Y</td><td></td></tr><tr><td><code>payload_uri</code></td><td>uri</td><td>Y</td><td></td></tr><tr><td><code>payload_hash</code></td><td>hex</td><td>Y</td><td>equals <code>input_hash</code></td></tr></tbody></table>
+
+<h3><code>agent_run_outputs</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_run_id</code></td><td>FK(agent_runs)</td><td>Y</td><td></td></tr><tr><td><code>payload_uri</code></td><td>uri</td><td>Y</td><td></td></tr><tr><td><code>payload_hash</code></td><td>hex</td><td>Y</td><td>equals <code>output_hash</code></td></tr></tbody></table>
+
+<h3><code>agent_run_costs</code></h3>
+<p>Fine-grained cost decomposition.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_run_id</code></td><td>FK(agent_runs)</td><td>Y</td><td></td></tr><tr><td><code>component</code></td><td>enum(input_tokens, output_tokens, compute, network, storage)</td><td>Y</td><td></td></tr><tr><td><code>amount</code></td><td>Money</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>agent_run_failures</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>agent_run_id</code></td><td>FK(agent_runs)</td><td>Y</td><td></td></tr><tr><td><code>code</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>class</code></td><td>enum(timeout, provider_error, validation, safety, budget)</td><td>Y</td><td></td></tr><tr><td><code>retry_count</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>escalated_to_human</code></td><td>bool</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>prompt_versions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>body_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>body_uri</code></td><td>uri</td><td>Y</td><td>body stored external to relational store</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(key, version)</code></li></ul>
+
+<h3><code>algorithm_versions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td>e.g. <code>calibration.thermal.registration</code></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>spec_hash</code></td><td>hex</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(key, version)</code></li></ul>
+
+<h3><code>validation_rules</code></h3>
+<p>Deterministic post-agent validators.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>applies_to</code></td><td>array&lt;enum(capability_interface)&gt;</td><td>Y</td><td></td></tr><tr><td><code>spec_uri</code></td><td>uri</td><td>Y</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§10 — DOMAIN 8: WORKFLOWS</h2>
+
+<p>The 15-stage state machine, durable event substrate, and idempotency records.</p>
+
+<h3><code>workflow_definitions</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>key</code></td><td>string</td><td>Y</td><td>e.g. <code>dayscan</code>, <code>awe_scan</code>, <code>elite</code>, <code>claim</code></td></tr><tr><td><code>version</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>stage_sequence</code></td><td>array&lt;string&gt;</td><td>Y</td><td>one entry per Blueprint §22 stage</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(key, version)</code></li></ul>
+
+<h3><code>workflow_versions</code></h3>
+<p>Historical policy for replayability.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_definition_id</code></td><td>FK(workflow_definitions)</td><td>Y</td><td></td></tr><tr><td><code>spec_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>active</code></td><td>bool</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>workflow_instances</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_definition_id</code></td><td>FK(workflow_definitions)</td><td>Y</td><td></td></tr><tr><td><code>mission_id</code></td><td>FK(missions)?</td><td></td><td></td></tr><tr><td><code>inspection_id</code></td><td>FK(inspections)?</td><td></td><td></td></tr><tr><td><code>state</code></td><td>enum(active, waiting_human, failed, completed)</td><td>Y</td><td></td></tr><tr><td><code>stage_index</code></td><td>int</td><td>Y</td><td>matches Blueprint §22 stage number</td></tr></tbody></table>
+
+<h3><code>workflow_stage_instances</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_instance_id</code></td><td>FK(workflow_instances)</td><td>Y</td><td></td></tr><tr><td><code>stage_index</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>owner_service</code></td><td>string</td><td>Y</td><td>logical role</td></tr><tr><td><code>entered_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>exited_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>outcome</code></td><td>enum(pass, fail, timeout, canceled)?</td><td></td><td></td></tr></tbody></table>
+
+<h3><code>workflow_transitions</code></h3>
+<p>Every stage → next transition emits one row.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_instance_id</code></td><td>FK(workflow_instances)</td><td>Y</td><td></td></tr><tr><td><code>from_stage</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>to_stage</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>event</code></td><td>string</td><td>Y</td><td>e.g. <code>evidence.package_finalization_pending</code></td></tr><tr><td><code>by_actor</code></td><td>string</td><td>Y</td><td>user_id or service_id</td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>workflow_human_tasks</code></h3>
+<p>Queue backing Human QA gates.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_instance_id</code></td><td>FK(workflow_instances)</td><td>Y</td><td></td></tr><tr><td><code>task_kind</code></td><td>enum(qa_review, conflict_review, identity_review, override_ack, rescan_confirm, ownership_confirm, dead_letter_replay)</td><td>Y</td><td></td></tr><tr><td><code>assigned_role</code></td><td>enum</td><td>Y</td><td></td></tr><tr><td><code>assigned_user_id</code></td><td>FK(users)?</td><td></td><td></td></tr><tr><td><code>status</code></td><td>enum(open, in_progress, resolved, canceled)</td><td>Y</td><td></td></tr><tr><td><code>resolved_at</code></td><td>timestamp?</td><td></td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>assigned_role</code>, <code>status</code></li></ul>
+
+<h3><code>workflow_failures</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_instance_id</code></td><td>FK(workflow_instances)</td><td>Y</td><td></td></tr><tr><td><code>stage_index</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>reason_code</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>workflow_retries</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>workflow_instance_id</code></td><td>FK(workflow_instances)</td><td>Y</td><td></td></tr><tr><td><code>stage_index</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>attempt</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>outcome</code></td><td>enum(pass, fail)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>outbox_events</code></h3>
+<p>Transactional outbox (Blueprint §7.2).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>event_id</code></td><td>ULID</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>event_type</code></td><td>string</td><td>Y</td><td>imm</td><td>e.g. <code>passport.appended</code></td></tr><tr><td><code>payload</code></td><td>object</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>payload_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>idempotency key on consumer side</td></tr><tr><td><code>producer_tx_id</code></td><td>string</td><td>Y</td><td>imm</td><td>ties to business row</td></tr><tr><td><code>available_after</code></td><td>timestamp</td><td>Y</td><td>mut</td><td>visibility timeout</td></tr><tr><td><code>attempts</code></td><td>int</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>delivered_at</code></td><td>timestamp?</td><td></td><td>mut</td><td></td></tr><tr><td><code>dead_lettered_at</code></td><td>timestamp?</td><td></td><td>mut</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>event_type</code>, <code>available_after</code>, <code>delivered_at</code></li></ul>
+
+<h3><code>inbox_receipts</code></h3>
+<p>Consumer idempotency receipts.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>consumer_key</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>event_id</code></td><td>ULID</td><td>Y</td><td></td></tr><tr><td><code>payload_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>applied_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(consumer_key, event_id, payload_hash)</code></li></ul>
+
+<h3><code>dead_letter_events</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>event_id</code></td><td>ULID</td><td>Y</td><td></td></tr><tr><td><code>event_type</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>payload</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>failure_class</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>moved_at</code></td><td>timestamp</td><td>Y</td><td></td></tr><tr><td><code>replayed_at</code></td><td>timestamp?</td><td></td><td></td></tr><tr><td><code>replayed_by</code></td><td>FK(users)?</td><td></td><td></td></tr></tbody></table>
+
+<h3><code>idempotency_records</code></h3>
+<p>General-purpose idempotency store beyond outbox.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>scope</code></td><td>string</td><td>Y</td><td>e.g. <code>mission.create</code>, <code>finding.approve</code></td></tr><tr><td><code>key</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>result_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(scope, key)</code></li></ul>
+
+<hr/>
+
+<h2>§11 — DOMAIN 9: PASSPORTS</h2>
+
+<p>The authoritative, hash-chained property intelligence record. Only the <strong>Passport Service</strong> writes.</p>
+
+<h3><code>passports</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td>one active passport per canonical property</td></tr><tr><td><code>status</code></td><td>enum(active, retired, merged_into)</td><td>Y</td><td>mut</td><td></td></tr><tr><td><code>merged_into_passport_id</code></td><td>FK(passports)?</td><td></td><td>sup</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>property_id</code> where <code>status=active</code></li></ul>
+
+<h3><code>passport_sequences</code></h3>
+<p>Monotonic sequence per passport.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td></td></tr><tr><td><code>next_seq</code></td><td>int</td><td>Y</td><td>check-and-set on append</td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>passport_id</code></li></ul>
+
+<h3><code>passport_entries</code></h3>
+<p>Append-only ledger.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>seq</code></td><td>int</td><td>Y</td><td>imm</td><td>monotonic</td></tr><tr><td><code>entry_type</code></td><td>enum(INSPECTION_DELTA, SUPERSEDE_FINDING, IDENTITY_LINK, IDENTITY_UNLINK, IDENTITY_MERGE, IDENTITY_SPLIT, ADDRESS_CORRECTION, PARCEL_CORRECTION, OWNERSHIP_TRANSFER, COSIGN, HABITAT_ACK, LEGAL_HOLD)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>content_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>over entry content</td></tr><tr><td><code>prior_hash</code></td><td>hex?</td><td></td><td>imm</td><td>previous entry hash</td></tr><tr><td><code>payload_ref</code></td><td>uri</td><td>Y</td><td>imm</td><td>large payloads externalized</td></tr><tr><td><code>signature</code></td><td>DigitalSignature</td><td>Y</td><td>imm</td><td>passport-service key</td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>authored_by</code></td><td>user_id</td><td>service_id</td><td>Y</td><td>imm</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(passport_id, seq)</code>; <code>content_hash</code></li><li><strong>Immutability</strong>: never updated; never deleted</li></ul>
+
+<h3><code>passport_deltas</code></h3>
+<p>Working submissions prior to acceptance.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td></td></tr><tr><td><code>expected_seq</code></td><td>int</td><td>Y</td><td>optimistic concurrency</td></tr><tr><td><code>payload</code></td><td>object</td><td>Y</td><td></td></tr><tr><td><code>submitted_by</code></td><td>FK(users)</td><td>Y</td><td></td></tr><tr><td><code>state</code></td><td>enum(submitted, rebased, accepted, conflict, rejected)</td><td>Y</td><td></td></tr><tr><td><code>resolved_entry_id</code></td><td>FK(passport_entries)?</td><td></td><td></td></tr></tbody></table>
+
+<ul><li><strong>Indexes</strong>: <code>passport_id</code>, <code>state</code></li></ul>
+
+<h3><code>passport_receipts</code></h3>
+<p>Downstream artifact — verifiable proof of an append.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_entry_id</code></td><td>FK(passport_entries)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>receipt_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>over entry + signer identity</td></tr><tr><td><code>signature</code></td><td>DigitalSignature</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>issued_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr></tbody></table>
+
+<h3><code>passport_projections</code></h3>
+<p>Read-model projections for audiences (homeowner, contractor, insurer, public).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td></td></tr><tr><td><code>audience</code></td><td>enum(homeowner, contractor, adjuster, insurer, public, internal)</td><td>Y</td><td></td></tr><tr><td><code>content_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>projection_uri</code></td><td>uri</td><td>Y</td><td></td></tr><tr><td><code>built_from_seq</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>built_at</code></td><td>timestamp</td><td>Y</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>(passport_id, audience, content_hash)</code></li></ul>
+
+<h3><code>passport_access_grants</code></h3>
+<p>See SD-022. Bridges to §3 <code>access_grants</code> but scoped to Passport.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td></td></tr><tr><td><code>access_grant_id</code></td><td>FK(access_grants)</td><td>Y</td><td></td></tr><tr><td><code>projection_audience</code></td><td>enum</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>passport_identity_operations</code></h3>
+<p>Record of SD-019 operations.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>op_type</code></td><td>enum(IDENTITY_LINK, IDENTITY_UNLINK, IDENTITY_MERGE, IDENTITY_SPLIT, ADDRESS_CORRECTION, PARCEL_CORRECTION, OWNERSHIP_TRANSFER)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>initiator_user_id</code></td><td>FK(users)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>tier_required</code></td><td>RiskTier</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>authorization_signature</code></td><td>DigitalSignature</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>left_property_id</code></td><td>FK(properties)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>right_property_id</code></td><td>FK(properties)?</td><td></td><td>imm</td><td>for LINK/MERGE/SPLIT</td></tr><tr><td><code>receipt_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>matches related passport_entry.content_hash</td></tr></tbody></table>
+
+<h3><code>passport_conflicts</code></h3>
+<p>Conflict queue for the concurrency rebase rule (§11.1).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>delta_id</code></td><td>FK(passport_deltas)</td><td>Y</td><td></td></tr><tr><td><code>conflicting_entry_ids</code></td><td>array&lt;FK(passport_entries)&gt;</td><td>Y</td><td></td></tr><tr><td><code>resolution</code></td><td>enum(pending, superseded, rebased, canceled)</td><td>Y</td><td></td></tr><tr><td><code>resolved_by</code></td><td>FK(users)?</td><td></td><td></td></tr></tbody></table>
+
+<h3><code>passport_rebases</code></h3>
+<p>Successful rebase log.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>delta_id</code></td><td>FK(passport_deltas)</td><td>Y</td><td></td></tr><tr><td><code>original_expected_seq</code></td><td>int</td><td>Y</td><td></td></tr><tr><td><code>rebased_onto_seq</code></td><td>int</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>claim_snapshots</code></h3>
+<p>See SD-016.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>passport_id</code></td><td>FK(passports)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>seq_range_from</code></td><td>int</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>seq_range_to</code></td><td>int</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>manifest_hash</code></td><td>hex</td><td>Y</td><td>imm</td><td>SHA-256 over manifest</td></tr><tr><td><code>redaction_profile</code></td><td>string</td><td>Y</td><td>imm</td><td>audience-specific</td></tr><tr><td><code>initiator_user_id</code></td><td>FK(users)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>issued_at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>access_grant_id</code></td><td>FK(access_grants)</td><td>Y</td><td>imm</td><td></td></tr></tbody></table>
+
+<ul><li><strong>Unique</strong>: <code>manifest_hash</code></li><li><strong>Immutability</strong>: never updated</li></ul>
+
+<h3><code>adjuster_cosigns</code></h3>
+<p>See SD-017.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>claim_snapshot_id</code></td><td>FK(claim_snapshots)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>adjuster_user_id</code></td><td>FK(users)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>decision</code></td><td>enum(approve, reject, request_correction)</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>signature</code></td><td>DigitalSignature</td><td>Y</td><td>imm</td><td>SHA-256 or approved algorithm</td></tr><tr><td><code>passport_entry_id</code></td><td>FK(passport_entries)</td><td>Y</td><td>imm</td><td>corresponding COSIGN entry</td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§12 — DOMAIN 10: AUDIT</h2>
+
+<p>Immutable audit surface consumed by security, compliance, and Human QA replay.</p>
+
+<h3><code>audit_events</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Immut</th><th>Notes</th></tr></thead><tbody><tr><td><code>event_type</code></td><td>string</td><td>Y</td><td>imm</td><td>dotted namespace</td></tr><tr><td><code>actor_id</code></td><td>string</td><td>Y</td><td>imm</td><td>user_id or service_id</td></tr><tr><td><code>resource_kind</code></td><td>string</td><td>Y</td><td>imm</td><td>e.g. <code>passport_entry</code>, <code>finding</code></td></tr><tr><td><code>resource_id</code></td><td>string</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>at</code></td><td>timestamp</td><td>Y</td><td>imm</td><td></td></tr><tr><td><code>ip</code></td><td>string</td><td>N</td><td>imm</td><td></td></tr><tr><td><code>user_agent</code></td><td>string</td><td>N</td><td>imm</td><td></td></tr><tr><td><code>before_hash</code></td><td>hex?</td><td></td><td>imm</td><td>of resource content</td></tr><tr><td><code>after_hash</code></td><td>hex?</td><td></td><td>imm</td><td></td></tr><tr><td><code>payload_uri</code></td><td>uri?</td><td></td><td>imm</td><td>externalized large payload</td></tr></tbody></table>
+
+<ul><li><strong>Immutability</strong>: never updated</li><li><strong>Indexes</strong>: <code>(resource_kind, resource_id)</code>, <code>event_type</code>, <code>actor_id</code>, <code>at</code></li><li><strong>Retention</strong>: <code>auth_log</code> (2 yr hot / 7 yr cold)</li></ul>
+
+<h3><code>audit_actors</code></h3>
+<p>Denormalized actor snapshot at event time.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>actor_kind</code></td><td>enum(user, service, system)</td><td>Y</td><td></td></tr><tr><td><code>actor_display</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>mfa_present</code></td><td>bool</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>audit_resources</code></h3>
+<p>Denormalized resource snapshot.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>resource_kind</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>tenant_id</code></td><td>FK(organizations)</td><td>Y</td><td></td></tr><tr><td><code>owner_id</code></td><td>string</td><td>N</td><td></td></tr></tbody></table>
+
+<h3><code>audit_changes</code></h3>
+<p>Field-level diff records.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>field_path</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>before_value_hash</code></td><td>hex</td><td>Y</td><td></td></tr><tr><td><code>after_value_hash</code></td><td>hex</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>audit_access_events</code></h3>
+<p>Every retrieval of tenant-sensitive data.</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>resource_kind</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>resource_id</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>grant_id</code></td><td>FK(access_grants)?</td><td></td><td></td></tr></tbody></table>
+
+<h3><code>audit_security_events</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>severity</code></td><td>enum(info, low, medium, high, critical)</td><td>Y</td><td></td></tr><tr><td><code>class</code></td><td>enum(auth_fail, brute_force, injection_attempt, policy_violation, rate_limit, kill_list_hit, hold_violation)</td><td>Y</td><td></td></tr></tbody></table>
+
+<h3><code>audit_export_events</code></h3>
+<p>Records every export (report PDF, snapshot, projection).</p>
+<table><thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_event_id</code></td><td>FK(audit_events)</td><td>Y</td><td></td></tr><tr><td><code>export_kind</code></td><td>enum(report_pdf, snapshot, projection, evidence_bundle)</td><td>Y</td><td></td></tr><tr><td><code>receiver_display</code></td><td>string</td><td>Y</td><td></td></tr><tr><td><code>size_bytes</code></td><td>int</td><td>Y</td><td></td></tr></tbody></table>
+
+<hr/>
+
+<h2>§13 — SEPARATED ENUMS (never fused into a single "status" field)</h2>
+
+<h3>Derivation</h3>
+<pre><code>measured · calculated · estimated · imported · ai_assisted · human_entered</code></pre>
+
+<h3>Verification</h3>
+<pre><code>unreviewed · reviewed · verified · rejected · requires_field_verification</code></pre>
+
+<h3>Implementation state</h3>
+<pre><code>operational · partially_operational · mocked · planned · awaiting_credentials ·
+awaiting_hardware · awaiting_validation · deprecated · legacy</code></pre>
+
+<h3>Evidence availability</h3>
+<pre><code>complete · partial · missing · contradictory</code></pre>
+
+<h3>AWE Index state (Blueprint §17.1)</h3>
+<pre><code>INTERNAL_DRAFT · PILOT · CALIBRATED_LIMITED · CALIBRATED_GENERAL · EXTERNALLY_ASSERTABLE
+suspended_pending_revalidation</code></pre>
+
+<p><strong>Rule</strong>: any UI or projection that combines these into a single status chip must derive the composite in the projection layer, never on the source-of-truth entity.</p>
+
+<hr/>
+
+<h2>§14 — RELATIONSHIP DIAGRAMS</h2>
+
+<h3>§14.1 Global domain relationships</h3>
+<pre class='mermaid-block'><code>graph LR
+  Tenants --&gt; Properties
+  Properties --&gt; Missions
+  Missions --&gt; Evidence
+  Missions --&gt; Inspections
+  Inspections --&gt; Findings
+  Evidence --&gt; Findings
+  Agents --&gt; AgentRuns
+  AgentRuns --&gt; Findings
+  Workflows --&gt; Missions
+  Workflows --&gt; Passports
+  Findings --&gt; Passports
+  Passports --&gt; Habitat
+  Audit -.-&gt; All[All domains]</code></pre>
+
+<h3>§14.2 Property identity ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  properties ||--o{ property_identifiers : has
+  properties ||--o{ property_addresses : has
+  properties ||--o{ property_parcels : has
+  properties ||--o{ property_structures : has
+  properties ||--o{ property_units : has
+  properties ||--o{ property_ownership_periods : has
+  properties ||--o{ property_relationships : left
+  properties ||--o{ property_identity_candidates : may_match
+  property_identity_candidates ||--|| property_identity_decisions : resolves</code></pre>
+
+<h3>§14.3 Mission and inspection ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  properties ||--o{ missions : has
+  mission_products ||--o{ missions : instantiates
+  missions ||--|| mission_plans : has_active
+  missions ||--o{ mission_readiness_checks : has
+  missions ||--o{ mission_flights : has
+  missions ||--o{ mission_telemetry : has
+  missions ||--o{ mission_failures : has
+  missions ||--o{ mission_rescans : has
+  missions ||--o{ mission_costs : has
+  missions ||--o{ inspections : belongs_to
+  inspections ||--o{ inspection_versions : has
+  inspections ||--o{ inspection_approvals : has</code></pre>
+
+<h3>§14.4 Evidence and finding ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  missions ||--o{ evidence_items : produces
+  evidence_items ||--|| evidence_manifests : belongs_to
+  evidence_items ||--o{ evidence_files : stored_as
+  evidence_items ||--o{ evidence_derivatives : source
+  evidence_items ||--o{ evidence_calibrations : has
+  evidence_items ||--o{ evidence_relationships : links
+  inspections ||--o{ findings : records
+  findings ||--o{ finding_evidence_links : cites
+  finding_evidence_links }o--|| evidence_items : references
+  findings ||--o{ finding_versions : versioned
+  findings ||--o{ finding_reviews : reviewed
+  findings ||--o{ finding_approvals : approved
+  findings ||--o{ finding_supersessions : superseded</code></pre>
+
+<h3>§14.5 Agent execution ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  agent_definitions ||--o{ agent_capabilities : declares
+  provider_configurations ||--o{ agent_runs : realized_as
+  agent_definitions ||--o{ agent_runs : executes
+  agent_runs ||--|| agent_run_inputs : has
+  agent_runs ||--|| agent_run_outputs : has
+  agent_runs ||--o{ agent_run_costs : has
+  agent_runs ||--o{ agent_run_failures : has
+  prompt_versions ||--o{ agent_runs : bound_to
+  algorithm_versions ||--o{ agent_runs : bound_to
+  validation_rules ||--o{ agent_runs : validates</code></pre>
+
+<h3>§14.6 Workflow and durable-event ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  workflow_definitions ||--o{ workflow_instances : instantiates
+  workflow_instances ||--o{ workflow_stage_instances : has
+  workflow_instances ||--o{ workflow_transitions : logs
+  workflow_instances ||--o{ workflow_human_tasks : gates
+  outbox_events ||--o{ inbox_receipts : delivered_to
+  outbox_events ||--o{ dead_letter_events : fails_to
+  idempotency_records ||--o{ workflow_transitions : dedupes</code></pre>
+
+<h3>§14.7 Passport ledger ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  properties ||--|| passports : has_active
+  passports ||--|| passport_sequences : has
+  passports ||--o{ passport_entries : ledger
+  passports ||--o{ passport_deltas : proposals
+  passport_deltas ||--o{ passport_conflicts : raises
+  passport_deltas ||--o{ passport_rebases : rebased
+  passport_entries ||--|| passport_receipts : signed
+  passports ||--o{ passport_projections : projects
+  passports ||--o{ passport_access_grants : granted
+  passport_identity_operations ||--|| passport_entries : materializes</code></pre>
+
+<h3>§14.8 Claim snapshot and adjuster co-sign ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  passports ||--o{ claim_snapshots : frozen_as
+  claim_snapshots ||--o{ adjuster_cosigns : cosigned_by
+  adjuster_cosigns ||--|| passport_entries : appends
+  claim_snapshots ||--|| access_grants : accessed_via</code></pre>
+
+<h3>§14.9 Tenant authorization ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  organizations ||--o{ organization_memberships : contains
+  users ||--o{ organization_memberships : join
+  organization_memberships }o--o{ roles : has
+  roles ||--o{ role_permissions : maps
+  role_permissions }o--|| permissions : grants
+  users ||--o{ user_attributes : abac
+  users ||--o{ authentication_events : logs
+  organizations ||--o{ service_identities : owns
+  users ||--o{ access_grants : grants</code></pre>
+
+<h3>§14.10 Retention and legal-hold ER</h3>
+<pre class='mermaid-block'><code>erDiagram
+  evidence_items ||--o{ evidence_retention_actions : has
+  legal_holds ||--o{ evidence_items : holds
+  legal_holds ||--o{ findings : holds
+  legal_holds ||--o{ properties : holds
+  legal_holds ||--o{ passport_entries : holds
+  passport_entries ||--o{ legal_holds : subject_of</code></pre>
+
+<hr/>
+
+<h2>§15 — INVARIANTS</h2>
+
+<p>Every invariant below is enforceable at write time in the source-of-truth service.</p>
+
+<ol><li>A Passport belongs to <strong>one</strong> canonical physical property identity.</li><li>Ownership change does <strong>not</strong> create a new property. New <code>property_ownership_periods</code> row; same <code>properties.canonical_id</code>.</li><li>Only the Passport authority may append canonical Passport entries (<code>passport_entries</code>).</li><li>Accepted Passport history is <strong>append-only</strong> (<code>passport_entries</code> never updated or deleted).</li><li>Corrections <strong>supersede</strong>; they do not erase accepted history (<code>finding_supersessions</code>, <code>SUPERSEDE_FINDING</code> entries).</li><li>Property split and merge operations require authorized review (<code>passport_identity_operations.tier_required = tier_3</code>).</li><li>Every finding references evidence or explicitly states why evidence is unavailable (<code>finding_evidence_links</code> present OR <code>EvidenceAvailability = missing</code> with explanation).</li><li>No AI-generated measurement may exist without derivation, uncertainty, and provenance (<code>finding_measurements.derivation_method</code>, <code>.uncertainty</code>, and <code>findings.provenance</code> all required).</li><li>"Verified" is <strong>not</strong> a confidence value. <code>verification_status</code> and <code>finding_confidence</code> are separate fields (§15.1 Blueprint).</li><li>Every agent execution creates an immutable <code>agent_runs</code> record with the fields in §9.</li><li>Customer-facing reports may contain only releasable findings (<code>findings.state IN (customer_releasable, passport_eligible)</code> AND <code>finding_release_restrictions.chip != mocked</code> where required).</li><li>Tier 4 conclusions require authorized professional approval (<code>finding_approvals.tier = tier_4</code> requires reviewer with license in <code>user_attributes</code>).</li><li>Critical events use durable delivery (<code>outbox_events</code> row committed in the same transaction as the business row).</li><li>Duplicate event delivery must be safe (<code>inbox_receipts</code> unique on <code>(consumer_key, event_id, payload_hash)</code>).</li><li>Demonstration data cannot be mistaken for operational data (<code>findings.implementation_state != operational</code> requires <code>finding_release_restrictions.chip</code> present).</li><li>Presentation geometry cannot overwrite measurement geometry (<code>evidence_derivatives</code> are additive; measurement records reference <code>evidence_items</code> of role <code>source_of_truth</code>).</li><li>Original evidence cannot be silently replaced by a derivative (<code>evidence_items.role = source_of_truth</code> is <code>imm</code>; replacements create new items with <code>evidence_relationships.replaced_by</code>).</li><li>AWE Index cannot be shown authoritatively before approved release state (projection composers must check the persisted AWE Index release-state and refuse to include below <code>CALIBRATED_GENERAL</code>).</li><li>Property identity operations preserve prior identity (§11.3 Blueprint) via <code>supersedes</code>/<code>succeeds</code> pointers on <code>passport_identity_operations</code> and matching <code>passport_entries</code>.</li><li>Passport ledger rows are never soft-deleted; legal-hold blocks tombstoning of PII referenced by the ledger.</li></ol>
+
+<hr/>
+
+<h2>§16 — NORMALIZATION AND PRAGMATISM REVIEW</h2>
+
+<p>Phase 1 must scale without becoming distributed.</p>
+
+<h3>§16.1 Tables that may be <strong>combined</strong> in Phase 1</h3>
+<ul><li><code>finding_evidence_links</code> + <code>finding_measurements</code> may share a single Mongo collection with a discriminator until Postgres becomes the target (Phase 2).</li><li><code>agent_run_inputs</code> + <code>agent_run_outputs</code> may live as sub-documents on <code>agent_runs</code> in Phase 1, externalized only when payloads exceed a size threshold.</li><li><code>mission_environment</code> + <code>mission_equipment</code> + <code>mission_readiness_checks</code> may collapse into <code>mission_context</code> sub-document behind a single <code>missions._context</code> field.</li><li><code>evidence_metadata</code> + <code>evidence_calibrations</code> may live embedded on <code>evidence_items</code> for daylight-only missions; separated when AWE ingest goes online.</li><li><code>audit_actors</code> + <code>audit_resources</code> + <code>audit_changes</code> may share a single audit-detail sub-document off <code>audit_events</code> in Phase 1; separated into columnar tables when audit volume warrants.</li></ul>
+
+<h3>§16.2 Tables that <strong>must remain separate</strong> even in Phase 1</h3>
+<ul><li><code>passport_entries</code> — append-only ledger; must be its own collection to enable independent indexes and integrity checks.</li><li><code>agent_runs</code> — immutable audit-of-record; must not be conflated with orchestration bookkeeping.</li><li><code>outbox_events</code>, <code>inbox_receipts</code>, <code>dead_letter_events</code> — durable-delivery substrate.</li><li><code>authentication_events</code>, <code>audit_events</code> — separate from any tenant-scoped domain to permit distinct retention.</li><li><code>legal_holds</code> — cross-domain subject; must not be co-located with a single subject entity.</li><li><code>properties</code>, <code>property_identifiers</code>, <code>property_ownership_periods</code> — separate to prevent identity/ownership fusion (Blueprint §11.2).</li></ul>
+
+<h3>§16.3 Fields suitable for JSON / structured JSON</h3>
+<ul><li><code>mission_environment.observed</code>, <code>mission_environment.forecast</code></li><li><code>evidence_metadata.intrinsics</code>, <code>.pose</code>, <code>.environmental</code></li><li><code>agent_run_inputs.payload_uri</code> (external), <code>agent_run_outputs.payload_uri</code> (external)</li><li><code>provider_configurations.runtime_config</code> (structured JSON per provider)</li><li><code>finding_classifications.score_vector</code> (if produced)</li></ul>
+
+<h3>§16.4 Fields that must remain relational</h3>
+<ul><li>All FKs listed in this spec.</li><li>Sequence/version numbers (<code>passport_sequences.next_seq</code>, <code>finding_versions.version</code>).</li><li>All unique constraints (Passport <code>(passport_id, seq)</code>, evidence <code>content_hash</code>, agent_run <code>input_hash</code>).</li></ul>
+
+<h3>§16.5 Expected high-volume tables</h3>
+<table><thead><tr><th>Table</th><th>Volume driver</th><th>Handling</th></tr></thead><tbody><tr><td><code>mission_telemetry</code></td><td>Frames per flight × missions</td><td>Partition by <code>mission_id</code> + time; cold-archive per §11</td></tr><tr><td><code>evidence_items</code></td><td>Photos + radiometric per mission</td><td>Manifest-scoped queries; storage tier</td></tr><tr><td><code>audit_events</code></td><td>All state changes</td><td>Time-partitioned; append-only; cold-archive per §11</td></tr><tr><td><code>agent_runs</code></td><td>Every AI call</td><td>Time-partitioned; externalized payloads</td></tr><tr><td><code>outbox_events</code></td><td>All critical events</td><td>TTL after <code>delivered_at</code>; small hot window</td></tr></tbody></table>
+
+<h3>§16.6 Partitioning candidates</h3>
+<ul><li><code>mission_telemetry</code>: partition by <code>mission_id</code> (bucket by month if durations extend).</li><li><code>audit_events</code>: partition by month.</li><li><code>agent_runs</code>: partition by month.</li><li><code>outbox_events</code>: partition by <code>event_type</code> + week.</li></ul>
+
+<h3>§16.7 Archival candidates</h3>
+<ul><li>Raw <code>mission_telemetry</code> after 90 days hot → cold.</li><li>Cold <code>agent_run_inputs</code>/<code>agent_run_outputs</code> after 2 years.</li><li>Delivered <code>outbox_events</code> after 30 days.</li></ul>
+
+<h3>§16.8 Likely query patterns</h3>
+<ul><li>"All findings for property X" → <code>findings.property_id</code> index.</li><li>"Ledger tail for passport" → <code>(passport_id, seq)</code> scan tail.</li><li>"Agent replay by input_hash" → <code>agent_runs.input_hash</code> unique index.</li><li>"Access log per user per property" → <code>audit_access_events</code> composite index.</li><li>"Open QA tasks for role R" → <code>workflow_human_tasks.(assigned_role, status=open)</code>.</li></ul>
+
+<h3>§16.9 Premature abstractions to avoid (Phase 1)</h3>
+<ul><li>Do <strong>not</strong> split each of the 10 domains into a separate microservice. Phase 1 keeps them in one deploy; only <code>Passports</code> extracts in Phase 2.</li><li>Do <strong>not</strong> introduce a message broker (Kafka, NATS). The transactional outbox pattern is sufficient for Blueprint §7.2.</li><li>Do <strong>not</strong> invent a bespoke rule DSL. <code>RuleEngine</code> in Phase 1 is a set of typed Python callables with versioned specs (<code>algorithm_versions</code>).</li><li>Do <strong>not</strong> create a "provenance table" separated from findings. Provenance is a value object embedded on <code>findings</code>, <code>finding_measurements</code>, and <code>agent_runs</code> — separating it creates join-hell for the hot-read paths.</li><li>Do <strong>not</strong> create an "event sourcing" layer alongside the outbox. The outbox is the sole durable substrate.</li></ul>
+
+<h3>§16.10 Entities that should <strong>not</strong> become microservices yet</h3>
+<ul><li><code>Missions</code>, <code>Inspections</code>, <code>Findings</code>, <code>Evidence</code> — same service in Phase 1.</li><li><code>Workflows</code> — a library, not a service.</li><li><code>Audit</code> — a library that writes to a shared collection.</li><li><code>Tenants / Identity</code> — a service boundary is justified once SSO/SAML lands (Phase 2+).</li></ul>
+
+<hr/>
+
+<h2>§17 — CROSS-ARTIFACT TRACEABILITY MATRIX</h2>
+
+<p>Rows: 24 sequence diagrams. Columns: primary entities read/written, workflow transition, audit event(s), durable event(s), required role, Blueprint anchor.</p>
+
+<table><thead><tr><th>SD</th><th>Reads (primary)</th><th>Writes (primary)</th><th>Workflow transition</th><th>Audit event(s)</th><th>Durable event(s)</th><th>Required role</th><th>Blueprint anchor</th></tr></thead><tbody><tr><td>SD-001</td><td>organizations, roles</td><td>organizations, users, organization_memberships, roles, user_attributes, authentication_events, audit_events</td><td>pre-mission</td><td>org/user/mfa/role events</td><td>—</td><td>admin</td><td>§9.2/§9.3/§20</td></tr><tr><td>SD-002</td><td>property_*, passports</td><td>property_identifiers, property_addresses, property_parcels, property_identity_candidates, property_identity_decisions, passport_receipts, audit_events</td><td>pre-Stage-1</td><td>property.identity_*</td><td>—</td><td>contractor/inspector/reviewer</td><td>§11.2/§11.3</td></tr><tr><td>SD-003</td><td>mission_products, properties</td><td>missions, mission_requirements, mission_costs, audit_events</td><td>1</td><td>mission.created</td><td>—</td><td>contractor</td><td>§16</td></tr><tr><td>SD-004</td><td>missions, environment adapters</td><td>mission_plans, mission_environment, mission_equipment, audit_events</td><td>1→2</td><td>mission.plan_*</td><td>—</td><td>dispatcher/pilot</td><td>§22.2/§5.1</td></tr><tr><td>SD-005</td><td>missions, mission_equipment</td><td>mission_readiness_checks, audit_events</td><td>2→3</td><td>mission.preflight_*</td><td>—</td><td>pilot</td><td>§22.3</td></tr><tr><td>SD-006</td><td>mission_plans</td><td>mission_flights, mission_telemetry, mission_failures, audit_events</td><td>3→4→5</td><td>mission.flight_*</td><td>—</td><td>pilot</td><td>§22.4-5/§14</td></tr><tr><td>SD-007</td><td>mission_flights</td><td>evidence_items, evidence_files, evidence_manifests, evidence_checksums, evidence_metadata, evidence_calibrations, outbox_events, audit_events</td><td>5→6</td><td>evidence.package_finalized</td><td>evidence.package_finalization_pending</td><td>ground station svc</td><td>§14/§7.2</td></tr><tr><td>SD-008</td><td>evidence_manifests</td><td>agent_runs, agent_run_*, evidence_derivatives, findings, finding_measurements, finding_classifications, finding_risk_tiers, finding_reviews, audit_events</td><td>6→7→8→9</td><td>agent.run_persisted, finding.reviewed</td><td>mission.recapture_pending (on fail)</td><td>tier 2 reviewer</td><td>§22.7-9/§5/§10</td></tr><tr><td>SD-009</td><td>evidence_items (radiometric)</td><td>agent_runs, evidence_derivatives, findings, finding_evidence_links, finding_classifications, finding_reviews, audit_events</td><td>9→10→11</td><td>awe.index_gated/released, finding.reviewed</td><td>finding.approved</td><td>tier 3 reviewer</td><td>§12.2/§17.1/§10</td></tr><tr><td>SD-010</td><td>inspections (dayscan+awe)</td><td>findings, finding_versions, passport_deltas, passport_entries, passport_receipts, audit_events</td><td>10→11→12</td><td>finding.contradiction_resolved, passport.elite_delta_appended</td><td>finding.approved, passport.appended</td><td>tier 3 reviewer</td><td>§16/§11</td></tr><tr><td>SD-011</td><td>agent_definitions, provider_configurations, prompt_versions, algorithm_versions</td><td>agent_runs, agent_run_*, validation_rules refs, audit_events</td><td>in-line</td><td>agent.run_persisted, agent.escalated</td><td>—</td><td>orchestrator svc</td><td>§5/§15</td></tr><tr><td>SD-012</td><td>findings, evidence, user_attributes</td><td>findings, finding_versions, finding_reviews, finding_approvals, finding_supersessions, finding_release_restrictions, audit_events</td><td>11</td><td>finding.state_changed, finding.superseded</td><td>finding.approved (tier 3/4)</td><td>tier 2/3/4</td><td>§10/§15/§11</td></tr><tr><td>SD-013</td><td>findings, evidence, passport_entries</td><td>evidence_derivatives (PDF), finding_release_restrictions, audit_events</td><td>12</td><td>report.rendered</td><td>report.generation_pending</td><td>QA</td><td>§22.12/§14/§20.1</td></tr><tr><td>SD-014</td><td>passports, passport_sequences</td><td>passport_entries, passport_deltas, passport_receipts, passport_conflicts, passport_rebases, outbox_events, audit_events</td><td>13</td><td>passport.appended, passport.conflict_reviewed</td><td>passport.appended</td><td>passport svc</td><td>§11/§11.1/§7.2</td></tr><tr><td>SD-015</td><td>passport_entries, passport_projections</td><td>passport_projections, outbox_events, inbox_receipts, dead_letter_events, audit_events</td><td>14</td><td>habitat.projected, habitat.deadletter</td><td>habitat.ack_pending</td><td>sync svc</td><td>§8/§7.2</td></tr><tr><td>SD-016</td><td>passport_entries, evidence_items</td><td>claim_snapshots, passport_access_grants, audit_access_events, audit_events</td><td>terminus branch</td><td>claim.snapshot_created/accessed</td><td>—</td><td>claim initiator + adjuster (MFA)</td><td>§9/§11/§16</td></tr><tr><td>SD-017</td><td>claim_snapshots</td><td>adjuster_cosigns, passport_entries, passport_receipts, audit_events</td><td>terminus branch</td><td>claim.cosign_appended</td><td>passport.appended</td><td>adjuster (MFA + step-up)</td><td>§9.2/§11</td></tr><tr><td>SD-018</td><td>findings, passport_entries</td><td>finding_supersessions, passport_entries, passport_receipts, audit_events</td><td>11 or terminus</td><td>finding.superseded, finding.correction_rejected</td><td>passport.appended</td><td>tier-matched reviewer</td><td>§11.2-3/§15</td></tr><tr><td>SD-019</td><td>properties, passport_entries</td><td>passport_identity_operations, passport_entries, passport_receipts, property_ownership_periods, property_relationships, audit_events</td><td>terminus branch</td><td>property.identity_operation</td><td>passport.appended</td><td>tier 2/3 per op</td><td>§11.3</td></tr><tr><td>SD-020</td><td>missions</td><td>mission_failures, mission_rescans, mission_costs, audit_events</td><td>5-6 → failure branch</td><td>mission.failed, mission.rescan_created</td><td>—</td><td>dispatcher</td><td>§16/§22.5-6</td></tr><tr><td>SD-021</td><td>evidence_items, legal_holds, findings, passport_entries</td><td>evidence_retention_actions, legal_holds, passport_entries (tombstones via SUPERSEDE), audit_events</td><td>continuous</td><td>retention.<em>, legal_hold.</em></td><td>—</td><td>retention svc + legal</td><td>§13</td></tr><tr><td>SD-022</td><td>passport_projections</td><td>access_grants, passport_access_grants, audit_access_events, audit_events</td><td>out-of-band</td><td>passport.public_access, passport.access_revoked</td><td>—</td><td>grantor (MFA)</td><td>§9.1</td></tr><tr><td>SD-023</td><td>outbox_events, inbox_receipts</td><td>outbox_events, inbox_receipts, dead_letter_events, idempotency_records, audit_events</td><td>mechanism</td><td>outbox.delivered/deadletter/replayed</td><td>is the mechanism</td><td>service identities + operator</td><td>§7.2</td></tr><tr><td>SD-024</td><td>all</td><td>all</td><td>1..15</td><td>see stage table</td><td>see stage table</td><td>see stage table</td><td>§22</td></tr></tbody></table>
+
+<p><strong>Traceability observation</strong>: Every SD has at least one corresponding write set in this data model. No SD requires an entity that does not exist in the model. No entity in the model is stranded (each is written by at least one SD).</p>
+
+<hr/>
+
+<h2>§18 — DATA-MODEL SIMPLIFICATION RECOMMENDATIONS</h2>
+
+<p>Non-binding recommendations to keep Phase 1 lean, aligned with §16.</p>
+
+<ol><li><strong>Collapse Mission-context</strong>: implement <code>mission_readiness_checks</code>, <code>mission_environment</code>, <code>mission_equipment</code> as one <code>mission_context</code> collection in Phase 1 with a <code>context_kind</code> discriminator. Split before Phase 3.</li><li><strong>Embed evidence metadata</strong>: keep <code>evidence_metadata</code> and <code>evidence_calibrations</code> as sub-documents on <code>evidence_items</code> until AWE ingest goes live.</li><li><strong>Delay <code>algorithm_versions</code> and <code>prompt_versions</code> proliferation</strong>: seed a small canonical registry. Do not treat them as user-facing entities in Phase 1.</li><li><strong>Do not split <code>Audit</code> into per-kind collections yet</strong>. Sub-documents suffice until audit volume warrants columnar storage.</li><li><strong>Provider configurations minimal in Phase 1</strong>: one active provider per capability interface. No routing rules yet.</li><li><strong>Passport projections generated lazily</strong>: compute on read for Phase 1; add caching in Phase 2. Avoid a projection worker until sync volume justifies it.</li><li><strong>Legal hold model is generic</strong> (<code>subject_kind</code>, <code>subject_id</code>): do not force per-domain hold tables.</li></ol>
+
+<hr/>
+
+<h2>§19 — ARCHITECTURE CONFLICT REPORT (data-model side)</h2>
+
+<p>None of the entities above require modification to Blueprint v1.2. Two items flagged as <strong>observations for executive review</strong>:</p>
+
+<p><strong>Observation D-A — Passport identity precedence over Property status.</strong></p>
+<p><code>properties.status = merged_into</code> is required by SD-019 MERGE. The Blueprint §11 authority rule (only Passport service writes canonical Passport history) is preserved because the effect on <code>properties.status</code> is materialized <em>from</em> a <code>passport_entries</code> row of type <code>IDENTITY_MERGE</code>; <code>properties.status</code> is a projection. Documented explicitly to prevent a future implementer from writing directly to <code>properties.status</code>.</p>
+
+<p><strong>Observation D-B — Ownership never re-parents a property.</strong></p>
+<p><code>property_ownership_periods</code> is deliberately time-sliced and does not modify <code>properties.canonical_id</code>. Any implementation that mutates <code>properties.canonical_id</code> on ownership change is a violation of §11.2 Blueprint. The invariants in §15 make this enforceable.</p>
+
+<p>No modification to Blueprint v1.2 is proposed by this specification.</p>
+
+<hr/>
+
+<h2>§20 — CONFIRMATIONS</h2>
+
+<ol><li>Blueprint v1.0, v1.1, and v1.2 remain unchanged.</li><li>No database migration was written.</li><li>No production collection or table was created or altered.</li><li>No implementation code was written.</li><li>Legacy remains frozen. No file under legacy scope was modified.</li><li>Phase 1a authorization remains withheld. Phase 1b/1c/1d/2/3/4/5 authorization remains withheld.</li><li>No new integrations were added. External systems referenced elsewhere in this pack are marked with their §15.2 implementation state.</li></ol>
+
+<hr/>
+
+<h2>§21 — REVISION HISTORY</h2>
+
+<table><thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Change summary</th></tr></thead><tbody><tr><td>1.0</td><td>February 26, 2026</td><td>TC</td><td>Initial Canonical Data Model Specification. Ten domains. Aligned to Blueprint v1.2 + Sequence Diagrams Pack v1.0.</td></tr></tbody></table>
+
+<p><strong>End of Canonical Data Model Specification v1.0.</strong></p>
+
+</section>
+
+</body></html>

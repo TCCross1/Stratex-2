@@ -177,3 +177,42 @@ async def blueprint_v12_pdf():
         media_type="application/pdf",
         filename="STRATEX_NextGen_Architecture_Blueprint_v1.2.pdf",
     )
+
+
+# ── Directive 003: Sequence Diagrams v1.0 & Canonical Data Model v1.0 ──
+SD_V10_MD = MEMORY / "NEXTGEN_SEQUENCE_DIAGRAMS_v1.0.md"
+SD_V10_PDF = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Sequence_Diagrams_v1.0.pdf"
+CDM_V10_MD = MEMORY / "NEXTGEN_CANONICAL_DATA_MODEL_v1.0.md"
+CDM_V10_PDF = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Canonical_Data_Model_v1.0.pdf"
+
+
+@router.get("/sequence-diagrams/v1.0/md")
+async def sequence_diagrams_v10_md():
+    return _serve_md(SD_V10_MD, "STRATEX_NextGen_Sequence_Diagrams_v1.0.md")
+
+
+@router.get("/sequence-diagrams/v1.0/pdf")
+async def sequence_diagrams_v10_pdf():
+    if not SD_V10_PDF.exists():
+        raise HTTPException(404, "Sequence Diagrams v1.0 PDF not yet rendered.")
+    return FileResponse(
+        str(SD_V10_PDF),
+        media_type="application/pdf",
+        filename="STRATEX_NextGen_Sequence_Diagrams_v1.0.pdf",
+    )
+
+
+@router.get("/canonical-data-model/v1.0/md")
+async def canonical_data_model_v10_md():
+    return _serve_md(CDM_V10_MD, "STRATEX_NextGen_Canonical_Data_Model_v1.0.md")
+
+
+@router.get("/canonical-data-model/v1.0/pdf")
+async def canonical_data_model_v10_pdf():
+    if not CDM_V10_PDF.exists():
+        raise HTTPException(404, "Canonical Data Model v1.0 PDF not yet rendered.")
+    return FileResponse(
+        str(CDM_V10_PDF),
+        media_type="application/pdf",
+        filename="STRATEX_NextGen_Canonical_Data_Model_v1.0.pdf",
+    )

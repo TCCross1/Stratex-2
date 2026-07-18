@@ -1,0 +1,1543 @@
+
+<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>NextGen Sequence Diagrams v1.0</title>
+
+<style>
+  @page {
+    size: Letter;
+    margin: 22mm 18mm 22mm 18mm;
+    @top-left {
+      content: "STRATEX™ · CROSS AI SOFTWARES INC. · CONFIDENTIAL — PROPRIETARY";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.14em;
+    }
+    @top-right {
+      content: "NextGen Sequence Diagrams v1.0";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667; letter-spacing: 0.10em;
+    }
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
+      color: #667;
+    }
+  }
+  @page :first {
+    margin: 0;
+    @top-left { content: ""; }
+    @top-right { content: ""; }
+    @bottom-center { content: ""; }
+  }
+  html, body {
+    color: #0F1620; background: #FFFFFF;
+    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .cover {
+    page-break-after: always;
+    padding: 0; margin: 0;
+    background: linear-gradient(180deg, #02060B 0%, #050B16 60%, #061826 100%);
+    color: #EAF2FB;
+    min-height: 100vh; height: 100vh;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 55mm 22mm 22mm 22mm; box-sizing: border-box;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(212,184,106,0.14) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .cover-top { position: relative; z-index: 1; }
+  .cover-bottom { position: relative; z-index: 1; }
+  .cover .kicker {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.32em; font-size: 9pt; text-transform: uppercase;
+    color: #7EE9FF;
+  }
+  .cover h1 {
+    font-size: 46pt; line-height: 1.02; letter-spacing: -0.01em;
+    margin: 10mm 0 4mm 0; color: #FFFFFF; font-weight: 700;
+  }
+  .cover .accent { color: #FFB020; text-shadow: 0 0 24px rgba(255,176,32,0.35); }
+  .cover .subtitle {
+    font-size: 14pt; line-height: 1.4;
+    color: #C5D4E0; margin-top: 4mm; max-width: 140mm;
+  }
+  .cover .meta {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.16em; font-size: 9pt;
+    color: #7EE9FF; margin-top: 6mm;
+  }
+  .cover .status-pill {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid rgba(255,176,32,0.6); color: #FFB020;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; margin-top: 12mm;
+  }
+  .cover .band {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    padding-top: 6mm; display: flex; justify-content: space-between;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+    letter-spacing: 0.22em; text-transform: uppercase; color: #98A6B4;
+  }
+  .toc-page { page-break-before: always; page-break-after: always; }
+  .toc-page h1 {
+    font-size: 22pt; letter-spacing: -0.005em; margin-bottom: 6mm;
+    border-bottom: 2px solid #0F1620; padding-bottom: 3mm;
+  }
+  ul.toc { list-style: none; padding-left: 0; margin: 4mm 0; }
+  ul.toc li { margin: 1.5mm 0; }
+  ul.toc li.toc-l1 { font-weight: 700; font-size: 11pt; margin-top: 3mm; }
+  ul.toc li.toc-l2 { padding-left: 8mm; font-size: 10pt; color: #333; }
+  ul.toc li.toc-l3 { padding-left: 16mm; font-size: 9.5pt; color: #555; }
+
+  h1 { font-size: 20pt; margin: 8mm 0 3mm 0; page-break-after: avoid; color: #0F1620; }
+  h2 { font-size: 14pt; margin: 6mm 0 2.5mm 0; page-break-after: avoid;
+        border-bottom: 1px solid #C4CFD9; padding-bottom: 2mm; color: #0F1620; }
+  h3 { font-size: 12pt; margin: 5mm 0 2mm 0; page-break-after: avoid; color: #223140; }
+  h4 { font-size: 11pt; margin: 4mm 0 1.5mm 0; page-break-after: avoid; color: #223140; }
+  p { margin: 0 0 3mm 0; }
+  ul, ol { margin: 0 0 4mm 6mm; }
+  li { margin: 1mm 0; }
+  blockquote {
+    border-left: 3px solid #7EE9FF; margin: 3mm 0; padding: 2mm 4mm;
+    background: #F5F8FB; color: #223140; font-size: 10pt;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin: 3mm 0 5mm 0;
+    font-size: 8.5pt; page-break-inside: avoid;
+    table-layout: fixed; word-wrap: break-word;
+  }
+  thead th {
+    background: #0F1620; color: #E9F4FF; text-align: left;
+    padding: 5px 6px; letter-spacing: 0.08em; font-size: 7.5pt;
+    text-transform: uppercase;
+  }
+  tbody td {
+    border-bottom: 1px solid #D8DEE5; padding: 4px 6px; vertical-align: top;
+    word-break: break-word;
+  }
+  tbody tr:nth-child(even) td { background: #F5F8FB; }
+  code {
+    background: #0F1620; color: #7EE9FF; padding: 1px 4px; border-radius: 3px;
+    font-family: 'Courier New', monospace; font-size: 8.5pt;
+  }
+  pre {
+    background: #0F1620; color: #E9F4FF; padding: 8px 10px; border-radius: 4px;
+    overflow-x: auto; font-family: 'Courier New', monospace; font-size: 8pt;
+    line-height: 1.35; page-break-inside: avoid; white-space: pre-wrap;
+  }
+  pre.mermaid-block {
+    background: #050B16; color: #7EE9FF; border: 1px solid #1E2A38;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  hr { border: 0; border-top: 1px solid #C4CFD9; margin: 8mm 0; }
+  strong { color: #0F1620; }
+  em { color: #223140; }
+</style>
+
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-top">
+    <div class="kicker">// CROSS AI SOFTWARES INC. · EXECUTIVE DOCUMENTATION</div>
+    <h1>NextGen<br/>Sequence<br/><span class='accent'>Diagrams</span></h1>
+    <div class="subtitle">24-diagram operational pack aligned to Blueprint v1.2. Documentation only. No implementation authorized.</div>
+    <div class="status-pill">STATUS · DRAFT v1.0 · AWAITING EXECUTIVE REVIEW</div>
+    <div class="meta">
+      VERSION 1.0 · CREATED February 26, 2026 · CONFIDENTIAL — PROPRIETARY
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div class="band">
+      <span>STRATEX™ · A CROSS AI SOFTWARES INC. PRODUCT</span>
+      <span>PREPARED BY TC · AI PRODUCT MANAGER</span>
+    </div>
+  </div>
+</section>
+
+<section class="toc-page">
+  <h1>Table of Contents</h1>
+  <ul class='toc'><li class="toc-l1">STRATEX CORE — NEXTGEN SEQUENCE DIAGRAMS PACK v1.0</li><li class="toc-l2">PREFACE — READING THIS PACK</li><li class="toc-l3">P.1 Modeling conventions</li><li class="toc-l3">P.2 Actor legend</li><li class="toc-l3">P.3 Universal diagram checklist</li><li class="toc-l3">P.4 What this pack does not do</li><li class="toc-l2">SD-001 — ORGANIZATION AND USER ONBOARDING</li><li class="toc-l2">SD-002 — PROPERTY IDENTITY RESOLUTION</li><li class="toc-l2">SD-003 — PRODUCT SELECTION AND MISSION CREATION</li><li class="toc-l2">SD-004 — MISSION PLANNING</li><li class="toc-l2">SD-005 — PREFLIGHT MISSION VALIDATION (ATC 20-ITEM GATE)</li><li class="toc-l2">SD-006 — FLIGHT AND LIVE MISSION ASSURANCE</li><li class="toc-l2">SD-007 — CAPTURE FINALIZATION AND CANONICAL MISSION PACKAGE</li><li class="toc-l2">SD-008 — DAYSCAN™ PROCESSING</li><li class="toc-l2">SD-009 — AWE™ PROCESSING</li><li class="toc-l2">SD-010 — ELITE™ COMBINED PROCESSING</li><li class="toc-l2">SD-011 — AGENT CAPABILITY EXECUTION</li><li class="toc-l2">SD-012 — FINDING LIFECYCLE</li><li class="toc-l2">SD-013 — REPORT GENERATION</li><li class="toc-l2">SD-014 — PASSPORT APPEND AND SIGNED RECEIPT</li><li class="toc-l2">SD-015 — HABITAT SYNCHRONIZATION</li><li class="toc-l2">SD-016 — CLAIM SNAPSHOT</li><li class="toc-l2">SD-017 — ADJUSTER CO-SIGN</li><li class="toc-l2">SD-018 — PROPERTY CORRECTION AND FINDING SUPERSESSION</li><li class="toc-l2">SD-019 — PROPERTY SPLIT, MERGE, LINK, UNLINK, OWNERSHIP TRANSFER</li><li class="toc-l2">SD-020 — FAILED MISSION AND RESCAN</li><li class="toc-l2">SD-021 — DATA RETENTION AND LEGAL HOLD</li><li class="toc-l2">SD-022 — PUBLIC OR THIRD-PARTY PASSPORT PROJECTION</li><li class="toc-l2">SD-023 — DURABLE-EVENT RECOVERY</li><li class="toc-l2">SD-024 — END-TO-END 15-STAGE OPERATIONAL WORKFLOW</li><li class="toc-l2">§25 — TRACEABILITY MATRIX (SEQUENCE DIAGRAM → BLUEPRINT / DATA / AUDIT / DURABLE / ROLE)</li><li class="toc-l2">§26 — ARCHITECTURE CONFLICT REPORT</li><li class="toc-l2">§27 — CONFIRMATIONS</li><li class="toc-l2">§28 — REVISION HISTORY</li></ul>
+</section>
+
+<section class="body">
+  <h1>STRATEX CORE — NEXTGEN SEQUENCE DIAGRAMS PACK v1.0</h1>
+<p><strong>Status</strong>: DRAFT · Awaiting Executive Review</p>
+<p><strong>Classification</strong>: CONFIDENTIAL — PROPRIETARY</p>
+<p><strong>Created</strong>: February 26, 2026</p>
+<p><strong>Author</strong>: TC · Stratex AI Product Manager, under Directive 003</p>
+<p><strong>Reviewer</strong>: Anthony Cross (Executive Architect)</p>
+<p><strong>Aligned to</strong>: NextGen Architecture Blueprint v1.2</p>
+<p><strong>Preserves</strong>: Blueprint v1.0, v1.1, v1.2 (unchanged, read-only)</p>
+
+<blockquote><strong>Purpose.</strong> This pack proves how the NextGen platform <em>behaves</em> across its 15-stage workflow before any API contract or database migration is written. Each diagram exposes the happy path, an important rejection path, retry/recovery behavior, authorization boundaries, audit events, human gates, idempotency behavior, the data written, events emitted, and the resulting final state.</blockquote>
+<p>&gt;</p>
+<blockquote><strong>Scope.</strong> Documentation only. No application code, no database migration, no scaffolding, no production change is authorized by this document.</blockquote>
+
+<hr/>
+
+<h2>PREFACE — READING THIS PACK</h2>
+
+<h3>P.1 Modeling conventions</h3>
+<ul><li>Boxes named for <strong>logical roles</strong> (<code>Passport Service</code>, <code>Agent Orchestrator</code>), not deployment topology. Logical services collapse into fewer network services per Blueprint v1.2 §6 unless a network boundary is explicitly defined.</li><li>Every diagram calls out <strong>who commits the transactional record</strong> and <strong>which durable event is emitted</strong> where applicable.</li><li>Every diagram distinguishes <strong>synchronous request/response</strong> from <strong>asynchronous workflow signal</strong>.</li><li>Every diagram identifies the <strong>implementation state</strong> for external adapters using Blueprint §15.2 vocabulary: <code>Operational</code> · <code>Partially operational</code> · <code>Mocked</code> · <code>Planned</code> · <code>Awaiting credentials</code> · <code>Awaiting hardware</code> · <code>Awaiting validation</code> · <code>Deprecated</code> · <code>Legacy</code>.</li></ul>
+
+<h3>P.2 Actor legend</h3>
+<table><thead><tr><th>Actor</th><th>Role</th></tr></thead><tbody><tr><td>Homeowner</td><td>Retail customer, Habitat user, view-only on Passport</td></tr><tr><td>Contractor</td><td>Paying operator of Stratex Core (org owner or member)</td></tr><tr><td>Pilot / Field Operator</td><td>Authorized capture pilot</td></tr><tr><td>Inspector</td><td>Field/desk reviewer authorized for property findings</td></tr><tr><td>Adjuster</td><td>Insurance representative acting under a claim</td></tr><tr><td>Engineer / Authorized Reviewer</td><td>Licensed professional for Tier 4 findings</td></tr><tr><td>Stratex Core</td><td>Contractor operating system (frontend + API surface)</td></tr><tr><td>Mission Orchestrator</td><td>Logical service coordinating mission lifecycle</td></tr><tr><td>Workflow State Machine</td><td>15-stage progression engine</td></tr><tr><td>Capture System</td><td>Drone + ground app pipeline</td></tr><tr><td>Evidence Service</td><td>Custodian of raw and derivative evidence</td></tr><tr><td>Agent Orchestrator</td><td>Selects capability providers per capability interface</td></tr><tr><td>Capability Providers</td><td>Vendor-neutral runtime bindings (<code>ReasoningProvider</code>, <code>VisionProvider</code>, <code>ThermalAnalysisProvider</code>, <code>MeasurementProvider</code>, <code>PhotogrammetryProvider</code>, <code>BimProvider</code>, <code>SegmentationProvider</code>, <code>CalibrationProvider</code>, <code>NarrativeProvider</code>, <code>RuleEngine</code>)</td></tr><tr><td>Human QA</td><td>Tier-1 through Tier-4 review roles per Blueprint §10</td></tr><tr><td>Report Service</td><td>Delivery/report renderer</td></tr><tr><td>Property Passport Service</td><td>Sole writer to canonical Passport ledger</td></tr><tr><td>Habitat Synchronization Service</td><td>Projects Passport → Habitat</td></tr><tr><td>Stratex Habitat</td><td>Homeowner-facing platform (read-only projection)</td></tr><tr><td>Identity Resolution Service</td><td>Property identity normalization + duplicate detection</td></tr><tr><td>Authorization Service</td><td>RBAC + ABAC decisions</td></tr><tr><td>Audit Service</td><td>Immutable audit log writer</td></tr><tr><td>Notification Service</td><td>User-facing notifications</td></tr><tr><td>Cost Ledger</td><td>Internal margin/cost record</td></tr><tr><td>Durable Job / Transactional Outbox</td><td>Blueprint §7.2 durable delivery substrate</td></tr><tr><td>External processing adapters</td><td>Vendor implementations behind capability interfaces</td></tr></tbody></table>
+
+<h3>P.3 Universal diagram checklist</h3>
+<p>Every SD below satisfies:</p>
+<ul><li>Happy path</li><li>One representative rejection path</li><li>One representative retry/recovery path</li><li>Authorization boundary (which role may perform the action)</li><li>Audit event(s) written</li><li>Idempotency behavior where applicable</li><li>Human gate(s) where applicable</li><li>Durable event(s) emitted where applicable</li><li>Data written (entities affected)</li><li>Final state (workflow state, ledger effect, notifications)</li><li>Blueprint v1.2 anchor(s)</li></ul>
+
+<h3>P.4 What this pack does not do</h3>
+<ul><li>Does <strong>not</strong> invent operational integrations. Every external system referenced is marked with its implementation state.</li><li>Does <strong>not</strong> rewrite Blueprint v1.2. Where a flow cannot be modeled cleanly under v1.2, it is escalated in §26 <em>Architecture Conflict Report</em>.</li><li>Does <strong>not</strong> authorize any Phase 1b/1c/1d/2/3/4/5 work. Executive authorization remains withheld beyond Phase 1a.</li></ul>
+
+<hr/>
+
+<h2>SD-001 — ORGANIZATION AND USER ONBOARDING</h2>
+
+<p><strong>Purpose.</strong> Establish a tenant (organization), invite and authenticate its first users, assign roles, enroll contractors and pilots, authorize reviewers, and produce the audit trail that binds identity to authority.</p>
+<p><strong>Actors.</strong> Prospective Admin (org owner), Stratex Core, Authorization Service, Identity Resolution Service (used only for optional org-address enrichment), Notification Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> Prospective admin has verified contact email or federated identity.</p>
+<p><strong>Blueprint anchors.</strong> §9.2 (MFA scope), §9.3 (roles), §20 (Phase 1 scope).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Owner as Prospective Admin
+    participant Core as Stratex Core
+    participant AuthZ as Authorization Service
+    participant Notif as Notification Service
+    participant Audit as Audit Service
+
+    Owner-&gt;&gt;Core: Create organization (name, jurisdiction, primary contact)
+    Core-&gt;&gt;AuthZ: Provision org tenant + default role catalog
+    AuthZ--&gt;&gt;Core: Tenant id + role catalog
+    Core-&gt;&gt;Audit: audit.org.created
+    Core--&gt;&gt;Owner: Org created; prompt MFA enrollment
+    Owner-&gt;&gt;Core: Enroll MFA (WebAuthn/TOTP)
+    Core-&gt;&gt;AuthZ: Bind MFA factor to admin
+    AuthZ--&gt;&gt;Core: OK
+    Core-&gt;&gt;Audit: audit.user.mfa_enrolled
+    Owner-&gt;&gt;Core: Invite users (email + role)
+    Core-&gt;&gt;Notif: Send signed invite links
+    Notif--&gt;&gt;Invitee: Invite email
+    Invitee-&gt;&gt;Core: Accept invite + set password/passkey
+    Core-&gt;&gt;AuthZ: Bind user to org with role + attributes
+    AuthZ--&gt;&gt;Core: OK
+    Core-&gt;&gt;Audit: audit.user.invited + audit.user.role_assigned
+
+    alt Contractor / Pilot / Reviewer enrollment
+        Owner-&gt;&gt;Core: Enroll contractor (business info)
+        Core-&gt;&gt;AuthZ: Attach contractor attributes
+        AuthZ--&gt;&gt;Core: OK
+        Core-&gt;&gt;Audit: audit.contractor.enrolled
+        Owner-&gt;&gt;Core: Enroll pilot (license, certifications)
+        Core-&gt;&gt;AuthZ: Attach pilot authorization scope
+        AuthZ--&gt;&gt;Core: OK
+        Core-&gt;&gt;Audit: audit.pilot.authorized
+        Owner-&gt;&gt;Core: Enroll engineer_reviewer (license)
+        Core-&gt;&gt;AuthZ: Attach Tier 4 signature capability
+        AuthZ--&gt;&gt;Core: OK
+        Core-&gt;&gt;Audit: audit.reviewer.authorized
+    end
+
+    alt Rejection path (duplicate org / disallowed jurisdiction)
+        Core--&gt;&gt;Owner: 409 duplicate org / 451 jurisdiction restricted
+        Core-&gt;&gt;Audit: audit.org.creation_rejected
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>The admin creates the org tenant and immediately enrolls a phishing-resistant MFA factor before any privileged action is possible. Invites are signed, single-use, time-boxed, and revocable. Role assignment is separate from user creation. Contractor, pilot, and reviewer enrollments each attach a distinct capability set — pilot authorization scope (types of aircraft, geographies), reviewer license class (Tier 3 vs Tier 4). Every state change writes an <code>audit_events</code> row with actor, resource, before/after, and IP/device metadata.</p>
+
+<p><strong>Rejection paths.</strong> Duplicate org name in the same jurisdiction; jurisdiction not supported for Stratex offerings; invalid license credential; expired invite.</p>
+
+<p><strong>Retry/recovery.</strong> Invite resend is idempotent — same invite token, refreshed TTL, previous token invalidated. MFA enrollment can be reset only via step-up recovery workflow (email + admin dual-approval).</p>
+
+<p><strong>Authorization boundary.</strong> Org creation open to any authenticated verified email; every subsequent invite/role/enroll action requires an active admin session on the target org. Reviewer enrollment additionally requires MFA.</p>
+
+<p><strong>Audit events.</strong> <code>audit.org.created</code>, <code>audit.user.invited</code>, <code>audit.user.mfa_enrolled</code>, <code>audit.user.role_assigned</code>, <code>audit.contractor.enrolled</code>, <code>audit.pilot.authorized</code>, <code>audit.reviewer.authorized</code>, <code>audit.*.rejected</code>.</p>
+
+<p><strong>Data written.</strong> <code>organizations</code>, <code>users</code>, <code>organization_memberships</code>, <code>roles</code>, <code>role_permissions</code>, <code>user_attributes</code>, <code>authentication_events</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None (non-critical). Notification email dispatched via best-effort background task.</p>
+
+<p><strong>Final state.</strong> Tenant provisioned, one admin authenticated with MFA, N pending invites, org role catalog populated. Workflow position: pre-mission.</p>
+
+<hr/>
+
+<h2>SD-002 — PROPERTY IDENTITY RESOLUTION</h2>
+
+<p><strong>Purpose.</strong> Guarantee that every mission attaches to exactly one canonical Passport identity, or that a duplicate candidate is surfaced to human review before a new Passport is minted.</p>
+<p><strong>Actors.</strong> Contractor / Inspector, Stratex Core, Identity Resolution Service, Property Passport Service, Human QA, Audit Service.</p>
+<p><strong>Preconditions.</strong> Actor has role sufficient to open a candidate property.</p>
+<p><strong>Blueprint anchors.</strong> §11.2 (identity resolution), §11.3 (link/unlink/merge/split), §9.3 (roles).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor User as Contractor / Inspector
+    participant Core as Stratex Core
+    participant IR as Identity Resolution Service
+    participant Passport as Property Passport Service
+    participant QA as Human QA
+    participant Audit as Audit Service
+
+    User-&gt;&gt;Core: Enter address / parcel / lat-lon / unit
+    Core-&gt;&gt;IR: Normalize + geocode + parcel lookup
+    IR--&gt;&gt;Core: Candidate list (0..n) with match scores
+    alt Zero candidates
+        Core-&gt;&gt;Passport: Reserve new identity (pending)
+        Passport--&gt;&gt;Core: Provisional identity id
+        Core-&gt;&gt;Audit: audit.property.identity_provisional_created
+        Core--&gt;&gt;User: Confirm new property; provisional id
+    else 1 candidate above auto-match threshold
+        Core--&gt;&gt;User: Suggest existing Passport
+        User-&gt;&gt;Core: Accept match
+        Core-&gt;&gt;Passport: Bind mission to existing identity
+        Core-&gt;&gt;Audit: audit.property.identity_matched
+    else &gt;=1 candidate below auto-match, above review threshold
+        Core-&gt;&gt;QA: Duplicate-candidate review task
+        QA--&gt;&gt;Core: Decision (link / new / manual match)
+        Core-&gt;&gt;Passport: Apply human decision
+        Core-&gt;&gt;Audit: audit.property.identity_decision_reviewed
+    end
+
+    alt Rejection (unit vs parcel conflict / jurisdiction unsupported)
+        Core--&gt;&gt;User: Reject with reason + escalation link
+        Core-&gt;&gt;Audit: audit.property.identity_rejected
+    end
+
+    Passport-&gt;&gt;Passport: Emit signed identity-resolution receipt
+    Passport--&gt;&gt;Core: Receipt (hash, seq, timestamp)
+    Core-&gt;&gt;Audit: audit.property.identity_receipt_issued</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Identity is a composite: normalized postal address + parcel id + coordinate polygon + unit + jurisdiction, matched fuzzily against existing Passports. High-confidence auto-matches are shown to the user for confirmation; borderline cases route to Human QA where a reviewer decides between <em>link to existing</em>, <em>create new</em>, <em>merge</em>, or <em>reject</em>. Ownership is <em>not</em> part of identity — a new owner never creates a new property (§11.2). Unit-level records are a distinct identity slot and are not confused with the parent parcel.</p>
+
+<p><strong>Rejection paths.</strong> Jurisdiction unsupported; parcel/address contradiction unresolved; unit/parcel ambiguity unresolved without human intervention.</p>
+
+<p><strong>Retry/recovery.</strong> Provisional identities time out after 24h if not attached to a mission; timeout releases the reservation and writes an audit event.</p>
+
+<p><strong>Authorization boundary.</strong> Contractor or inspector on the org. Human QA duplicate review restricted to reviewer role.</p>
+
+<p><strong>Idempotency.</strong> Same normalized identity submission returns the same provisional or matched id.</p>
+
+<p><strong>Audit events.</strong> <code>audit.property.identity_*</code> family.</p>
+
+<p><strong>Data written.</strong> <code>property_identifiers</code>, <code>property_addresses</code>, <code>property_parcels</code>, <code>property_identity_candidates</code>, <code>property_identity_decisions</code>, <code>passport_receipts</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None. Receipt emission is transactional with identity commit.</p>
+
+<p><strong>Final state.</strong> Mission-eligible canonical identity attached, receipt persisted. Workflow position: pre-Stage-1.</p>
+
+<hr/>
+
+<h2>SD-003 — PRODUCT SELECTION AND MISSION CREATION</h2>
+
+<p><strong>Purpose.</strong> Bind a purchased Stratex product (DayScan™ / AWE™ Scan / Elite™) to a canonical property and instantiate a mission with pricing, cost, requirements, and Habitat entitlement.</p>
+<p><strong>Actors.</strong> Contractor, Stratex Core, Mission Orchestrator, Cost Ledger, Authorization Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-002 completed. Contractor has purchase authority.</p>
+<p><strong>Blueprint anchors.</strong> §16 (product architecture), §11.2 (identity), §20.1 (Phase 1 chip rules).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Contractor
+    participant Core as Stratex Core
+    participant Mo as Mission Orchestrator
+    participant Cost as Cost Ledger
+    participant AuthZ as Authorization Service
+    participant Audit as Audit Service
+
+    Contractor-&gt;&gt;Core: Select product (DayScan / AWE / Elite)
+    Core-&gt;&gt;AuthZ: Verify product eligibility (role, org, jurisdiction)
+    AuthZ--&gt;&gt;Core: OK / denied
+    Core-&gt;&gt;Mo: Instantiate mission (property_id, product_id)
+    Mo-&gt;&gt;Mo: Apply product policy (capture conditions, QA tier, template)
+    Mo-&gt;&gt;Cost: Record estimated internal cost
+    Mo--&gt;&gt;Core: Mission id + requirements + Habitat entitlement plan
+    Core-&gt;&gt;Audit: audit.mission.created
+    Core--&gt;&gt;Contractor: Mission created; price / rescan policy shown
+
+    alt Rejection (product ineligible, e.g. AWE without eligibility gate)
+        Core--&gt;&gt;Contractor: Reject with reason
+        Core-&gt;&gt;Audit: audit.mission.product_rejected
+    end
+
+    alt Failed prior mission (free rescan applies)
+        Mo-&gt;&gt;Cost: Apply rescan credit
+        Mo-&gt;&gt;Audit: audit.mission.rescan_credit_applied
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>The product catalog carries required capture conditions, Human-QA tier, contractor price, internal cost, upgrade rules (DayScan → Elite), rescan rules (free within window on failed capture), and failed-mission policy. Selecting AWE™ Scan enforces eligibility (nighttime capture window, environmental delta requirements, participating org). Habitat entitlements are attached at mission creation so the projection scope is known before the mission runs.</p>
+
+<p><strong>Rejection paths.</strong> Product ineligibility (AWE without gate); jurisdiction not supported; org billing hold.</p>
+
+<p><strong>Retry/recovery.</strong> Mission may be canceled pre-flight without cost; costs accrue only after Stage 4 (Flight).</p>
+
+<p><strong>Authorization boundary.</strong> Contractor or admin role on the org.</p>
+
+<p><strong>Audit events.</strong> <code>audit.mission.created</code>, <code>audit.mission.product_rejected</code>, <code>audit.mission.rescan_credit_applied</code>.</p>
+
+<p><strong>Data written.</strong> <code>missions</code>, <code>mission_products</code>, <code>mission_requirements</code>, <code>mission_costs</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None. Cost recording is transactional with mission creation.</p>
+
+<p><strong>Final state.</strong> Mission at Stage 1 (Mission Control), ready for planning.</p>
+
+<hr/>
+
+<h2>SD-004 — MISSION PLANNING</h2>
+
+<p><strong>Purpose.</strong> Produce an approved mission plan given property, product requirements, airspace/geofence, weather, equipment, and pilot authorization.</p>
+<p><strong>Actors.</strong> Mission Ops (dispatcher), Pilot, Mission Orchestrator, Rule Engine, External Weather adapter, External Airspace adapter, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-003 complete.</p>
+<p><strong>Blueprint anchors.</strong> §22 Stage 2, §5.1 (<code>RuleEngine</code>), §16.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Ops as Dispatcher
+    actor Pilot
+    participant Mo as Mission Orchestrator
+    participant Rules as RuleEngine
+    participant Weather as Weather adapter [Operational]
+    participant Airspace as Airspace adapter [Planned]
+    participant Audit as Audit Service
+
+    Ops-&gt;&gt;Mo: Open mission planning
+    Mo-&gt;&gt;Weather: Fetch forecast for capture window
+    Weather--&gt;&gt;Mo: Forecast payload
+    Mo-&gt;&gt;Airspace: Airspace + geofence query
+    Airspace--&gt;&gt;Mo: Advisory / restricted / clear
+    Mo-&gt;&gt;Rules: Evaluate mission-plan eligibility
+    Rules--&gt;&gt;Mo: Pass / Pass-with-warnings / Fail (reasons)
+    Mo--&gt;&gt;Ops: Draft plan (route, altitude, sensors, times, pilot)
+    Ops-&gt;&gt;Mo: Assign pilot
+    Mo-&gt;&gt;Rules: Confirm pilot authorization scope
+    Rules--&gt;&gt;Mo: OK / denied
+    Ops-&gt;&gt;Mo: Submit plan for human acceptance
+    Mo--&gt;&gt;Pilot: Plan review request
+    Pilot-&gt;&gt;Mo: Accept / request change
+    Mo-&gt;&gt;Audit: audit.mission.plan_accepted OR audit.mission.plan_rejected
+
+    alt Weather / airspace failure
+        Mo--&gt;&gt;Ops: Reschedule (no cost)
+        Mo-&gt;&gt;Audit: audit.mission.plan_rescheduled
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Planning composes weather, airspace, geofence, equipment readiness, and pilot authorization into a single plan. <code>RuleEngine</code> returns a deterministic pass/warn/fail so decisions are auditable and not attributable to LLM hallucination. Pilot authorization is checked against attribute scopes (aircraft class, geography, night-flight qualification for AWE). Failure to secure any input reschedules without cost.</p>
+
+<p><strong>Rejection paths.</strong> Airspace restricted; unsuitable weather; no authorized pilot; equipment unavailable.</p>
+
+<p><strong>Retry/recovery.</strong> Reschedule loops back to Stage 2 with a preserved audit trail.</p>
+
+<p><strong>Authorization boundary.</strong> Dispatcher role; pilot required to accept plan.</p>
+
+<p><strong>Audit events.</strong> <code>audit.mission.plan_*</code>.</p>
+
+<p><strong>Data written.</strong> <code>mission_plans</code>, <code>mission_environment</code>, <code>mission_equipment</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None. In-planning failures are recoverable and non-critical.</p>
+
+<p><strong>Final state.</strong> Mission advances to Stage 3 (Mission Validation) with a pilot-accepted plan.</p>
+
+<hr/>
+
+<h2>SD-005 — PREFLIGHT MISSION VALIDATION (ATC 20-ITEM GATE)</h2>
+
+<p><strong>Purpose.</strong> Hard-stop or warn on any preflight condition that would compromise capture integrity or safety.</p>
+<p><strong>Actors.</strong> Pilot, Ground Station, Mission Orchestrator, Rule Engine, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-004 complete.</p>
+<p><strong>Blueprint anchors.</strong> §22 Stage 3, §5.1 (<code>RuleEngine</code>), §16 AWE eligibility.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Pilot
+    participant GS as Ground Station [Planned]
+    participant Mo as Mission Orchestrator
+    participant Rules as RuleEngine
+    participant Audit as Audit Service
+
+    Pilot-&gt;&gt;GS: Begin preflight
+    GS-&gt;&gt;Mo: Report drone health / battery / storage
+    GS-&gt;&gt;Mo: Report network + camera + thermal readiness
+    GS-&gt;&gt;Mo: Report sensor calibration state
+    GS-&gt;&gt;Mo: Report edge-compute readiness (Manifold / equivalent)
+    GS-&gt;&gt;Mo: Report environmental delta (AWE only)
+    Mo-&gt;&gt;Rules: Evaluate ATC 20-item gate
+    Rules--&gt;&gt;Mo: Result (hard-stop / warning / pass)
+    alt Hard-stop
+        Mo--&gt;&gt;Pilot: Block flight; reasons
+        Mo-&gt;&gt;Audit: audit.mission.preflight_blocked
+    else Warning
+        Mo--&gt;&gt;Pilot: Warnings shown, pilot must acknowledge
+        Pilot-&gt;&gt;Mo: Acknowledge
+        Mo-&gt;&gt;Audit: audit.mission.preflight_warned
+    else Pass
+        Mo-&gt;&gt;Audit: audit.mission.preflight_passed
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Preflight is a deterministic gate — a fixed set of checks classified as <em>hard-stop</em> (fails abort) or <em>warning</em> (pilot must acknowledge). AWE-specific checks include the environmental temperature delta and interior thermal load; failing the delta blocks AWE capture without pilot override. Edge-compute readiness (Manifold or equivalent) is checked only when the product's processing plan requires local acceleration.</p>
+
+<p><strong>Rejection paths.</strong> Any hard-stop item. AWE eligibility failure. Missing calibration.</p>
+
+<p><strong>Retry/recovery.</strong> Preflight is re-runnable; each pass is a distinct row with a monotonic sequence number.</p>
+
+<p><strong>Authorization boundary.</strong> Pilot only. Override of a warning is a step-up event.</p>
+
+<p><strong>Audit events.</strong> <code>audit.mission.preflight_blocked | warned | passed</code>.</p>
+
+<p><strong>Data written.</strong> <code>mission_readiness_checks</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None.</p>
+
+<p><strong>Final state.</strong> Mission enters Stage 4 (Flight) only after a <code>preflight_passed</code> or acknowledged <code>preflight_warned</code> result.</p>
+
+<hr/>
+
+<h2>SD-006 — FLIGHT AND LIVE MISSION ASSURANCE</h2>
+
+<p><strong>Purpose.</strong> Execute capture with live coverage, image-quality, and thermal-quality monitoring; abort or request additional shots on the fly.</p>
+<p><strong>Actors.</strong> Pilot, Drone, Ground Station, Mission Orchestrator, Rule Engine, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-005 preflight passed.</p>
+<p><strong>Blueprint anchors.</strong> §22 Stages 4–5, §12 (twin), §14 (raw preservation).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Pilot
+    participant Drone [Awaiting hardware]
+    participant GS as Ground Station [Planned]
+    participant Mo as Mission Orchestrator
+    participant Rules as RuleEngine
+    participant Audit as Audit Service
+
+    Pilot-&gt;&gt;Drone: Arm + begin route
+    loop Telemetry stream
+        Drone-&gt;&gt;GS: Telemetry, image previews, thermal frames
+        GS-&gt;&gt;Mo: Streaming coverage + QA signals
+        Mo-&gt;&gt;Rules: Evaluate coverage / blur / exposure / thermal deltas
+        Rules--&gt;&gt;Mo: Missing shots / retake requests
+        alt Missing shots
+            Mo--&gt;&gt;GS: Request additional shots
+            GS--&gt;&gt;Pilot: Retake overlay
+            Pilot-&gt;&gt;Drone: Retake pass
+        end
+    end
+    Mo-&gt;&gt;Audit: audit.mission.flight_streaming
+    alt Abort condition (weather change, geofence breach, low battery)
+        Mo--&gt;&gt;Pilot: Abort recommendation
+        Pilot-&gt;&gt;Drone: RTH + land
+        Mo-&gt;&gt;Audit: audit.mission.flight_aborted
+    else Mission complete
+        Pilot-&gt;&gt;Drone: Land + power down
+        Mo-&gt;&gt;Audit: audit.mission.flight_completed
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Assurance runs in-flight — coverage, per-shot blur/exposure, thermal quality (drift, saturation, air-temperature stability). Any missing shot is inserted into a retake queue that the pilot can execute before returning to home. Abort conditions include environmental degradation, hard geofence breach, hardware fault, low battery, and operator judgment; all are captured with reason codes.</p>
+
+<p><strong>Rejection paths.</strong> Abort during flight → partial capture; retake queue unfulfillable.</p>
+
+<p><strong>Retry/recovery.</strong> Retake pass; if unrecoverable, mission is marked <em>insufficient evidence</em> and rescan policy applies (SD-020).</p>
+
+<p><strong>Authorization boundary.</strong> Pilot only.</p>
+
+<p><strong>Audit events.</strong> <code>audit.mission.flight_streaming | aborted | completed</code>.</p>
+
+<p><strong>Data written.</strong> <code>mission_flights</code>, <code>mission_telemetry</code>, <code>mission_failures</code> (on abort), <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None during flight (real-time). Post-flight finalization emits <code>evidence.package_finalization_pending</code> (see SD-007).</p>
+
+<p><strong>Final state.</strong> Flight is <em>complete</em> or <em>aborted</em>. Mission advances to Stage 6 (Capture Validation) only on completion.</p>
+
+<hr/>
+
+<h2>SD-007 — CAPTURE FINALIZATION AND CANONICAL MISSION PACKAGE</h2>
+
+<p><strong>Purpose.</strong> Assemble the immutable <strong>canonical mission package</strong> (§14) and register derivatives for downstream processing.</p>
+<p><strong>Actors.</strong> Ground Station, Evidence Service, Workflow State Machine, Durable Job / Transactional Outbox, Audit Service.</p>
+<p><strong>Preconditions.</strong> Flight completed (SD-006).</p>
+<p><strong>Blueprint anchors.</strong> §14 (raw preservation), §7.2 (durable outbox), §22 Stage 6.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant GS as Ground Station [Planned]
+    participant Ev as Evidence Service
+    participant Wf as Workflow State Machine
+    participant Outbox as Durable Outbox
+    participant Audit as Audit Service
+
+    GS-&gt;&gt;Ev: Upload originals (RJPG, RGB, video, flight logs, telemetry, calibration, env, notes)
+    Ev-&gt;&gt;Ev: Compute checksums per file
+    Ev-&gt;&gt;Ev: Assemble evidence manifest + immutable source package
+    Ev-&gt;&gt;Wf: Stage 6 entered (Capture Validation)
+    Ev-&gt;&gt;Outbox: evidence.package_finalization_pending
+    Ev-&gt;&gt;Audit: audit.evidence.package_finalized
+    alt Duplicate upload
+        Ev--&gt;&gt;GS: Idempotent no-op (same checksum)
+        Ev-&gt;&gt;Audit: audit.evidence.duplicate_ignored
+    end
+    alt Failed upload / partial
+        Ev-&gt;&gt;Outbox: evidence.upload_retry_pending
+        Outbox--&gt;&gt;GS: Resume upload from last checksum
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Originals are stored <em>before</em> any derivative is created. Checksums make uploads idempotent (same content = same manifest). The evidence manifest records every file, checksum, and provenance so subsequent stages can prove they used the intended input. Partial uploads resume via checksum diff. Duplicates are silently accepted and re-linked to the existing manifest.</p>
+
+<p><strong>Rejection paths.</strong> Missing required originals; manifest checksum inconsistent; corrupted files.</p>
+
+<p><strong>Retry/recovery.</strong> Outbox job replays finalization on worker crash; upload resume for partial transfers.</p>
+
+<p><strong>Authorization boundary.</strong> Ground station identity bound to the mission. Post-finalization writes require workflow role.</p>
+
+<p><strong>Idempotency.</strong> Whole-manifest checksum used as the idempotency key.</p>
+
+<p><strong>Audit events.</strong> <code>audit.evidence.package_finalized | duplicate_ignored | upload_retry_pending</code>.</p>
+
+<p><strong>Data written.</strong> <code>evidence_manifests</code>, <code>evidence_items</code>, <code>evidence_files</code>, <code>evidence_checksums</code>, <code>evidence_metadata</code>, <code>evidence_calibrations</code>, <code>outbox_events</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>evidence.package_finalization_pending</code>.</p>
+
+<p><strong>Final state.</strong> Mission at Stage 6 done, Stage 7 pending.</p>
+
+<hr/>
+
+<h2>SD-008 — DAYSCAN™ PROCESSING</h2>
+
+<p><strong>Purpose.</strong> Generate the daylight measurement package: photogrammetric twin, measurement geometry, damage candidates, material quantities, risk-tier assignments, and roof/window/door findings.</p>
+<p><strong>Actors.</strong> Agent Orchestrator, <code>PhotogrammetryProvider</code> (primary + alternate), <code>MeasurementProvider</code>, <code>VisionProvider</code>, <code>SegmentationProvider</code>, <code>RuleEngine</code>, Human QA (Tier 2), Evidence Service, Workflow State Machine, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-007 complete for a DayScan mission.</p>
+<p><strong>Blueprint anchors.</strong> §12.1 (layered twin), §5 (capability providers), §10 (Tier 2), §22 Stage 7-9.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Wf as Workflow State Machine
+    participant AO as Agent Orchestrator
+    participant PP as PhotogrammetryProvider (primary) [Planned]
+    participant PP2 as PhotogrammetryProvider (alt) [Planned]
+    participant Mp as MeasurementProvider [Planned]
+    participant VP as VisionProvider [Planned]
+    participant Rules as RuleEngine
+    participant QA as Human QA (Tier 2)
+    participant Ev as Evidence Service
+    participant Audit as Audit Service
+
+    Wf-&gt;&gt;AO: Advance to Stage 7 (Twin Generation)
+    AO-&gt;&gt;PP: Reconstruct twin (evidence manifest hash)
+    PP--&gt;&gt;AO: Twin package v1 + residuals
+    AO-&gt;&gt;PP2: Alternate reconstruction (validation only)
+    PP2--&gt;&gt;AO: Twin package v2 + residuals
+    AO-&gt;&gt;Rules: Compare consensus (surface areas, planes, residuals)
+    Rules--&gt;&gt;AO: Divergence report
+    AO-&gt;&gt;Mp: Extract measurements from validated surfaces
+    Mp--&gt;&gt;AO: Measurements + uncertainty + provenance
+    AO-&gt;&gt;VP: Segment roof / windows / doors / hazards
+    VP--&gt;&gt;AO: Segmentation + confidences
+    AO-&gt;&gt;Rules: Assign risk tiers per finding
+    Rules--&gt;&gt;AO: Tier assignments
+    AO-&gt;&gt;Ev: Store agent_runs (input_hash, output_hash, provider, model, prompt, algo, cost)
+    Ev-&gt;&gt;Audit: audit.agent.run_persisted
+    Wf-&gt;&gt;QA: Enqueue Tier 2 review
+    QA--&gt;&gt;Wf: Approve / reject / request rework
+    Wf-&gt;&gt;Audit: audit.finding.reviewed
+
+    alt Rework
+        QA--&gt;&gt;AO: Rework with reviewer notes
+        AO-&gt;&gt;PP: Recompute affected findings
+    end
+
+    alt Recapture (unresolvable low-quality inputs)
+        Wf-&gt;&gt;Audit: audit.mission.recapture_required
+        Wf-&gt;&gt;Outbox: mission.recapture_pending
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Twin generation runs primary + alternate provider for consensus checking on high-stakes fields (surface area, plane counts). Measurements come from validated surfaces, not from raw pixels. <code>VisionProvider</code> and <code>SegmentationProvider</code> produce candidates that <code>RuleEngine</code> classifies into risk tiers per §10. Tier 2 human QA is mandatory before findings become releasable. <strong>The system does not derive concealed structural elements from exterior RGB.</strong></p>
+
+<p><strong>Rejection paths.</strong> Insufficient coverage; unresolvable residuals; consensus divergence beyond threshold.</p>
+
+<p><strong>Retry/recovery.</strong> Rework loop for QA rejections; recapture path escalates to SD-020.</p>
+
+<p><strong>Authorization boundary.</strong> Agent Orchestrator + Tier 2 reviewer.</p>
+
+<p><strong>Audit events.</strong> <code>audit.agent.run_persisted</code>, <code>audit.finding.reviewed</code>, <code>audit.mission.recapture_required</code>.</p>
+
+<p><strong>Data written.</strong> <code>agent_runs</code>, <code>agent_run_inputs/outputs/costs/failures</code>, <code>evidence_derivatives</code>, <code>findings</code>, <code>finding_measurements</code>, <code>finding_classifications</code>, <code>finding_risk_tiers</code>, <code>finding_reviews</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>mission.recapture_pending</code> when applicable.</p>
+
+<p><strong>Final state.</strong> DayScan findings tiered and reviewed; mission continues to Stage 12 (Report Generation) or, for Elite, awaits AWE completion (SD-010).</p>
+
+<hr/>
+
+<h2>SD-009 — AWE™ PROCESSING</h2>
+
+<p><strong>Purpose.</strong> Deliver Air / Water / Energy intelligence from calibrated radiometric evidence with false-positive suppression, occlusion testing, and release-state gating for the AWE Index™.</p>
+<p><strong>Actors.</strong> Agent Orchestrator, <code>ThermalAnalysisProvider</code>, <code>CalibrationProvider</code>, <code>MeasurementProvider</code>, <code>RuleEngine</code>, Human QA (Tier 3), Evidence Service, Workflow State Machine, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-007 for an AWE-eligible mission with preserved radiometric originals (§14).</p>
+<p><strong>Blueprint anchors.</strong> §3 (AWE nav), §12.2 (calibrated thermal-to-3D), §17.1 (AWE Index release states), §10 Tier 3.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Wf as Workflow State Machine
+    participant AO as Agent Orchestrator
+    participant Calib as CalibrationProvider [Planned]
+    participant Th as ThermalAnalysisProvider [Planned]
+    participant Mp as MeasurementProvider [Planned]
+    participant Rules as RuleEngine
+    participant QA as Human QA (Tier 3)
+    participant Ev as Evidence Service
+    participant Audit as Audit Service
+
+    Wf-&gt;&gt;AO: Advance to Stage 10 (AWE Intelligence)
+    AO-&gt;&gt;Calib: Register thermal ↔ RGB ↔ 3D (occlusion, angle, distance)
+    Calib--&gt;&gt;AO: Registration residuals, per-region confidence
+    AO-&gt;&gt;Th: Detect Air / Water / Energy indicators
+    Th--&gt;&gt;AO: Candidate findings + confidences
+    AO-&gt;&gt;Rules: Environmental normalization + false-positive suppression
+    Rules--&gt;&gt;AO: Filtered findings
+    AO-&gt;&gt;Rules: Interior-verification requirement check
+    Rules--&gt;&gt;AO: Requires field verification (Y/N)
+    AO-&gt;&gt;Ev: Persist agent_runs, radiometric derivatives (evidence tagged as derivatives)
+    Wf-&gt;&gt;QA: Enqueue Tier 3 review (MFA required)
+    QA--&gt;&gt;Wf: Approve / reject / requires field verification
+    Wf-&gt;&gt;Rules: Compute AWE Composite Index™
+    Rules--&gt;&gt;Wf: Index value + release_state (INTERNAL_DRAFT..EXTERNALLY_ASSERTABLE)
+    alt Release state below CALIBRATED_GENERAL
+        Wf-&gt;&gt;Audit: audit.awe.index_gated (not externally shown)
+    else Release state &gt;= CALIBRATED_GENERAL
+        Wf-&gt;&gt;Audit: audit.awe.index_released
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>The pipeline preserves radiometric originals and derives thermal findings only after calibrated projection onto validated 3D surfaces (§12.2). Occluded and grazing-angle observations are rejected. Environmental normalization runs before classification. Interior verification may be required for high-consequence findings. The AWE Composite Index™ can never be shown externally without its release-state chip (§17.1); below <code>CALIBRATED_GENERAL</code> it stays internal.</p>
+
+<p><strong>Rejection paths.</strong> Registration residual over threshold; environmental delta out of bounds after capture; contradictory Air/Water/Energy evidence beyond human-resolvable variance.</p>
+
+<p><strong>Retry/recovery.</strong> Rework loop; recapture on unresolvable registration.</p>
+
+<p><strong>Authorization boundary.</strong> Agent Orchestrator + Tier 3 MFA-authenticated reviewer.</p>
+
+<p><strong>Audit events.</strong> <code>audit.awe.index_gated | index_released</code>, <code>audit.finding.reviewed</code>.</p>
+
+<p><strong>Data written.</strong> <code>agent_runs</code>, <code>evidence_derivatives</code>, <code>findings</code>, <code>finding_evidence_links</code>, <code>finding_classifications</code>, <code>finding_reviews</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> Emits <code>finding.approved</code> for each approved finding (Blueprint §7.2 critical set).</p>
+
+<p><strong>Final state.</strong> AWE findings tiered/reviewed with release-state metadata attached to any composite indices.</p>
+
+<hr/>
+
+<h2>SD-010 — ELITE™ COMBINED PROCESSING</h2>
+
+<p><strong>Purpose.</strong> Produce the unified Elite deliverable from a linked DayScan mission and AWE Scan mission on the same property.</p>
+<p><strong>Actors.</strong> Agent Orchestrator, <code>PhotogrammetryProvider</code>, <code>CalibrationProvider</code>, <code>RuleEngine</code>, Human QA (Tier 3), Workflow State Machine, Property Passport Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> SD-008 approved, SD-009 approved, both bound to same canonical property identity.</p>
+<p><strong>Blueprint anchors.</strong> §16 (Elite product), §11 (Passport delta), §22.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Wf as Workflow State Machine
+    participant AO as Agent Orchestrator
+    participant Calib as CalibrationProvider
+    participant Rules as RuleEngine
+    participant QA as Human QA (Tier 3)
+    participant Pass as Property Passport Service
+    participant Audit as Audit Service
+
+    Wf-&gt;&gt;AO: Link DayScan + AWE missions on shared property identity
+    AO-&gt;&gt;Calib: RGB ↔ Thermal cross-registration
+    Calib--&gt;&gt;AO: Unified twin registration
+    AO-&gt;&gt;Rules: Cross-evidence comparison (contradictions)
+    Rules--&gt;&gt;AO: Reconciled findings / conflicts
+    alt Conflicts unresolvable by rule
+        AO-&gt;&gt;QA: Escalate contradictions
+        QA--&gt;&gt;AO: Reconciliation decision
+        AO-&gt;&gt;Audit: audit.finding.contradiction_resolved
+    end
+    AO-&gt;&gt;Wf: Unified findings package
+    Wf-&gt;&gt;QA: Unified Tier 3 QA
+    QA--&gt;&gt;Wf: Approved
+    Wf-&gt;&gt;Pass: Submit Passport delta (Elite report)
+    Pass--&gt;&gt;Wf: Signed receipt
+    Wf-&gt;&gt;Audit: audit.passport.elite_delta_appended</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Elite is not the union of two reports; it is a <strong>reconciled</strong> deliverable with contradiction analysis. Cross-registration guarantees findings from RGB and thermal reference the same coordinate system. Any contradictory evidence must be reconciled by Human QA (Tier 3). Only after reconciliation does the Passport receive a single Elite delta.</p>
+
+<p><strong>Rejection paths.</strong> Missing prerequisite mission approval; unresolved contradictions.</p>
+
+<p><strong>Retry/recovery.</strong> Reconciliation escalation loop.</p>
+
+<p><strong>Authorization boundary.</strong> Tier 3 reviewer.</p>
+
+<p><strong>Audit events.</strong> <code>audit.finding.contradiction_resolved</code>, <code>audit.passport.elite_delta_appended</code>.</p>
+
+<p><strong>Data written.</strong> <code>findings</code>, <code>finding_versions</code>, <code>passport_deltas</code>, <code>passport_entries</code>, <code>passport_receipts</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>finding.approved</code> per approved finding; <code>passport.appended</code> post-commit (see SD-014).</p>
+
+<p><strong>Final state.</strong> Elite delta committed, Habitat sync pending (SD-015).</p>
+
+<hr/>
+
+<h2>SD-011 — AGENT CAPABILITY EXECUTION</h2>
+
+<p><strong>Purpose.</strong> Standardize how <em>any</em> agent runs through the Agent Orchestrator: capability-interface selection, provider runtime configuration, input hashing, retries, fallbacks, and permanent <code>agent_runs</code> records.</p>
+<p><strong>Actors.</strong> Agent Orchestrator, Capability Providers, <code>RuleEngine</code> (validators), Human QA (on escalation), Audit Service.</p>
+<p><strong>Preconditions.</strong> A capability interface is invoked by an upstream stage.</p>
+<p><strong>Blueprint anchors.</strong> §5 (AI Workforce), §15 (provenance).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Upstream as Upstream Stage
+    participant AO as Agent Orchestrator
+    participant Cap as Capability Provider (primary)
+    participant Cap2 as Capability Provider (fallback) [Planned]
+    participant Val as Deterministic Validator
+    participant QA as Human QA
+    participant Audit as Audit Service
+
+    Upstream-&gt;&gt;AO: Invoke capability(interface, inputs)
+    AO-&gt;&gt;AO: Compute input_hash, select provider runtime + prompt/algorithm version
+    AO-&gt;&gt;Cap: Execute with timeout
+    alt Timeout / provider error
+        AO-&gt;&gt;Cap2: Fallback invocation
+        Cap2--&gt;&gt;AO: Result
+    else Result
+        Cap--&gt;&gt;AO: Result + confidence
+    end
+    AO-&gt;&gt;Val: Deterministic validation
+    Val--&gt;&gt;AO: Pass / fail
+    alt Fail validation OR low confidence
+        AO-&gt;&gt;QA: Human escalation
+        QA--&gt;&gt;AO: Resolution
+    end
+    AO-&gt;&gt;AO: Persist agent_runs (all mandatory fields §5.2)
+    AO-&gt;&gt;Audit: audit.agent.run_persisted</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>No agent runs outside the Orchestrator. Every run records provider_id, provider_model, model_version, prompt_version, algorithm_id, algorithm_version, runtime_config_hash, input_hash, output_hash, cost, confidence, evidence_ids, provenance, implementation_state, verification_status. Fallbacks are provider-neutral: the interface is what upstream sees, never the vendor. LLM outputs pass deterministic validators before use; low-confidence results escalate to human review, not silent acceptance.</p>
+
+<p><strong>Rejection paths.</strong> Validator failure; safety violation; policy denial.</p>
+
+<p><strong>Retry/recovery.</strong> Bounded retries; then fallback provider; then human escalation.</p>
+
+<p><strong>Authorization boundary.</strong> Only the Agent Orchestrator may call providers.</p>
+
+<p><strong>Audit events.</strong> <code>audit.agent.run_persisted</code>, <code>audit.agent.escalated_to_human</code>.</p>
+
+<p><strong>Data written.</strong> <code>agent_runs</code>, <code>agent_run_inputs</code>, <code>agent_run_outputs</code>, <code>agent_run_costs</code>, <code>agent_run_failures</code>, <code>prompt_versions</code>, <code>algorithm_versions</code>, <code>validation_rules</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None (invoked in-line by higher-level flows that may themselves be durable).</p>
+
+<p><strong>Final state.</strong> Permanent <code>agent_runs</code> record with full replay lineage.</p>
+
+<hr/>
+
+<h2>SD-012 — FINDING LIFECYCLE</h2>
+
+<p><strong>Purpose.</strong> Move a finding through its states: candidate → evidence-linked → automated-informational → contractor-review → high-consequence-escalation → professionally-controlled-review → approved / rejected / superseded → customer-releasable → passport-eligible.</p>
+<p><strong>Actors.</strong> Agent Orchestrator, Contractor, Human QA (Tier 1–4), Engineer / Authorized Reviewer, Rule Engine, Audit Service.</p>
+<p><strong>Preconditions.</strong> A candidate finding exists in <code>findings</code>.</p>
+<p><strong>Blueprint anchors.</strong> §10 (tiers), §15 (provenance/verification), §11 (release rules).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant AO as Agent Orchestrator
+    participant Rules as RuleEngine
+    participant Contractor
+    participant QA as Human QA
+    participant Eng as Engineer / Authorized Reviewer
+    participant Audit as Audit Service
+
+    AO-&gt;&gt;Rules: Classify candidate (tier assignment)
+    Rules--&gt;&gt;AO: Tier 1 / 2 / 3 / 4
+    alt Tier 1 automated informational
+        AO-&gt;&gt;AO: Auto-publish (below approved threshold blocks publish)
+    else Tier 2 contractor review
+        AO-&gt;&gt;Contractor: Enqueue review
+        Contractor--&gt;&gt;AO: Approve / reject
+    else Tier 3 high-consequence
+        AO-&gt;&gt;QA: MFA reviewer approves / rejects / requires field verification
+        QA--&gt;&gt;AO: Decision (signed cosign receipt)
+    else Tier 4 engineering-controlled
+        AO-&gt;&gt;Eng: Licensed professional review (MFA + license check)
+        Eng--&gt;&gt;AO: Signed approval (or rejection)
+    end
+    AO-&gt;&gt;Audit: audit.finding.state_changed
+    alt Supersede prior version
+        AO-&gt;&gt;AO: Emit SUPERSEDE_FINDING with pointer to prior id
+        AO-&gt;&gt;Audit: audit.finding.superseded
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Tier assignment is deterministic (RuleEngine) — LLMs do not assign tier. Tier 3 is <em>non-engineering high consequence</em>; anything touching structure, code compliance, engineering, or repair design escalates to Tier 4. Tier 4 requires a licensed professional; the system cannot self-approve Tier 4. Supersession preserves the prior version and points to it.</p>
+
+<p><strong>Rejection paths.</strong> Insufficient evidence; contradictory evidence; license failure on Tier 4.</p>
+
+<p><strong>Retry/recovery.</strong> Reopen finding with new evidence.</p>
+
+<p><strong>Authorization boundary.</strong> Contractor for Tier 2; MFA reviewer for Tier 3; licensed professional for Tier 4.</p>
+
+<p><strong>Audit events.</strong> <code>audit.finding.state_changed</code>, <code>audit.finding.superseded</code>.</p>
+
+<p><strong>Data written.</strong> <code>findings</code>, <code>finding_versions</code>, <code>finding_evidence_links</code>, <code>finding_reviews</code>, <code>finding_approvals</code>, <code>finding_supersessions</code>, <code>finding_release_restrictions</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>finding.approved</code> on Tier 3/4 approvals bound for Passport.</p>
+
+<p><strong>Final state.</strong> Finding is releasable, passport-eligible, or rejected/superseded.</p>
+
+<hr/>
+
+<h2>SD-013 — REPORT GENERATION</h2>
+
+<p><strong>Purpose.</strong> Assemble the DayScan / AWE / Elite report from approved findings, evidence, and twin snapshots, and produce a hashed PDF plus a Reports Binder.</p>
+<p><strong>Actors.</strong> Report Service, Evidence Service, Property Passport Service, Human QA, Audit Service.</p>
+<p><strong>Preconditions.</strong> Findings approved through SD-012.</p>
+<p><strong>Blueprint anchors.</strong> §22 Stage 12, §14 (evidence), §12 (twin), §20.1 (Phase 1 chip rules).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Wf as Workflow State Machine
+    participant Rpt as Report Service
+    participant Ev as Evidence Service
+    participant Pass as Property Passport Service
+    participant QA as Human QA
+    participant Audit as Audit Service
+
+    Wf-&gt;&gt;Rpt: Compose report (product, findings, template)
+    Rpt-&gt;&gt;Pass: Fetch approved findings + provenance
+    Rpt-&gt;&gt;Ev: Fetch evidence + digital-twin snapshots
+    Rpt-&gt;&gt;Rpt: Render draft with chips + release-state metadata
+    Rpt-&gt;&gt;QA: Draft QA review
+    QA--&gt;&gt;Rpt: Approve / rework
+    Rpt-&gt;&gt;Rpt: Render final PDF + compute PDF hash
+    Rpt-&gt;&gt;Ev: Persist final PDF as evidence derivative (immutable)
+    Rpt-&gt;&gt;Audit: audit.report.rendered
+    alt Regeneration
+        Rpt-&gt;&gt;Rpt: Cached render if inputs unchanged
+    end
+    Rpt--&gt;&gt;Wf: Report ready for customer delivery</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Reports use only <em>releasable</em> findings. Every non-real value in Phase 1 carries a chip per §20.1. The final PDF hash is stored in evidence so a customer copy can be verified against the canonical rendering. Regeneration reuses cached renders when inputs are unchanged, keyed by a canonical inputs hash.</p>
+
+<p><strong>Rejection paths.</strong> Missing releasable findings; template mismatch; QA rejection.</p>
+
+<p><strong>Retry/recovery.</strong> Idempotent regeneration keyed by inputs hash.</p>
+
+<p><strong>Authorization boundary.</strong> QA role.</p>
+
+<p><strong>Audit events.</strong> <code>audit.report.rendered | reworked | regenerated</code>.</p>
+
+<p><strong>Data written.</strong> <code>evidence_derivatives</code> (PDF), <code>finding_release_restrictions</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>report.generation_pending</code> while queued; concluded on <code>report.rendered</code>.</p>
+
+<p><strong>Final state.</strong> Report is releasable to customer via SD-015.</p>
+
+<hr/>
+
+<h2>SD-014 — PASSPORT APPEND AND SIGNED RECEIPT</h2>
+
+<p><strong>Purpose.</strong> Append an inspection delta to the canonical Passport ledger under optimistic concurrency with explicit rebase, and issue a signed receipt.</p>
+<p><strong>Actors.</strong> Workflow State Machine, Property Passport Service, Human QA (on conflict), Durable Outbox, Audit Service.</p>
+<p><strong>Preconditions.</strong> Approved findings bound for the ledger.</p>
+<p><strong>Blueprint anchors.</strong> §11 (Passport), §11.1 (rebase), §7.2 (outbox).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Wf as Workflow State Machine
+    participant Pass as Property Passport Service
+    participant QA as Human QA
+    participant Outbox as Durable Outbox
+    participant Audit as Audit Service
+
+    Wf-&gt;&gt;Pass: Read current passport seq
+    Pass--&gt;&gt;Wf: seq_n
+    Wf-&gt;&gt;Pass: Submit delta with expected_seq = seq_n
+    alt Non-conflicting delta
+        Pass-&gt;&gt;Pass: Rebase, append entry seq_{n+1}
+        Pass-&gt;&gt;Pass: Issue signed receipt (SHA-256 over entry)
+        Pass-&gt;&gt;Outbox: passport.appended
+        Pass-&gt;&gt;Audit: audit.passport.appended
+        Pass--&gt;&gt;Wf: OK + receipt
+    else Materially conflicting
+        Pass-&gt;&gt;QA: Route conflict to Human QA queue
+        QA--&gt;&gt;Pass: Reconcile / re-submit
+        Pass-&gt;&gt;Audit: audit.passport.conflict_reviewed
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Only the Passport authority writes to Passport history. Non-conflicting deltas are rebased automatically. Materially conflicting deltas never overwrite; they queue for reconciliation with both attempted submissions preserved. Every accepted append yields a signed receipt used for downstream verification (SD-017 co-sign uses the receipt).</p>
+
+<p><strong>Rejection paths.</strong> Signature failure; ownership mismatch; delta invalidation.</p>
+
+<p><strong>Retry/recovery.</strong> Losing submissions are queued and surfaced to the submitter with a rebase link.</p>
+
+<p><strong>Idempotency.</strong> Delta submission is keyed by <code>{finding_id, inspection_id, expected_seq}</code>; duplicate submissions collapse to a single accepted entry.</p>
+
+<p><strong>Authorization boundary.</strong> Passport authority only writes; upstream roles submit.</p>
+
+<p><strong>Audit events.</strong> <code>audit.passport.appended</code>, <code>audit.passport.conflict_reviewed</code>.</p>
+
+<p><strong>Data written.</strong> <code>passports</code>, <code>passport_sequences</code>, <code>passport_entries</code>, <code>passport_deltas</code>, <code>passport_receipts</code>, <code>passport_conflicts</code>, <code>passport_rebases</code>, <code>outbox_events</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>passport.appended</code>.</p>
+
+<p><strong>Final state.</strong> Ledger has entry seq_{n+1}; downstream Habitat sync pending.</p>
+
+<hr/>
+
+<h2>SD-015 — HABITAT SYNCHRONIZATION</h2>
+
+<p><strong>Purpose.</strong> Project the newly appended Passport entry into homeowner-safe form and deliver to Stratex Habitat with acknowledgment, retry, and dead-letter handling.</p>
+<p><strong>Actors.</strong> Property Passport Service, Habitat Synchronization Service, Stratex Habitat, Durable Outbox, Notification Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> <code>passport.appended</code> event on the outbox.</p>
+<p><strong>Blueprint anchors.</strong> §8 (sync), §7.2 (durable).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Pass as Property Passport Service
+    participant Outbox as Durable Outbox
+    participant Sync as Habitat Sync Service
+    participant Hab as Stratex Habitat [Planned]
+    participant Notif as Notification Service
+    participant Audit as Audit Service
+
+    Pass-&gt;&gt;Outbox: passport.appended
+    Outbox-&gt;&gt;Sync: Deliver (worker claim)
+    Sync-&gt;&gt;Sync: Compose homeowner-safe projection (redactions per §9.1)
+    Sync-&gt;&gt;Sync: Verify Habitat entitlement
+    Sync-&gt;&gt;Hab: Deliver projection
+    Hab--&gt;&gt;Sync: Ack
+    Sync-&gt;&gt;Audit: audit.habitat.projected
+    Notif-&gt;&gt;Homeowner: Notification (email/push)
+    alt No ack / failure
+        Sync-&gt;&gt;Outbox: Retry with backoff
+        Outbox--&gt;&gt;Sync: Redelivery
+        Sync-&gt;&gt;Sync: Idempotent projection (same seq, same content_hash)
+        alt Exceeded retry budget
+            Sync-&gt;&gt;Outbox: Move to dead-letter
+            Sync-&gt;&gt;Audit: audit.habitat.deadletter
+        end
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Habitat receives read-only projections; it <em>never</em> mutates Passport history. Projections are entitlement-scoped (product entitlement determines which layers homeowners see). Delivery is at-least-once with idempotent handlers on the Habitat side. Failures escape to dead-letter with human replay.</p>
+
+<p><strong>Rejection paths.</strong> Missing entitlement; homeowner not linked to property (SD-019).</p>
+
+<p><strong>Retry/recovery.</strong> Bounded exponential retries then dead-letter.</p>
+
+<p><strong>Authorization boundary.</strong> Sync service. Habitat has read-only access to projections it received.</p>
+
+<p><strong>Audit events.</strong> <code>audit.habitat.projected | deadletter | replayed</code>.</p>
+
+<p><strong>Data written.</strong> <code>passport_projections</code>, <code>outbox_events</code>, <code>dead_letter_events</code>, <code>inbox_receipts</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>habitat.ack_pending</code>.</p>
+
+<p><strong>Final state.</strong> Projection delivered, homeowner notified.</p>
+
+<hr/>
+
+<h2>SD-016 — CLAIM SNAPSHOT</h2>
+
+<p><strong>Purpose.</strong> Freeze a hash-verifiable point-in-time slice of a Passport for insurance/claim use with expiring signed access and redaction rules.</p>
+<p><strong>Actors.</strong> Authorized Claim Initiator (contractor/homeowner/adjuster with claim right), Property Passport Service, Evidence Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> Passport exists for the property; claim initiator authorized.</p>
+<p><strong>Blueprint anchors.</strong> §9 (security), §11 (passport), §16 (product entitlement).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Initiator as Claim Initiator
+    participant Core as Stratex Core
+    participant Pass as Property Passport Service
+    participant Ev as Evidence Service
+    participant Audit as Audit Service
+
+    Initiator-&gt;&gt;Core: Open claim snapshot (property_id, seq_range)
+    Core-&gt;&gt;Pass: Compose snapshot manifest (entries, findings, evidence refs, redactions)
+    Pass-&gt;&gt;Pass: Compute manifest SHA-256
+    Pass-&gt;&gt;Ev: Freeze evidence pointers (immutable references)
+    Pass-&gt;&gt;Audit: audit.claim.snapshot_created
+    Pass--&gt;&gt;Core: Snapshot id + hash + expiring signed link (TTL)
+    Core--&gt;&gt;Initiator: Snapshot link
+    alt Redaction failure / entitlement mismatch
+        Core--&gt;&gt;Initiator: Reject with reason
+        Core-&gt;&gt;Audit: audit.claim.snapshot_rejected
+    end
+    alt Adjuster access
+        Adjuster-&gt;&gt;Core: Retrieve via signed link
+        Core-&gt;&gt;Audit: audit.claim.snapshot_accessed
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>A snapshot is immutable and hash-verifiable; it is <em>not</em> a new Passport entry — it's a projection with a frozen manifest. Access uses expiring signed links per §9.1. Redaction rules apply per audience (adjuster vs insurer vs claim initiator). Snapshot access is logged on every retrieval.</p>
+
+<p><strong>Rejection paths.</strong> Missing entitlement; policy denial; expired seq range.</p>
+
+<p><strong>Retry/recovery.</strong> Regenerate signed link (new TTL) without recomputing the manifest.</p>
+
+<p><strong>Authorization boundary.</strong> Claim initiator + adjuster; step-up MFA required.</p>
+
+<p><strong>Audit events.</strong> <code>audit.claim.snapshot_created | accessed | rejected</code>.</p>
+
+<p><strong>Data written.</strong> <code>claim_snapshots</code>, <code>passport_access_grants</code>, <code>audit_events</code>, <code>audit_access_events</code>.</p>
+
+<p><strong>Durable events.</strong> None.</p>
+
+<p><strong>Final state.</strong> Frozen manifest with SHA-256, accessible to entitled adjuster via signed URL.</p>
+
+<hr/>
+
+<h2>SD-017 — ADJUSTER CO-SIGN</h2>
+
+<p><strong>Purpose.</strong> Bind an adjuster's identity to a claim decision (approve / reject / request correction) with SHA-256 co-sign receipt that appends to the ledger and updates the Reports Binder.</p>
+<p><strong>Actors.</strong> Adjuster, Property Passport Service, Audit Service, Authorization Service, Notification Service.</p>
+<p><strong>Preconditions.</strong> SD-016 snapshot exists; adjuster is authorized on the claim.</p>
+<p><strong>Blueprint anchors.</strong> §9.2 (MFA + step-up), §11 (Passport ledger).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Adjuster
+    participant Core as Stratex Core
+    participant AuthZ as Authorization Service
+    participant Pass as Property Passport Service
+    participant Notif as Notification Service
+    participant Audit as Audit Service
+
+    Adjuster-&gt;&gt;Core: Open snapshot + review
+    Core-&gt;&gt;AuthZ: Verify MFA + step-up
+    AuthZ--&gt;&gt;Core: OK / require step-up
+    Adjuster-&gt;&gt;Core: Decision (approve / reject / correction)
+    Core-&gt;&gt;Pass: Submit co-sign delta with SHA-256 receipt
+    Pass-&gt;&gt;Pass: Append COSIGN entry (ledger)
+    Pass-&gt;&gt;Audit: audit.claim.cosign_appended
+    Core-&gt;&gt;Notif: Notify claim initiator + contractor
+    alt Step-up denied
+        Core--&gt;&gt;Adjuster: Reject decision
+        Core-&gt;&gt;Audit: audit.claim.cosign_rejected
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Adjuster identity is verified with MFA and step-up for the signature action. The co-sign is a distinct ledger entry with its own SHA-256, referencing the snapshot hash. Notifications go to claim initiator and contractor. The Reports Binder is updated to include the co-sign receipt.</p>
+
+<p><strong>Rejection paths.</strong> Failed step-up; expired snapshot; superseded snapshot.</p>
+
+<p><strong>Retry/recovery.</strong> New signature attempt on refreshed link.</p>
+
+<p><strong>Authorization boundary.</strong> Adjuster role with claim binding.</p>
+
+<p><strong>Audit events.</strong> <code>audit.claim.cosign_appended | rejected</code>.</p>
+
+<p><strong>Data written.</strong> <code>adjuster_cosigns</code>, <code>passport_entries</code>, <code>passport_receipts</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>passport.appended</code> (co-sign entry).</p>
+
+<p><strong>Final state.</strong> Ledger contains cosign entry; Reports Binder updated; parties notified.</p>
+
+<hr/>
+
+<h2>SD-018 — PROPERTY CORRECTION AND FINDING SUPERSESSION</h2>
+
+<p><strong>Purpose.</strong> Correct an incorrect finding or property field via SUPERSEDE while preserving prior history.</p>
+<p><strong>Actors.</strong> Contractor / Reviewer, Human QA (Tier match to original), Property Passport Service, Habitat Sync Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> Prior entry exists to be superseded.</p>
+<p><strong>Blueprint anchors.</strong> §11.2 (identity), §11.3 (operations), §15 (provenance).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Requester as Reporter
+    participant Core as Stratex Core
+    participant QA as Human QA
+    participant Pass as Property Passport Service
+    participant Sync as Habitat Sync Service
+    participant Audit as Audit Service
+
+    Requester-&gt;&gt;Core: Report incorrect finding / field with evidence
+    Core-&gt;&gt;QA: Route to reviewer of matching tier
+    QA--&gt;&gt;Core: Approve correction / reject
+    alt Approved
+        Core-&gt;&gt;Pass: Emit SUPERSEDE_FINDING entry (points to prior seq/hash)
+        Pass-&gt;&gt;Pass: Append new canonical value; prior version preserved
+        Pass--&gt;&gt;Core: New signed receipt
+        Core-&gt;&gt;Sync: Trigger Habitat projection update
+        Core-&gt;&gt;Audit: audit.finding.superseded
+    else Rejected
+        Core-&gt;&gt;Audit: audit.finding.correction_rejected
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Corrections are never destructive. The prior entry remains; the SUPERSEDE entry points at it and carries the new value. The Habitat projection re-computes so homeowners see the corrected state, but historical read-access retains the prior state. Approval tier matches the original finding tier.</p>
+
+<p><strong>Rejection paths.</strong> Insufficient evidence; wrong tier.</p>
+
+<p><strong>Retry/recovery.</strong> Reopen with additional evidence.</p>
+
+<p><strong>Authorization boundary.</strong> Reviewer role matching the prior tier.</p>
+
+<p><strong>Audit events.</strong> <code>audit.finding.superseded | correction_rejected</code>.</p>
+
+<p><strong>Data written.</strong> <code>finding_supersessions</code>, <code>passport_entries</code>, <code>passport_receipts</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>passport.appended</code>.</p>
+
+<p><strong>Final state.</strong> New canonical value active; prior preserved.</p>
+
+<hr/>
+
+<h2>SD-019 — PROPERTY SPLIT, MERGE, LINK, UNLINK, OWNERSHIP TRANSFER</h2>
+
+<p><strong>Purpose.</strong> Model first-class property identity operations while preserving history.</p>
+<p><strong>Actors.</strong> Reviewer (Tier 2 or Tier 3 per operation), Property Passport Service, Habitat Sync Service, Notification Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> Human authorization at the required tier.</p>
+<p><strong>Blueprint anchors.</strong> §11.3.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Reviewer
+    participant Core as Stratex Core
+    participant Pass as Property Passport Service
+    participant Sync as Habitat Sync Service
+    participant Notif as Notification Service
+    participant Audit as Audit Service
+
+    Reviewer-&gt;&gt;Core: Choose operation (LINK / UNLINK / MERGE / SPLIT / ADDRESS_CORRECTION / PARCEL_CORRECTION / OWNERSHIP_TRANSFER)
+    Core-&gt;&gt;Pass: Validate preconditions (identity operations require Tier 3; LINK/UNLINK Tier 2; OWNERSHIP MFA)
+    alt MERGE
+        Pass-&gt;&gt;Pass: Emit IDENTITY_MERGE entry (aliases retiring id)
+    else SPLIT
+        Pass-&gt;&gt;Pass: Emit IDENTITY_SPLIT (two Passports inherit provenance)
+    else LINK
+        Pass-&gt;&gt;Pass: Emit IDENTITY_LINK
+    else UNLINK
+        Pass-&gt;&gt;Pass: Emit IDENTITY_UNLINK
+    else ADDRESS_CORRECTION / PARCEL_CORRECTION
+        Pass-&gt;&gt;Pass: SUPERSEDE property_addresses / property_parcels
+    else OWNERSHIP_TRANSFER
+        Pass-&gt;&gt;Pass: Append owners record; rebind property_org_bindings
+        Pass-&gt;&gt;Notif: Notify homeowner via Habitat
+    end
+    Pass--&gt;&gt;Reviewer: New receipt + preserved prior history
+    Pass-&gt;&gt;Sync: Trigger Habitat projection updates
+    Pass-&gt;&gt;Audit: audit.property.identity_operation</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Every operation is authorized, reviewed, and yields new ledger entries with <code>supersedes</code> / <code>succeeds</code> pointers. Reversal within a documented rollback window is a new SUPERSEDE, not a rewrite. Ownership transfer is never a new property; it is a rebinding.</p>
+
+<p><strong>Rejection paths.</strong> Wrong tier; conflicting active operation; open dispute.</p>
+
+<p><strong>Retry/recovery.</strong> Rollback within window via SUPERSEDE.</p>
+
+<p><strong>Authorization boundary.</strong> Tier 2 for LINK/UNLINK/OWNERSHIP; Tier 3 for MERGE/SPLIT; MFA for OWNERSHIP.</p>
+
+<p><strong>Audit events.</strong> <code>audit.property.identity_operation</code> with operation kind.</p>
+
+<p><strong>Data written.</strong> <code>passport_identity_operations</code>, <code>passport_entries</code>, <code>passport_receipts</code>, <code>property_ownership_periods</code>, <code>property_relationships</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> <code>passport.appended</code> per entry.</p>
+
+<p><strong>Final state.</strong> Identity graph updated; prior state preserved.</p>
+
+<hr/>
+
+<h2>SD-020 — FAILED MISSION AND RESCAN</h2>
+
+<p><strong>Purpose.</strong> Classify a failed mission, apply pricing/rescan policy, adjust the cost ledger, and preserve failed-mission evidence.</p>
+<p><strong>Actors.</strong> Pilot / Dispatcher, Mission Orchestrator, Cost Ledger, Rule Engine, Notification Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> A mission enters a failure state.</p>
+<p><strong>Blueprint anchors.</strong> §16 (rescan/failed policy), §22 Stage 5–6.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant Mo as Mission Orchestrator
+    participant Rules as RuleEngine
+    participant Cost as Cost Ledger
+    participant Notif as Notification Service
+    participant Audit as Audit Service
+
+    Mo-&gt;&gt;Rules: Classify failure (env / operator / hardware / insufficient / processing / cancel)
+    Rules--&gt;&gt;Mo: Failure class + rescan eligibility
+    Mo-&gt;&gt;Cost: Apply price/refund/credit policy for class
+    Cost--&gt;&gt;Mo: Ledger update
+    Mo-&gt;&gt;Mo: Preserve failed-mission evidence with FAILED tag
+    Mo-&gt;&gt;Notif: Notify contractor with rescan option
+    Mo-&gt;&gt;Audit: audit.mission.failed
+    alt Rescan
+        Contractor-&gt;&gt;Mo: Accept rescan (new mission linked to failed)
+        Mo-&gt;&gt;Audit: audit.mission.rescan_created
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Failure is a first-class state with a classification vocabulary. Evidence from failed missions is preserved (not deleted) — it is still evidence. Rescan creates a new linked mission with the correct pricing per class.</p>
+
+<p><strong>Rejection paths.</strong> Rescan window expired; org billing hold.</p>
+
+<p><strong>Retry/recovery.</strong> Manual dispute route.</p>
+
+<p><strong>Authorization boundary.</strong> Dispatcher; contractor accepts rescan.</p>
+
+<p><strong>Audit events.</strong> <code>audit.mission.failed | rescan_created</code>.</p>
+
+<p><strong>Data written.</strong> <code>mission_failures</code>, <code>mission_rescans</code>, <code>mission_costs</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None.</p>
+
+<p><strong>Final state.</strong> Failed mission archived; optional rescan queued.</p>
+
+<hr/>
+
+<h2>SD-021 — DATA RETENTION AND LEGAL HOLD</h2>
+
+<p><strong>Purpose.</strong> Enforce §13 retention classes, legal-hold overrides, PII correction, secure deletion, and history preservation.</p>
+<p><strong>Actors.</strong> Retention Worker, Evidence Service, Property Passport Service, Legal Hold Officer (role), Audit Service.</p>
+<p><strong>Preconditions.</strong> Data class assigned at write time.</p>
+<p><strong>Blueprint anchors.</strong> §13.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant W as Retention Worker
+    participant Ev as Evidence Service
+    participant Pass as Property Passport Service
+    participant Legal as Legal Hold Officer
+    participant Audit as Audit Service
+
+    W-&gt;&gt;Ev: Scan for hot-to-cold transitions per class
+    Ev--&gt;&gt;W: Candidates
+    W-&gt;&gt;Ev: Transition hot → cold (encrypted)
+    Ev-&gt;&gt;Audit: audit.evidence.tier_transitioned
+    alt Legal hold
+        Legal-&gt;&gt;Ev: Apply hold (freeze deletion)
+        Ev-&gt;&gt;Audit: audit.legal_hold.applied
+    end
+    alt Customer deletion request
+        Customer-&gt;&gt;Core: Request PII deletion
+        Core-&gt;&gt;Pass: SUPERSEDE PII fields with tombstones
+        Core-&gt;&gt;Ev: Crypto-shred keys for tombstoned records
+        Core-&gt;&gt;Audit: audit.retention.deletion_processed
+    end
+    alt Hold release
+        Legal-&gt;&gt;Ev: Release hold
+        Ev-&gt;&gt;Audit: audit.legal_hold.released
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Retention is class-driven and automated. Passport history is preserved; only PII fields become tombstones on deletion. Legal hold overrides retention deletion; hold release re-enables scheduled deletion. Secure deletion is crypto-shred on tombstone.</p>
+
+<p><strong>Rejection paths.</strong> Deletion attempt on held record; PII correction without authorization.</p>
+
+<p><strong>Retry/recovery.</strong> Idempotent retention job; re-runs skip transitioned records.</p>
+
+<p><strong>Authorization boundary.</strong> Retention worker (service identity) + legal role.</p>
+
+<p><strong>Audit events.</strong> <code>audit.evidence.tier_transitioned</code>, <code>audit.legal_hold.*</code>, <code>audit.retention.deletion_processed</code>.</p>
+
+<p><strong>Data written.</strong> <code>evidence_retention_actions</code>, <code>legal_holds</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None.</p>
+
+<p><strong>Final state.</strong> Retention class enforced; ledger history preserved.</p>
+
+<hr/>
+
+<h2>SD-022 — PUBLIC OR THIRD-PARTY PASSPORT PROJECTION</h2>
+
+<p><strong>Purpose.</strong> Serve narrowly scoped, revocable, rate-limited public projections through expiring signed links — never through the permanent Passport identifier.</p>
+<p><strong>Actors.</strong> Passport Owner (grantor), Recipient, Authorization Service, Property Passport Service, Audit Service.</p>
+<p><strong>Preconditions.</strong> Grantor authorized.</p>
+<p><strong>Blueprint anchors.</strong> §9.1.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    actor Grantor
+    actor Recipient
+    participant Core as Stratex Core
+    participant AuthZ as Authorization Service
+    participant Pass as Property Passport Service
+    participant Audit as Audit Service
+
+    Grantor-&gt;&gt;Core: Grant projection (audience, scope, TTL, binding)
+    Core-&gt;&gt;AuthZ: Authorize grant
+    AuthZ--&gt;&gt;Core: OK
+    Pass-&gt;&gt;Pass: Compose scoped projection (redactions per audience)
+    Pass--&gt;&gt;Core: Signed expiring link
+    Core--&gt;&gt;Recipient: Link (email/portal)
+    Recipient-&gt;&gt;Core: Retrieve link
+    Core-&gt;&gt;Pass: Verify signature + kill-list + rate-limit + binding
+    Pass--&gt;&gt;Core: Projection payload
+    Core-&gt;&gt;Audit: audit.passport.public_access
+    alt Revocation
+        Grantor-&gt;&gt;Core: Revoke grant
+        Core-&gt;&gt;Pass: Add to kill-list
+        Core-&gt;&gt;Audit: audit.passport.access_revoked
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>The permanent Passport identifier hash is never a bearer credential. All external access flows through short-lived signed URLs, audience-scoped payloads, and revocable kill-list checks. Every retrieval is audited.</p>
+
+<p><strong>Rejection paths.</strong> Expired link; revoked; rate-limit hit; binding mismatch.</p>
+
+<p><strong>Retry/recovery.</strong> New grant with new link.</p>
+
+<p><strong>Authorization boundary.</strong> Grantor role; MFA required per §9.2.</p>
+
+<p><strong>Audit events.</strong> <code>audit.passport.public_access</code>, <code>audit.passport.access_revoked</code>.</p>
+
+<p><strong>Data written.</strong> <code>passport_access_grants</code>, <code>audit_access_events</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> None.</p>
+
+<p><strong>Final state.</strong> Recipient obtained a scoped payload once, subject to rate limits and revocation.</p>
+
+<hr/>
+
+<h2>SD-023 — DURABLE-EVENT RECOVERY</h2>
+
+<p><strong>Purpose.</strong> Guarantee at-least-once delivery of critical events across process restart, deploy, network interruption, worker failure, and duplicate delivery.</p>
+<p><strong>Actors.</strong> Any Producer, Transactional Outbox, Worker, Consumer (Inbox), Dead-Letter Queue, Audit Service.</p>
+<p><strong>Preconditions.</strong> A critical event set defined in Blueprint §7.2.</p>
+<p><strong>Blueprint anchors.</strong> §7.2.</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant P as Producer
+    participant Db as Database
+    participant Ob as Outbox
+    participant W as Worker
+    participant C as Consumer
+    participant DL as Dead-Letter Queue
+    participant Audit as Audit Service
+
+    P-&gt;&gt;Db: Write business record + outbox row (single transaction)
+    Ob-&gt;&gt;W: Worker claims outbox row (lease + lock)
+    W-&gt;&gt;C: Deliver event
+    C-&gt;&gt;Db: Idempotent apply (inbox receipt keyed by event id + hash)
+    C--&gt;&gt;W: Ack
+    W-&gt;&gt;Ob: Mark delivered
+    Ob-&gt;&gt;Audit: audit.outbox.delivered
+    alt Duplicate delivery
+        C--&gt;&gt;W: Idempotent no-op (same inbox receipt)
+    end
+    alt Retry exhausted
+        W-&gt;&gt;DL: Move to dead-letter
+        DL-&gt;&gt;Audit: audit.outbox.deadletter
+    end
+    alt Manual replay
+        Operator-&gt;&gt;DL: Replay
+        DL-&gt;&gt;W: Re-emit
+    end</code></pre>
+
+<p><strong>Written explanation.</strong></p>
+<p>Outbox row and business row commit together — no lost events on crash. Workers lease rows with visibility timeouts so double-workers don't double-deliver. Consumers keep idempotency receipts keyed by event id + payload hash. Retries are bounded; failures go to dead-letter and require operator replay.</p>
+
+<p><strong>Rejection paths.</strong> Non-idempotent consumer (design defect).</p>
+
+<p><strong>Retry/recovery.</strong> Bounded exponential backoff; dead-letter; manual replay.</p>
+
+<p><strong>Authorization boundary.</strong> Service identities only; operator required for dead-letter replay.</p>
+
+<p><strong>Audit events.</strong> <code>audit.outbox.delivered | deadletter | replayed</code>.</p>
+
+<p><strong>Data written.</strong> <code>outbox_events</code>, <code>inbox_receipts</code>, <code>dead_letter_events</code>, <code>idempotency_records</code>, <code>audit_events</code>.</p>
+
+<p><strong>Durable events.</strong> This <em>is</em> the durable-event mechanism.</p>
+
+<p><strong>Final state.</strong> Every critical event either delivered idempotently or held in dead-letter for operator attention.</p>
+
+<hr/>
+
+<h2>SD-024 — END-TO-END 15-STAGE OPERATIONAL WORKFLOW</h2>
+
+<p><strong>Purpose.</strong> Executive-level trace through all 15 stages showing owner, input, output, transition, failure path, human gate, audit event, durable event per stage.</p>
+<p><strong>Actors.</strong> All prior actors.</p>
+<p><strong>Blueprint anchors.</strong> §22 (stage table).</p>
+
+<pre class='mermaid-block'><code>sequenceDiagram
+    autonumber
+    participant S1 as 1. Mission Control
+    participant S2 as 2. Mission Planning
+    participant S3 as 3. Mission Validation
+    participant S4 as 4. Flight
+    participant S5 as 5. Mission Assurance
+    participant S6 as 6. Capture Validation
+    participant S7 as 7. Digital Twin Generation
+    participant S8 as 8. AI Workforce Processing
+    participant S9 as 9. Property Intelligence
+    participant S10 as 10. AWE Intelligence
+    participant S11 as 11. Human QA
+    participant S12 as 12. Report Generation
+    participant S13 as 13. Passport Update
+    participant S14 as 14. Habitat Sync
+    participant S15 as 15. Customer Delivery
+
+    S1-&gt;&gt;S2: mission.created
+    S2-&gt;&gt;S3: plan.accepted
+    S3-&gt;&gt;S4: preflight.passed
+    S4-&gt;&gt;S5: flight.telemetry_stream
+    S5-&gt;&gt;S6: flight.completed
+    S6-&gt;&gt;S7: evidence.package_finalization_pending
+    S7-&gt;&gt;S8: twin.ready
+    S8-&gt;&gt;S9: findings.candidate
+    S9-&gt;&gt;S10: property_intelligence.ready
+    S10-&gt;&gt;S11: awe.candidates_ready
+    S11-&gt;&gt;S12: findings.approved
+    S12-&gt;&gt;S13: report.rendered
+    S13-&gt;&gt;S14: passport.appended
+    S14-&gt;&gt;S15: habitat.projected + notification.sent</code></pre>
+
+<p><strong>Written explanation — per stage.</strong></p>
+
+<table><thead><tr><th>#</th><th>Stage</th><th>Owner</th><th>Input</th><th>Output</th><th>Transition</th><th>Failure path</th><th>Human gate</th><th>Audit event</th><th>Durable event</th></tr></thead><tbody><tr><td>1</td><td>Mission Control</td><td>Operator/dispatcher</td><td>Property id, product</td><td>Mission id</td><td>→ Stage 2</td><td>Ineligibility</td><td>—</td><td><code>audit.mission.created</code></td><td>—</td></tr><tr><td>2</td><td>Mission Planning</td><td>Mission Ops Service</td><td>Mission, weather, airspace</td><td>Plan</td><td>→ Stage 3</td><td>Reschedule</td><td>Pilot accept</td><td><code>audit.mission.plan_*</code></td><td>—</td></tr><tr><td>3</td><td>Mission Validation</td><td>RuleEngine</td><td>Preflight signals</td><td>Pass/warn</td><td>→ Stage 4</td><td>Hard-stop</td><td>Pilot ack of warning</td><td><code>audit.mission.preflight_*</code></td><td>—</td></tr><tr><td>4</td><td>Flight</td><td>Pilot + Drone</td><td>Plan</td><td>Telemetry + imagery</td><td>→ Stage 5</td><td>Abort → SD-020</td><td>Pilot judgment</td><td><code>audit.mission.flight_*</code></td><td>—</td></tr><tr><td>5</td><td>Mission Assurance</td><td>Mission Ops</td><td>Live signals</td><td>Coverage + retakes</td><td>→ Stage 6</td><td>Insufficient evidence → SD-020</td><td>Pilot retake ack</td><td><code>audit.mission.flight_streaming</code></td><td>—</td></tr><tr><td>6</td><td>Capture Validation</td><td>Capture Validation agent</td><td>Package</td><td>Immutable manifest</td><td>→ Stage 7</td><td>Failed manifest → SD-020</td><td>—</td><td><code>audit.evidence.package_finalized</code></td><td><code>evidence.package_finalization_pending</code></td></tr><tr><td>7</td><td>Digital Twin Generation</td><td>Photogrammetry + Calibration</td><td>Manifest</td><td>Twin package</td><td>→ Stage 8</td><td>Recapture</td><td>—</td><td><code>audit.agent.run_persisted</code></td><td>—</td></tr><tr><td>8</td><td>AI Workforce Processing</td><td>Agent Orchestrator</td><td>Twin + evidence</td><td>Candidate findings</td><td>→ Stage 9</td><td>Escalate</td><td>—</td><td><code>audit.agent.run_persisted</code></td><td>—</td></tr><tr><td>9</td><td>Property Intelligence</td><td>Vision Intelligence</td><td>Findings</td><td>Roof/walls/openings</td><td>→ Stage 10 or 11</td><td>Rework</td><td>—</td><td><code>audit.finding.state_changed</code></td><td>—</td></tr><tr><td>10</td><td>AWE Intelligence</td><td>AWE Intelligence</td><td>Thermal + registration</td><td>AWE findings + index (gated)</td><td>→ Stage 11</td><td>Rework</td><td>Tier 3</td><td><code>audit.awe.*</code></td><td><code>finding.approved</code></td></tr><tr><td>11</td><td>Human QA</td><td>Reviewers</td><td>Candidates</td><td>Approved findings</td><td>→ Stage 12</td><td>Rework / rejection</td><td>Tier 1–4 per §10</td><td><code>audit.finding.reviewed</code></td><td><code>finding.approved</code></td></tr><tr><td>12</td><td>Report Generation</td><td>Report Service</td><td>Approved findings</td><td>Report PDF (hashed)</td><td>→ Stage 13</td><td>Rework</td><td>QA</td><td><code>audit.report.rendered</code></td><td><code>report.generation_pending</code></td></tr><tr><td>13</td><td>Passport Update</td><td>Passport Service (only writer)</td><td>Delta</td><td>Ledger entry + receipt</td><td>→ Stage 14</td><td>Conflict → QA</td><td>Conflict review</td><td><code>audit.passport.appended</code></td><td><code>passport.appended</code></td></tr><tr><td>14</td><td>Habitat Sync</td><td>Habitat Sync agent</td><td>passport.appended</td><td>Projection delivered</td><td>→ Stage 15</td><td>Dead-letter</td><td>Operator replay</td><td><code>audit.habitat.*</code></td><td><code>habitat.ack_pending</code></td></tr><tr><td>15</td><td>Customer Delivery</td><td>Delivery Service</td><td>Report + projection</td><td>Customer artifacts (report, passport link, notification)</td><td>terminus</td><td>Regenerate report</td><td>—</td><td><code>audit.delivery.completed</code></td><td>—</td></tr></tbody></table>
+
+<p><strong>Final state.</strong> Customer has received report, Passport is updated with signed receipt, Habitat projection is delivered, all audits written, all durable events acknowledged.</p>
+
+<hr/>
+
+<h2>§25 — TRACEABILITY MATRIX (SEQUENCE DIAGRAM → BLUEPRINT / DATA / AUDIT / DURABLE / ROLE)</h2>
+
+<p><em>Full entity mapping (SD → entities read/written) is expressed in the Canonical Data Model v1.0 §12 cross-artifact matrix. This section is the SD-side of the same matrix.</em></p>
+
+<table><thead><tr><th>SD</th><th>Blueprint anchor</th><th>Primary domain(s) written</th><th>Key audit event(s)</th><th>Durable event(s)</th><th>Required role</th></tr></thead><tbody><tr><td>SD-001</td><td>§9.2, §9.3, §20</td><td>Tenants, Audit</td><td>org.created, user.invited, role_assigned, mfa_enrolled</td><td>—</td><td>admin</td></tr><tr><td>SD-002</td><td>§11.2, §11.3</td><td>Properties, Passports (receipt), Audit</td><td>property.identity_*</td><td>—</td><td>contractor / inspector / reviewer</td></tr><tr><td>SD-003</td><td>§16</td><td>Missions, Cost Ledger, Audit</td><td>mission.created</td><td>—</td><td>contractor</td></tr><tr><td>SD-004</td><td>§22.2, §5.1</td><td>Missions, Environment, Equipment, Audit</td><td>mission.plan_*</td><td>—</td><td>dispatcher, pilot</td></tr><tr><td>SD-005</td><td>§22.3, §5.1</td><td>Mission readiness, Audit</td><td>mission.preflight_*</td><td>—</td><td>pilot</td></tr><tr><td>SD-006</td><td>§22.4-5, §12, §14</td><td>Mission flights, telemetry, failures, Audit</td><td>mission.flight_*</td><td>—</td><td>pilot</td></tr><tr><td>SD-007</td><td>§14, §7.2</td><td>Evidence, Outbox, Audit</td><td>evidence.package_finalized</td><td>evidence.package_finalization_pending</td><td>ground station svc</td></tr><tr><td>SD-008</td><td>§22.7-9, §5, §10</td><td>Agents, Evidence, Findings, Audit</td><td>agent.run_persisted, finding.reviewed</td><td>mission.recapture_pending (on failure)</td><td>tier 2 reviewer</td></tr><tr><td>SD-009</td><td>§12.2, §17.1, §10</td><td>Agents, Evidence, Findings, Audit</td><td>awe.index_gated</td><td>finding.approved</td><td>tier 3 reviewer</td></tr><tr><td>SD-010</td><td>§16 (Elite), §11</td><td>Findings, Passports, Audit</td><td>finding.contradiction_resolved, passport.elite_delta_appended</td><td>finding.approved, passport.appended</td><td>tier 3 reviewer</td></tr><tr><td>SD-011</td><td>§5, §15</td><td>Agents, Audit</td><td>agent.run_persisted, agent.escalated</td><td>—</td><td>orchestrator svc</td></tr><tr><td>SD-012</td><td>§10, §15, §11</td><td>Findings, Audit</td><td>finding.state_changed, finding.superseded</td><td>finding.approved</td><td>tier 2/3/4</td></tr><tr><td>SD-013</td><td>§22.12, §14, §20.1</td><td>Evidence, Audit</td><td>report.rendered</td><td>report.generation_pending</td><td>QA</td></tr><tr><td>SD-014</td><td>§11, §11.1, §7.2</td><td>Passports, Outbox, Audit</td><td>passport.appended</td><td>passport.appended</td><td>passport svc</td></tr><tr><td>SD-015</td><td>§8, §7.2</td><td>Passports (projection), Outbox, DLQ, Audit</td><td>habitat.projected/deadletter</td><td>habitat.ack_pending</td><td>sync svc</td></tr><tr><td>SD-016</td><td>§9, §11, §16</td><td>Passports (snapshot), Audit</td><td>claim.snapshot_*</td><td>—</td><td>claim initiator + adjuster</td></tr><tr><td>SD-017</td><td>§9.2, §11</td><td>Passports (cosign), Audit</td><td>claim.cosign_*</td><td>passport.appended</td><td>adjuster (MFA)</td></tr><tr><td>SD-018</td><td>§11.2-3, §15</td><td>Findings, Passports, Audit</td><td>finding.superseded</td><td>passport.appended</td><td>tier-matched reviewer</td></tr><tr><td>SD-019</td><td>§11.3</td><td>Passports (identity ops), Properties, Audit</td><td>property.identity_operation</td><td>passport.appended</td><td>tier 2/3 per op</td></tr><tr><td>SD-020</td><td>§16, §22.5-6</td><td>Missions, Cost Ledger, Audit</td><td>mission.failed, rescan_created</td><td>—</td><td>dispatcher</td></tr><tr><td>SD-021</td><td>§13</td><td>Evidence, Legal Holds, Passports (tombstones), Audit</td><td>retention.<em>, legal_hold.</em></td><td>—</td><td>retention svc + legal officer</td></tr><tr><td>SD-022</td><td>§9.1</td><td>Passports (access grants), Audit</td><td>passport.public_access</td><td>—</td><td>grantor (MFA)</td></tr><tr><td>SD-023</td><td>§7.2</td><td>Outbox, DLQ, Idempotency, Audit</td><td>outbox.*</td><td>(is the mechanism)</td><td>service identities + operator</td></tr><tr><td>SD-024</td><td>§22</td><td>All</td><td>See stage table</td><td>See stage table</td><td>See stage table</td></tr></tbody></table>
+
+<hr/>
+
+<h2>§26 — ARCHITECTURE CONFLICT REPORT</h2>
+
+<p>No flow in this pack requires modification of Blueprint v1.2. Two items are flagged for <strong>executive review</strong> as observations, not corrections, because they may become conflicts once the Canonical Data Model is written.</p>
+
+<p><strong>Observation A — Passport authority boundary vs. co-sign entries.</strong></p>
+<p>Blueprint §11 states the Passport Service is the sole writer of canonical Passport history. SD-017 (Adjuster Co-Sign) appends a <code>COSIGN</code> entry to the ledger. This is compatible: the adjuster's <em>decision</em> is authored by the adjuster; the <em>ledger append</em> is executed by the Passport Service on the adjuster's behalf. Documented explicitly to prevent future misinterpretation.</p>
+
+<p><strong>Observation B — AWE Index™ persistence during pre-<code>CALIBRATED_GENERAL</code> states.</strong></p>
+<p>Blueprint §17.1 forbids external display of the Index before <code>CALIBRATED_GENERAL</code>. The data model must therefore support persisting the Index with <code>release_state</code> metadata but exclude it from any projection composer that lacks a release-state override. Data-model draft addresses this in the Passport projections domain.</p>
+
+<p><strong>No modification to Blueprint v1.2 is proposed by this pack.</strong></p>
+
+<hr/>
+
+<h2>§27 — CONFIRMATIONS</h2>
+
+<ol><li>Blueprint v1.0, v1.1, and v1.2 remain unchanged. Files in <code>/app/memory/</code> are untouched by this pack.</li><li>Production remains untouched. No API endpoint, database schema, or deployment artifact was modified.</li><li>Legacy remains frozen. No file under legacy scope was modified.</li><li>No implementation code was written. No database migration was authored.</li><li>Phase 1a authorization remains withheld. Phase 1b/1c/1d/2/3/4/5 authorization remains withheld.</li><li>No new integrations were added. Every external system referenced is marked with its Blueprint §15.2 implementation state.</li></ol>
+
+<hr/>
+
+<h2>§28 — REVISION HISTORY</h2>
+
+<table><thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Change summary</th></tr></thead><tbody><tr><td>1.0</td><td>February 26, 2026</td><td>TC</td><td>Initial Sequence Diagrams Pack. 24 diagrams. Aligned to Blueprint v1.2.</td></tr></tbody></table>
+
+<p><strong>End of Sequence Diagrams Pack v1.0.</strong></p>
+
+</section>
+
+</body></html>
