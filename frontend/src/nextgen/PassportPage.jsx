@@ -109,15 +109,16 @@ export default function PassportPage() {
           <div className="corner">// PERMANENT PROPERTY HISTORY</div>
           {timeline.map((t) => (
             <div key={t.canonical_id} style={{
-              display: "grid", gridTemplateColumns: "140px 160px 1fr",
-              padding: "8px 0", borderBottom: "1px solid #1D2836", fontSize: 12,
+              display: "grid", gridTemplateColumns: "160px 200px 1fr",
+              gap: 12,
+              padding: "10px 0", borderBottom: "1px solid #1D2836", fontSize: 12,
               alignItems: "center",
             }}>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#8A9BAE", fontSize: 10 }}>
                 {t.at.slice(0, 19).replace("T", " ")}
               </span>
-              <span className="nx-pill" style={{ width: "fit-content" }}>{t.kind}</span>
-              <span style={{ color: "#E6EEF6" }}>{t.summary}</span>
+              <span className="nx-pill" style={{ width: "fit-content", whiteSpace: "nowrap" }}>{t.kind}</span>
+              <span style={{ color: "#E6EEF6", minWidth: 0 }}>{t.summary}</span>
             </div>
           ))}
         </div>
