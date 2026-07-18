@@ -1,0 +1,49 @@
+{
+  "summary": "Directive 007 · Wave 2B — Property Intelligence Engine + Passport append + hash-chain + reports/timeline · FULL PASS. 27/27 backend pytest cases green (taxonomy, create validation errors x6, severity→tier mapping x5, GENESIS + chained approval hash-chain across 2 PIOs, reject/rework/field-verification transitions, list/detail/reviews[], property timeline INTELLIGENCE_APPROVED, passport audience projection filters, homeowner_summary + executive_summary + unknown template 404 + templates list, direct Mongo verification of one approval = exactly 1 passport_entry + 1 receipt + 1 timeline row + 1 outbox row with idempotency_key `intelligence.approved:<pio_id>`). Frontend full UI happy path: /nextgen/missions/:id/intelligence renders KPI strip (Objects/Approved/Candidate/Rejected), System→Component cascade select works (DRAINAGE → 5 components), form fields incl AWE checkboxes + visibility + evidence multi-select, inventory table with severity/AWE/state/tier pills, Inspect drawer shows observation/AWE/recommended-action/reviews/passport-entry, Approve→passport_committed transition confirmed in drawer. /nextgen/passport shows GENESIS prior_hash + chained content_hash across two entries (ce68fd075626… → c064eec097a7…), timeline entries, all 7 template switcher buttons work (executive_summary → homeowner_summary changes projected columns), audience filter (internal/contractor/homeowner/adjuster/insurer). Mission Detail page has both EVIDENCE and INTELLIGENCE tabs. Legacy `/`, `/ceo/login`, `/auth` all still work with no regression.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/nextgen/passport (Property Passport · timeline row)",
+        "issues": [
+          "Timeline row pill for kind label (INTELLIGENCE_APPROVED) visually overlaps the severity text (`MAJOR` / `MODERATE`) at 1920 width — the summary cell text collides with the fixed-width kind pill. Purely cosmetic; both are readable but overlap visually."
+        ]
+      },
+      {
+        "screen": "Global console",
+        "issues": [
+          "React hydration warning: `<span> cannot be a child of <option>`. Non-blocking; caused by option content wrapping. Recommend inspecting <option> renders (likely a select in properties/missions dropdown) and using plain text instead of <span> children.",
+          "Two 404 asset fetches persist on /ceo/login (carried over from iter23) — non-blocking."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_nextgen_wave2b.py",
+    "/app/test_reports/pytest/iter24_wave2b.xml"
+  ],
+  "action_items": [
+    "Optional cosmetic: fix timeline row overlap between kind pill and summary text on Passport page (grid `140px 160px 1fr` collapses the pill width on some entries).",
+    "Optional cosmetic: replace <span> child of <option> in one of the select renders to silence React hydration warning."
+  ],
+  "critical_code_review_comments": [
+    "intelligence.py review handler updates the PIO twice on approve (first sets state=approved+increments version, then re-updates state=passport_committed). Consider a single atomic write to avoid a transient `approved` state that could be observed by a concurrent reader between the two updates.",
+    "intelligence.py `_content_hash(pio_content)` hashes only user-submitted body — not the tenant/property/mission binding. Approved intelligence hashes therefore aren't stable-per-tenant, but this may be intentional (the Passport entry hash chains everything). Confirm.",
+    "passport_service.py `_next_seq()` uses `find_one_and_update` with `return_document=True` — motor accepts booleans, but PyMongo docs strongly recommend `pymongo.ReturnDocument.AFTER`. Works today; will silently break if pymongo tightens the type check.",
+    "passport_service.py `_ensure_passport` inserts a sequence with `next_seq=1`, then `_next_seq` `$inc:1` returns `next_seq-1=1`. Therefore the GENESIS entry has `seq=1` (not `seq=0`). Not a bug (GENESIS is identified by `prior_hash=null`) but the seq numbering may surprise ledger consumers expecting 0-based indices.",
+    "passport_service.py `read_passport_projection` treats `contractor/adjuster/insurer` as always-visible regardless of the entry's visibility payload. If ever a PIO explicitly sets `visibility.contractor=false`, this projection will still expose it to contractor audience.",
+    "intelligence.py `_project_intelligence_for_report` filter: `p.get('visibility', {}).get(tmpl['visibility'], False) or tmpl['visibility'] == 'internal'` — this correctly maps `executive_summary` (internal audience) to all PIOs, but `hoa_summary` uses audience 'public' which will filter to only PIOs with `visibility.public=true`. Homeowners could hit an empty HOA report; product should confirm this matches intent.",
+    "intelligence.py `create_intelligence` — after Pydantic validates enums via defaults, the `_validate_enums` manual check is redundant (Pydantic already coerces to strings). It still fires because the model accepts any string. Consider using `Literal[...]` types in the schema to reject at the 422 layer for consistency with FastAPI docs.",
+    "intelligence.py evidence tenant check uses `mission_id: body.mission_id` in the find query; this is correct and prevents cross-mission evidence reuse even within the same tenant — good."
+  ],
+  "updated_files": ["/app/backend/tests/test_nextgen_wave2b.py"],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "100% — all Wave 2B UI acceptance criteria met"},
+  "test_credentials": "admin@stratex.io / StratexAdmin!2026 + TOTP via /api/auth/totp-debug?email=... (auto-populated in UI when DEMO_MFA_BYPASS=1). Contractor: anthony@apexroofing.com / Contractor!2026.",
+  "seed_data_creation": "Backend pytest creates 2 fresh properties (admin `TEST_W2B_<ts> Intel Way` + contractor `TEST_W2B_<ts> Contractor Intel Rd`), 2 missions (both dayscan), 3 evidence uploads (2 admin RGB_IMAGEs + 1 contractor RGB_IMAGE — png bytes are timestamp-nonced so content_sha256 is unique across test runs). ~15 PIOs authored during a full test run: 5 for severity→tier mapping, 3 for reject/rework/field-verification, 2 approved (hash-chain), plus 6 validation-error attempts that never commit rows. All rows are TEST-prefixed and safe to leave in the demo DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend base URL: https://stratex-quant.preview.emergentagent.com. Wave 2B mounts under /api/nextgen/v1/*. Direct Mongo collections used: nextgen_intelligence_objects, nextgen_intelligence_versions, nextgen_intelligence_reviews, nextgen_passports, nextgen_passport_entries, nextgen_passport_receipts, nextgen_passport_sequences, nextgen_property_timeline, nextgen_outbox_events, nextgen_audit_events. GENESIS entries have `prior_hash=null` and `seq=1` (sequence starts at 1, not 0 — verify by prior_hash rather than seq). Outbox idempotency_key format: `intelligence.approved:<pio_id>`. Report template `hoa_summary` filters by `visibility.public=true` which will be empty for typical PIOs (contractor+homeowner-visible). Evidence dedup is tenant-scoped by content_sha256, so tests generate content-nonced PNGs to stay unique across runs. UI-honesty banner (Blueprint §20.1) is still visible on all /nextgen pages.",
+  "rca of the issue": "No blocking bugs. Two cosmetic UI observations (timeline pill overlap, hydration warning on <option>) documented but do not affect any Wave 2B acceptance criterion. All 27 backend tests + full UI happy path passed on first successful run after the initial nonce/seq assertion fixes in the test file itself (test-only, not app code)."
+}

@@ -56,14 +56,16 @@ import CeoOpsPage from "@/pages/CeoOpsPage";
 import GmOpsPage from "@/pages/GmOpsPage";
 import InvestorAssistant from "@/components/InvestorAssistant";
 
-// NextGen shell + workspaces — Directive 005 · Phase 1a + Directive 006 · Wave 2A
+// NextGen shell + workspaces — Directive 005/006/007
 import NextGenShell from "@/nextgen/NextGenShell";
 import NextGenOverview from "@/nextgen/OverviewPage";
 import NextGenProperties from "@/nextgen/PropertiesPage";
 import { MissionsList as NxMissionsList, NewMission as NxNewMission, MissionDetailRoute as NxMissionDetail } from "@/nextgen/MissionsPage";
 import NextGenAudit from "@/nextgen/AuditPage";
 import NextGenEvidence from "@/nextgen/EvidencePage";
-import { PassportStub, AweStub, ReportsStub, HabitatStub, OrgStub } from "@/nextgen/StubPages";
+import NextGenIntelligence from "@/nextgen/IntelligencePage";
+import NextGenPassport from "@/nextgen/PassportPage";
+import { AweStub, ReportsStub, HabitatStub, OrgStub } from "@/nextgen/StubPages";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -194,7 +196,8 @@ function AppShell() {
           <Route path="missions/new" element={<NxNewMission/>}/>
           <Route path="missions/:id" element={<NxMissionDetail/>}/>
           <Route path="missions/:missionId/evidence" element={<NextGenEvidence/>}/>
-          <Route path="passport" element={<PassportStub/>}/>
+          <Route path="missions/:missionId/intelligence" element={<NextGenIntelligence/>}/>
+          <Route path="passport" element={<NextGenPassport/>}/>
           <Route path="awe" element={<AweStub/>}/>
           <Route path="reports" element={<ReportsStub/>}/>
           <Route path="habitat" element={<HabitatStub/>}/>

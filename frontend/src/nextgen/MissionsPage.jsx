@@ -181,6 +181,8 @@ export function MissionDetail({ id }) {
           <span className="nx-pill gold">STAGE {m.stage}/15 · {stage_labels[m.stage - 1]}</span>
           <Link to={`/nextgen/missions/${m.canonical_id}/evidence`} className="nx-btn ghost"
             data-testid="nx-mission-evidence-tab">Evidence</Link>
+          <Link to={`/nextgen/missions/${m.canonical_id}/intelligence`} className="nx-btn ghost"
+            data-testid="nx-mission-intelligence-tab">Intelligence</Link>
           {m.stage < 15 && (
             <button className="nx-btn" onClick={advance} disabled={advBusy} data-testid="nx-mission-advance-btn">
               Advance to Stage {m.stage + 1}

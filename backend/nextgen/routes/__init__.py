@@ -16,6 +16,7 @@ from . import (  # noqa: F401
     workflow,
     audit,
     evidence,
+    intelligence,
 )
 
 # Then mount onto the shared /api router.

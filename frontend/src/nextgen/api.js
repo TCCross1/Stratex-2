@@ -72,3 +72,23 @@ export const nxUploadEvidence = (missionId, formData, onProgress) =>
     onUploadProgress: onProgress,
     headers: { "Content-Type": "multipart/form-data" },
   }).then((r) => r.data);
+
+// ─── Wave 2B · Property Intelligence Engine (Directive 007) ───
+export const nxTaxonomy = () =>
+  api.get(`${V1}/taxonomy/building-systems`).then((r) => r.data);
+export const nxCreateIntelligence = (body) =>
+  api.post(`${V1}/intelligence`, body).then((r) => r.data);
+export const nxListIntelligence = (missionId) =>
+  api.get(`${V1}/missions/${missionId}/intelligence`).then((r) => r.data);
+export const nxGetIntelligence = (id) =>
+  api.get(`${V1}/intelligence/${id}`).then((r) => r.data);
+export const nxReviewIntelligence = (id, body) =>
+  api.post(`${V1}/intelligence/${id}/review`, body).then((r) => r.data);
+export const nxPropertyTimeline = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/timeline`).then((r) => r.data);
+export const nxPropertyPassport = (propertyId, audience = "internal") =>
+  api.get(`${V1}/properties/${propertyId}/passport`, { params: { audience } }).then((r) => r.data);
+export const nxPropertyReport = (propertyId, template) =>
+  api.get(`${V1}/properties/${propertyId}/report/${template}`).then((r) => r.data);
+export const nxReportTemplates = () =>
+  api.get(`${V1}/report-templates`).then((r) => r.data);
