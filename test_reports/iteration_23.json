@@ -1,0 +1,47 @@
+{
+  "summary": "Directive 006 · Wave 2A (Evidence Ingest + Canonical Mission Package) — end-to-end PASSED. 25/25 backend pytest cases green (profiles, upload, dedup 409, intended-duplicate link, blocked ext 415, unknown-category 400, OPERATIONAL 403, tenant-isolation 404, list/detail/download with X-Content-SHA256, validate FAIL/PASS, finalize 422 unmet + 200 with v1 + v2, mission stage-advance to 7, deletion of finalized 409, AWE WEATHER_RECORD enforcement). Outbox verified directly: 3 EVIDENCE_PACKAGE_FINALIZED rows with unique idempotency_keys `evidence.finalized:<mission>:<version>`. UI happy path verified: /nextgen/missions/:id/evidence renders Files/Originals/Derivatives/Package State header stats, upload flow succeeds, requirements panel shows MET/REQUIRED/OPTIONAL pills, validation panel shows PASS/FAIL rows, Inspect drawer works. Mission Detail → Evidence tab navigates correctly. Legacy Landing / /ceo/login / /auth unaffected; no /nextgen refs on legacy nav; UI-honesty banner (Blueprint §20.1) still present on /nextgen.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/nextgen/missions/:id/evidence",
+        "issues": [
+          "Two 404 console errors observed while loading the evidence page (likely a missing favicon or a small asset ref). Non-blocking; page renders and functions."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_nextgen_wave2a.py",
+    "/app/test_reports/pytest/iter23_nextgen_wave2a.xml"
+  ],
+  "action_items": [
+    "Optional: identify and silence the two 404 asset fetches on the evidence page (non-blocking, dev-console only)."
+  ],
+  "critical_code_review_comments": [
+    "storage.py’s tenant-path validation uses a regex allowing [A-Za-z0-9_-]{6,64}. Good defence-in-depth, but downloads read via `ev['tenant_id']` + `ev['mission_id']` from the DB, so if the segment written to DB was ever tampered with the path could still traverse — recommend a repeat validation call inside open_read/put explicitly for the two id segments before joining (currently done, keep it that way; do NOT remove `_validate` in future refactor).",
+    "evidence.py line 192: `implementation_state` is set to `\"operational\"` for both original and derivative branches — the ternary is a no-op. If intentional, remove the ternary for clarity; if not, choose the correct pending vs operational state.",
+    "_validate_package builds `metas` keyed on `evidence_item_id` from `find({tenant_id})` — this scans ALL metadata for the tenant across every mission. Fine at Phase 2A scale, but should include `mission_id` (or the current mission’s evidence_item_ids) filter once volume grows.",
+    "finalize_package does not lock — two concurrent finalize calls could both compute `next_version = latest+1` and both succeed with the same version (unique index missing on (tenant_id, mission_id, package_version)). Add a Mongo unique index and let the second insert fail into a retry, or use a serialized outbox worker.",
+    "delete_evidence: if the same content_sha256 is referenced by another evidence_item (intentional duplicate) `delete_pending` will drop the object bytes even though the second item still references them. Recommend refcount check before `storage.delete_pending`.",
+    "EvidencePage.jsx uses `finalizedPkg = packages.find(p => p.status === 'finalized')` — with v2 present this returns v1 (first match); switch to a `packages[0]` (list already sorted desc) or `find` on max version to always reflect the latest finalized package state (‘v2 FINALIZED’ vs displaying v1)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_nextgen_wave2a.py"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25)",
+    "frontend": "100% — all Wave 2A UI acceptance criteria met; legacy Landing / /ceo/login / /auth unaffected"
+  },
+  "test_credentials": "admin@stratex.io / StratexAdmin!2026 + TOTP via /api/auth/totp-debug?email=... (DEMO_MFA_BYPASS=1). Contractor tenant used for isolation test: anthony@apexroofing.com / Contractor!2026.",
+  "seed_data_creation": "Backend pytest creates 3 properties (TEST_W2A_<epoch> Evidence Way, AWE Court, Contractor Rd), 3 missions (2 dayscan + 1 awe_scan), and uploads 15+ evidence files (13 unique RGB_IMAGE PNGs + 1 FLIGHT_LOG text + 1 pending PNG that gets deleted). UI test creates 1 additional TEST_UI_<epoch> Blueprint Ln property + 1 dayscan mission + 1 uploaded PNG. All test data uses TEST_ prefix.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend base URL is https://stratex-quant.preview.emergentagent.com. Wave 2A mounts under /api/nextgen/v1/*. Storage lives on-disk under /app/backend/nextgen_storage/<tenant>/<mission>/<sha256>. Outbox rows verified via direct Mongo query on nextgen_outbox_events collection. Duplicate detection is tenant-scoped by content_sha256 (not just mission); OPERATIONAL uploads intentionally 403 (§17 gate). Second finalize creates a new mission_packages row with v2 (append-only, not overwrite); outbox idempotency key is `evidence.finalized:<mission_id>:<version>`. UI-honesty banner still visible on /nextgen top bar. All Wave 2A UI testids follow pattern nx-evidence-*, nx-finalize-btn, nx-revalidate-btn, nx-download-manifest, nx-mission-evidence-tab.",
+  "rca of the issue": "No blocking bugs found. All 25 backend tests + full UI happy path passed on first run. Only cosmetic finding: two 404 asset fetches on the evidence page (non-blocking) — did not investigate root cause since it did not affect any Wave 2A acceptance criterion."
+}

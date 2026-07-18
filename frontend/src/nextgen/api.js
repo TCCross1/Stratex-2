@@ -43,3 +43,32 @@ export const nxPassportByProperty = (id) =>
 
 // Audit
 export const nxAudit = () => api.get(`${NX}/audit/events`).then((r) => r.data);
+
+// ─── Wave 2A · Evidence + Mission Packages ───
+const V1 = "/nextgen/v1";
+export const nxEvidenceProfile = (product_key) =>
+  api.get(`${V1}/evidence-profiles/${product_key}`).then((r) => r.data);
+export const nxListEvidence = (missionId) =>
+  api.get(`${V1}/missions/${missionId}/evidence`).then((r) => r.data);
+export const nxGetEvidence = (id) =>
+  api.get(`${V1}/evidence/${id}`).then((r) => r.data);
+export const nxDeleteEvidence = (id) =>
+  api.delete(`${V1}/evidence/${id}`).then((r) => r.data);
+export const nxRetryMetadata = (id) =>
+  api.post(`${V1}/evidence/${id}/retry-metadata`).then((r) => r.data);
+export const nxValidatePackage = (missionId) =>
+  api.post(`${V1}/missions/${missionId}/package/validate`).then((r) => r.data);
+export const nxFinalizePackage = (missionId, operator_notes) =>
+  api.post(`${V1}/missions/${missionId}/package/finalize`, { operator_notes }).then((r) => r.data);
+export const nxListPackages = (missionId) =>
+  api.get(`${V1}/missions/${missionId}/packages`).then((r) => r.data);
+export const nxManifestJsonUrl = (packageId) => {
+  const t = localStorage.getItem("stratex_token");
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+  return `${BACKEND_URL}/api${V1}/packages/${packageId}/manifest.json?_t=${t}`;
+};
+export const nxUploadEvidence = (missionId, formData, onProgress) =>
+  api.post(`${V1}/missions/${missionId}/evidence`, formData, {
+    onUploadProgress: onProgress,
+    headers: { "Content-Type": "multipart/form-data" },
+  }).then((r) => r.data);
