@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ic-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B111A"/>
+      <stop offset="1" stop-color="#020509"/>
+    </linearGradient>
+    <linearGradient id="ic-outer" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4DF6FF"/>
+      <stop offset="1" stop-color="#FF7B00"/>
+    </linearGradient>
+    <linearGradient id="ic-metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4F6F9"/>
+      <stop offset="1" stop-color="#4A5460"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#ic-bg)"/>
+  <polygon points="256,60 434,164 434,348 256,452 78,348 78,164" stroke="url(#ic-outer)" stroke-width="8" fill="none"/>
+  <polygon points="256,110 384,184 384,328 256,402 128,328 128,184" stroke="#3A6D75" stroke-width="2" fill="#050B14"/>
+  <path d="M256 168 L344 248 L344 348 L168 348 L168 248 Z" fill="url(#ic-metal)"/>
+  <g fill="#4DF6FF">
+    <rect x="222" y="282" width="28" height="28" rx="3"/>
+    <rect x="262" y="282" width="28" height="28" rx="3"/>
+    <rect x="222" y="318" width="28" height="24" rx="3"/>
+    <rect x="262" y="318" width="28" height="24" rx="3"/>
+  </g>
+</svg>

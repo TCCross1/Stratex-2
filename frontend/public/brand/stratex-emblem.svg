@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-label="Stratex Core emblem">
+  <defs>
+    <linearGradient id="hex-outer" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DF6FF" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#4DF6FF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FF7B00" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="hex-inner" x1="30" y1="10" x2="180" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DE9F0" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#164752" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="house-metal" x1="60" y1="60" x2="140" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F4F6F9"/>
+      <stop offset="0.5" stop-color="#B4BCC7"/>
+      <stop offset="1" stop-color="#5A6472"/>
+    </linearGradient>
+    <filter id="cy-glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Outer hexagon frame -->
+  <polygon points="100,10 178,52 178,148 100,190 22,148 22,52" stroke="url(#hex-outer)" stroke-width="4" fill="none" filter="url(#cy-glow)"/>
+  <!-- Inner hexagon -->
+  <polygon points="100,32 158,64 158,136 100,168 42,136 42,64" stroke="url(#hex-inner)" stroke-width="1.4" fill="#050B14" opacity="0.85"/>
+  <!-- Property/house mark -->
+  <g filter="url(#cy-glow)">
+    <path d="M100 58 L138 92 L138 138 L62 138 L62 92 Z" fill="url(#house-metal)" stroke="#DFE6EE" stroke-width="1.2"/>
+    <path d="M100 58 L138 92 L138 138 L62 138 L62 92 Z" fill="none" stroke="#151C26" stroke-width="0.6" opacity="0.5"/>
+  </g>
+  <!-- Cyan window mullion -->
+  <g fill="#4DF6FF">
+    <rect x="86" y="108" width="12" height="12" rx="1"/>
+    <rect x="102" y="108" width="12" height="12" rx="1"/>
+    <rect x="86" y="124" width="12" height="10" rx="1"/>
+    <rect x="102" y="124" width="12" height="10" rx="1"/>
+  </g>
+  <!-- Cyan flare -->
+  <line x1="6" y1="100" x2="30" y2="100" stroke="#4DF6FF" stroke-width="2" opacity="0.8"/>
+  <line x1="170" y1="100" x2="194" y2="100" stroke="#FF7B00" stroke-width="2" opacity="0.85"/>
+</svg>

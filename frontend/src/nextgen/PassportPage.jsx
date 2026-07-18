@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ShieldCheck, Clock, ArrowUpRight, ExternalLink, Copy, Check,
+  Waves, Wind, Droplet, Sun, Sparkles, Share2, FileText,
+} from "lucide-react";
+import {
   nxListProperties, nxPropertyPassport, nxPropertyTimeline,
   nxPropertyReport, nxReportTemplates, nxPropertyAwe,
   nxIssueHabitatLink, nxHabitatReportHtmlUrl,
 } from "@/nextgen/api";
 
-/* Property Passport + Timeline + Report projections — Directive 007.
-   The permanent property intelligence record and its consumers. */
+/* Property Passport (Directive 009 restyle).
+   Same APIs, refined presentation. Ledger + Timeline + AWE + Habitat share. */
+
+const AUDIENCES = ["internal", "contractor", "homeowner", "adjuster", "insurer"];
 
 export default function PassportPage() {
   const [properties, setProperties] = useState([]);
@@ -42,55 +48,114 @@ export default function PassportPage() {
     nxPropertyReport(pid, template).then(setReport).catch(() => setReport(null));
   }, [pid, template]);
 
+  const property = properties.find((p) => p.canonical_id === pid);
+
   return (
     <div data-testid="nx-passport">
-      <div className="nx-topbar-title" style={{ color: "#4DF6FF" }}>
-        // PROPERTY PASSPORT · DIRECTIVE 007
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
+      <div className="nx-page-header">
         <div>
-          <h1 className="nx-h1">Property Passport</h1>
-          <div className="nx-sub">
-            Canonical hash-chained property intelligence ledger. Only the Passport Service
-            appends. Reports and Habitat consume read-only projections.
+          <div className="nx-page-eyebrow">// PROPERTY PASSPORT</div>
+          <h1 className="nx-page-title">Passport Ledger</h1>
+          <div className="nx-page-sub">
+            Canonical hash-chained property intelligence record. Only the Passport Service appends.
+            Reports and Habitat consume read-only projections.
           </div>
         </div>
-        <select className="nx-select" style={{ width: 320 }} value={pid || ""}
-          onChange={(e) => setPid(e.target.value)} data-testid="nx-passport-property">
-          {properties.map((p) => (
-            <option key={p.canonical_id} value={p.canonical_id}>
-              {p.address.line1}, {p.address.city} {p.address.region}
-            </option>
-          ))}
-        </select>
+        {properties.length > 0 && (
+          <select className="nx-select" style={{ maxWidth: 360 }} value={pid || ""}
+            onChange={(e) => setPid(e.target.value)} data-testid="nx-passport-property">
+            {properties.map((p) => (
+              <option key={p.canonical_id} value={p.canonical_id}>
+                {p.address.line1}, {p.address.city} {p.address.region}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
-      {/* AWE Composite + Share */}
-      {awe && (
-        <>
-          <h2 className="nx-h2"><span className="num">§00</span>AWE Composite · Deterministic (Directive 008)</h2>
-          <div className="nx-grid cols-4" data-testid="nx-awe-panel">
-            {["air", "water", "energy"].map((k) => {
-              const score = awe[k].score;
-              const color = score >= 80 ? "#00FF9C" : score >= 60 ? "#FFB020" : "#FF5A5F";
-              return (
-                <div key={k} className="nx-stat">
-                  <div className="k">// {k}</div>
-                  <div className="v" style={{ color, fontSize: 34 }}>{score}</div>
-                  <div className="s">{awe[k].contributing_pios} contributing PIOs</div>
-                </div>
-              );
-            })}
-            <div className="nx-stat" style={{ borderColor: "#FFB020" }}>
-              <div className="k">// Composite Index</div>
-              <div className="v" style={{ color: "#FFB020", fontSize: 40 }}>{awe.composite_index}</div>
-              <div className="s">Release · <b style={{ color: "#FFB020" }}>{awe.release_state}</b> · Conf {awe.confidence_pct}% · Evidence {awe.evidence_completeness_pct}%</div>
+      {/* Identity + status summary */}
+      {property && (
+        <div className="nx-card elevated" data-testid="nx-passport-header">
+          <div className="nx-flex-between">
+            <div>
+              <div className="nx-label">Property Identity</div>
+              <div style={{ fontSize: 20, color: "#fff", marginTop: 4, fontWeight: 700 }}>
+                {property.address.line1}
+              </div>
+              <div style={{ color: "var(--nx-text-secondary)", marginTop: 2, fontSize: 13 }}>
+                {property.address.city}, {property.address.region} · {property.canonical_id.slice(0, 10).toUpperCase()}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <span className={`nx-pill ${passport?.passport ? "ok" : "warn"}`} data-testid="nx-passport-state">
+                <ShieldCheck size={12} strokeWidth={2} /> {passport?.passport ? "Active" : "Pending"}
+              </span>
+              <div className="nx-label" style={{ marginTop: 8 }}>
+                Last update · {timeline[0]?.at?.slice(0, 10) || "—"}
+              </div>
             </div>
           </div>
 
-          <div className="nx-panel" style={{ marginTop: 14 }}>
-            <div className="corner">// DIRECTIVE 008 · HOMEOWNER DELIVERY</div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div className="nx-grid cols-4" style={{ marginTop: 18 }}>
+            <div className="nx-metric-block">
+              <div className="k">Inspections</div>
+              <div className="v cy">
+                {timeline.filter((t) => t.kind === "INSPECTION").length}
+              </div>
+            </div>
+            <div className="nx-metric-block">
+              <div className="k">Findings</div>
+              <div className="v">{passport?.entries?.length || 0}</div>
+            </div>
+            <div className="nx-metric-block">
+              <div className="k">Timeline</div>
+              <div className="v or">{timeline.length}</div>
+            </div>
+            <div className="nx-metric-block">
+              <div className="k">AWE</div>
+              <div className="v gd">{awe?.composite_index ?? "—"}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AWE band */}
+      {awe && (
+        <>
+          <div className="nx-section-title">
+            <span className="num">§01</span>
+            <span className="label">AWE Composite</span>
+            <span className="rule" />
+            <Link to="/nextgen/awe" className="nx-card-action" data-testid="nx-passport-open-awe">
+              Details <ArrowUpRight size={13} strokeWidth={1.8} />
+            </Link>
+          </div>
+          <div className="nx-awe-band" data-testid="nx-passport-awe">
+            <MiniRing label="Air" v={awe.air.score} color="#4DF6FF" icon={<Wind size={16} strokeWidth={1.6} />} />
+            <MiniRing label="Water" v={awe.water.score} color="#4DF6FF" icon={<Droplet size={16} strokeWidth={1.6} />} />
+            <MiniRing label="Energy" v={awe.energy.score} color="#FF7B00" icon={<Sun size={16} strokeWidth={1.6} />} />
+            <MiniRing label="Composite" v={awe.composite_index} color="#FFB020" icon={<Sparkles size={16} strokeWidth={1.6} />} />
+          </div>
+          <div className="nx-flex nx-gap-3" style={{ marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span className={`nx-pill ${awe.release_state === "CALIBRATED_GENERAL" ? "ok" : "warn"}`}>
+              {awe.release_state.replace(/_/g, " ")}
+            </span>
+            <span className="nx-label">Confidence · {awe.confidence_pct}%</span>
+            <span className="nx-label">Evidence · {awe.evidence_completeness_pct}%</span>
+          </div>
+        </>
+      )}
+
+      {/* Share controls */}
+      {pid && (
+        <>
+          <div className="nx-section-title">
+            <span className="num">§02</span>
+            <span className="label">Homeowner Share</span>
+            <span className="rule" />
+          </div>
+          <div className="nx-card">
+            <div className="nx-flex nx-gap-3" style={{ flexWrap: "wrap", alignItems: "center" }}>
               <button className="nx-btn" disabled={linkBusy}
                 onClick={async () => {
                   setLinkBusy(true);
@@ -102,148 +167,197 @@ export default function PassportPage() {
                   } finally { setLinkBusy(false); }
                 }}
                 data-testid="nx-share-homeowner">
-                {linkBusy ? "Issuing…" : "Share with Homeowner (copy link)"}
+                <Share2 size={16} strokeWidth={1.8} />
+                {linkBusy ? "Issuing…" : "Share with Homeowner"}
               </button>
               <a className="nx-btn ghost" target="_blank" rel="noreferrer"
                 href={nxHabitatReportHtmlUrl(pid, template)}
-                data-testid="nx-open-html-report">Open HTML Report</a>
-              {linkOut && (
-                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
-                  color: "#00FF9C", marginLeft: 8, wordBreak: "break-all", flex: 1 }}>
-                  {linkOut.url}
-                  <div style={{ color: "#8A9BAE", fontSize: 10, marginTop: 4 }}>
-                    Expires {new Date(linkOut.expires_at).toLocaleString()} · copied to clipboard
-                  </div>
-                </div>
-              )}
+                data-testid="nx-open-html-report">
+                <ExternalLink size={14} /> Open HTML Report
+              </a>
+              <Link to="/nextgen/habitat" className="nx-btn subtle" data-testid="nx-manage-habitat">
+                Manage Links
+              </Link>
             </div>
+            {linkOut && (
+              <div className="nx-copied-inline" data-testid="nx-share-out">
+                <Check size={14} color="var(--nx-success)" />
+                <span style={{ color: "var(--nx-success)", fontFamily: "var(--nx-font-mono)", fontSize: 12, wordBreak: "break-all" }}>
+                  {linkOut.url}
+                </span>
+                <span className="nx-label">Expires {new Date(linkOut.expires_at).toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </>
       )}
 
-      {/* Passport ledger */}
-      <h2 className="nx-h2"><span className="num">§01</span>Passport Ledger</h2>
-      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-        {["internal", "contractor", "homeowner", "adjuster", "insurer"].map((a) => (
-          <button key={a} className={`nx-btn ${audience === a ? "" : "ghost"} small`}
+      {/* Ledger */}
+      <div className="nx-section-title">
+        <span className="num">§03</span>
+        <span className="label">Passport Ledger</span>
+        <span className="rule" />
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {AUDIENCES.map((a) => (
+          <button key={a} className={`nx-filter-chip ${audience === a ? "active" : ""}`}
             onClick={() => setAudience(a)} data-testid={`nx-passport-audience-${a}`}>{a}</button>
         ))}
       </div>
       {!passport?.passport ? (
-        <div className="nx-empty">No passport for this property yet</div>
+        <div className="nx-empty" data-testid="nx-passport-empty">No passport for this property yet</div>
       ) : (
-        <div className="nx-panel" style={{ padding: 0 }}>
-          <table className="nx-table">
-            <thead><tr>
-              <th>Seq</th><th>Type</th><th>System / Component</th><th>Severity</th>
-              <th>Prior Hash</th><th>Content Hash</th><th>Signed At</th>
-            </tr></thead>
-            <tbody>
-              {passport.entries.map((e) => (
-                <tr key={e.canonical_id}>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", color: "#FFB020" }}>#{e.seq}</td>
-                  <td><span className="nx-pill">{e.entry_type}</span></td>
-                  <td style={{ fontSize: 11 }}>
-                    {e.payload?.building_system ? `${e.payload.building_system} / ${e.payload.building_component}` : "—"}
-                  </td>
-                  <td>{e.payload?.severity && <span className="nx-pill gold">{e.payload.severity}</span>}</td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#8A9BAE" }}>
-                    {e.prior_hash ? e.prior_hash.slice(0, 12) + "…" : "GENESIS"}
-                  </td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#00FF9C" }}>
-                    {e.content_hash.slice(0, 12)}…
-                  </td>
-                  <td style={{ fontSize: 10, color: "#8A9BAE" }}>{e.at.slice(0, 19).replace("T", " ")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="nx-card" style={{ padding: 0 }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="nx-table">
+              <thead><tr>
+                <th>Seq</th><th>Type</th><th>System / Component</th><th>Severity</th>
+                <th>Prior Hash</th><th>Content Hash</th><th>Signed</th>
+              </tr></thead>
+              <tbody>
+                {passport.entries.map((e) => (
+                  <tr key={e.canonical_id}>
+                    <td style={{ fontFamily: "var(--nx-font-mono)", color: "var(--nx-orange)" }}>#{e.seq}</td>
+                    <td><span className="nx-pill">{e.entry_type}</span></td>
+                    <td style={{ fontSize: 12 }}>
+                      {e.payload?.building_system ? `${e.payload.building_system} / ${e.payload.building_component}` : "—"}
+                    </td>
+                    <td>{e.payload?.severity && <span className="nx-pill gold">{e.payload.severity}</span>}</td>
+                    <td style={{ fontFamily: "var(--nx-font-mono)", fontSize: 10, color: "var(--nx-text-muted)" }}>
+                      {e.prior_hash ? e.prior_hash.slice(0, 12) + "…" : "GENESIS"}
+                    </td>
+                    <td style={{ fontFamily: "var(--nx-font-mono)", fontSize: 10, color: "var(--nx-success)" }}>
+                      {e.content_hash.slice(0, 12)}…
+                    </td>
+                    <td style={{ fontSize: 11, color: "var(--nx-text-muted)" }}>
+                      {e.at.slice(0, 19).replace("T", " ")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Timeline */}
-      <h2 className="nx-h2"><span className="num">§02</span>Property Timeline</h2>
+      <div className="nx-section-title">
+        <span className="num">§04</span>
+        <span className="label">Property Timeline</span>
+        <span className="rule" />
+      </div>
       {timeline.length === 0 ? (
-        <div className="nx-empty">No timeline entries yet</div>
+        <div className="nx-empty" data-testid="nx-timeline-empty">No timeline entries yet</div>
       ) : (
-        <div className="nx-panel">
-          <div className="corner">// PERMANENT PROPERTY HISTORY</div>
+        <div className="nx-card" data-testid="nx-timeline">
           {timeline.map((t) => (
-            <div key={t.canonical_id} style={{
-              display: "grid", gridTemplateColumns: "160px 200px 1fr",
-              gap: 12,
-              padding: "10px 0", borderBottom: "1px solid #1D2836", fontSize: 12,
-              alignItems: "center",
-            }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#8A9BAE", fontSize: 10 }}>
-                {t.at.slice(0, 19).replace("T", " ")}
-              </span>
-              <span className="nx-pill" style={{ width: "fit-content", whiteSpace: "nowrap" }}>{t.kind}</span>
-              <span style={{ color: "#E6EEF6", minWidth: 0 }}>{t.summary}</span>
+            <div key={t.canonical_id} className="nx-timeline-row">
+              <span className="dot" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="nx-flex-between">
+                  <span style={{ color: "#fff", fontSize: 14 }}>{t.summary}</span>
+                  <span className="nx-pill">{t.kind}</span>
+                </div>
+                <div className="nx-label" style={{ marginTop: 4 }}>
+                  {t.at.slice(0, 19).replace("T", " ")}
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {/* Report projections */}
-      <h2 className="nx-h2"><span className="num">§03</span>Report Projections</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+      <div className="nx-section-title">
+        <span className="num">§05</span>
+        <span className="label">Report Projections</span>
+        <span className="rule" />
+        <Link to="/nextgen/reports" className="nx-card-action" data-testid="nx-passport-open-reports">
+          Full Binder <ArrowUpRight size={13} strokeWidth={1.8} />
+        </Link>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {templates.map((t) => (
-          <button key={t} className={`nx-btn ${template === t ? "" : "ghost"} small`}
+          <button key={t} className={`nx-filter-chip ${template === t ? "active" : ""}`}
             onClick={() => setTemplate(t)} data-testid={`nx-report-template-${t}`}>
             {t}
           </button>
         ))}
       </div>
       {report && (
-        <div className="nx-panel">
-          <div className="corner">// PROJECTION · READ-ONLY · SOURCED FROM INTELLIGENCE ENGINE</div>
-          <div className="nx-grid cols-4" style={{ marginBottom: 12 }}>
-            <div className="nx-stat">
-              <div className="k">// Items</div><div className="v">{report.report.counts.total}</div>
+        <div className="nx-card">
+          <div className="nx-grid cols-4">
+            <div className="nx-metric-block">
+              <div className="k">Items</div><div className="v cy">{report.report.counts.total}</div>
             </div>
-            <div className="nx-stat">
-              <div className="k">// Highest Severity</div>
-              <div className="v gd" style={{ fontSize: 22 }}>{report.report.highest_severity}</div>
+            <div className="nx-metric-block">
+              <div className="k">Highest Severity</div>
+              <div className="v gd" style={{ fontSize: 22 }}>{report.report.highest_severity || "—"}</div>
             </div>
-            <div className="nx-stat">
-              <div className="k">// AWE · Water</div>
-              <div className="v cy">{report.report.counts.awe.water}</div>
+            <div className="nx-metric-block">
+              <div className="k">AWE · Water</div>
+              <div className="v">{report.report.counts.awe.water}</div>
             </div>
-            <div className="nx-stat">
-              <div className="k">// AWE · Energy</div>
-              <div className="v cy">{report.report.counts.awe.energy}</div>
+            <div className="nx-metric-block">
+              <div className="k">AWE · Energy</div>
+              <div className="v">{report.report.counts.awe.energy}</div>
             </div>
           </div>
-
-          {report.report.items.length === 0 ? (
-            <div className="nx-empty">No approved intelligence visible to this template</div>
-          ) : (
-            <table className="nx-table">
-              <thead><tr>
-                {Object.keys(report.report.items[0]).map((k) => (
-                  <th key={k}>{k}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {report.report.items.map((row, i) => (
-                  <tr key={i}>
-                    {Object.entries(row).map(([k, v]) => (
-                      <td key={k} style={{ fontSize: 11 }}>
-                        {typeof v === "object" ? (
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
-                            {JSON.stringify(v)}
-                          </span>
-                        ) : String(v)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       )}
+
+      <PassportStyles />
     </div>
+  );
+}
+
+function MiniRing({ label, v, color, icon }) {
+  const val = Math.max(0, Math.min(100, v || 0));
+  const R = 40, C = 2 * Math.PI * R, off = C - (val / 100) * C;
+  return (
+    <div className="nx-awe-ring">
+      <div style={{ position: "relative", display: "inline-flex" }}>
+        <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="50" cy="50" r={R} stroke="rgba(77,246,255,0.08)" strokeWidth="8" fill="none" />
+          <circle cx="50" cy="50" r={R} stroke={color} strokeWidth="8" fill="none"
+            strokeLinecap="round" strokeDasharray={C} strokeDashoffset={off} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontFamily: "var(--nx-font-tech)", fontVariantNumeric: "tabular-nums", fontSize: 24, fontWeight: 700, color }}>{val}</div>
+        </div>
+      </div>
+      <div className="ring-label">
+        {icon}
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function PassportStyles() {
+  return (
+    <style>{`
+      .nx-timeline-row {
+        display: flex; gap: 14px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--nx-border);
+        align-items: flex-start;
+      }
+      .nx-timeline-row:last-child { border-bottom: none; }
+      .nx-timeline-row .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--nx-cyan); flex-shrink: 0; margin-top: 5px;
+        box-shadow: 0 0 12px var(--nx-cyan);
+      }
+      .nx-copied-inline {
+        display: flex; gap: 10px; align-items: center; margin-top: 12px;
+        padding: 10px 12px;
+        background: rgba(53,227,154,0.06);
+        border: 1px solid rgba(53,227,154,0.4);
+        border-radius: var(--nx-r-sm);
+        flex-wrap: wrap;
+      }
+    `}</style>
   );
 }

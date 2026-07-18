@@ -13,6 +13,8 @@ export default function BackToLauncher() {
 
   // Don't show on the launcher itself.
   if (loc.pathname === "/") return null;
+  // Directive 009 — Stratex Core owns its own navigation chrome.
+  if (loc.pathname.startsWith("/nextgen")) return null;
 
   return (
     <button

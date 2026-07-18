@@ -66,7 +66,10 @@ import NextGenEvidence from "@/nextgen/EvidencePage";
 import NextGenIntelligence from "@/nextgen/IntelligencePage";
 import NextGenPassport from "@/nextgen/PassportPage";
 import HabitatPublic from "@/nextgen/HabitatPublic";
-import { AweStub, ReportsStub, HabitatStub, OrgStub } from "@/nextgen/StubPages";
+import NextGenReports from "@/nextgen/ReportsBinderPage";
+import NextGenAwe from "@/nextgen/AwePage";
+import NextGenHabitat from "@/nextgen/HabitatPage";
+import NextGenOrganization from "@/nextgen/OrganizationPage";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -203,11 +206,11 @@ function AppShell() {
           <Route path="missions/:missionId/evidence" element={<NextGenEvidence/>}/>
           <Route path="missions/:missionId/intelligence" element={<NextGenIntelligence/>}/>
           <Route path="passport" element={<NextGenPassport/>}/>
-          <Route path="awe" element={<AweStub/>}/>
-          <Route path="reports" element={<ReportsStub/>}/>
-          <Route path="habitat" element={<HabitatStub/>}/>
+          <Route path="awe" element={<NextGenAwe/>}/>
+          <Route path="reports" element={<NextGenReports/>}/>
+          <Route path="habitat" element={<NextGenHabitat/>}/>
           <Route path="audit" element={<NextGenAudit/>}/>
-          <Route path="org" element={<OrgStub/>}/>
+          <Route path="org" element={<NextGenOrganization/>}/>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>
