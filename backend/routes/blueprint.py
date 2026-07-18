@@ -19,9 +19,17 @@ from fastapi.responses import FileResponse, PlainTextResponse
 router = APIRouter(prefix="/api/blueprint", tags=["blueprint"])
 
 MEMORY = Path("/app/memory")
+# v1.0 (preserved)
 BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT.md"
 APPENDIX_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REVIEW_APPENDIX.md"
 PDF_PATH = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Architecture_Blueprint_v1.0.pdf"
+
+# v1.1 (current, revised)
+BLUEPRINT_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md"
+REDLINE_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.0_to_v1.1.md"
+ADRs_V11_MD = MEMORY / "NEXTGEN_ARCHITECTURE_ADRs_v1.1.md"
+SUMMARY_V11_MD = MEMORY / "NEXTGEN_EXECUTIVE_SUMMARY_v1.1.md"
+PDF_V11_PATH = MEMORY / "_blueprint_out" / "STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf"
 
 
 @router.get("/md")
@@ -81,4 +89,59 @@ async def blueprint_pdf():
         str(PDF_PATH),
         media_type="application/pdf",
         filename="STRATEX_NextGen_Architecture_Blueprint_v1.0.pdf",
+    )
+
+
+# ── Version 1.1 endpoints (current, revised) ─────────────────────────
+def _serve_md(path: Path, filename: str):
+    if not path.exists():
+        raise HTTPException(404, f"{filename} not found")
+    return PlainTextResponse(
+        path.read_text(),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/v1.1/md")
+async def blueprint_v11_md():
+    return _serve_md(BLUEPRINT_V11_MD, "STRATEX_NextGen_Architecture_Blueprint_v1.1.md")
+
+
+@router.get("/v1.1/redline")
+async def blueprint_v11_redline():
+    return _serve_md(REDLINE_V11_MD, "STRATEX_Blueprint_v1.1_REDLINE.md")
+
+
+@router.get("/v1.1/adrs")
+async def blueprint_v11_adrs():
+    return _serve_md(ADRs_V11_MD, "STRATEX_Blueprint_v1.1_ADRs.md")
+
+
+@router.get("/v1.1/summary")
+async def blueprint_v11_summary():
+    return _serve_md(SUMMARY_V11_MD, "STRATEX_Blueprint_v1.1_Executive_Summary.md")
+
+
+@router.get("/v1.1/pdf")
+async def blueprint_v11_pdf():
+    if not PDF_V11_PATH.exists():
+        raise HTTPException(404, "v1.1 PDF not yet rendered.")
+    return FileResponse(
+        str(PDF_V11_PATH),
+        media_type="application/pdf",
+        filename="STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf",
+    )
+
+
+@router.get("/v1.0/preserved-pdf")
+async def blueprint_v10_preserved_pdf():
+    """Confirm v1.0 is preserved read-only for comparison."""
+    p = MEMORY / "_v1.0_PRESERVED_Blueprint.pdf"
+    if not p.exists():
+        raise HTTPException(404, "v1.0 preserved copy not found")
+    return FileResponse(
+        str(p),
+        media_type="application/pdf",
+        filename="STRATEX_NextGen_Architecture_Blueprint_v1.0_PRESERVED.pdf",
     )

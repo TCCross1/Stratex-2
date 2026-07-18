@@ -17,13 +17,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MEMORY = Path("/app/memory")
-BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT.md"
+BLUEPRINT_MD = MEMORY / "NEXTGEN_ARCHITECTURE_BLUEPRINT_v1.1.md"
+REDLINE_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REDLINE_v1.0_to_v1.1.md"
+ADRs_MD = MEMORY / "NEXTGEN_ARCHITECTURE_ADRs_v1.1.md"
+SUMMARY_MD = MEMORY / "NEXTGEN_EXECUTIVE_SUMMARY_v1.1.md"
 APPENDIX_MD = MEMORY / "NEXTGEN_ARCHITECTURE_REVIEW_APPENDIX.md"
 
 OUT_DIR = MEMORY / "_blueprint_out"
 OUT_DIR.mkdir(exist_ok=True)
-OUT_HTML = OUT_DIR / "blueprint.html"
-OUT_PDF = OUT_DIR / "STRATEX_NextGen_Architecture_Blueprint_v1.0.pdf"
+OUT_HTML = OUT_DIR / "blueprint_v1.1.html"
+OUT_PDF = OUT_DIR / "STRATEX_NextGen_Architecture_Blueprint_v1.1.pdf"
 
 
 def md_to_html(md: str) -> str:
@@ -140,28 +143,39 @@ def build_toc(md: str) -> str:
 def build_html():
     blueprint_md = BLUEPRINT_MD.read_text()
     appendix_md = APPENDIX_MD.read_text()
-    combined_md = blueprint_md + "\n\n---\n\n" + appendix_md
+    redline_md = REDLINE_MD.read_text()
+    adrs_md = ADRs_MD.read_text()
+    summary_md = SUMMARY_MD.read_text()
+    combined_md = (
+        summary_md + "\n\n---\n\n"
+        + blueprint_md + "\n\n---\n\n"
+        + redline_md + "\n\n---\n\n"
+        + adrs_md + "\n\n---\n\n"
+        + "# ORIGINAL v1.0 REVIEW APPENDIX (Q1-Q14)\n"
+        + "*Preserved verbatim for reference. Answers superseded where v1.1 §§10–17 address them.*\n\n"
+        + appendix_md
+    )
 
     body_html = md_to_html(combined_md)
     toc_html = build_toc(combined_md)
 
-    today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    today = "February 26, 2026"  # explicit per v1.1 correction §16
 
     html = f"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
-<title>STRATEX Core NextGen Architecture Blueprint v1.0</title>
+<title>STRATEX Core NextGen Architecture Blueprint v1.1</title>
 <style>
   @page {{
     size: Letter;
     margin: 22mm 18mm 22mm 18mm;
     @top-left {{
-      content: "STRATEX™ · CROSS AI SOFTWARES INC. · CONFIDENTIAL";
+      content: "STRATEX™ · CROSS AI SOFTWARES INC. · CONFIDENTIAL — PROPRIETARY";
       font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
       color: #667; letter-spacing: 0.14em;
     }}
     @top-right {{
-      content: "NextGen Architecture Blueprint v1.0";
+      content: "NextGen Architecture Blueprint v1.1";
       font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt;
       color: #667; letter-spacing: 0.10em;
     }}
@@ -289,11 +303,11 @@ def build_html():
     <div class="subtitle">
       Residential Property Intelligence Operating System —
       Stratex Core · Stratex Passport · Stratex Habitat.
-      Executive review package for Phase 1 authorization.
+      Version 1.1 executive review package incorporating 20 mandatory corrections.
     </div>
-    <div class="status-pill">STATUS · DRAFT · AWAITING EXECUTIVE APPROVAL</div>
+    <div class="status-pill">STATUS · REVISED v1.1 · AWAITING EXECUTIVE APPROVAL</div>
     <div class="meta">
-      VERSION 1.0 · {today} · CONFIDENTIAL · CLASSIFICATION: BLACK-OPS
+      VERSION 1.1 · REVISED {today} · CONFIDENTIAL — PROPRIETARY
     </div>
   </div>
   <div class="cover-bottom">
