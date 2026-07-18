@@ -133,6 +133,7 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [x] **NextGen Architecture Blueprint v1.2 (Feb 26 2026)** — Blueprint frozen at v1.2 with 20 v1.1 corrections + 10 v1.2 consistency corrections. Served via `/api/blueprint/v1.2/*` (MD/PDF/redline/ADRs). **Executive approval pending.**
 - [x] **Sequence Diagrams Pack v1.0 (Feb 26 2026 · Directive 003)** — 24 sequence diagrams (SD-001…SD-024) covering onboarding, identity resolution, product selection, planning, preflight, flight, capture finalization, DayScan/AWE/Elite processing, agent execution, finding lifecycle, report generation, passport append, Habitat sync, claim snapshot, adjuster co-sign, corrections, identity operations, failed missions, retention, public projections, durable-event recovery, and the end-to-end 15-stage workflow. Served via `/api/blueprint/sequence-diagrams/v1.0/{md,pdf}`. **Documentation only. Awaiting executive review.**
 - [x] **Canonical Data Model Specification v1.0 (Feb 26 2026 · Directive 003)** — Ten logical domains (Tenants, Properties, Missions, Inspections, Evidence, Findings, Agents, Workflows, Passports, Audit) with ~100 entities, shared value objects, enum separation, ten ER diagrams, twenty invariants, normalization/pragmatism review, and cross-artifact traceability matrix mapping every SD to its entities/audit/durable events. Served via `/api/blueprint/canonical-data-model/v1.0/{md,pdf}`. **Logical specification only. No migrations authored. Awaiting executive review.**
+- [x] **Directive 005 · Phase 1a — Legacy Freeze + NextGen Foundation (Feb 26 2026)** — Backend NextGen module at `/api/nextgen/*` isolated from legacy: catalog (3 products), organizations, properties (SD-002 identity resolution + create + duplicate detection), missions (SD-003 create + SD-024 stage advance), passports (Phase 1c read stub), workflow overview, audit trail. Frontend NextGen shell at `/nextgen/*` with sidebar nav, 15-stage strip, mission-control aesthetic, dark base + cyan/gold Directive-005 visual contract, Blueprint §20.1 demo-honesty banner. **Executive gates for production deploy / legacy deletion / passport-authority change / vendor cost >$250 remain withheld.** Verified 100% (backend 19/19 · full UI happy path).
 - [ ] True vision-grounded Gemini (attach uploaded images to the LLM call so
       the analysis reflects what's actually in the photos, not just the dossier)
 - [ ] Three.js parametric twin renderer driven by REAL scan data (Track B —
@@ -154,10 +155,11 @@ A manifest is recorded at `/app/backend/data/manifests/{scan_id}_manifest.json`.
 - [ ] CSV / DOCX report export
 
 ## Project Health
-- Backend: **OPERATIONAL** · 13-page PDF renders in ~25s · sample endpoint <200ms
-- Frontend: **OPERATIONAL** · Switchboard + analysis dashboard fully wired
+- Backend: **OPERATIONAL** · 13-page PDF renders in ~25s · sample endpoint <200ms · NextGen `/api/nextgen/*` module live (Phase 1a)
+- Frontend: **OPERATIONAL** · Switchboard + analysis dashboard fully wired · NextGen shell live at `/nextgen/*` (Phase 1a)
 - Demo flow: **READY for live pitch** (`/` → "New Drone Scan" → analysis → PDF)
 - Production deployment (stratexdrone.com): **stale** — user must redeploy
+- NextGen Phase 1a: **DELIVERED** · 19/19 backend tests · full UI happy path passed (iteration_22)
 
 ## Architecture
 - `/app/backend/` — FastAPI, MongoDB, Stripe, Emergent LLM key (Gemini), Twilio
