@@ -1,0 +1,64 @@
+{
+  "verdict": "not_fixed",
+  "user_reported_bug": "Where I have red circles, I want you to put the first image that is the logo. I want you to also place anywhere anywhere else on any other windows around to see something that looks like inside the red circle and scale it to the right size",
+  "summary": "Focused verification found the approved STRATEX CORE PNG is served correctly and the 3 original root locations use it with correct desktop sizing. /nextgen desktop rail and hero also use it. However, the /nextgen mobile header logo is not centered in the 390x844 viewport because the mobile layout horizontally overflows; the logo center measured 158px right of viewport center. Since the requested extended mobile logo placement is still visibly misaligned, the fix is partial only.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "NextGenShell mobile header",
+        "issue": "The real STRATEX CORE logo is present in the mobile top header, but it is not centered at 390x844. DOM metrics: viewport width 390, logo bbox x=323.25 width=60, logo center=353.25 vs viewport center=195 (delta +158.25). Header row width expands to 674.5 due horizontal overflow, so the logo appears pushed to the right instead of centered.",
+        "selector": "[data-testid=\"nx-mobile-header-logo\"]",
+        "priority": "HIGH"
+      },
+      {
+        "component": "NextGen mobile layout",
+        "issue": "The /nextgen mobile page has horizontal overflow (document/body scroll width measured 707px at 390px viewport), contributing to clipped hero content and the off-center header logo.",
+        "selector": "[data-testid=\"nextgen-shell\"] / [data-testid=\"nx-hero\"]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/nextgen mobile 390x844",
+        "issues": [
+          "Mobile header logo is real logo image and 40px tall, but not visually centered as requested.",
+          "Hero/content width overflows the viewport, causing visible clipping/sideways layout on mobile."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/bug_verification_27_logo_replacement.py",
+    "/app/test_reports/bug_verification_27.json",
+    "/app/test_reports/iteration_27.json"
+  ],
+  "action_items": [
+    "Fix /nextgen mobile horizontal overflow so .nx-mobile-header-row width stays within the viewport at 390px.",
+    "Center [data-testid=\"nx-mobile-header-logo\"] in the mobile top header relative to the viewport, not the overflowing content width.",
+    "Re-test the focused logo placements after the mobile centering/layout fix."
+  ],
+  "critical_code_review_comments": [
+    "No relevant testing skill found.",
+    "Code review confirms root Nav, Landing rail/home splash, NextGen desktop rail, mobile header, and BrandLogo now reference /brand/stratex-core-logo.png.",
+    "The approved asset exists locally as PNG 1536x1024, 882306 bytes, and preview returns HTTP 200 image/png content-length 882306. It is not the red-circle screenshot."
+  ],
+  "updated_files": [
+    "/app/tests/bug_verification_27_logo_replacement.py",
+    "/app/test_reports/bug_verification_27.json",
+    "/app/test_reports/iteration_27.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "85%"
+  },
+  "seed_data_creation": "No seed data created. Used existing CEO credential Tony@Stratexdrone.com / 1111.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Root desktop checks passed: nav-home-logo 58x40, rail-home 79x54, splash logo 576x384 all use /brand/stratex-core-logo.png; CTA navigates to protected /nextgen then /auth for anonymous. CEO login succeeded, /nextgen desktop rail image 219x88 and hero image 460x356.5 both use the real PNG. Failing case: /nextgen mobile 390x844 header logo bbox x=323.25,w=60, center delta +158.25, bodyScrollWidth=707, row width=674.5.",
+  "rca_of_the_issue": "The logo replacement itself is implemented, but the /nextgen mobile layout still overflows horizontally. Because the mobile header flex row expands to the overflowing content width, the center logo is centered inside an oversized row, not the viewport, leaving the visible logo pushed far right. Reproduce: log in via /ceo/login, set viewport to 390x844, open /nextgen, inspect [data-testid=\"nx-mobile-header-logo\"] bounding box and page scroll width."
+}

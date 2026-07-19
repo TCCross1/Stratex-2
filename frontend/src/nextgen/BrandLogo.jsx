@@ -5,9 +5,9 @@ import React from "react";
    Emblem-only + horizontal + full — respect proportions, no cropping. */
 
 export const BRAND = {
-  emblem: "/brand/stratex-emblem.svg",
-  horizontal: "/brand/stratex-core-horizontal.svg",
-  full: "/brand/stratex-core-full.svg",
+  emblem: "/brand/stratex-emblem.svg",       // compact hexagon (nav/tab bars, favicons)
+  horizontal: "/brand/stratex-core-logo.png", // full brand for header/rail/hero
+  full: "/brand/stratex-core-logo.png",     // approved master image
   icon: "/brand/stratex-icon.svg",
 };
 

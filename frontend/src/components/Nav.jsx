@@ -69,10 +69,19 @@ export default function Nav({ role }) {
     <nav data-testid="primary-nav" className="sticky top-0 z-50 backdrop-blur-md bg-[#06080B]/85 border-b border-[#00F0FF]/15 safe-top">
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-3">
         <Link to={user ? (user.role === "admin" ? "/admin/sales" : user.role === "operator" ? "/operator" : "/contractor") : "/"} data-testid="nav-home-logo" className="flex items-center gap-3 min-w-0" onClick={()=>setOpen(false)}>
-          <img src={ASSETS.logo} alt="STRATEX" className="h-8 md:h-9 w-auto"/>
+          <img
+            src={ASSETS.stratex_core_logo}
+            alt="STRATEX CORE"
+            className="h-9 md:h-10 w-auto rounded-md object-contain"
+            style={{
+              background: "#000",
+              boxShadow: "0 0 12px rgba(77,246,255,0.35), inset 0 0 0 1px rgba(77,246,255,0.25)",
+              padding: 2,
+            }}
+          />
           <div className="hidden sm:flex flex-col leading-tight min-w-0">
-            <span className="font-display text-[10px] tracking-[0.34em] text-muted-hud truncate">STRATEGIC THERMAL RECON</span>
-            <span className="font-display text-[11px] tracking-[0.34em] text-teal glow-teal truncate">/ TOPOLOGY ESTIMATOR</span>
+            <span className="font-display text-[10px] tracking-[0.34em] text-muted-hud truncate">STRATEX CORE</span>
+            <span className="font-display text-[11px] tracking-[0.34em] text-teal glow-teal truncate">/ PROPERTY INTELLIGENCE</span>
           </div>
         </Link>
 

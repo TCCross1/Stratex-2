@@ -81,15 +81,23 @@ function AppRail({ activeId, onPick }) {
         backdropFilter: "blur(14px)",
       }}
     >
-      {/* logo top */}
+      {/* STRATEX CORE brand mark — click returns to splash */}
       <button
         data-testid="rail-home"
         onClick={() => onPick(null)}
         className="block w-full px-2 mb-3"
-        title="Home — STRATEX™ splash"
+        title="Home — STRATEX CORE"
       >
-        <img src={ASSETS.logo} alt="STRATEX" className="w-full h-auto rounded-md"
-             style={{ filter: "drop-shadow(0 0 8px rgba(0,245,212,0.5))" }}/>
+        <img
+          src={ASSETS.stratex_core_logo}
+          alt="STRATEX CORE"
+          className="w-full h-auto rounded-md object-contain"
+          style={{
+            background: "#000",
+            boxShadow: "0 0 14px rgba(77,246,255,0.35), inset 0 0 0 1px rgba(77,246,255,0.28)",
+            padding: 2,
+          }}
+        />
       </button>
 
       <div className="border-t mx-2 mb-3" style={{ borderColor: "rgba(0,229,255,0.18)" }}/>
@@ -458,12 +466,14 @@ function LogoSplash({ onPickInfo }) {
         <span key={i} className={`absolute ${cls} w-5 h-5`} style={{ borderColor: "#4DF6FF" }}/>
       ))}
 
-      {/* STRATEX CORE hero */}
+      {/* STRATEX CORE hero — approved brand asset */}
       <img
-        src="/brand/stratex-core-full.svg"
+        src="/brand/stratex-core-logo.png"
         alt="STRATEX CORE — Property Intelligence Platform"
-        className="w-full max-w-xs sm:max-w-md md:max-w-xl h-auto"
-        style={{ filter: "drop-shadow(0 0 40px rgba(77,246,255,0.35))" }}
+        className="w-full max-w-xs sm:max-w-md md:max-w-xl h-auto rounded-lg"
+        style={{
+          boxShadow: "0 0 60px rgba(77,246,255,0.25), inset 0 0 0 1px rgba(77,246,255,0.18)",
+        }}
         data-testid="splash-stratex-core-logo"
       />
 

@@ -93,11 +93,12 @@ function DesktopRail() {
   return (
     <aside className="nx-rail" data-testid="nx-rail">
       <Link to="/nextgen" className="nx-rail-brand" data-testid="nx-rail-brand">
-        <BrandLogo variant="emblem" height={36} width={36} className="nx-rail-brand-mark" />
-        <div className="nx-rail-brand-text">
-          <span className="n">STRAT<span className="x">X</span></span>
-          <span className="c">CORE</span>
-        </div>
+        <img
+          src="/brand/stratex-core-logo.png"
+          alt="STRATEX CORE"
+          className="nx-rail-brand-image"
+          data-testid="nx-rail-brand-image"
+        />
       </Link>
 
       <div className="nx-rail-scroll">
@@ -164,11 +165,12 @@ function MobileHeader({ onMoreClick }) {
         )}
 
         <div className="center" onClick={() => nav("/nextgen")} style={{ cursor: "pointer" }}>
-          <div className="brand-line">
-            <BrandLogo variant="emblem" height={22} width={22} ariaLabel="Stratex Core" />
-            <span className="brand-text">STRAT<span className="x">X</span></span>
-          </div>
-          <span className="brand-core">CORE</span>
+          <img
+            src="/brand/stratex-core-logo.png"
+            alt="STRATEX CORE"
+            className="nx-mobile-header-logo"
+            data-testid="nx-mobile-header-logo"
+          />
         </div>
 
         <button
@@ -233,10 +235,14 @@ function MoreSheet({ open, onClose }) {
         <div className="handle" />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px 4px 4px" }}>
           <div className="nx-flex nx-gap-2" style={{ alignItems: "center" }}>
-            <BrandLogo variant="emblem" height={28} width={28} />
+            <img
+              src="/brand/stratex-core-logo.png"
+              alt="STRATEX CORE"
+              style={{ height: 40, width: "auto", borderRadius: 6, background: "#000" }}
+            />
             <div>
-              <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, letterSpacing: "0.12em" }}>
-                STRAT<span style={{ color: "#FF7B00" }}>X</span> <span style={{ color: "#4DF6FF", fontSize: 11, letterSpacing: "0.4em" }}>CORE</span>
+              <div style={{ color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: "0.16em" }}>
+                Property Intelligence
               </div>
               <div style={{ color: "#6D7B8F", fontSize: 11 }}>
                 {user?.legal_name || user?.email || "Operator"} · {user?.role || "—"}
