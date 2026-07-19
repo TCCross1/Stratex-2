@@ -71,6 +71,19 @@ import NextGenReports from "@/nextgen/ReportsBinderPage";
 import NextGenAwe from "@/nextgen/AwePage";
 import NextGenHabitat from "@/nextgen/HabitatPage";
 import NextGenOrganization from "@/nextgen/OrganizationPage";
+import PropertyWorkspaceShell from "@/nextgen/PropertyWorkspaceShell";
+import RouteGuard from "@/nextgen/RouteGuard";
+import {
+  OverviewPage as WsOverview, JobsPage as WsJobs,
+  MissionCapturePage as WsMissionCapture, EvidencePage as WsEvidence,
+  AwePage as WsAwe, ReportsPage as WsReports,
+  PassportPage as WsPassport, HabitatSyncPage as WsHabitat,
+  HistoryPage as WsHistory, AuditPage as WsAudit,
+  DigitalTwinPage as WsDigitalTwin, CadBimPage as WsCadBim,
+  MeasurementsPage as WsMeasurements, OpeningsPage as WsOpenings,
+  MaterialsPage as WsMaterials, FindingsPage as WsFindings,
+  EstimatePage as WsEstimate, DocumentsPage as WsDocuments,
+} from "@/nextgen/PropertyWorkspacePages";
 import {
   AlertsPage as NxAlerts,
   SchedulePage as NxSchedule,
@@ -214,25 +227,47 @@ function AppShell() {
           <Route path="alerts" element={<NxAlerts/>}/>
           {/* OPERATIONS */}
           <Route path="properties" element={<NextGenProperties/>}/>
-          <Route path="missions" element={<NxMissionsList/>}/>
-          <Route path="missions/new" element={<NxNewMission/>}/>
-          <Route path="missions/:id" element={<NxMissionDetail/>}/>
-          <Route path="missions/:missionId/evidence" element={<NextGenEvidence/>}/>
-          <Route path="missions/:missionId/intelligence" element={<NextGenIntelligence/>}/>
+          {/* Property Workspace (Phase 2) — canonical property & job workspace */}
+          <Route path="properties/:propertyId" element={<PropertyWorkspaceShell/>}>
+            <Route index element={<WsOverview/>}/>
+            <Route path="overview" element={<WsOverview/>}/>
+            <Route path="jobs" element={<WsJobs/>}/>
+            <Route path="mission-capture" element={<WsMissionCapture/>}/>
+            <Route path="evidence" element={<WsEvidence/>}/>
+            <Route path="digital-twin" element={<WsDigitalTwin/>}/>
+            <Route path="cad-bim" element={<WsCadBim/>}/>
+            <Route path="measurements" element={<WsMeasurements/>}/>
+            <Route path="openings" element={<WsOpenings/>}/>
+            <Route path="materials" element={<WsMaterials/>}/>
+            <Route path="awe" element={<WsAwe/>}/>
+            <Route path="findings" element={<WsFindings/>}/>
+            <Route path="estimate" element={<WsEstimate/>}/>
+            <Route path="reports" element={<WsReports/>}/>
+            <Route path="passport" element={<WsPassport/>}/>
+            <Route path="habitat" element={<WsHabitat/>}/>
+            <Route path="documents" element={<WsDocuments/>}/>
+            <Route path="history" element={<WsHistory/>}/>
+            <Route path="audit" element={<WsAudit/>}/>
+          </Route>
+          <Route path="missions" element={<RouteGuard><NxMissionsList/></RouteGuard>}/>
+          <Route path="missions/new" element={<RouteGuard><NxNewMission/></RouteGuard>}/>
+          <Route path="missions/:id" element={<RouteGuard><NxMissionDetail/></RouteGuard>}/>
+          <Route path="missions/:missionId/evidence" element={<RouteGuard><NextGenEvidence/></RouteGuard>}/>
+          <Route path="missions/:missionId/intelligence" element={<RouteGuard><NextGenIntelligence/></RouteGuard>}/>
           <Route path="schedule" element={<NxSchedule/>}/>
           {/* NETWORK */}
-          <Route path="network/contractors" element={<NxNetworkContractors/>}/>
-          <Route path="network/operators" element={<NxNetworkOperators/>}/>
-          <Route path="network/homeowners" element={<NxNetworkHomeowners/>}/>
+          <Route path="network/contractors" element={<RouteGuard><NxNetworkContractors/></RouteGuard>}/>
+          <Route path="network/operators" element={<RouteGuard><NxNetworkOperators/></RouteGuard>}/>
+          <Route path="network/homeowners" element={<RouteGuard><NxNetworkHomeowners/></RouteGuard>}/>
           {/* PROPERTY INTELLIGENCE */}
-          <Route path="passport" element={<NextGenPassport/>}/>
-          <Route path="habitat" element={<NextGenHabitat/>}/>
+          <Route path="passport" element={<RouteGuard><NextGenPassport/></RouteGuard>}/>
+          <Route path="habitat" element={<RouteGuard><NextGenHabitat/></RouteGuard>}/>
           <Route path="geo" element={<NxGeo/>}/>
-          <Route path="awe" element={<NextGenAwe/>}/>
+          <Route path="awe" element={<RouteGuard><NextGenAwe/></RouteGuard>}/>
           {/* MANAGEMENT */}
-          <Route path="reports" element={<NextGenReports/>}/>
-          <Route path="plans" element={<NxPlans/>}/>
-          <Route path="org" element={<NextGenOrganization/>}/>
+          <Route path="reports" element={<RouteGuard><NextGenReports/></RouteGuard>}/>
+          <Route path="plans" element={<RouteGuard><NxPlans/></RouteGuard>}/>
+          <Route path="org" element={<RouteGuard><NextGenOrganization/></RouteGuard>}/>
           {/* COMPANY */}
           <Route path="company" element={<NxCompany/>}/>
           {/* AUDIT — legacy path kept, reachable via Platform Administration */}

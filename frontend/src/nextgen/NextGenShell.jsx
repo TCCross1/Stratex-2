@@ -8,6 +8,7 @@ import {
   Settings, Info,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { filterNavByRole } from "@/nextgen/roleAccess";
 import "@/nextgen/nextgen.css";
 
 /* Stratex Core Premium Command Shell (Directive 009 + Phase 1 reorg).
@@ -72,11 +73,14 @@ const RAIL_SECTIONS = [
 ];
 
 /* Flat list used by the mobile More sheet, grouped identically. */
-const SECONDARY_GROUPS = RAIL_SECTIONS;
+function getSecondaryGroups(role) {
+  return filterNavByRole(RAIL_SECTIONS, role);
+}
 
 /* ── Desktop rail ──────────────────────────────────────────── */
 function DesktopRail() {
   const { user } = useAuth();
+  const sections = filterNavByRole(RAIL_SECTIONS, user?.role);
   return (
     <aside className="nx-rail" data-testid="nx-rail">
       <Link to="/nextgen" className="nx-rail-brand" data-testid="nx-rail-brand">
@@ -89,7 +93,7 @@ function DesktopRail() {
       </Link>
 
       <div className="nx-rail-scroll">
-        {RAIL_SECTIONS.map((sec) => (
+        {sections.map((sec) => (
           <div key={sec.heading}>
             <div className="nx-rail-section">// {sec.heading}</div>
             {sec.items.map((it) => (
@@ -211,6 +215,7 @@ function MoreSheet({ open, onClose }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const go = (to) => { onClose(); nav(to); };
+  const groups = getSecondaryGroups(user?.role);
 
   return (
     <>
@@ -242,7 +247,7 @@ function MoreSheet({ open, onClose }) {
           </button>
         </div>
 
-        {SECONDARY_GROUPS.map((grp) => (
+        {groups.map((grp) => (
           <div key={grp.heading}>
             <h3>// {grp.heading}</h3>
             {grp.items.map((it) => (
@@ -285,6 +290,12 @@ export default function NextGenShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const openMore = useCallback(() => setMoreOpen(true), []);
   const closeMore = useCallback(() => setMoreOpen(false), []);
+
+  // Phase 2 · mark body so global overlays (TC assistant) can offset.
+  React.useEffect(() => {
+    document.body.classList.add("nx-active");
+    return () => { document.body.classList.remove("nx-active"); };
+  }, []);
 
   return (
     <div className="nx-shell" data-testid="nextgen-shell">

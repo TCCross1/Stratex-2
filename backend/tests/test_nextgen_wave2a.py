@@ -134,9 +134,28 @@ def contractor_mission_id(contractor_session):
 
 # ── File builders ──────────────────────────────────────────────
 def _png_bytes(seed: int = 0, w: int = 32, h: int = 32) -> bytes:
-    img = Image.new("RGB", (w, h), color=((seed * 7) % 255, (seed * 13) % 255, (seed * 29) % 255))
+    """Deterministic within a test run, unique across test runs.
+
+    Uses the session-level ``_TEST_SUFFIX`` (millisecond epoch) mixed into
+    every pixel so each run of the suite produces a fresh SHA-256 that never
+    collides with previous runs — preventing false "duplicate_detected"
+    failures against a shared development database. Production duplicate
+    protection is not weakened; only the test payload is per-run unique.
+    """
+    salt = int(_TEST_SUFFIX) & 0xFFFF  # milliseconds since epoch, truncated
+    img = Image.new(
+        "RGB", (w, h),
+        color=(
+            (seed * 7 + salt) % 255,
+            (seed * 13 + (salt >> 3)) % 255,
+            (seed * 29 + (salt >> 7)) % 255,
+        ),
+    )
     for x in range(w):
-        img.putpixel((x, seed % h), (255, 0, 0))
+        img.putpixel((x, seed % h), (255, (salt >> 4) % 255, 0))
+    # Embed salt in a corner pixel too, so different runs never collide even
+    # when the primary color arithmetic happens to align.
+    img.putpixel((0, 0), (salt & 0xFF, (salt >> 8) & 0xFF, seed & 0xFF))
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
@@ -312,9 +331,9 @@ class TestValidateFinalize:
             r = _upload(admin_session, admin_mission_id, f"TEST_rgb_{i}.png",
                         _png_bytes(seed=i + 200), "RGB_IMAGE")
             assert r.status_code == 200, f"seed {i}: {r.status_code} {r.text[:180]}"
-        # FLIGHT_LOG
+        # FLIGHT_LOG (per-run salted so we don't collide with a previous run's SHA in shared DBs)
         fl = _upload(admin_session, admin_mission_id, "TEST_flight.log",
-                     b"time,lat,lon,alt\n0,38.04,-84.50,120\n",
+                     f"# test_run={_TEST_SUFFIX}\ntime,lat,lon,alt\n0,38.04,-84.50,120\n".encode(),
                      "FLIGHT_LOG", mime="text/plain")
         assert fl.status_code == 200, fl.text
 

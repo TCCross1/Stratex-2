@@ -1,19 +1,21 @@
-// STRATEX™ — APP LAUNCHER (home shell)
+// STRATEX CORE — PUBLIC LANDING (Phase 1 three-door layout, Phase 2 comment refresh)
 //
-// Replaces the long-scroll marketing landing with a desktop-OS-style
-// launcher: persistent app rail on the left (vertical, scrollable),
-// large display screen on the right that defaults to the official
-// STRATEX™ logo and is replaced by the active app window when an icon
-// is clicked.  Every window carries a red [X] cancel pill in its top
-// corner that pops back to the logo splash.
+// The public landing page has EXACTLY THREE PRIMARY ENTRANCES:
+//   1. Operator / Pilot
+//   2. Contractor / Insurance
+//   3. CENTCOM
 //
-// Mobile: the rail collapses to a thin scrollable column on the left
-// (44px wide) so the launcher fits in a phone viewport without ever
-// triggering a long vertical scroll.
+// A single "Company & Platform Information" secondary link surfaces every
+// piece of promotional / marketing / investor / demo content — that content
+// lives ONLY behind that one secondary entry (opens the InfoWindow).
 //
-// IMPORTANT: nothing from the previous landing is removed — every
-// section (Recon Stack, Scientific Rigor, Fleet Command, Mesh Engine,
-// Switchboard) lives inside one of the app windows below.
+// The legacy app-launcher rail and its many tiles remain in this file
+// (AppRail component + APPS registry + WindowFrame) for possible future
+// re-use, but they are no longer rendered on the landing surface. Marketing
+// content is not exposed as a competing primary button.
+//
+// Do not add operational tools, fleet controls, reports, Passport tools,
+// demos, or promotional pages as primary buttons on the landing page.
 
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";

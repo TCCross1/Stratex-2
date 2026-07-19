@@ -174,10 +174,16 @@ export default function PropertiesPage() {
                   <td><span className="nx-pill dim">BAND {p.truth_score_band}/10</span></td>
                   <td style={{ fontSize: 11, color: "#8A9BAE" }}>{p.created_at.slice(0, 10)}</td>
                   <td>
-                    <Link to={`/nextgen/missions/new?property=${p.canonical_id}`}
-                      className="nx-btn ghost small" data-testid={`nx-prop-mission-${p.canonical_id}`}>
-                      Create Mission
-                    </Link>
+                    <div className="nx-flex nx-gap-2" style={{ flexWrap: "wrap" }}>
+                      <Link to={`/nextgen/properties/${p.canonical_id}/overview`}
+                        className="nx-btn small" data-testid={`nx-prop-open-${p.canonical_id}`}>
+                        Open Workspace
+                      </Link>
+                      <Link to={`/nextgen/missions/new?property=${p.canonical_id}`}
+                        className="nx-btn ghost small" data-testid={`nx-prop-mission-${p.canonical_id}`}>
+                        New Job
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

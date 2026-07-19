@@ -179,7 +179,7 @@ export default function TcAssistant() {
       <button
         data-testid="tc-launcher"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 rounded-full px-4 py-3 flex items-center gap-2 transition hover:scale-105 group"
+        className="tc-assistant-pill fixed bottom-5 right-5 z-50 rounded-full px-4 py-3 flex items-center gap-2 transition hover:scale-105 group"
         style={{
           background: "linear-gradient(135deg, rgba(0,229,255,0.20) 0%, rgba(212,184,106,0.15) 100%)",
           border: `1.5px solid ${ACCENTS.cyan}`,
@@ -212,7 +212,7 @@ export default function TcAssistant() {
   // ╔═════════════════ CHAT COCKPIT ══════════════════════════════╗
   return (
     <div data-testid="tc-panel"
-         className="fixed bottom-5 right-5 z-50 w-[min(420px,calc(100vw-24px))] max-h-[80vh] flex flex-col rounded-xl overflow-hidden"
+         className="tc-assistant-panel fixed bottom-5 right-5 z-50 w-[min(420px,calc(100vw-24px))] max-h-[80vh] flex flex-col rounded-xl overflow-hidden"
          style={{
            background: "linear-gradient(180deg, rgba(8,14,24,0.96) 0%, rgba(4,8,14,0.98) 100%)",
            border: `1.5px solid ${ACCENTS.cyan}88`,
