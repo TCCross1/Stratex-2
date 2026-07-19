@@ -33,7 +33,8 @@ import FleetLaunch from "@/pages/FleetLaunch";
 import FlightAudit from "@/pages/FlightAudit";
 import CVIceShield from "@/pages/CVIceShield";
 import AdminWeather from "@/pages/AdminWeather";
-import AdminOps from "@/pages/AdminOps";
+// AdminOps import removed Phase 1 — duplicate /admin/ops route resolved in favor of GmOpsPage.
+// The AdminOps component file is intentionally retained for possible future re-use.
 import QuoteBuilder from "@/pages/QuoteBuilder";
 import BranchConsole from "@/pages/BranchConsole";
 import ContractorDeliverable from "@/pages/ContractorDeliverable";
@@ -70,6 +71,16 @@ import NextGenReports from "@/nextgen/ReportsBinderPage";
 import NextGenAwe from "@/nextgen/AwePage";
 import NextGenHabitat from "@/nextgen/HabitatPage";
 import NextGenOrganization from "@/nextgen/OrganizationPage";
+import {
+  AlertsPage as NxAlerts,
+  SchedulePage as NxSchedule,
+  NetworkContractorsPage as NxNetworkContractors,
+  NetworkOperatorsPage as NxNetworkOperators,
+  NetworkHomeownersPage as NxNetworkHomeowners,
+  GeographicIntelligencePage as NxGeo,
+  PlansCompliancePage as NxPlans,
+  CompanyResourcesPage as NxCompany,
+} from "@/nextgen/PlaceholderPages";
 
 function Protected({ role, children }) {
   const { user } = useAuth();
@@ -158,7 +169,7 @@ function AppShell() {
         <Route path="/admin/flight-audit" element={<Protected role="admin"><FlightAudit/></Protected>}/>
         <Route path="/admin/cv-ice-shield" element={<Protected role="admin"><CVIceShield/></Protected>}/>
         <Route path="/admin/weather" element={<Protected role="admin"><AdminWeather/></Protected>}/>
-        <Route path="/admin/ops" element={<Protected role="admin"><AdminOps/></Protected>}/>
+        {/* /admin/ops canonical declaration lives further below (GmOpsPage) — Phase 1 dedup */}
         <Route path="/contractor/quote-builder" element={<Protected role="contractor"><QuoteBuilder/></Protected>}/>
         <Route path="/admin/branch-console" element={<Protected role="admin"><BranchConsole/></Protected>}/>
         <Route path="/admin/consensus" element={<Protected role="admin"><AdminConsensus/></Protected>}/>
@@ -199,18 +210,33 @@ function AppShell() {
         {/* Isolated at /nextgen/*. Legacy surfaces above are unaffected.  */}
         <Route path="/nextgen" element={<Protected><NextGenShell/></Protected>}>
           <Route index element={<NextGenOverview/>}/>
+          {/* COMMAND */}
+          <Route path="alerts" element={<NxAlerts/>}/>
+          {/* OPERATIONS */}
           <Route path="properties" element={<NextGenProperties/>}/>
           <Route path="missions" element={<NxMissionsList/>}/>
           <Route path="missions/new" element={<NxNewMission/>}/>
           <Route path="missions/:id" element={<NxMissionDetail/>}/>
           <Route path="missions/:missionId/evidence" element={<NextGenEvidence/>}/>
           <Route path="missions/:missionId/intelligence" element={<NextGenIntelligence/>}/>
+          <Route path="schedule" element={<NxSchedule/>}/>
+          {/* NETWORK */}
+          <Route path="network/contractors" element={<NxNetworkContractors/>}/>
+          <Route path="network/operators" element={<NxNetworkOperators/>}/>
+          <Route path="network/homeowners" element={<NxNetworkHomeowners/>}/>
+          {/* PROPERTY INTELLIGENCE */}
           <Route path="passport" element={<NextGenPassport/>}/>
-          <Route path="awe" element={<NextGenAwe/>}/>
-          <Route path="reports" element={<NextGenReports/>}/>
           <Route path="habitat" element={<NextGenHabitat/>}/>
-          <Route path="audit" element={<NextGenAudit/>}/>
+          <Route path="geo" element={<NxGeo/>}/>
+          <Route path="awe" element={<NextGenAwe/>}/>
+          {/* MANAGEMENT */}
+          <Route path="reports" element={<NextGenReports/>}/>
+          <Route path="plans" element={<NxPlans/>}/>
           <Route path="org" element={<NextGenOrganization/>}/>
+          {/* COMPANY */}
+          <Route path="company" element={<NxCompany/>}/>
+          {/* AUDIT — legacy path kept, reachable via Platform Administration */}
+          <Route path="audit" element={<NextGenAudit/>}/>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace/>}/>

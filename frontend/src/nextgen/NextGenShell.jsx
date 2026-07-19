@@ -2,15 +2,15 @@ import React, { useState, useCallback } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Home, Compass, ShieldCheck, FileText, Menu as MenuIcon,
-  Bell, LogOut, Building2, ClipboardList, Cpu, Waves,
-  History, Settings, Users, Share2, X, ChevronRight,
-  Search, Camera, Sparkles,
+  Bell, LogOut, Building2, Waves, History, Users,
+  Share2, X, ChevronRight, Bell as BellIcon, Calendar,
+  Handshake, Plane, Home as HomeIcon2, Map, ScrollText,
+  Settings, Info,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import BrandLogo from "@/nextgen/BrandLogo";
 import "@/nextgen/nextgen.css";
 
-/* Stratex Core Premium Command Shell (Directive 009).
+/* Stratex Core Premium Command Shell (Directive 009 + Phase 1 reorg).
    Responsive: desktop rail · tablet compact rail · mobile bottom nav + More sheet.
    Presentation only — every destination is a real existing NextGen route. */
 
@@ -22,70 +22,57 @@ const PRIMARY = [
   { to: "/nextgen/reports",   label: "Reports",  icon: FileText },
 ];
 
-/* ── Secondary destinations for the More sheet & desktop rail ── */
-const SECONDARY_GROUPS = [
+/* ── Desktop rail — Phase 1 canonical structure ── */
+const RAIL_SECTIONS = [
   {
-    heading: "Operations",
+    heading: "COMMAND",
     items: [
-      { to: "/nextgen/missions",   label: "Mission Command", icon: Compass },
-      { to: "/nextgen/properties", label: "Properties",       icon: Building2 },
-      { to: "/nextgen/awe",        label: "AWE Intelligence", icon: Waves },
+      { to: "/nextgen",         label: "Overview", icon: Home, end: true },
+      { to: "/nextgen/alerts",  label: "Alerts",   icon: BellIcon },
     ],
   },
   {
-    heading: "Property Record",
+    heading: "OPERATIONS",
     items: [
-      { to: "/nextgen/passport", label: "Property Passport", icon: ShieldCheck },
-      { to: "/nextgen/habitat",  label: "Habitat Sync",       icon: Share2 },
+      { to: "/nextgen/properties", label: "Jobs & Properties", icon: Building2 },
+      { to: "/nextgen/missions",   label: "Mission Control",   icon: Compass },
+      { to: "/nextgen/schedule",   label: "Schedule",          icon: Calendar },
     ],
   },
   {
-    heading: "Deliverables",
+    heading: "NETWORK",
     items: [
-      { to: "/nextgen/reports", label: "Reports Binder", icon: FileText },
+      { to: "/nextgen/network/contractors", label: "Contractors & Insurance", icon: Handshake },
+      { to: "/nextgen/network/operators",   label: "Operators & Pilots",       icon: Plane },
+      { to: "/nextgen/network/homeowners",  label: "Homeowners",               icon: HomeIcon2 },
     ],
   },
   {
-    heading: "Organization",
+    heading: "PROPERTY INTELLIGENCE",
     items: [
-      { to: "/nextgen/org",    label: "Organization", icon: Users },
-      { to: "/nextgen/audit",  label: "Audit Trail",  icon: History },
+      { to: "/nextgen/passport", label: "Property Passport",    icon: ShieldCheck },
+      { to: "/nextgen/habitat",  label: "Stratex Habitat",      icon: Share2 },
+      { to: "/nextgen/geo",      label: "Geographic Intelligence", icon: Map },
+    ],
+  },
+  {
+    heading: "MANAGEMENT",
+    items: [
+      { to: "/nextgen/reports", label: "Reports",                       icon: FileText },
+      { to: "/nextgen/plans",   label: "Plans, Licenses & Compliance",  icon: ScrollText },
+      { to: "/nextgen/org",     label: "Platform Administration",       icon: Settings },
+    ],
+  },
+  {
+    heading: "COMPANY",
+    items: [
+      { to: "/nextgen/company", label: "Company & Resources", icon: Info },
     ],
   },
 ];
 
-/* Desktop rail sections */
-const RAIL_SECTIONS = [
-  {
-    heading: "// COMMAND",
-    items: [
-      { to: "/nextgen",           label: "Home",             icon: Home, end: true },
-      { to: "/nextgen/missions",  label: "Missions",         icon: Compass },
-      { to: "/nextgen/properties",label: "Properties",       icon: Building2 },
-    ],
-  },
-  {
-    heading: "// INTELLIGENCE",
-    items: [
-      { to: "/nextgen/passport",  label: "Passport",         icon: ShieldCheck },
-      { to: "/nextgen/awe",       label: "AWE Intelligence", icon: Waves },
-    ],
-  },
-  {
-    heading: "// DELIVERY",
-    items: [
-      { to: "/nextgen/reports",   label: "Reports Binder",   icon: FileText },
-      { to: "/nextgen/habitat",   label: "Habitat Sync",     icon: Share2 },
-    ],
-  },
-  {
-    heading: "// ORGANIZATION",
-    items: [
-      { to: "/nextgen/org",       label: "Organization",     icon: Users },
-      { to: "/nextgen/audit",     label: "Audit Trail",      icon: History },
-    ],
-  },
-];
+/* Flat list used by the mobile More sheet, grouped identically. */
+const SECONDARY_GROUPS = RAIL_SECTIONS;
 
 /* ── Desktop rail ──────────────────────────────────────────── */
 function DesktopRail() {
@@ -104,7 +91,7 @@ function DesktopRail() {
       <div className="nx-rail-scroll">
         {RAIL_SECTIONS.map((sec) => (
           <div key={sec.heading}>
-            <div className="nx-rail-section">{sec.heading}</div>
+            <div className="nx-rail-section">// {sec.heading}</div>
             {sec.items.map((it) => (
               <NavLink
                 key={it.to}
@@ -178,6 +165,7 @@ function MobileHeader({ onMoreClick }) {
           className="nx-icon-btn"
           data-testid="nx-mobile-notif-btn"
           aria-label="Notifications"
+          onClick={() => nav("/nextgen/alerts")}
         >
           <Bell size={19} strokeWidth={1.6} />
           <span className="dot" />
@@ -256,7 +244,7 @@ function MoreSheet({ open, onClose }) {
 
         {SECONDARY_GROUPS.map((grp) => (
           <div key={grp.heading}>
-            <h3>{grp.heading}</h3>
+            <h3>// {grp.heading}</h3>
             {grp.items.map((it) => (
               <button
                 key={`${grp.heading}-${it.to}-${it.label}`}
@@ -272,7 +260,7 @@ function MoreSheet({ open, onClose }) {
           </div>
         ))}
 
-        <h3>Session</h3>
+        <h3>// SESSION</h3>
         <button
           className="nx-sheet-item"
           data-testid="nx-sheet-signout"

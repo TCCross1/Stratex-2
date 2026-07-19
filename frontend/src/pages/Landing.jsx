@@ -18,6 +18,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ASSETS } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
 import { HudCard, DataReadout, SectionTitle } from "@/components/HudCard";
 import RoofModel3D from "@/components/RoofModel3D";
 import ValidationReport from "@/components/ValidationReport";
@@ -440,14 +441,56 @@ function SwitchboardWindow() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Default state — STRATEX CORE hero (Directive 009) with primary entry CTA.
-// Cross AI is the parent company but Stratex Core is the dominant product.
+// Phase 1 landing — exactly 3 primary entrances (Operator / Pilot,
+// Contractor / Insurance, CENTCOM) sitting under the approved
+// STRATEX CORE hero. Any additional tools live behind the single
+// "Company & Platform Information" secondary link.
 // ─────────────────────────────────────────────────────────────────────
-function LogoSplash({ onPickInfo }) {
+function PrimaryEntrances({ onOpenCompanyInfo }) {
   const nav = useNavigate();
+  const { user } = useAuth();
+
+  const cards = [
+    {
+      id: "operator",
+      title: "Operator / Pilot",
+      subtitle: "Field crews & drone operations",
+      accent: "cyan",
+      icon: OperatorIcon,
+      onClick: () => {
+        // Route to operator dashboard when authenticated as operator/admin;
+        // otherwise auth-gate with intent hint so we land in the right place.
+        if (user?.role === "operator" || user?.role === "admin") nav("/operator");
+        else nav("/auth?intent=operator");
+      },
+      testId: "landing-entrance-operator",
+    },
+    {
+      id: "contractor",
+      title: "Contractor / Insurance",
+      subtitle: "Contractor portal & carrier workflows",
+      accent: "orange",
+      icon: ContractorIcon,
+      onClick: () => {
+        if (user?.role === "contractor" || user?.role === "admin") nav("/contractor");
+        else nav("/auth?intent=contractor");
+      },
+      testId: "landing-entrance-contractor",
+    },
+    {
+      id: "centcom",
+      title: "CENTCOM",
+      subtitle: "Executive command portal",
+      accent: "gold",
+      icon: CentcomIcon,
+      onClick: () => nav("/ceo/login"),
+      testId: "landing-entrance-centcom",
+    },
+  ];
+
   return (
-    <div data-testid="logo-splash"
-         className="relative rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-6 sm:p-10 min-h-[62vh]"
+    <div data-testid="landing-primary-entrances"
+         className="relative rounded-xl overflow-hidden p-6 sm:p-10"
          style={{
            background:
              "radial-gradient(700px 320px at 50% 0%, rgba(77,246,255,0.10), transparent 60%)," +
@@ -466,51 +509,140 @@ function LogoSplash({ onPickInfo }) {
         <span key={i} className={`absolute ${cls} w-5 h-5`} style={{ borderColor: "#4DF6FF" }}/>
       ))}
 
-      {/* STRATEX CORE hero — approved brand asset */}
-      <img
-        src="/brand/stratex-core-logo.png"
-        alt="STRATEX CORE — Property Intelligence Platform"
-        className="w-full max-w-xs sm:max-w-md md:max-w-xl h-auto rounded-lg"
-        style={{
-          boxShadow: "0 0 60px rgba(77,246,255,0.25), inset 0 0 0 1px rgba(77,246,255,0.18)",
-        }}
-        data-testid="splash-stratex-core-logo"
-      />
-
-      {/* Primary CTA — Enter Stratex Core */}
-      <button
-        data-testid="splash-enter-core-cta"
-        onClick={() => nav("/nextgen")}
-        className="mt-8 font-mono uppercase tracking-[0.24em] text-[13px] px-8 py-4 rounded-lg flex items-center gap-3 transition hover:brightness-110 active:translate-y-[1px]"
-        style={{
-          background: "linear-gradient(180deg, #FF9A3D 0%, #FF7B00 100%)",
-          color: "#0B0F14",
-          fontWeight: 700,
-          boxShadow: "0 12px 32px rgba(255,123,0,0.30), inset 0 1px 0 rgba(255,255,255,0.2)",
-          border: "none",
-          minHeight: 56,
-        }}>
-        Enter Stratex Core <ChevronRight size={16} strokeWidth={2.4}/>
-      </button>
-
-      <div className="font-mono text-[10px] tracking-[0.32em] uppercase mt-5" style={{ color: "#4DF6FF" }}>
-        Property Intelligence Platform · Preview Build
+      {/* STRATEX CORE hero */}
+      <div className="flex flex-col items-center text-center">
+        <img
+          src="/brand/stratex-core-logo.png"
+          alt="STRATEX CORE — Property Intelligence Platform"
+          className="w-full max-w-xs sm:max-w-md md:max-w-lg h-auto rounded-lg"
+          style={{ boxShadow: "0 0 60px rgba(77,246,255,0.25), inset 0 0 0 1px rgba(77,246,255,0.18)" }}
+          data-testid="landing-hero-logo"
+        />
+        <div className="font-mono text-[10px] tracking-[0.32em] uppercase mt-5"
+             style={{ color: "#4DF6FF" }}>
+          Property Intelligence Platform · Preview Build
+        </div>
       </div>
 
-      {/* Secondary — legacy explore */}
-      <div className="mt-8 pt-6 border-t max-w-md w-full" style={{ borderColor: "rgba(77,246,255,0.15)" }}>
-        <div className="font-mono text-[9px] tracking-[0.28em] uppercase mb-3" style={{ color: "#6D7B8F" }}>
-          // Explore Legacy Modules
+      {/* 3 primary entrances */}
+      <div className="mt-8 sm:mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5"
+           data-testid="landing-entrances-grid">
+        {cards.map((c) => (
+          <EntranceCard key={c.id} {...c}/>
+        ))}
+      </div>
+
+      {/* Secondary — Company & Platform Info */}
+      <div className="mt-8 pt-6 border-t max-w-xl mx-auto text-center"
+           style={{ borderColor: "rgba(77,246,255,0.15)" }}>
+        <div className="font-mono text-[9px] tracking-[0.28em] uppercase mb-3"
+             style={{ color: "#6D7B8F" }}>
+          // Company & Platform Information
         </div>
         <button
-          data-testid="splash-info-cta"
-          onClick={onPickInfo}
-          className="font-mono text-[10px] tracking-[0.22em] uppercase px-4 py-2 rounded-md inline-flex items-center gap-2 transition hover:brightness-125"
-          style={{ background: "rgba(0,229,255,0.08)", border: `1px solid ${ACCENTS.cyan}66`, color: ACCENTS.cyan }}>
-          Open Info Hub <ChevronRight size={12}/>
+          data-testid="landing-company-info-cta"
+          onClick={onOpenCompanyInfo}
+          className="font-mono text-[10.5px] tracking-[0.22em] uppercase px-5 py-3 rounded-md inline-flex items-center gap-2 transition hover:brightness-125"
+          style={{
+            background: "rgba(0,229,255,0.06)",
+            border: `1px solid ${ACCENTS.cyan}55`,
+            color: ACCENTS.cyan,
+            minHeight: 44,
+          }}>
+          Explore Company, Mission, Investors & Demos
+          <ChevronRight size={13}/>
         </button>
       </div>
     </div>
+  );
+}
+
+/* Entrance card — the three primary product surfaces. */
+function EntranceCard({ title, subtitle, accent, icon: Icon, onClick, testId }) {
+  const border = accent === "orange" ? "rgba(255,123,0,0.5)"
+              : accent === "gold" ? "rgba(255,176,32,0.5)"
+              : "rgba(77,246,255,0.45)";
+  const glow = accent === "orange" ? "rgba(255,123,0,0.25)"
+             : accent === "gold" ? "rgba(255,176,32,0.22)"
+             : "rgba(77,246,255,0.25)";
+  const iconColor = accent === "orange" ? "#FF7B00"
+                  : accent === "gold" ? "#FFB020"
+                  : "#4DF6FF";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      className="group relative text-left overflow-hidden transition"
+      style={{
+        background: "linear-gradient(180deg, rgba(11,17,24,0.9), rgba(3,7,12,0.98))",
+        border: `1px solid ${border}`,
+        borderRadius: 14,
+        padding: "22px 22px 24px",
+        minHeight: 200,
+        boxShadow: `0 0 32px ${glow}22, inset 0 0 0 1px rgba(255,255,255,0.02)`,
+        cursor: "pointer",
+      }}>
+      {/* accent strip */}
+      <span className="absolute left-0 top-0 bottom-0 w-1" style={{
+        background: `linear-gradient(180deg, ${iconColor}, transparent)`,
+      }}/>
+      <div className="flex items-center justify-between">
+        <div className="w-12 h-12 rounded-lg flex items-center justify-center"
+             style={{
+               background: `${iconColor}15`,
+               border: `1px solid ${iconColor}55`,
+               color: iconColor,
+             }}>
+          <Icon size={22} strokeWidth={1.6}/>
+        </div>
+        <ChevronRight size={18} strokeWidth={1.8} className="transition group-hover:translate-x-1"
+                      style={{ color: iconColor }}/>
+      </div>
+      <div className="mt-5">
+        <div className="font-display font-semibold text-white text-lg tracking-wide">
+          {title}
+        </div>
+        <div className="text-slate-400 text-sm mt-1.5">
+          {subtitle}
+        </div>
+      </div>
+      <div className="mt-5 pt-3 border-t font-mono text-[9.5px] tracking-[0.28em] uppercase"
+           style={{ borderColor: "rgba(255,255,255,0.06)", color: iconColor }}>
+        Enter ▸
+      </div>
+    </button>
+  );
+}
+
+/* Simple SVG icons — kept inline to avoid coupling to lucide sizing gymnastics. */
+function OperatorIcon({ size = 22, strokeWidth = 1.6 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2 L15 10 L22 12 L15 14 L12 22 L9 14 L2 12 L9 10 Z"/>
+      <circle cx="12" cy="12" r="1.5"/>
+    </svg>
+  );
+}
+function ContractorIcon({ size = 22, strokeWidth = 1.6 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20 V10 L12 4 L20 10 V20 Z"/>
+      <path d="M9 20 V14 H15 V20"/>
+      <path d="M12 4 V2"/>
+    </svg>
+  );
+}
+function CentcomIcon({ size = 22, strokeWidth = 1.6 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M3 12 H21 M12 3 V21"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
   );
 }
 
@@ -596,7 +728,8 @@ export default function Landing() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-      <AppRail activeId={activeApp?.id} onPick={pickApp}/>
+      {/* Phase 1: legacy AppRail hidden. Only 3 primary entrances + Company info are surfaced.
+          Legacy rail preserved in file (AppRail component) for possible future re-use. */}
 
       {/* Display screen — flex-1 */}
       <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -622,7 +755,7 @@ export default function Landing() {
             {activeApp.id === "switchboard" && <SwitchboardWindow/>}
           </WindowFrame>
         ) : (
-          <LogoSplash onPickInfo={() => setActiveApp(APPS.find((a) => a.id === "info"))}/>
+          <PrimaryEntrances onOpenCompanyInfo={() => setActiveApp(APPS.find((a) => a.id === "info"))}/>
         )}
 
         <footer className="mt-6 px-1 font-mono text-[8.5px] tracking-[0.22em] uppercase text-slate-600 flex flex-col sm:flex-row justify-between gap-1">
