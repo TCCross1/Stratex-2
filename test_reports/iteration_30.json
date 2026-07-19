@@ -1,0 +1,46 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "The evidence-upload test test_nextgen_wave2a::test_upload_rgb_returns_hash_and_key fails because a previous run left the same SHA-256 record in a shared development database. Fix without weakening production duplicate-evidence protection.",
+  "summary": "No relevant testing skill found. Verified the Wave 2A test-isolation fix: two back-to-back runs of tests/test_nextgen_wave2a.py both passed 25/25; the exact 65,536 ms suffix-delta collision check now produces different PNG SHA-256 values; same-run _png_bytes(seed=1) remains byte-identical and the duplicate upload pair still passes with duplicate_detected behavior; full deterministic regression suite passed 58/58. Commit 7586995 changes only backend/tests/test_nextgen_wave2a.py, with no /app/backend/nextgen production duplicate-detection changes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/check_wave2a_salt_collision_30.py",
+    "/app/test_reports/pytest/iteration30_wave2a_run1.txt",
+    "/app/test_reports/pytest/iteration30_wave2a_run2.txt",
+    "/app/test_reports/pytest/iteration30_collision_check.txt",
+    "/app/test_reports/pytest/iteration30_duplicate_pair.txt",
+    "/app/test_reports/pytest/iteration30_full_deterministic.txt"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "git show for commit 7586995 lists only backend/tests/test_nextgen_wave2a.py; /app/backend/nextgen was untouched, so production duplicate-evidence protection was not changed by this fix.",
+    "The test helper now derives salt_bytes from hashlib.sha256(f'{_TEST_SUFFIX}:{seed}'.encode()).digest() and paints the salt into the PNG top row; same-run deterministic bytes are preserved."
+  ],
+  "updated_files": [
+    "/app/test_reports/check_wave2a_salt_collision_30.py",
+    "/app/test_reports/pytest/iteration30_wave2a_run1.txt",
+    "/app/test_reports/pytest/iteration30_wave2a_run2.txt",
+    "/app/test_reports/pytest/iteration30_collision_check.txt",
+    "/app/test_reports/pytest/iteration30_duplicate_pair.txt",
+    "/app/test_reports/pytest/iteration30_full_deterministic.txt",
+    "/app/test_reports/bug_verification_30.json",
+    "/app/test_reports/iteration_30.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend-only test"
+  },
+  "seed_data_creation": "Pytest runs created isolated Wave 2A test properties, missions, evidence rows, and local nextgen_storage artifacts using unique TEST_W2A suffixes; no manual seed data was created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Focused verification for iteration 30 is complete. Skill lookup for 'evidence upload SHA-256 duplicate database pytest isolation' returned no relevant testing skill. Commands run from /app/backend: python -m pytest tests/test_nextgen_wave2a.py --tb=line -q twice; python -m pytest tests/test_nextgen_wave2a.py::TestUploadBasics::test_upload_rgb_returns_hash_and_key tests/test_nextgen_wave2a.py::TestUploadBasics::test_duplicate_returns_409 --tb=line -q -vv; python -m pytest tests/test_nextgen_phase1a.py tests/test_stratex_v25_regression.py tests/test_nextgen_wave2a.py --tb=line -q. Collision script at /app/test_reports/check_wave2a_salt_collision_30.py imports the real test helper and confirms suffixes 1700000000123 and +65536 produce different SHA-256 values.",
+  "rca_of_the_issue": "The previous test payload salting strategy allowed repeated SHA-256 content across runs in a shared dev database. The current fix makes the synthetic PNG payload unique per full millisecond suffix by deriving a 32-byte SHA-256 salt from the full _TEST_SUFFIX plus seed while keeping duplicate calls within the same run byte-identical for duplicate-detection assertions."
+}
