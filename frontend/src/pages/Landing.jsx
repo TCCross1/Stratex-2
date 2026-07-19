@@ -579,15 +579,17 @@ export default function Landing() {
               style={{
                 background: "#000",
                 borderColor: "rgba(0,229,255,0.15)",
+                height: "72px",
               }}>
         <img
-          src="/brand/cross_ai_banner.jpeg"
+          src="/brand/cross_ai_banner.png"
           alt="A Cross AI Softwares Inc. product"
           data-testid="cross-ai-logo"
-          className="block w-full h-auto select-none pointer-events-none opacity-70"
+          className="block select-none pointer-events-none"
           style={{
-            maxHeight: "56px",
-            objectFit: "cover",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
             objectPosition: "center",
           }}
         />
