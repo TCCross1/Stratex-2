@@ -1,0 +1,47 @@
+{
+  "verdict": "not_fixed",
+  "user_reported_bug": "The evidence-upload test test_nextgen_wave2a::test_upload_rgb_returns_hash_and_key fails because a previous run left the same SHA-256 record in a shared development database. Fix without weakening production duplicate-evidence protection.",
+  "summary": "No relevant testing skill found. The requested immediate regression commands passed: tests/test_nextgen_wave2a.py passed twice back-to-back with 25 passed both times, the named upload test passed, duplicate protection test passed inside the suite, and the combined regression suite passed with 58 passed. However focused code review and a verifier script show the fix is still collision-prone: _png_bytes() truncates _TEST_SUFFIX to 16 bits, so suffixes separated by 65,536 ms produce identical PNG SHA-256 hashes and can still collide with records left in the shared dev DB.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "backend/tests/test_nextgen_wave2a.py::_png_bytes",
+        "issue": "Per-run salt uses only int(_TEST_SUFFIX) & 0xFFFF. A prior run with the same low 16 ms bits creates identical payload bytes for the same seed, so the reported stale-SHA failure can still recur deterministically.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/check_wave2a_salt_collision_29.py"
+  ],
+  "action_items": [
+    "Update the test payload salt to encode the full session _TEST_SUFFIX (or another sufficiently unique session value) into the PNG bytes, not just the low 16 bits.",
+    "Keep /app/backend/nextgen evidence duplicate-detection code unchanged so production duplicate protection remains intact.",
+    "Retest two back-to-back wave2a runs plus an explicit suffix-collision verifier before marking fixed."
+  ],
+  "critical_code_review_comments": [
+    "Confirmed no backend/nextgen files changed in HEAD or the working tree for this bug.",
+    "HEAD only changed backend/tests/test_nextgen_wave2a.py for this evidence-upload isolation fix, but the implementation does not match the agent note claiming a full salt tuple is embedded. The code embeds only low 16 bits plus seed.",
+    "Verifier output: base_suffix and base_suffix+65536 generated identical SHA-256 for _png_bytes(seed=1), proving the stale shared-DB collision can recur."
+  ],
+  "updated_files": [
+    "/app/test_reports/check_wave2a_salt_collision_29.py",
+    "/app/test_reports/bug_verification_29.json",
+    "/app/test_reports/iteration_29.json"
+  ],
+  "success_rate": {
+    "backend": "runtime pytest commands passed, but isolation fix is incomplete due to deterministic salt collisions",
+    "frontend": "not applicable"
+  },
+  "seed_data_creation": "No manual seed data created. Pytest runs created normal test properties/missions/evidence in the shared development DB.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the same required pytest commands, then verify _png_bytes uses the full per-run salt and that suffix values separated by 65,536 ms no longer produce identical hashes. Production duplicate detection should still be verified by test_duplicate_returns_409 passing.",
+  "rca_of_the_issue": "The attempted fix salts image colors with int(_TEST_SUFFIX) & 0xFFFF and embeds only two salt bytes in the image. This creates a 65.536-second salt cycle, so any stale evidence record from a run whose timestamp has the same low 16 milliseconds will match the new run's SHA-256 for identical seeds. Immediate back-to-back runs passed only because their low 16-bit suffixes differed."
+}
