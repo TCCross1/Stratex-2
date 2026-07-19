@@ -17,6 +17,7 @@ from . import (  # noqa: F401
     audit,
     evidence,
     intelligence,
+    findings,
     habitat,
 )
 

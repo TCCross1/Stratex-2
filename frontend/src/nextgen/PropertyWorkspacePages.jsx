@@ -8,9 +8,12 @@ import {
 import {
   nxPropertyPassport, nxPropertyTimeline, nxPropertyAwe,
   nxListHabitatGrants, nxReportTemplates, nxPropertyReport, nxOpenReportHtml,
+  nxIntelligenceSummary,
 } from "@/nextgen/api";
 import { StatusPill, WorkflowStatusRow, ProvenanceChip, STATUS } from "@/nextgen/PropertyWorkspaceShell";
 import Placeholder, { DemoDataBadge } from "@/nextgen/Placeholder";
+import PropertyIntelligenceSummary from "@/nextgen/PropertyIntelligenceSummary";
+export { default as FindingsPage } from "@/nextgen/FindingsWorkspace";
 
 /* Property Workspace destinations (Phase 2).
    Fully connected: Overview, Jobs, Mission&Capture, Evidence, AWE,
@@ -26,6 +29,7 @@ export function OverviewPage() {
   const [passport, setPassport] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [grants, setGrants] = useState([]);
+  const [pie, setPie] = useState(null);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -33,6 +37,7 @@ export function OverviewPage() {
     nxPropertyPassport(propertyId, "internal").then(setPassport).catch(() => {});
     nxPropertyTimeline(propertyId).then((r) => setTimeline(r.items || [])).catch(() => {});
     nxListHabitatGrants(propertyId).then((r) => setGrants(r.items || r.grants || [])).catch(() => {});
+    nxIntelligenceSummary(propertyId, "internal").then(setPie).catch(() => setPie(null));
   }, [propertyId]);
 
   const stage = activeMission?.stage ?? 0;
@@ -46,8 +51,14 @@ export function OverviewPage() {
       hint: activeMission ? `Stage ${stage}/15` : "n/a" },
     { label: "Capture & Evidence",status: !activeMission ? "NOT_APPLICABLE" : stage >= 5 ? "COMPLETE" : stage >= 3 ? "IN_PROGRESS" : "REQUIRED",
       cta: activeMission ? { to: `/nextgen/missions/${activeMission.canonical_id}/evidence`, label: "Evidence" } : null },
-    { label: "Findings Summary",  status: "NOT_YET_IMPLEMENTED",
-      hint: "Findings engine ships in a later phase" },
+    { label: "Findings Summary",  status: !pie?.any_findings ? "NOT_ORDERED"
+                                             : !pie?.any_approved ? "AWAITING_APPROVAL"
+                                             : "COMPLETE",
+      hint: pie ? (
+        !pie.any_findings ? "NOT YET ANALYZED"
+        : `${pie.counts_by_status?.APPROVED || 0} approved · ${pie.counts_by_status?.PENDING_REVIEW || 0} pending`
+      ) : "loading",
+      cta: { to: `/nextgen/properties/${propertyId}/findings`, label: "Findings" } },
     { label: "AWE Composite",     status: awe ? "COMPLETE" : "NOT_ORDERED",
       hint: awe ? `${awe.composite_index} · ${awe.release_state.replace(/_/g, " ")}` : "no AWE yet",
       cta: awe ? { to: `/nextgen/properties/${propertyId}/awe`, label: "Details" } : null },
@@ -61,7 +72,7 @@ export function OverviewPage() {
     { label: "Habitat Sync",      status: grants.some((g) => !g.revoked_at) ? "COMPLETE" : "NOT_ORDERED",
       hint: grants.length ? `${grants.length} link(s) issued` : "no share yet",
       cta: grants.length ? { to: `/nextgen/properties/${propertyId}/habitat`, label: "Manage" } : null },
-  ]), [property, activeMission, missions, awe, passport, grants, propertyId, stage]);
+  ]), [property, activeMission, missions, awe, passport, grants, propertyId, stage, pie]);
 
   const nextAction = deriveNextAction({ activeMission, missions, awe, passport });
 
@@ -86,6 +97,11 @@ export function OverviewPage() {
           )}
         </div>
       </section>
+
+      {/* Property Intelligence Summary (Phase 3 · PIE) */}
+      <div style={{ marginTop: 18 }}>
+        <PropertyIntelligenceSummary propertyId={propertyId} audience="internal" compact />
+      </div>
 
       {/* Workflow status */}
       <div className="nx-section-title">
@@ -393,9 +409,10 @@ export function ReportsPage() {
   useEffect(() => { nxReportTemplates().then((d) => setTemplates(d.templates || [])); }, []);
   return (
     <div data-testid="nx-ws-reports">
-      <div className="nx-label">Report Projections for this Property</div>
+      <PropertyIntelligenceSummary propertyId={propertyId} audience="internal" compact />
+      <div className="nx-label" style={{ marginTop: 18 }}>Report Projections for this Property</div>
       <div style={{ color: "var(--nx-text-secondary)", fontSize: 13, marginTop: 4, marginBottom: 14 }}>
-        Reports are read-only projections of approved intelligence.
+        Reports are read-only projections of <strong>approved</strong> findings only.
       </div>
       <div className="nx-grid cols-3">
         {templates.map((t) => (
@@ -434,16 +451,21 @@ export function PassportPage() {
   if (!passport?.passport) {
     return (
       <div data-testid="nx-ws-passport-empty">
-        <div className="nx-empty">No passport ledger for this property yet.</div>
+        <PropertyIntelligenceSummary propertyId={propertyId} audience="internal" compact />
+        <div className="nx-empty" style={{ marginTop: 14 }}>
+          No passport ledger for this property yet.
+        </div>
         <div className="nx-label" style={{ marginTop: 20 }}>
-          The Passport is the canonical persistent record. It updates when intelligence is approved.
+          The Passport is the canonical persistent record. It updates <strong>only</strong> when
+          a finding is APPROVED by CEO / Admin / GM.
         </div>
       </div>
     );
   }
   return (
     <div data-testid="nx-ws-passport">
-      <div className="nx-flex nx-gap-3" style={{ marginBottom: 14 }}>
+      <PropertyIntelligenceSummary propertyId={propertyId} audience="internal" compact />
+      <div className="nx-flex nx-gap-3" style={{ margin: "14px 0" }}>
         <StatusPill status="COMPLETE" label="Passport Active"/>
         <span className="nx-label">{passport.entries.length} entries</span>
       </div>
@@ -617,9 +639,7 @@ export const OpeningsPage      = makeGapPage({ title: "Windows & Doors",  icon: 
 export const MaterialsPage     = makeGapPage({ title: "Materials",        icon: Package,
   description: "Materials catalog and take-off for this property. No supplier integration is connected yet.",
   source: "Requires: Estimating engine · Phase 3" });
-export const FindingsPage      = makeGapPage({ title: "Findings",         icon: AlertCircle,
-  description: "Approved property intelligence items (roof damage, water intrusion, thermal anomalies). No findings engine is wired yet for property-scoped display.",
-  source: "Requires: Intelligence engine approvals · Phase 2b" });
+export const FindingsPage_placeholder = null; // Findings now provided by FindingsWorkspace (re-exported at top of file)
 export const EstimatePage      = makeGapPage({ title: "Estimate",         icon: Calculator,
   description: "Repair / replacement estimate synthesized from findings + materials + labor. No estimating engine is wired yet.",
   source: "Requires: Findings + Materials · Phase 3" });

@@ -1,0 +1,54 @@
+{
+  "summary": "Phase 3 · Property Intelligence Engine (PIE) full-stack testing. Backend: 25/25 pytest cases in /app/backend/tests/test_pie_lifecycle.py all PASSED — DRAFT→PENDING_REVIEW→APPROVED→RESOLVED, DRAFT→PENDING_REVIEW→REJECTED, supersede chain, separation of duties (author cannot self-approve, contractor cannot approve), passport rule (only APPROVED appends; PENDING/REJECTED do not), habitat projection field stripping, homeowner audience minimality, tenant isolation, confidence-without-source rejected, and full GM approve→passport→INTELLIGENCE_APPROVED entry. Frontend: FindingsWorkspace at /nextgen/properties/{pid}/findings loads correctly with PropertyIntelligenceSummary panel; 'NOT YET ANALYZED' shown for empty state; New Finding drawer opens (finding-new-btn); manual observation warning shown when evidence empty; confidence-without-source produces finding-form-error banner; Save as Draft creates DRAFT with MANUAL · NOT LINKED badge; FindingDrawer opens with status pill/description/author/manual-badge/Submit-for-Review; clicking Submit transitions to PENDING_REVIEW in the ledger; PIE summary panel is embedded on Overview (between Next Action and Workflow Status), Passport, and Reports pages; Reports page shows the required 'projections of approved findings only' copy.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FindingsWorkspace ledger — Open button obscured by Tactical Commander chat widget",
+        "issue": "The 'Tactical Commander' chat widget (fixed panel, bottom-right, ~400x400px) overlaps the 'Open' action button (data-testid=finding-open-*) in the Findings Ledger table at common viewport widths (1600x1000 and 1920x1080). The widget's z-index sits above the table row, so real users cannot click the 'Open' button when a finding row falls under the widget until they dismiss/collapse TC. The rest of the drawer flow works flawlessly once the widget is hidden.",
+        "selector": "[data-testid^=\"finding-open-\"] (blocked by fixed TC panel)",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "FindingsWorkspace",
+        "issues": [
+          "Tactical Commander chat widget overlaps the Findings ledger 'Open' action buttons at 1600x1000 and 1920x1080. Consider lowering TC z-index below drawers/tables, or collapsing TC to a small badge by default so ledger interactions are not blocked."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pie_lifecycle.py",
+    "/app/test_reports/pytest/pie_lifecycle_iter31.xml"
+  ],
+  "action_items": [
+    "Reduce z-index / default-collapse of the Tactical Commander chat widget so it does not overlap the Findings ledger Open buttons or other row-level actions. This is the only UI blocker uncovered; PIE lifecycle logic itself is solid."
+  ],
+  "critical_code_review_comments": [
+    "FindingsWorkspace correctly uses data-testid attributes on all critical elements (finding-new-btn, finding-form, finding-form-*, finding-open-*, finding-drawer, finding-drawer-submit, findings-empty, finding-manual-badge-*). Testability is strong.",
+    "PropertyIntelligenceSummary renders three distinct branches (not-analyzed, awaiting-approval, operational) and correctly restricts homeowner/public audiences to approved counts only — matching the /intelligence-summary?audience=homeowner backend projection.",
+    "Passport rule is enforced end-to-end: 25 pytest cases including passport-count-invariance-under-pending/rejected and passport-count-+1-on-GM-approval all pass.",
+    "Separation of duties: the drawer suppresses Approve/Reject buttons for the author (isAuthor && status==PENDING_REVIEW branch), matching backend 403.",
+    "Backend /findings routes correctly reject confidence_pct without confidence_source (HTTP 400) and immutability after submit (HTTP 409)."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_31.json",
+    "/app/test_reports/pytest/pie_lifecycle_iter31.xml"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 test_pie_lifecycle.py)",
+    "frontend": "95% — all PIE surfaces render + interact correctly; one overlay obstruction (Tactical Commander widget blocks Open button) that only affects direct table-row clicks and is not a PIE regression"
+  },
+  "test_credentials": "admin@stratex.io / StratexAdmin!2026 (TOTP via /api/auth/totp-debug); GM approver created via fresh signup + Mongo promotion (role=gm, company_name='STRATEX Technologies Inc.') exactly per test_pie_lifecycle.py::gm_session fixture",
+  "seed_data_creation": "Test-created properties prefixed TEST_PIE_ and TEST_UI_ per pytest suffix and playwright millisecond timestamp; several DRAFT / PENDING_REVIEW / APPROVED / RESOLVED / REJECTED / SUPERSEDED findings created on admin_property_id. All test data is auto-scoped and namespaced.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "PIE lifecycle backend is production-ready (25/25 tests). Frontend Findings workspace + PropertyIntelligenceSummary embed correctly across Overview / Findings / Passport / Reports. Only friction point is the Tactical Commander chat widget overlaying the ledger Open button — this predates Phase 3 and is a global chrome issue. To reproduce backend: `cd /app/backend && pytest tests/test_pie_lifecycle.py -v`. To reproduce frontend: inject token from /api/auth/totp-debug+login into localStorage 'stratex_token', then visit /nextgen/properties/{pid}/findings.",
+  "rca_of_the_issue": "Tactical Commander chat is a fixed-position panel with position:fixed and a z-index higher than the Findings table row. Since the Findings ledger renders below the fold and the ledger's rightmost 'Open' action button falls within TC's footprint on standard 1600–1920px viewports, real users cannot invoke the drawer without first dismissing TC. Mitigation options: (a) lower TC z-index below page content, (b) start TC in a small floating badge that expands on click, (c) reserve right-column padding on ledger to keep actions clear of the fixed TC region."
+}

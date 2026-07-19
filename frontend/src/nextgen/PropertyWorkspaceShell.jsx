@@ -24,7 +24,7 @@ const WORKSPACE_NAV = [
   { seg: "openings",        label: "Windows & Doors",   icon: DoorOpen,      impl: false },
   { seg: "materials",       label: "Materials",         icon: Package,       impl: false },
   { seg: "awe",             label: "AWE",               icon: Waves,         impl: true },
-  { seg: "findings",        label: "Findings",          icon: AlertCircle,   impl: false },
+  { seg: "findings",        label: "Findings",          icon: AlertCircle,   impl: true },
   { seg: "estimate",        label: "Estimate",          icon: Calculator,    impl: false },
   { seg: "reports",         label: "Reports",           icon: FileText,      impl: true },
   { seg: "passport",        label: "Property Passport", icon: ShieldCheck,   impl: true },

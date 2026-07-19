@@ -129,3 +129,28 @@ export const nxHabitatPublicRead = (token) => {
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
   return fetch(`${BACKEND_URL}/api${V1}/habitat/${token}`).then((r) => r.json());
 };
+
+// ─── Phase 3 · Property Intelligence Engine — Findings ───
+export const nxCreateFinding = (body) =>
+  api.post(`${V1}/findings`, body).then((r) => r.data);
+export const nxUpdateFinding = (id, body) =>
+  api.patch(`${V1}/findings/${id}`, body).then((r) => r.data);
+export const nxSubmitFinding = (id, notes) =>
+  api.post(`${V1}/findings/${id}/submit`, { notes }).then((r) => r.data);
+export const nxApproveFinding = (id, notes) =>
+  api.post(`${V1}/findings/${id}/approve`, { notes }).then((r) => r.data);
+export const nxRejectFinding = (id, notes) =>
+  api.post(`${V1}/findings/${id}/reject`, { notes }).then((r) => r.data);
+export const nxResolveFinding = (id, notes) =>
+  api.post(`${V1}/findings/${id}/resolve`, { notes }).then((r) => r.data);
+export const nxSupersedeFinding = (id, new_finding, reason) =>
+  api.post(`${V1}/findings/${id}/supersede`, { new_finding, reason }).then((r) => r.data);
+export const nxGetFinding = (id) =>
+  api.get(`${V1}/findings/${id}`).then((r) => r.data);
+export const nxListFindings = (propertyId, params = {}) =>
+  api.get(`${V1}/properties/${propertyId}/findings`, { params }).then((r) => r.data);
+export const nxIntelligenceSummary = (propertyId, audience = "internal") =>
+  api.get(`${V1}/properties/${propertyId}/intelligence-summary`, { params: { audience } })
+    .then((r) => r.data);
+export const nxHabitatFindings = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/findings/habitat-projection`).then((r) => r.data);
