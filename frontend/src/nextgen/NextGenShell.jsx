@@ -302,7 +302,7 @@ export default function NextGenShell() {
     <div className="nx-shell" data-testid="nextgen-shell">
       <div className="nx-app">
         <DesktopRail />
-        <div>
+        <div className="nx-app-main-col">
           <MobileHeader onMoreClick={openMore} />
           <main className="nx-main" data-testid="nx-main">
             <Outlet />

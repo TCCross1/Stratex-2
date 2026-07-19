@@ -1,0 +1,47 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "Where I have red circles, I want you to put the first image that is the logo. I want you to also place anywhere anywhere else on any other windows around to see something that looks like inside the red circle and scale it to the right size",
+  "summary": "Focused retest verified the follow-up /nextgen mobile overflow fix at 390x844 using a mobile browser context before navigation, real CEO login, and direct DOM measurements. /nextgen now has document/body scrollWidth=390, the mobile header logo center is exactly x=195 (delta 0), the bottom nav is visible at 0..390, all 5 bottom tabs are reachable, and the More sheet opens/navigates. Regression spot-checks confirmed the 3 root logo locations and /nextgen desktop rail still use the real /brand/stratex-core-logo.png asset.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/demo/sample-roof",
+        "issue": "Known pre-existing 404 console noise on the landing page; not introduced by this fix and did not affect logo or /nextgen verification."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/bug_verification_28_nextgen_mobile_overflow.py",
+    "/app/test_reports/bug_verification_28.json",
+    "/app/test_reports/iteration_28.json"
+  ],
+  "action_items": [
+    "No action needed for the reported logo/mobile overflow bug.",
+    "Optional cleanup outside this bug scope: resolve known pre-existing landing /api/demo/sample-roof 404 and PassportPage <span> inside <option> React warning."
+  ],
+  "critical_code_review_comments": [
+    "No relevant testing skill found.",
+    "Code review confirmed the fix added nx-app-main-col around MobileHeader + main and CSS overflow/min-width constraints on nx-shell, nx-app, nx-app-main-col, nx-main, and mobile header elements.",
+    "Runtime evidence: root nav/rail/splash and /nextgen desktop rail all used /brand/stratex-core-logo.png with natural dimensions 1536x1024 and visible bounding boxes."
+  ],
+  "updated_files": [
+    "/app/tests/bug_verification_28_nextgen_mobile_overflow.py",
+    "/app/test_reports/bug_verification_28.json",
+    "/app/test_reports/iteration_28.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "No seed data created. Used existing CEO credential Tony@Stratexdrone.com / 1111.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 28 passed. Mobile /nextgen at 390x844 after real /ceo/login measured documentScrollWidth=390, bodyScrollWidth=390, nx-mobile-header-logo box x=165,w=60, center=195, viewport center=195, delta=0; nx-bottom-nav box x=0,w=390,right=390. Bottom nav Home/Missions/Passport/Reports routed correctly, More sheet opened, and sheet Properties item navigated to /nextgen/properties. Root logo boxes: nav 58x40, rail 79x54, splash 576x384. Desktop /nextgen rail brand 219x88. Known pre-existing console noise only: /api/demo/sample-roof 404 and React <span> inside <option> warning on PassportPage.",
+  "rca_of_the_issue": "The prior failure was caused by the mobile grid/main content expanding to intrinsic child width, which made the mobile header row effectively wider than the viewport. The added min-width:0 and overflow-x:hidden constraints now keep the shell/header aligned to the 390px viewport, so the logo remains centered and the page no longer horizontally scrolls."
+}
