@@ -43,7 +43,24 @@ export const createJob = (body) => inst.post("/contractor/jobs", body).then(r =>
 export const computeProposal = (id) => inst.post(`/contractor/jobs/${id}/compute-proposal`).then(r => r.data);
 export const auditApprove = (id) => inst.post(`/contractor/jobs/${id}/audit-approve`).then(r => r.data);
 export const markSent = (id) => inst.post(`/contractor/jobs/${id}/mark-sent`).then(r => r.data);
-export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf?_t=${localStorage.getItem("stratex_token")}`;
+export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf`;
+
+export const openContractorPdf = async (id) => {
+  try {
+    const r = await inst.get(`/contractor/jobs/${id}/report.pdf`, {
+      responseType: "blob",
+    });
+    const blob = new Blob([r.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    return w;
+  } catch (err) {
+    const d = err.response?.data?.detail || err.message;
+    alert(`Failed to load PDF report: ${d}`);
+    throw err;
+  }
+};
 
 // ---------- Operator ----------
 export const listOperatorJobs = () => inst.get("/operator/jobs").then(r => r.data);
