@@ -73,9 +73,9 @@ export const nxOpenManifestJson = async (packageId) => {
   const w = window.open(url, "_blank", "noopener,noreferrer");
   if (!w) {
     URL.revokeObjectURL(url);
-  } else {
-    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+    throw new Error("Popup blocked. Please allow popups for this site to view the manifest JSON.");
   }
+  setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
   return w;
 };
 export const nxUploadEvidence = (missionId, formData, onProgress) =>
