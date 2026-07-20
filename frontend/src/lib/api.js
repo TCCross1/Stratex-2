@@ -59,6 +59,11 @@ const formatValidationErrorArray = (arr) => {
     .join(" · ");
 };
 
+const isSafePlainTextError = (text) => {
+  if (typeof text !== "string") return false;
+  return text.length < MAX_PLAIN_TEXT_ERROR_LENGTH && !text.includes("Authorization") && !text.includes("Bearer");
+};
+
 export const normalizeBlobError = async (err) => {
   const fallback = "An unexpected error occurred";
   if (!err) return fallback;
@@ -81,18 +86,18 @@ export const normalizeBlobError = async (err) => {
         try {
           const parsed = JSON.parse(text);
           if (parsed && typeof parsed === "object") {
-            const detail = parsed.detail || parsed.message;
-            if (detail) {
-              if (typeof detail === "string") return detail;
-              if (Array.isArray(detail)) {
-                return formatValidationErrorArray(detail);
+            const errorContent = parsed.detail || parsed.message;
+            if (errorContent) {
+              if (typeof errorContent === "string") return errorContent;
+              if (Array.isArray(errorContent)) {
+                return formatValidationErrorArray(errorContent);
               }
-              return JSON.stringify(detail);
+              return JSON.stringify(errorContent);
             }
           }
         } catch {
           // If JSON parse fails, check if the text is plain text and not overly long or contains sensitive stuff
-          if (text.length < MAX_PLAIN_TEXT_ERROR_LENGTH && !text.includes("Authorization") && !text.includes("Bearer")) {
+          if (isSafePlainTextError(text)) {
             return text;
           }
         }
@@ -114,7 +119,7 @@ export const normalizeBlobError = async (err) => {
           return JSON.stringify(detail);
         }
       } catch {
-        if (resData.length < MAX_PLAIN_TEXT_ERROR_LENGTH && !resData.includes("Authorization") && !resData.includes("Bearer")) {
+        if (isSafePlainTextError(resData)) {
           return resData;
         }
       }
