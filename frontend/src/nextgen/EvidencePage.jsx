@@ -320,7 +320,7 @@ export default function EvidencePage() {
                     try {
                       await nxOpenManifestJson(finalizedPkg.canonical_id);
                     } catch (err) {
-                      setErr(err.message || "The manifest could not be downloaded.");
+                      setErr(err.message || "Failed to download manifest.");
                     } finally {
                       setDownloadingManifest(false);
                     }

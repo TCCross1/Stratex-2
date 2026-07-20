@@ -43,7 +43,7 @@ export const createJob = (body) => inst.post("/contractor/jobs", body).then(r =>
 export const computeProposal = (id) => inst.post(`/contractor/jobs/${id}/compute-proposal`).then(r => r.data);
 export const auditApprove = (id) => inst.post(`/contractor/jobs/${id}/audit-approve`).then(r => r.data);
 export const markSent = (id) => inst.post(`/contractor/jobs/${id}/mark-sent`).then(r => r.data);
-// Delay revocation by 2 minutes to allow the browser enough time to download/open the PDF in a new tab before cleanup
+// Delay revocation by 2 minutes to allow the browser enough time to load the PDF blob URL in the new tab before cleanup
 const BLOB_REVOKE_DELAY_MS = 120000;
 const MAX_PLAIN_TEXT_ERROR_LENGTH = 200;
 
