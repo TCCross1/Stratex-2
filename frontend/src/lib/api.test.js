@@ -55,7 +55,6 @@ describe("Stratex core - PR #1 Hardening and Verification", () => {
     // Clear all mock history
     jest.clearAllMocks();
     jest.useFakeTimers();
-
     jest.spyOn(libApi, "get").mockImplementation(() => Promise.resolve({ data: new Blob() }));
   });
 

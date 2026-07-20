@@ -14,14 +14,14 @@ import {
 import { toast } from "sonner";
 
 // Mock router and hook dependencies
-jest.mock("../lib/auth", () => ({
+jest.mock("@/lib/auth", () => ({
   useAuth: () => ({
     user: { email: "contractor@example.com", role: "contractor" },
     token: "mock-token",
   }),
 }));
 
-jest.mock("../hooks/use-is-mobile", () => () => false);
+jest.mock("@/hooks/use-is-mobile", () => () => false);
 
 jest.mock("sonner", () => ({
   toast: {
@@ -31,8 +31,8 @@ jest.mock("sonner", () => ({
 }));
 
 // Mock out all the sub-components to isolate ContractorPortal testing and bypass canvas/Leaflet/3D dependencies
-jest.mock("../components/RoofModel3D", () => () => <div data-testid="mock-roof-model" />);
-jest.mock("../components/ForensicOverlay", () => {
+jest.mock("@/components/RoofModel3D", () => () => <div data-testid="mock-roof-model" />);
+jest.mock("@/components/ForensicOverlay", () => {
   return {
     __esModule: true,
     default: () => <div data-testid="mock-forensic-overlay" />,
@@ -42,11 +42,11 @@ jest.mock("../components/ForensicOverlay", () => {
     AnomalyMonetizationCard: () => <div data-testid="mock-anomaly-monetization-card" />,
   };
 });
-jest.mock("../components/MapPicker", () => () => <div data-testid="mock-map-picker" />);
-jest.mock("../components/LaunchCountdownBadge", () => () => <div data-testid="mock-countdown-badge" />);
-jest.mock("../components/CaliperUpload", () => () => <div data-testid="mock-caliper-upload" />);
-jest.mock("../components/ValidationReport", () => () => <div data-testid="mock-validation-report" />);
-jest.mock("../components/MaterialConfigurator", () => () => <div data-testid="mock-material-configurator" />);
+jest.mock("@/components/MapPicker", () => () => <div data-testid="mock-map-picker" />);
+jest.mock("@/components/LaunchCountdownBadge", () => () => <div data-testid="mock-countdown-badge" />);
+jest.mock("@/components/CaliperUpload", () => () => <div data-testid="mock-caliper-upload" />);
+jest.mock("@/components/ValidationReport", () => () => <div data-testid="mock-validation-report" />);
+jest.mock("@/components/MaterialConfigurator", () => () => <div data-testid="mock-material-configurator" />);
 
 // Mock the API helper module
 jest.mock("@/lib/api", () => ({
