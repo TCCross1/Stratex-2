@@ -66,6 +66,8 @@ export const nxManifestJsonUrl = (packageId) => {
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
   return `${BACKEND_URL}/api${V1}/packages/${packageId}/manifest.json`;
 };
+const BLOB_REVOKE_DELAY_MS = 120000;
+
 export const nxOpenManifestJson = async (packageId) => {
   try {
     const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
@@ -74,7 +76,7 @@ export const nxOpenManifestJson = async (packageId) => {
     const blob = new Blob([r.data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
     return w;
   } catch (err) {
     const d = err.response?.data?.detail || err.message;

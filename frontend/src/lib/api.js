@@ -45,6 +45,8 @@ export const auditApprove = (id) => inst.post(`/contractor/jobs/${id}/audit-appr
 export const markSent = (id) => inst.post(`/contractor/jobs/${id}/mark-sent`).then(r => r.data);
 export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf`;
 
+const BLOB_REVOKE_DELAY_MS = 120000;
+
 export const openContractorPdf = async (id) => {
   try {
     const r = await inst.get(`/contractor/jobs/${id}/report.pdf`, {
@@ -53,7 +55,7 @@ export const openContractorPdf = async (id) => {
     const blob = new Blob([r.data], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
     return w;
   } catch (err) {
     const d = err.response?.data?.detail || err.message;
