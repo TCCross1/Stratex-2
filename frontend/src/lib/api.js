@@ -48,7 +48,7 @@ const BLOB_REVOKE_DELAY_MS = 120000;
 const MAX_PLAIN_TEXT_ERROR_LENGTH = 200;
 
 const formatValidationErrorArray = (arr) => {
-  if (!Array.isArray(arr)) return "";
+  if (!Array.isArray(arr)) return "Invalid validation error format";
   return arr
     .map((e) => {
       const loc = (e && e.loc && Array.isArray(e.loc)) ? (e.loc.slice(-1)[0] || "field") : "field";
@@ -75,8 +75,8 @@ export const normalizeBlobError = async (err) => {
       const text = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
-        reader.onerror = (evt) => {
-          console.error("FileReader failed to read blob error response:", reader.error || evt);
+        reader.onerror = () => {
+          console.error("FileReader failed to read blob error response");
           resolve("");
         };
         reader.readAsText(blob);
