@@ -46,18 +46,18 @@ export const markSent = (id) => inst.post(`/contractor/jobs/${id}/mark-sent`).th
 const BLOB_REVOKE_DELAY_MS = 120000;
 
 export const openContractorPdf = async (id) => {
-  try {
-    const r = await inst.get(`/contractor/jobs/${id}/report.pdf`, {
-      responseType: "blob",
-    });
-    const blob = new Blob([r.data], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    const w = window.open(url, "_blank", "noopener,noreferrer");
+  const r = await inst.get(`/contractor/jobs/${id}/report.pdf`, {
+    responseType: "blob",
+  });
+  const blob = new Blob([r.data], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank", "noopener,noreferrer");
+  if (!w) {
+    URL.revokeObjectURL(url);
+  } else {
     setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
-    return w;
-  } catch (err) {
-    throw err;
   }
+  return w;
 };
 
 // ---------- Operator ----------

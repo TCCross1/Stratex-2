@@ -65,18 +65,18 @@ export const nxListPackages = (missionId) =>
 const BLOB_REVOKE_DELAY_MS = 120000;
 
 export const nxOpenManifestJson = async (packageId) => {
-  try {
-    const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
-      responseType: "blob",
-    });
-    const blob = new Blob([r.data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const w = window.open(url, "_blank", "noopener,noreferrer");
+  const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
+    responseType: "blob",
+  });
+  const blob = new Blob([r.data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank", "noopener,noreferrer");
+  if (!w) {
+    URL.revokeObjectURL(url);
+  } else {
     setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
-    return w;
-  } catch (err) {
-    throw err;
   }
+  return w;
 };
 export const nxUploadEvidence = (missionId, formData, onProgress) =>
   api.post(`${V1}/missions/${missionId}/evidence`, formData, {
