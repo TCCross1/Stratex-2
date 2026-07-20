@@ -63,9 +63,24 @@ export const nxFinalizePackage = (missionId, operator_notes) =>
 export const nxListPackages = (missionId) =>
   api.get(`${V1}/missions/${missionId}/packages`).then((r) => r.data);
 export const nxManifestJsonUrl = (packageId) => {
-  const t = localStorage.getItem("stratex_token");
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-  return `${BACKEND_URL}/api${V1}/packages/${packageId}/manifest.json?_t=${t}`;
+  return `${BACKEND_URL}/api${V1}/packages/${packageId}/manifest.json`;
+};
+export const nxOpenManifestJson = async (packageId) => {
+  try {
+    const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
+      responseType: "blob",
+    });
+    const blob = new Blob([r.data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    return w;
+  } catch (err) {
+    const d = err.response?.data?.detail || err.message;
+    alert(`Failed to load manifest JSON: ${d}`);
+    throw err;
+  }
 };
 export const nxUploadEvidence = (missionId, formData, onProgress) =>
   api.post(`${V1}/missions/${missionId}/evidence`, formData, {
@@ -106,9 +121,8 @@ export const nxRevokeGrant = (grantId) =>
 export const nxHabitatReportHtmlUrl = (propertyId, template) => {
   // NOTE: legacy caller shape — returns a full URL. New callers should prefer
   // nxOpenReportHtml() below which does NOT embed the bearer token in the URL.
-  const t = localStorage.getItem("stratex_token");
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-  return `${BACKEND_URL}/api${V1}/properties/${propertyId}/report/${template}/html?_t=${t}`;
+  return `${BACKEND_URL}/api${V1}/properties/${propertyId}/report/${template}/html`;
 };
 // Directive 009: fetch HTML with Authorization header (no bearer in URL/history/referer),
 // then open the resulting blob in a new tab.
