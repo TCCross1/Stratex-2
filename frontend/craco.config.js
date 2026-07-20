@@ -32,6 +32,18 @@ let webpackConfig = {
       },
     },
   },
+  jest: {
+    configure: {
+      resetMocks: false,
+      moduleNameMapper: {
+        "^react-router-dom$": "react-router-dom/dist/index.js",
+        "^react-router$": "react-router/dist/development/index.js",
+        "^react-router/dom$": "react-router/dist/development/dom-export.js",
+        "^axios$": "axios/dist/node/axios.cjs",
+        "^@/(.*)$": "<rootDir>/src/$1",
+      },
+    },
+  },
   webpack: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

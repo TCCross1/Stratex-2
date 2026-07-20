@@ -1,8 +1,16 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import ContractorPortal from "./ContractorPortal";
-import { openContractorPdf } from "../lib/api";
+import { JobDetail } from "./ContractorPortal";
+import {
+  openContractorPdf,
+  getContractorJob,
+  listContractorJobs,
+  getMaterials,
+  getJobAuditLog,
+  rescheduleSuggestions,
+  weatherMonitor
+} from "@/lib/api";
 import { toast } from "sonner";
 
 // Mock router and hook dependencies
@@ -41,35 +49,51 @@ jest.mock("../components/ValidationReport", () => () => <div data-testid="mock-v
 jest.mock("../components/MaterialConfigurator", () => () => <div data-testid="mock-material-configurator" />);
 
 // Mock the API helper module
-jest.mock("../lib/api", () => ({
-  listContractorJobs: jest.fn().mockResolvedValue({ items: [] }),
-  getContractorJob: jest.fn().mockResolvedValue({
-    id: "job-123",
-    status: "PROPOSAL_READY",
-    homeowner_email: "homeowner@example.com",
-    materials: {},
-    pricing_lock: {
-      lock_mode: "firm-fixed",
-      cost_breakdown: {},
-    },
-  }),
-  getMaterials: jest.fn().mockResolvedValue({}),
+jest.mock("@/lib/api", () => ({
+  listContractorJobs: jest.fn(),
+  getContractorJob: jest.fn(),
+  getMaterials: jest.fn(),
   openContractorPdf: jest.fn(),
-  getJobAuditLog: jest.fn().mockResolvedValue({ events: [] }),
-  rescheduleSuggestions: jest.fn().mockResolvedValue([]),
-  weatherMonitor: jest.fn().mockResolvedValue({}),
+  getJobAuditLog: jest.fn(),
+  rescheduleSuggestions: jest.fn(),
+  weatherMonitor: jest.fn(),
 }));
 
 describe("ContractorPortal component - PDF generation controls", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    listContractorJobs.mockResolvedValue({ items: [] });
+    getContractorJob.mockResolvedValue({
+      id: "job-123",
+      status: "PROPOSAL_READY",
+      homeowner_email: "homeowner@example.com",
+      materials: {},
+      pricing: {
+        lock_mode: "firm-fixed",
+        line_items: [
+          { description: "Test Item", qty: 10, unit: "SQ", unit_price: 150, total: 1500, xactimate_tag: "RF-300" }
+        ],
+        subtotal: 1500,
+        overhead_rate: 0.1,
+        overhead: 150,
+        profit_rate: 0.1,
+        profit: 150,
+        insurance_supplement_rate: 0,
+        final_total: 1800,
+      },
+    });
+    getMaterials.mockResolvedValue({});
+    getJobAuditLog.mockResolvedValue({ events: [] });
+    rescheduleSuggestions.mockResolvedValue([]);
+    weatherMonitor.mockResolvedValue({});
   });
 
   const renderComponent = (jobId = "job-123") => {
     return render(
       <MemoryRouter initialEntries={[`/contractor/jobs/${jobId}`]}>
         <Routes>
-          <Route path="/contractor/jobs/:id" element={<ContractorPortal />} />
+          <Route path="/contractor/jobs/:id" element={<JobDetail />} />
         </Routes>
       </MemoryRouter>
     );

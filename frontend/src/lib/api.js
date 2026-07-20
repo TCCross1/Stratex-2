@@ -97,7 +97,7 @@ export const normalizeBlobError = async (err) => {
           }
         } catch {
           // If JSON parse fails, check if the text is plain text and not overly long or contains sensitive stuff
-          if (isSafePlainTextError(text)) {
+          if (blob.type !== "application/json" && isSafePlainTextError(text)) {
             return text;
           }
         }

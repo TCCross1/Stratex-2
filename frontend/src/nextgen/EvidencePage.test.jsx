@@ -2,32 +2,21 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import EvidencePage from "./EvidencePage";
-import { nxOpenManifestJson } from "./api";
+import {
+  nxGetMission, nxEvidenceProfile, nxListEvidence, nxUploadEvidence,
+  nxValidatePackage, nxFinalizePackage, nxListPackages, nxOpenManifestJson,
+  nxGetEvidence, nxDeleteEvidence, nxRetryMetadata
+} from "@/nextgen/api";
 
 // Mock the API helpers from nextgen/api
-jest.mock("./api", () => ({
-  nxGetMission: jest.fn().mockResolvedValue({
-    mission: { product: "product-123", canonical_id: "mission-123", stage: 5 },
-    property: { address: { line1: "123 Main St", city: "Seattle", region: "WA" } },
-    product: { display_name: "Product 123" },
-    stage_labels: ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Stage 5", "Stage 6"],
-  }),
-  nxEvidenceProfile: jest.fn().mockResolvedValue({
-    display_name: "Profile 123",
-    product_key: "prod-key",
-    requirements: [
-      { category: "RGB_IMAGE", label: "RGB Image", min_count: 1, required: true },
-    ],
-  }),
-  nxListEvidence: jest.fn().mockResolvedValue({ items: [] }),
+jest.mock("@/nextgen/api", () => ({
+  nxGetMission: jest.fn(),
+  nxEvidenceProfile: jest.fn(),
+  nxListEvidence: jest.fn(),
   nxUploadEvidence: jest.fn(),
-  nxValidatePackage: jest.fn().mockResolvedValue({ overall: "PASS", results: [] }),
+  nxValidatePackage: jest.fn(),
   nxFinalizePackage: jest.fn(),
-  nxListPackages: jest.fn().mockResolvedValue({
-    items: [
-      { status: "finalized", canonical_id: "pkg-123", package_version: "1", manifest_digest: "digest-123" },
-    ],
-  }),
+  nxListPackages: jest.fn(),
   nxOpenManifestJson: jest.fn(),
   nxGetEvidence: jest.fn(),
   nxDeleteEvidence: jest.fn(),
@@ -37,6 +26,27 @@ jest.mock("./api", () => ({
 describe("EvidencePage component - Manifest download controls", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    nxGetMission.mockResolvedValue({
+      mission: { product: "product-123", canonical_id: "mission-123", stage: 5 },
+      property: { address: { line1: "123 Main St", city: "Seattle", region: "WA" } },
+      product: { display_name: "Product 123" },
+      stage_labels: ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Stage 5", "Stage 6"],
+    });
+    nxEvidenceProfile.mockResolvedValue({
+      display_name: "Profile 123",
+      product_key: "prod-key",
+      requirements: [
+        { category: "RGB_IMAGE", label: "RGB Image", min_count: 1, required: true },
+      ],
+    });
+    nxListEvidence.mockResolvedValue({ items: [] });
+    nxValidatePackage.mockResolvedValue({ overall: "PASS", results: [] });
+    nxListPackages.mockResolvedValue({
+      items: [
+        { status: "finalized", canonical_id: "pkg-123", package_version: "1", manifest_digest: "digest-123" },
+      ],
+    });
   });
 
   const renderComponent = (missionId = "mission-123") => {

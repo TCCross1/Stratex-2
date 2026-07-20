@@ -1,6 +1,5 @@
 import { openContractorPdf, normalizeBlobError } from "./api";
 import { nxOpenManifestJson, nxOpenReportHtml } from "../nextgen/api";
-import { api as nextgenApi } from "../nextgen/api";
 import { api as libApi } from "./api";
 
 // We will mock the global objects to verify their calls and behavior
@@ -56,6 +55,8 @@ describe("Stratex core - PR #1 Hardening and Verification", () => {
     // Clear all mock history
     jest.clearAllMocks();
     jest.useFakeTimers();
+
+    jest.spyOn(libApi, "get").mockImplementation(() => Promise.resolve({ data: new Blob() }));
   });
 
   afterEach(() => {
@@ -166,7 +167,7 @@ describe("Stratex core - PR #1 Hardening and Verification", () => {
   // 10. Temporary anchor is removed
   test("8, 9, 10. Manifest download creates and clicks a temporary anchor with meaningful name and cleans up", async () => {
     const mockManifestData = { version: "1.0.0" };
-    jest.spyOn(nextgenApi, "get").mockResolvedValue({
+    jest.spyOn(libApi, "get").mockResolvedValue({
       data: new Blob([JSON.stringify(mockManifestData)], { type: "application/json" }),
     });
 
