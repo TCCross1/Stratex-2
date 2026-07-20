@@ -62,6 +62,7 @@ export const nxFinalizePackage = (missionId, operator_notes) =>
   api.post(`${V1}/missions/${missionId}/package/finalize`, { operator_notes }).then((r) => r.data);
 export const nxListPackages = (missionId) =>
   api.get(`${V1}/missions/${missionId}/packages`).then((r) => r.data);
+// Delay revocation by 2 minutes to allow the browser enough time to download/open the manifest in a new tab before cleanup
 const BLOB_REVOKE_DELAY_MS = 120000;
 
 export const nxOpenManifestJson = async (packageId) => {
