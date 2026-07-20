@@ -449,7 +449,7 @@ export function OverviewPage() {
                     <span style={{ color: "#fff", fontWeight: 600 }}>Energy Efficiency</span>
                     <span style={{ color: "var(--nx-orange)", fontWeight: "bold" }}>{awe?.energy?.score || "72"}/100</span>
                   </div>
-                  <div style={{ color: "var(--nx-text-secondary)", fontSize: 12 }}>R-value envelope retention, thermal thermal leaks, roof solar reflection.</div>
+                  <div style={{ color: "var(--nx-text-secondary)", fontSize: 12 }}>R-value envelope retention, thermal leaks, roof solar reflection.</div>
                 </div>
               </div>
             </div>
