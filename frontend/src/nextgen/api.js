@@ -1,6 +1,6 @@
 // NextGen API client — talks to /api/nextgen/* only.
 // Reuses the shared axios instance from lib/api.js (auth header + 422 flatten).
-import { api } from "@/lib/api";
+import { api, normalizeBlobError } from "@/lib/api";
 
 const NX = "/nextgen";
 
@@ -65,18 +65,24 @@ export const nxListPackages = (missionId) =>
 const BLOB_REVOKE_DELAY_MS = 120000;
 
 export const nxOpenManifestJson = async (packageId) => {
-  const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
-    responseType: "blob",
-  });
-  const blob = new Blob([r.data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, "_blank", "noopener,noreferrer");
-  if (!w) {
-    URL.revokeObjectURL(url);
-    throw new Error("Popup blocked. Please allow popups for this site to view the manifest JSON.");
+  try {
+    const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
+      responseType: "blob",
+    });
+    const blob = new Blob([r.data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `manifest-${packageId}.json`;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+  } catch (err) {
+    const errMsg = await normalizeBlobError(err);
+    throw new Error(errMsg);
   }
-  setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
-  return w;
 };
 export const nxUploadEvidence = (missionId, formData, onProgress) =>
   api.post(`${V1}/missions/${missionId}/evidence`, formData, {
@@ -117,16 +123,52 @@ export const nxRevokeGrant = (grantId) =>
 // Directive 009: fetch HTML with Authorization header (no bearer in URL/history/referer),
 // then open the resulting blob in a new tab.
 export const nxOpenReportHtml = async (propertyId, template) => {
-  const r = await api.get(`${V1}/properties/${propertyId}/report/${template}/html`, {
-    responseType: "text",
-    headers: { Accept: "text/html" },
-  });
-  const blob = new Blob([r.data], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, "_blank", "noopener,noreferrer");
-  // Best-effort cleanup — revoke after tab loads (or ~2 min max).
-  setTimeout(() => URL.revokeObjectURL(url), 120000);
-  return w;
+  const w = window.open("", "_blank", "noopener,noreferrer");
+  if (!w) {
+    throw new Error("Popup blocked. Please allow popups for this site to view the HTML report.");
+  }
+  if (w.opener) {
+    w.opener = null;
+  }
+  w.document.write(`
+    <html>
+      <head>
+        <title>Loading HTML Report...</title>
+        <style>
+          body {
+            background-color: #0B111A;
+            color: #E6EEF6;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div>Loading HTML Report...</div>
+      </body>
+    </html>
+  `);
+  w.document.close();
+
+  try {
+    const r = await api.get(`${V1}/properties/${propertyId}/report/${template}/html`, {
+      responseType: "text",
+      headers: { Accept: "text/html" },
+    });
+    const blob = new Blob([r.data], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    w.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+    return w;
+  } catch (err) {
+    w.close();
+    const errMsg = await normalizeBlobError(err);
+    throw new Error(errMsg);
+  }
 };
 // Public — no auth
 export const nxHabitatPublicRead = (token) => {

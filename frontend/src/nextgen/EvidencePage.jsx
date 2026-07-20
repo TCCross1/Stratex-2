@@ -48,6 +48,7 @@ export default function EvidencePage() {
   const [drawer, setDrawer] = useState(null);
   const [err, setErr] = useState(null);
   const [finalizeBusy, setFinalizeBusy] = useState(false);
+  const [downloadingManifest, setDownloadingManifest] = useState(false);
   const dropRef = useRef(null);
 
   const load = async () => {
@@ -310,16 +311,24 @@ export default function EvidencePage() {
                 {finalizedPkg ? "Finalized" : "Finalize Package"}
               </button>
               {finalizedPkg && (
-                <button className="nx-btn ghost" onClick={async () => {
-                  try {
+                <button
+                  className="nx-btn ghost"
+                  onClick={async () => {
+                    if (downloadingManifest) return;
+                    setDownloadingManifest(true);
                     setErr(null);
-                    await nxOpenManifestJson(finalizedPkg.canonical_id);
-                  } catch (e) {
-                    setErr(e?.response?.data?.detail || e.message || "Failed to load manifest JSON");
-                  }
-                }}
-                  data-testid="nx-download-manifest">
-                  Download Manifest JSON
+                    try {
+                      await nxOpenManifestJson(finalizedPkg.canonical_id);
+                    } catch (err) {
+                      setErr(err.message || "The manifest could not be downloaded.");
+                    } finally {
+                      setDownloadingManifest(false);
+                    }
+                  }}
+                  disabled={downloadingManifest}
+                  data-testid="nx-download-manifest"
+                >
+                  {downloadingManifest ? "Downloading manifest..." : "Download Manifest JSON"}
                 </button>
               )}
             </div>
