@@ -677,7 +677,13 @@ export function JobDetail() {
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                   <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest"><DollarSign size={14}/> Locked Proposal — {pricing.lock_mode}</div>
                   <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => openContractorPdf(id)} className="btn-hud btn-hud-ghost" data-testid="job-pdf-btn"><Download size={14}/> PDF</button>
+                    <button onClick={async () => {
+                      try {
+                        await openContractorPdf(id);
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || err.message || "Failed to load PDF report");
+                      }
+                    }} className="btn-hud btn-hud-ghost" data-testid="job-pdf-btn"><Download size={14}/> PDF</button>
                     <button onClick={()=>{setEmailTo(job.homeowner_email||""); setEmailOpen(true);}} className="btn-hud btn-hud-ghost" data-testid="email-proposal-btn"><Mail size={14}/> Email</button>
                     {job.status === "PROPOSAL_READY" && <button onClick={()=>run(()=>auditApprove(id), "Audit approved")} disabled={busy} className="btn-hud" data-testid="audit-approve-btn"><CheckCircle2 size={14}/> Audit Approved</button>}
                     {job.status === "AUDIT_APPROVED" && <button onClick={()=>run(()=>markSent(id), "Marked sent")} disabled={busy} className="btn-hud btn-hud-alert" data-testid="mark-sent-btn"><Send size={14}/> Mark Sent</button>}

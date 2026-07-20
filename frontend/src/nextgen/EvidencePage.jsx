@@ -310,7 +310,14 @@ export default function EvidencePage() {
                 {finalizedPkg ? "Finalized" : "Finalize Package"}
               </button>
               {finalizedPkg && (
-                <button className="nx-btn ghost" onClick={() => nxOpenManifestJson(finalizedPkg.canonical_id)}
+                <button className="nx-btn ghost" onClick={async () => {
+                  try {
+                    setErr(null);
+                    await nxOpenManifestJson(finalizedPkg.canonical_id);
+                  } catch (e) {
+                    setErr(e?.response?.data?.detail || e.message || "Failed to load manifest JSON");
+                  }
+                }}
                   data-testid="nx-download-manifest">
                   Download Manifest JSON
                 </button>
