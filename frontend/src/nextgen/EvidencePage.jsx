@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   nxGetMission, nxEvidenceProfile, nxListEvidence, nxUploadEvidence,
-  nxValidatePackage, nxFinalizePackage, nxListPackages, nxManifestJsonUrl,
+  nxValidatePackage, nxFinalizePackage, nxListPackages, nxOpenManifestJson,
   nxGetEvidence, nxDeleteEvidence, nxRetryMetadata,
 } from "@/nextgen/api";
 
@@ -310,10 +310,10 @@ export default function EvidencePage() {
                 {finalizedPkg ? "Finalized" : "Finalize Package"}
               </button>
               {finalizedPkg && (
-                <a className="nx-btn ghost" href={nxManifestJsonUrl(finalizedPkg.canonical_id)}
-                  download data-testid="nx-download-manifest">
+                <button className="nx-btn ghost" onClick={() => nxOpenManifestJson(finalizedPkg.canonical_id)}
+                  data-testid="nx-download-manifest">
                   Download Manifest JSON
-                </a>
+                </button>
               )}
             </div>
           </div>
