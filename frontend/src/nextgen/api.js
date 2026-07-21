@@ -111,6 +111,26 @@ export const nxPropertyReport = (propertyId, template) =>
 export const nxReportTemplates = () =>
   api.get(`${V1}/report-templates`).then((r) => r.data);
 
+// ─── Directive 008 Property Passport endpoints ───
+export const nxPropertyDna = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/dna`).then((r) => r.data);
+export const nxUpdatePropertyDna = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/dna/update`, body).then((r) => r.data);
+export const nxListWarranties = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/warranties`).then((r) => r.data);
+export const nxCreateWarranty = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/warranties`, body).then((r) => r.data);
+export const nxRenewWarranty = (propertyId, warrantyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/warranties/${warrantyId}/renew`, body).then((r) => r.data);
+export const nxPropertyMaintenance = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/maintenance`).then((r) => r.data);
+export const nxPropertyFinancials = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/financials`).then((r) => r.data);
+export const nxUpdateFinancials = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/financials`, body).then((r) => r.data);
+export const nxVersionComparison = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/compare`).then((r) => r.data);
+
 // ─── Directive 008 · Wave 2C · AWE + Habitat + HTML report ───
 export const nxPropertyAwe = (propertyId) =>
   api.get(`${V1}/properties/${propertyId}/awe`).then((r) => r.data);
