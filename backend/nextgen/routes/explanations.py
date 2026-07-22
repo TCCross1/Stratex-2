@@ -266,3 +266,267 @@ async def query_explanations(
         "match_count": len(filtered_results),
         "results": filtered_results
     }
+
+
+# ── Lifecycle, Reconciliation & Conflict Endpoints ───────────────────────
+
+class RetractRequest(BaseModel):
+    reason: str
+
+
+class ConflictResolveRequest(BaseModel):
+    resolution: str
+    resolution_reason: str
+
+
+@nextgen_r.get(f"{V1}/explanations/{{id}}/history")
+async def get_explanation_history(
+    id: str,
+    session: NxSession = Depends(nx_session),
+):
+    """Retrieve the full historical supersession chain of an explanation."""
+    from ..explanation_reconciliation_service import nx_collections
+
+    # Fetch targeted explanation first
+    exp = await nx_collections.explanations.find_one({
+        "explanation_id": id,
+        "tenant_id": session.tenant_id
+    })
+    if not exp:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": "RESOURCE_NOT_FOUND",
+                "message": f"Explanation with ID {id} not found."
+            }
+        )
+
+    # RBAC Guard: Homeowners cannot view non-homeowner history
+    if session.role == "homeowner" and exp.get("audience_level") != "homeowner":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_code": "INSUFFICIENT_ACCESS_ROLE",
+                "message": "Homeowners are only authorized to view homeowner-safe explanations."
+            }
+        )
+
+    # Fetch all historical versions of the same projection scope
+    query = {
+        "tenant_id": session.tenant_id,
+        "property_id": exp["property_id"],
+        "system_category": exp["system_category"],
+        "audience_level": exp.get("audience_level", "homeowner")
+    }
+    
+    cursor = nx_collections.explanations.find(query).sort("created_at", -1)
+    results = [strip_mongo_id(d) async for d in cursor]
+    return {"history": results, "count": len(results)}
+
+
+@nextgen_r.get(f"{V1}/property/{{property_id}}/explanations/current")
+async def get_current_property_explanations(
+    property_id: str,
+    scope: Optional[str] = Query(None),
+    audience: Optional[str] = Query(None),
+    session: NxSession = Depends(nx_session),
+):
+    """Retrieve the active current published explanations for a property."""
+    from ..explanation_reconciliation_service import nx_collections
+
+    if scope and not isinstance(scope, str):
+        scope = None
+    if audience and not isinstance(audience, str):
+        audience = None
+
+    query = {
+        "tenant_id": session.tenant_id,
+        "property_id": property_id,
+        "status": "PUBLISHED",
+        "is_current": True
+    }
+
+    if scope:
+        query["system_category"] = scope.strip().upper()
+
+    # RBAC Guard / audience filter forcing
+    if session.role == "homeowner":
+        query["audience_level"] = "homeowner"
+    elif audience:
+        query["audience_level"] = audience
+    else:
+        # Default for engineer/contractor is all or engineer
+        pass
+
+    cursor = nx_collections.explanations.find(query)
+    results = [strip_mongo_id(d) async for d in cursor]
+    
+    # Hide evidence trace for homeowners
+    if session.role == "homeowner":
+        for r in results:
+            r.pop("evidence_trace", None)
+            if "levels" in r and "level_4" in r["levels"]:
+                r["levels"].pop("level_4")
+            if "levels" in r and "level_3" in r["levels"]:
+                r["levels"].pop("level_3")
+            if "levels" in r and "level_2" in r["levels"]:
+                r["levels"].pop("level_2")
+
+    return {"results": results, "count": len(results)}
+
+
+@nextgen_r.get(f"{V1}/property/{{property_id}}/explanations/history")
+async def get_property_explanation_history(
+    property_id: str,
+    session: NxSession = Depends(nx_session),
+):
+    """Retrieve all historical explanations (all versions/statuses) for a property."""
+    from ..explanation_reconciliation_service import nx_collections
+
+    query = {
+        "tenant_id": session.tenant_id,
+        "property_id": property_id
+    }
+
+    if session.role == "homeowner":
+        query["audience_level"] = "homeowner"
+
+    cursor = nx_collections.explanations.find(query).sort("created_at", -1)
+    results = [strip_mongo_id(d) async for d in cursor]
+
+    # Clean outputs for homeowners
+    if session.role == "homeowner":
+        for r in results:
+            r.pop("evidence_trace", None)
+            if "levels" in r:
+                r["levels"] = {"level_1": r["levels"].get("level_1")}
+
+    return {"results": results, "count": len(results)}
+
+
+@nextgen_r.get(f"{V1}/property/{{property_id}}/explanation-conflicts")
+async def get_property_explanation_conflicts(
+    property_id: str,
+    session: NxSession = Depends(nx_session),
+):
+    """Retrieve all explanation/rebase conflicts for a property."""
+    from ..explanation_reconciliation_service import nx_collections
+
+    if session.role == "homeowner":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_code": "INSUFFICIENT_ACCESS_ROLE",
+                "message": "Homeowners are not authorized to view explanation conflicts."
+            }
+        )
+
+    query = {
+        "tenant_id": session.tenant_id,
+        "property_id": property_id
+    }
+
+    cursor = nx_collections.explanation_conflicts.find(query).sort("detected_at", -1)
+    results = [strip_mongo_id(d) async for d in cursor]
+    return {"results": results, "count": len(results)}
+
+
+@nextgen_r.post(f"{V1}/explanations/{{id}}/retract")
+async def retract_explanation_by_id(
+    id: str,
+    body: RetractRequest,
+    session: NxSession = Depends(nx_session),
+):
+    """Retract an explanation by ID."""
+    from ..explanation_reconciliation_service import retract_explanation
+
+    APPROVER_ROLES = {"ceo", "admin", "gm"}
+    if session.role not in APPROVER_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_code": "INSUFFICIENT_ACCESS_ROLE",
+                "message": f"Role '{session.role}' is not authorized to retract explanations."
+            }
+        )
+
+    try:
+        retracted = await retract_explanation(id, body.reason, session.user_id)
+        return {"status": "SUCCESS", "explanation": retracted}
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "RETRACTION_FAILED",
+                "message": str(e)
+            }
+        )
+
+
+@nextgen_r.post(f"{V1}/property/{{property_id}}/explanations/reconcile")
+async def reconcile_property_explanations_endpoint(
+    property_id: str,
+    session: NxSession = Depends(nx_session),
+):
+    """Manually triggers explanation reconciliation for a property."""
+    from ..explanation_reconciliation_service import reconcile_property_explanations
+
+    ALLOWED_RECONCILERS = {"ceo", "admin", "gm", "contractor", "inspector", "engineer"}
+    if session.role not in ALLOWED_RECONCILERS:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_code": "INSUFFICIENT_ACCESS_ROLE",
+                "message": f"Role '{session.role}' is not authorized to trigger manual reconciliation."
+            }
+        )
+
+    try:
+        results = await reconcile_property_explanations(property_id, session.tenant_id, session.user_id, force_recompile=True)
+        return {"status": "SUCCESS", "reconciliation_results": results}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_code": "RECONCILIATION_FAILED",
+                "message": str(e)
+            }
+        )
+
+
+@nextgen_r.post(f"{V1}/explanation-conflicts/{{conflict_id}}/resolve")
+async def resolve_explanation_conflict_endpoint(
+    conflict_id: str,
+    body: ConflictResolveRequest,
+    session: NxSession = Depends(nx_session),
+):
+    """Resolves an open explanation/passport conflict."""
+    from ..explanation_reconciliation_service import resolve_explanation_conflict
+
+    APPROVER_ROLES = {"ceo", "admin", "gm"}
+    if session.role not in APPROVER_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_code": "INSUFFICIENT_ACCESS_ROLE",
+                "message": f"Role '{session.role}' is not authorized to resolve explanation conflicts."
+            }
+        )
+
+    try:
+        resolved = await resolve_explanation_conflict(
+            conflict_id=conflict_id,
+            resolution=body.resolution,
+            resolution_reason=body.resolution_reason,
+            resolved_by=session.user_id,
+            tenant_id=session.tenant_id
+        )
+        return {"status": "SUCCESS", "conflict": resolved}
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "CONFLICT_RESOLUTION_FAILED",
+                "message": str(e)
+            }
+        )

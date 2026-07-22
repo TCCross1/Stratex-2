@@ -128,6 +128,13 @@ async def create_edge(
         "to_node": u_to,
         "relationship": u_rel,
         "evidence_id": evidence_id,
+        "status": (metadata or {}).get("status", "active"),
+        "valid_from_passport_version": (metadata or {}).get("valid_from_passport_version", 1),
+        "valid_to_passport_version": (metadata or {}).get("valid_to_passport_version"),
+        "source_finding_version_id": (metadata or {}).get("source_finding_version_id"),
+        "source_evidence_ids": (metadata or {}).get("source_evidence_ids", [evidence_id]),
+        "invalidated_at": (metadata or {}).get("invalidated_at"),
+        "invalidation_reason": (metadata or {}).get("invalidation_reason"),
         "metadata": metadata or {},
         "created_at": now,
         "updated_at": now,
@@ -136,7 +143,13 @@ async def create_edge(
     return strip_mongo_id(edge)
 
 
-async def find_path(property_id: str, start_node: str, end_node: str, max_depth: int = 5) -> List[str]:
+async def find_path(
+    property_id: str,
+    start_node: str,
+    end_node: str,
+    max_depth: int = 5,
+    passport_version: Optional[int] = None,
+) -> List[str]:
     """Acyclical pathfinder traversal utility to resolve connections up to max_depth hops.
     
     Returns a list of formatted edge strings, e.g. ["NODE_A --[REL]--> NODE_B"]
@@ -147,9 +160,25 @@ async def find_path(property_id: str, start_node: str, end_node: str, max_depth:
     # Load all edges for the property to perform in-memory traversal
     edges = await nx_collections.graph_edges.find({"property_id": property_id}).to_list(None)
 
+    # Filter out invalidated, retracted or out-of-version boundaries
+    valid_edges = []
+    for edge in edges:
+        if edge.get("status") in {"invalidated", "retracted"}:
+            continue
+        if edge.get("invalidated_at") is not None:
+            continue
+        if passport_version is not None:
+            from_v = edge.get("valid_from_passport_version")
+            to_v = edge.get("valid_to_passport_version")
+            if from_v is not None and passport_version < from_v:
+                continue
+            if to_v is not None and passport_version > to_v:
+                continue
+        valid_edges.append(edge)
+
     # Build adjacency list: { from_node: [(to_node, relationship)] }
     adj: Dict[str, List[tuple[str, str]]] = {}
-    for edge in edges:
+    for edge in valid_edges:
         f = edge["from_node"]
         t = edge["to_node"]
         r = edge["relationship"]

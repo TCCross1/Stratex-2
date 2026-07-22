@@ -177,7 +177,8 @@ async def compile_explanation(
         cached = await nx_collections.explanations.find_one({
             "property_id": property_id,
             "tenant_id": tenant_id,
-            "system_category": system_category
+            "system_category": system_category,
+            "is_current": True
         })
         if cached:
             return strip_mongo_id(cached)
@@ -358,8 +359,9 @@ async def compile_explanation(
     await verify_explanation_trace(explanation)
 
     # Save to MongoDB
+    explanation["is_current"] = True
     await nx_collections.explanations.update_one(
-        {"property_id": property_id, "system_category": system_category},
+        {"explanation_id": explanation_id},
         {"$set": dict(explanation)},
         upsert=True
     )
@@ -442,8 +444,9 @@ async def _compile_degraded_fallback(
     }
 
     # Save to MongoDB
+    explanation["is_current"] = True
     await nx_collections.explanations.update_one(
-        {"property_id": property_id, "system_category": system_category},
+        {"explanation_id": explanation_id},
         {"$set": dict(explanation)},
         upsert=True
     )
