@@ -2678,6 +2678,33 @@ async def _start_storm_watcher():
     from routes.storm_watcher import storm_watcher_loop
     _aio.create_task(storm_watcher_loop())
 
+
+# C-P-002 — idempotent NextGen Passport index governance (never drops indexes,
+# never auto-deletes duplicate historical data).
+@app.on_event("startup")
+async def _ensure_nextgen_passport_indexes():
+    try:
+        from nextgen.passport_indexes import ensure_passport_indexes
+        report = await ensure_passport_indexes()
+        if not report.get("ready"):
+            logger.error(
+                "passport_indexes NOT READY: failed=%s reasons=%s",
+                report.get("failed"),
+                report.get("not_ready_reasons"),
+            )
+        else:
+            logger.info(
+                "passport_indexes ready created=%s existed=%s",
+                report.get("created"),
+                report.get("existed"),
+            )
+    except Exception as exc:
+        logger.error(
+            "passport_indexes startup failed (%s): %s",
+            type(exc).__name__,
+            str(exc)[:300],
+        )
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=False,

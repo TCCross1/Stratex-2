@@ -15,14 +15,22 @@ from typing import Any, Dict, List, Optional
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..approval_policy import evaluate_approval_policy
 from ..auth import NxSession, nx_session
 from ..db import now_iso_utc, nx_collections, nx_id, strip_mongo_id
+from ..governed_publish_service import governed_publish, load_expected_state
 from ..outbox import emit_outbox_event
-from ..passport_service import append_entry
+from ..passport_errors import (
+    IdempotencyConflictError,
+    MissingExpectedStateError,
+    PassportAppendError,
+    StaleExpectedStateError,
+    TransactionUnavailableError,
+)
 from ..taxonomy import (
     AWE_CATEGORIES, BUILDING_SYSTEMS, PRIORITY, REPORT_TEMPLATES,
     RISK_LEVEL, RISK_TIER, SEVERITY, TIMELINE_KINDS, VISIBILITY_SCOPES,
-    allowed_reviewer_roles_for_tier, flatten_taxonomy, tier_for_severity,
+    flatten_taxonomy, tier_for_severity,
 )
 from ._router import nextgen_r
 
@@ -74,6 +82,9 @@ class IntelligenceCreate(BaseModel):
 class IntelligenceReviewBody(BaseModel):
     decision: str  # approve | reject | request_rework | request_field_verification
     notes: Optional[str] = None
+    expected_revision: Optional[int] = None
+    expected_head_hash: Optional[str] = None
+    correlation_id: Optional[str] = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -318,64 +329,83 @@ async def review_intelligence(
     if not pio:
         raise HTTPException(404, "Intelligence object not found")
 
+    if body.decision not in {"approve", "reject", "request_rework", "request_field_verification"}:
+        raise HTTPException(400, "Unknown decision")
+
     if pio["state"] in {"passport_committed", "rejected"}:
         raise HTTPException(409, f"Cannot review — state is {pio['state']!r}")
 
     tier = pio["risk_tier"]
-    allowed = allowed_reviewer_roles_for_tier(tier)
-    if session.role not in allowed:
-        raise HTTPException(
-            403,
-            f"Role {session.role!r} may not review tier {tier}. "
-            f"Allowed: {allowed}",
-        )
-    # Tier 4 requires an engineer license attribute.
-    if tier == "tier_4_engineering_controlled":
-        licensed = (session.user.get("attributes") or {}).get("engineer_license_active")
-        if not licensed:
-            raise HTTPException(403, "Tier 4 review requires an engineer license")
-
-    if body.decision not in {"approve", "reject", "request_rework", "request_field_verification"}:
-        raise HTTPException(400, "Unknown decision")
-
     now = now_iso_utc()
-    review = {
-        "canonical_id": nx_id(),
-        "tenant_id": session.tenant_id,
-        "intelligence_id": pio_id,
-        "reviewer_user_id": session.user_id,
-        "reviewer_role": session.role,
-        "reviewer_tier": tier,
-        "decision": body.decision,
-        "notes": body.notes,
-        "at": now,
-        "signature": hashlib.sha256(
-            (pio["content_hash"] + session.user_id + body.decision + now).encode()
-        ).hexdigest() if body.decision == "approve" else None,
-    }
-    await nx_collections.intelligence_reviews.insert_one(dict(review))
-
-    new_state = {
-        "approve": "approved",
-        "reject": "rejected",
-        "request_rework": "candidate",
-        "request_field_verification": "requires_field_verification",
-    }[body.decision]
-    await nx_collections.intelligence_objects.update_one(
-        {"canonical_id": pio_id},
-        {"$set": {
-            "state": new_state,
-            "human_qa_status": new_state,
-            "updated_at": now,
-        }, "$inc": {"version": 1}},
-    )
-    await _write_audit(session, "intelligence.reviewed", "intelligence", pio_id, {
-        "decision": body.decision, "tier": tier, "new_state": new_state,
-    })
-
     passport_result = None
+
     if body.decision == "approve":
-        # Compose Passport delta payload.
+        await _write_audit(session, "SOURCE_APPROVAL_REQUESTED", "intelligence", pio_id, {
+            "actor_role": session.role, "tier": tier,
+        })
+        head = await load_expected_state(
+            tenant_id=session.tenant_id, property_id=pio["property_id"],
+        )
+        expected_revision = (
+            body.expected_revision if body.expected_revision is not None
+            else head["revision"]
+        )
+        expected_head_hash = (
+            body.expected_head_hash if body.expected_head_hash is not None
+            else head["head_hash"]
+        )
+        decision = evaluate_approval_policy(
+            source_kind="intelligence",
+            source=pio,
+            actor_id=session.user_id,
+            actor_role=session.role,
+            tenant_id=session.tenant_id,
+            property_id=pio["property_id"],
+            require_evidence=True,
+            expected_revision=expected_revision,
+            expected_head_hash=expected_head_hash,
+            require_expected_state=True,
+            actor_attributes=(session.user.get("attributes") or {}),
+        )
+        if not decision.allowed:
+            event = (
+                "SOURCE_APPROVAL_BLOCKED_SOD"
+                if decision.code == "SEPARATION_OF_DUTIES"
+                else "SOURCE_APPROVAL_REJECTED"
+            )
+            await _write_audit(session, event, "intelligence", pio_id, decision.as_dict())
+            status = 403 if decision.code in {
+                "SEPARATION_OF_DUTIES", "ROLE_INELIGIBLE", "LICENSE_REQUIRED",
+                "TENANT_MISMATCH", "PROPERTY_MISMATCH", "EVIDENCE_REQUIRED",
+            } else 409
+            raise HTTPException(status, decision.reason)
+
+        review = {
+            "canonical_id": nx_id(),
+            "tenant_id": session.tenant_id,
+            "intelligence_id": pio_id,
+            "reviewer_user_id": session.user_id,
+            "reviewer_role": session.role,
+            "reviewer_tier": tier,
+            "decision": body.decision,
+            "notes": body.notes,
+            "at": now,
+            "signature": hashlib.sha256(
+                (pio["content_hash"] + session.user_id + body.decision + now).encode()
+            ).hexdigest(),
+        }
+        await nx_collections.intelligence_reviews.insert_one(dict(review))
+
+        # Intermediate approved state BEFORE ledger commit — never passport_committed yet.
+        await nx_collections.intelligence_objects.update_one(
+            {"canonical_id": pio_id},
+            {"$set": {
+                "state": "approved",
+                "human_qa_status": "approved",
+                "updated_at": now,
+            }, "$inc": {"version": 1}},
+        )
+
         passport_payload = {
             "intelligence_id": pio_id,
             "content_hash": pio["content_hash"],
@@ -392,24 +422,60 @@ async def review_intelligence(
             "reviewer_signature": review["signature"],
             "visibility": pio["visibility"],
         }
-        passport_result = await append_entry(
-            tenant_id=session.tenant_id,
-            property_id=pio["property_id"],
-            entry_type="INTELLIGENCE_APPROVED",
-            payload=passport_payload,
-            authored_by=session.user_id,
-        )
-        # Mark PIO as passport-committed and record link.
+        try:
+            passport_result = await governed_publish(
+                tenant_id=session.tenant_id,
+                property_id=pio["property_id"],
+                source_type="intelligence",
+                source_id=pio_id,
+                entry_type="INTELLIGENCE_APPROVED",
+                payload=passport_payload,
+                actor_id=session.user_id,
+                actor_role=session.role,
+                correlation_id=body.correlation_id,
+                idempotency_key=f"intelligence.publish:{pio_id}",
+                expected_revision=expected_revision,
+                expected_head_hash=expected_head_hash,
+            )
+        except StaleExpectedStateError as exc:
+            await _write_audit(session, "PUBLICATION_FAILED", "intelligence", pio_id, {
+                "reason": "STALE_EXPECTED_STATE",
+                "conflict_id": (exc.conflict or {}).get("conflict_id"),
+            })
+            # Leave state as approved (not passport_committed).
+            raise HTTPException(409, {
+                "error": "PASSPORT_APPEND_CONFLICT",
+                "message": str(exc),
+                "conflict": exc.conflict,
+            })
+        except MissingExpectedStateError as exc:
+            raise HTTPException(400, str(exc))
+        except IdempotencyConflictError as exc:
+            raise HTTPException(409, str(exc))
+        except TransactionUnavailableError as exc:
+            raise HTTPException(503, str(exc))
+        except PassportAppendError as exc:
+            await _write_audit(session, "PUBLICATION_FAILED", "intelligence", pio_id, {
+                "reason": getattr(exc, "code", "FAILED"),
+            })
+            raise HTTPException(
+                500,
+                "Passport append failed; intelligence not marked passport_committed",
+            )
+
         await nx_collections.intelligence_objects.update_one(
             {"canonical_id": pio_id},
             {"$set": {
                 "state": "passport_committed",
                 "human_qa_status": "passport_committed",
                 "passport_entry_id": passport_result["entry"]["canonical_id"],
+                "passport_seq": passport_result["entry"]["seq"],
+                "passport_content_hash": passport_result["entry"]["content_hash"],
+                "passport_revision": passport_result["entry"].get("revision"),
+                "passport_receipt_id": passport_result["receipt"]["canonical_id"],
                 "updated_at": now,
             }},
         )
-        # Timeline entry.
         await nx_collections.property_timeline.insert_one({
             "canonical_id": nx_id(),
             "tenant_id": session.tenant_id,
@@ -426,7 +492,6 @@ async def review_intelligence(
             "passport_entry_id": passport_result["entry"]["canonical_id"],
             "awe_impact": pio["awe_impact"],
         })
-        # Durable outbox event.
         await emit_outbox_event(
             tenant_id=session.tenant_id,
             event_type="INTELLIGENCE_APPROVED",
@@ -442,13 +507,76 @@ async def review_intelligence(
             producer_resource_kind="intelligence",
             producer_resource_id=pio_id,
         )
+        await _write_audit(session, "SOURCE_APPROVED", "intelligence", pio_id, {
+            "passport_entry_id": passport_result["entry"]["canonical_id"],
+            "seq": passport_result["entry"]["seq"],
+        })
         await _write_audit(session, "passport.appended", "passport_entry",
                             passport_result["entry"]["canonical_id"], {
                                 "intelligence_id": pio_id,
                                 "seq": passport_result["entry"]["seq"],
                             })
+        await _write_audit(session, "intelligence.reviewed", "intelligence", pio_id, {
+            "decision": body.decision, "tier": tier, "new_state": "passport_committed",
+        })
+    else:
+        # Non-approve decisions: role gate via policy without requiring expected state.
+        decision = evaluate_approval_policy(
+            source_kind="intelligence",
+            source=pio,
+            actor_id=session.user_id,
+            actor_role=session.role,
+            tenant_id=session.tenant_id,
+            property_id=pio["property_id"],
+            require_evidence=False,
+            require_expected_state=False,
+            actor_attributes=(session.user.get("attributes") or {}),
+        )
+        # For reject/rework, SoD and role still apply; ignore MISSING_EXPECTED_STATE.
+        if not decision.allowed and decision.code != "MISSING_EXPECTED_STATE":
+            # Allow reject by eligible reviewer even if SoD would block approve?
+            # Uniform law: author may not approve; reject of own record also blocked
+            # for SoD consistency on approve path only. Reject uses same SoD.
+            if decision.code in {
+                "SEPARATION_OF_DUTIES", "ROLE_INELIGIBLE", "LICENSE_REQUIRED",
+                "TENANT_MISMATCH", "PROPERTY_MISMATCH",
+            }:
+                await _write_audit(
+                    session, "SOURCE_APPROVAL_REJECTED", "intelligence", pio_id,
+                    decision.as_dict(),
+                )
+                raise HTTPException(403, decision.reason)
 
-    # Return the fresh PIO plus any passport receipt.
+        review = {
+            "canonical_id": nx_id(),
+            "tenant_id": session.tenant_id,
+            "intelligence_id": pio_id,
+            "reviewer_user_id": session.user_id,
+            "reviewer_role": session.role,
+            "reviewer_tier": tier,
+            "decision": body.decision,
+            "notes": body.notes,
+            "at": now,
+            "signature": None,
+        }
+        await nx_collections.intelligence_reviews.insert_one(dict(review))
+        new_state = {
+            "reject": "rejected",
+            "request_rework": "candidate",
+            "request_field_verification": "requires_field_verification",
+        }[body.decision]
+        await nx_collections.intelligence_objects.update_one(
+            {"canonical_id": pio_id},
+            {"$set": {
+                "state": new_state,
+                "human_qa_status": new_state,
+                "updated_at": now,
+            }, "$inc": {"version": 1}},
+        )
+        await _write_audit(session, "intelligence.reviewed", "intelligence", pio_id, {
+            "decision": body.decision, "tier": tier, "new_state": new_state,
+        })
+
     fresh = await nx_collections.intelligence_objects.find_one({"canonical_id": pio_id})
     return {
         "intelligence": strip_mongo_id(fresh),
