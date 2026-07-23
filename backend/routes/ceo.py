@@ -155,8 +155,10 @@ async def ceo_request_sms(user=Depends(ceo_only)):
     )
     sent = await _send_sms(user.get("phone", ""), f"STRATEX CEO verification code: {code}. Valid for {SMS_CODE_TTL_MIN} min.")
     resp: Dict[str, Any] = {"sent": sent, "expires_at": expires_at, "phone_last4": (user.get("phone") or "")[-4:]}
-    # Demo bypass: surface the code in the API response so the dashboard can prefill it
-    if os.environ.get("DEMO_SMS_BYPASS") == "1":
+    # Demo bypass: surface the code in the API response so the dashboard can prefill it.
+    # Hard-locked OFF in production regardless of DEMO_SMS_BYPASS (C-P-001C).
+    from dev_auth import is_production
+    if os.environ.get("DEMO_SMS_BYPASS") == "1" and not is_production():
         resp["debug_code"] = code
     return resp
 

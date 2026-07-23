@@ -33,12 +33,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 
 from core import db, logger
-from routes.passport import _append_ledger
+from routes.passport import _append_ledger, require_legacy_passport_writer
 
 router = APIRouter(prefix="/api/claim-snapshot", tags=["claim-snapshot"])
 
@@ -228,9 +228,12 @@ async def list_scans(passport_id: str):
 
 
 @router.post("/seed/{passport_id}")
-async def seed_demo_scans(passport_id: str):
+async def seed_demo_scans(passport_id: str,
+                          _writer=Depends(require_legacy_passport_writer)):
     """Drop a deterministic baseline + post-storm scan pair onto the passport.
     Safe to re-run — replaces the scans block.
+
+    Privileged operators only (C-P-001C). Anonymous mutation is prohibited.
 
     Baseline reflects a healthy roof; post-storm reflects ~38 mph derecho damage
     causing two new anomaly clusters + an envelope drop."""

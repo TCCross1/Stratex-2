@@ -1839,8 +1839,12 @@ endpoint (only available when DEMO_MFA_BYPASS=1) or pull the live secret from db
 # Demo MFA bypass for automated testing (gated by DEMO_MFA_BYPASS=1)
 @auth_r.get("/totp-debug")
 async def totp_debug(email: str):
-    """DEMO ONLY — return current TOTP code for a user. Gated by DEMO_MFA_BYPASS env."""
-    if os.environ.get("DEMO_MFA_BYPASS", "0") != "1":
+    """DEMO ONLY — return current TOTP code for a user. Gated by DEMO_MFA_BYPASS env.
+
+    Hard-locked OFF in production regardless of the flag (C-P-001C): the
+    endpoint refuses before touching any TOTP secret."""
+    from dev_auth import is_production
+    if is_production() or os.environ.get("DEMO_MFA_BYPASS", "0") != "1":
         raise HTTPException(404, "Not found")
     u = await db.users.find_one({"email": email.lower()})
     if not u:
@@ -2620,6 +2624,11 @@ from routes import (  # noqa: F401, E402
 
 app.include_router(auth_r)
 app.include_router(api)
+
+# Development-only auth bypass router. Self-gates on every request and is
+# hard-blocked in production — see backend/dev_auth.py (C-P-001C).
+from dev_auth import dev_router  # noqa: E402
+app.include_router(dev_router)
 
 # Demo Mode — auth-free Switchboard scan → report flow
 from routes.demo_scan import router as demo_router  # noqa: E402

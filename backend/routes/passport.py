@@ -30,13 +30,18 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from core import db
+from stratex_auth import _extract_user
 
 router = APIRouter(prefix="/api/passport", tags=["passport"])
+
+# Legacy Passport mutation containment (C-P-001C): public portal must never
+# author passport truth. Privileged operators only.
+_PRIV_ROLES = {"admin", "ceo"}
 
 OPEN_METEO_ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
 
@@ -201,13 +206,50 @@ def _public_view(passport: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+async def _log_blocked_write(request: Request, reason: str,
+                             user: Optional[Dict[str, Any]] = None) -> None:
+    """Safe audit of blocked Legacy Passport mutations (no secrets)."""
+    try:
+        await db["legacy_passport_blocked_writes"].insert_one({
+            "id": str(uuid.uuid4()),
+            "at": datetime.now(timezone.utc).isoformat(),
+            "reason": reason,
+            "path": request.url.path,
+            "method": request.method,
+            "ip": request.client.host if request.client else None,
+            "user_id": (user or {}).get("id"),
+            "user_email": (user or {}).get("email"),
+            "actor": "authenticated" if user else "anonymous",
+        })
+    except Exception:
+        # Best-effort audit: a logging failure must never grant access.
+        pass
+
+
+async def require_legacy_passport_writer(request: Request) -> Dict[str, Any]:
+    """Gate Legacy Passport mutations to admin/ceo or an existing is_superadmin claim.
+
+    Reads `is_superadmin` from the already-loaded user document when present.
+    Does not expand global authorization helpers or invent new privilege paths.
+    """
+    try:
+        user = await _extract_user(request, db)
+    except HTTPException:
+        await _log_blocked_write(request, "unauthenticated")
+        raise HTTPException(
+            403, "Legacy Passport writes require an authenticated privileged operator.")
+    if user.get("role") not in _PRIV_ROLES and not bool(user.get("is_superadmin")):
+        await _log_blocked_write(request, "insufficient_privilege", user)
+        raise HTTPException(
+            403, "Legacy Passport writes require admin/ceo/superadmin clearance.")
+    return user
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────────────────────────────────────
-@router.post("/issue")
-async def issue_passport(body: PassportIssueBody):
-    """Mint a new Property Passport. Stores immutable record + ledger seed
-    + a freshly-pulled 30-day Weather Shield from Open-Meteo."""
+async def _create_passport_record(body: PassportIssueBody):
+    """Internal mint helper — HTTP surface is gated by require_legacy_passport_writer."""
     coll = await _passport_collection()
     scan_date = datetime.now(timezone.utc).date().isoformat()
     pid = _passport_hash(body.owner, body.address, scan_date)
@@ -260,6 +302,13 @@ async def issue_passport(body: PassportIssueBody):
                          "weather_events": len(shield)})
 
 
+@router.post("/issue")
+async def issue_passport(body: PassportIssueBody,
+                         _writer=Depends(require_legacy_passport_writer)):
+    """Mint a Property Passport. Privileged operators only (C-P-001C)."""
+    return await _create_passport_record(body)
+
+
 @router.get("/{passport_id}")
 async def get_passport(passport_id: str):
     """Public read-only fetch.  No auth — this is the carrier link."""
@@ -294,9 +343,11 @@ async def verify_passport_chain(passport_id: str):
 
 @router.post("/{passport_id}/append")
 async def append_event(passport_id: str, event: str = Query(...),
-                       note: str = Query(""), status: str = Query("OK")):
+                       note: str = Query(""), status: str = Query("OK"),
+                       _writer=Depends(require_legacy_passport_writer)):
     """Append a hash-chained event to the passport ledger.
     Allowed events: STORM · AUDIT · CLAIM · CHECKUP · TRANSFER · NOTE
+    Privileged operators only (C-P-001C).
     """
     allowed = {"STORM", "AUDIT", "CLAIM", "CHECKUP", "TRANSFER", "NOTE"}
     ev = event.upper()
@@ -356,9 +407,10 @@ async def passport_pdf(passport_id: str):
 
 
 @router.post("/seed/demo")
-async def seed_demo_passport():
+async def seed_demo_passport(_writer=Depends(require_legacy_passport_writer)):
     """One-shot demo seeder — creates the American Roofing × Bingham passport
-    used in the live pitch.  Safe to re-run; existing record is preserved."""
+    used in the live pitch.  Safe to re-run; existing record is preserved.
+    Privileged operators only (C-P-001C)."""
     body = PassportIssueBody(
         owner="The Bingham Family Trust",
         address="2440 Regency Road",
@@ -377,4 +429,4 @@ async def seed_demo_passport():
             "license_no": "BC-0043",
         },
     )
-    return await issue_passport(body)
+    return await _create_passport_record(body)
