@@ -28,11 +28,11 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core import db, logger
-from routes.passport import _append_ledger
+from routes.passport import _append_ledger, require_legacy_passport_writer, _log_blocked_write
 from routes.claim_snapshot import _get_passport, diff_baseline_vs_latest
 
 router = APIRouter(prefix="/api/claim-snapshot", tags=["claim-snapshot-cosign"])
@@ -84,8 +84,12 @@ def _receipt_hash(diff: Dict[str, Any], signer: Dict[str, Any], signed_at: str) 
 # Routes
 # ──────────────────────────────────────────────────────────────────────
 @router.post("/{passport_id}/cosign/request")
-async def request_cosign(passport_id: str, body: CosignRequestIn):
+async def request_cosign(passport_id: str, body: CosignRequestIn,
+                         _writer=Depends(require_legacy_passport_writer)):
     """Mint a one-time signing token for the adjuster.
+
+    Privileged operators only (C-P-001C). Minting a purpose-bound token is a
+    Legacy Passport mutation and must not be anonymous.
 
     Idempotent — if an unsigned token already exists for this passport,
     reuse it so the same link keeps working until the carrier signs."""
@@ -164,9 +168,24 @@ async def verify_cosign(token: str):
 
 
 @router.post("/cosign/submit/{token}")
-async def submit_cosign(token: str, body: CosignSubmitIn):
+async def submit_cosign(token: str, body: CosignSubmitIn, request: Request):
+    """Carrier co-sign submission authorized by a purpose-bound one-time token.
+
+    C-P-001C governed model:
+      * Tokens may only be minted by privileged operators via /cosign/request.
+      * Submission is permitted solely when the token is present, unused, and
+        matches a stored claim_cosigns row (purpose-bound authorization).
+      * Anonymous unrestricted mutation is prohibited: without a valid minted
+        token the route returns 404 and records a safe blocked-write audit.
+    """
+    token = (token or "").strip()
+    if not token:
+        await _log_blocked_write(request, "cosign_token_missing")
+        raise HTTPException(403, "Co-sign submission requires a purpose-bound token.")
+
     cs = await _get_cosign(token)
     if not cs:
+        await _log_blocked_write(request, "cosign_token_invalid")
         raise HTTPException(404, "Co-sign token not found")
     if cs.get("signed_at"):
         raise HTTPException(409, "Token already used — Claim Snapshot has been co-signed")
