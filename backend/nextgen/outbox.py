@@ -1,8 +1,8 @@
 """NextGen durable outbox writer — Blueprint v1.2 §7.2.
 
-Phase 2A implements the write side only: an event row is committed alongside
-the business row (best-effort in one Mongo write pattern). Worker/replay
-mechanics arrive with the ledger append in Phase 1c per Directive 005 gates.
+Write-side only: an event row is committed alongside the business row
+(best-effort in one Mongo write pattern). Delivery/claim/replay/health live in
+`nextgen.outbox_worker` (C-P-003). Keep `emit_outbox_event` signature stable.
 """
 from __future__ import annotations
 
@@ -34,6 +34,9 @@ async def emit_outbox_event(
         "attempts": 0,
         "delivered_at": None,
         "dead_lettered_at": None,
+        "leased_by": None,
+        "lease_until": None,
+        "last_error": None,
         "created_at": now,
     }
     # Idempotent insert: if a row with the same `idempotency_key` exists, skip.
