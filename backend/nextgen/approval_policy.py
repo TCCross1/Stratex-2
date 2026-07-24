@@ -127,6 +127,8 @@ def evaluate_approval_policy(
                 {"allowed_roles": sorted(FINDINGS_APPROVER_ROLES)},
             )
     elif source_kind == "intelligence":
+        # Terminal states that cannot be re-approved. publication_failed is
+        # explicitly retryable after a governed publication failure (C-P-002A).
         if source.get("state") in {"passport_committed", "rejected"}:
             return ApprovalDecision(
                 False,

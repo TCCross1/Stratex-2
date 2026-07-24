@@ -4,7 +4,7 @@ Findings and Intelligence approve source records, then delegate canonical
 ledger publication through this service, which calls
 `passport_service.append_entry` (the only NextGen ledger writer).
 
-Module identity: workflow.governed_publish_service (C-P-002).
+Module identity: nextgen.governed_publish_service (C-P-002 / C-P-002A).
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from typing import Any, Dict, Optional
 from .db import now_iso_utc, nx_collections, nx_id
 from .passport_errors import (
     IdempotencyConflictError,
+    IndexReadinessError,
     MissingExpectedStateError,
     PassportAppendError,
     StaleExpectedStateError,
@@ -25,8 +26,8 @@ from .passport_service import append_entry, get_passport_head
 
 logger = logging.getLogger("stratex.governed_publish")
 
-# Stable module path string for architecture assertions / documentation.
-MODULE_IDENTITY = "workflow.governed_publish_service"
+# Runtime module identity — must match the importable Python module path.
+MODULE_IDENTITY = "nextgen.governed_publish_service"
 
 
 def _fingerprint(payload: Dict[str, Any]) -> str:
@@ -149,7 +150,7 @@ async def governed_publish(
             },
         )
         raise
-    except (IdempotencyConflictError, TransactionUnavailableError, PassportAppendError) as exc:
+    except (IdempotencyConflictError, TransactionUnavailableError, IndexReadinessError, PassportAppendError) as exc:
         await _audit(
             tenant_id=tenant_id,
             event_type="PUBLICATION_FAILED",

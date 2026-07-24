@@ -16,12 +16,13 @@ from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..approval_policy import evaluate_approval_policy
-from ..auth import NxSession, nx_session
+from ..auth import NxSession, authorize_property, nx_session
 from ..db import now_iso_utc, nx_collections, nx_id, strip_mongo_id
 from ..governed_publish_service import governed_publish, load_expected_state
 from ..outbox import emit_outbox_event
 from ..passport_errors import (
     IdempotencyConflictError,
+    IndexReadinessError,
     MissingExpectedStateError,
     PassportAppendError,
     StaleExpectedStateError,
@@ -335,14 +336,22 @@ async def review_intelligence(
     if pio["state"] in {"passport_committed", "rejected"}:
         raise HTTPException(409, f"Cannot review — state is {pio['state']!r}")
 
+    # Idempotent recovery: already passport-linked → return committed view.
+    if pio.get("state") == "passport_committed" and pio.get("passport_entry_id"):
+        raise HTTPException(409, f"Cannot review — state is {pio['state']!r}")
+
     tier = pio["risk_tier"]
     now = now_iso_utc()
     passport_result = None
+    review = None
 
     if body.decision == "approve":
         await _write_audit(session, "SOURCE_APPROVAL_REQUESTED", "intelligence", pio_id, {
             "actor_role": session.role, "tier": tier,
         })
+        # Property authorization before publication.
+        await authorize_property(session, pio["property_id"])
+
         head = await load_expected_state(
             tenant_id=session.tenant_id, property_id=pio["property_id"],
         )
@@ -396,16 +405,7 @@ async def review_intelligence(
         }
         await nx_collections.intelligence_reviews.insert_one(dict(review))
 
-        # Intermediate approved state BEFORE ledger commit — never passport_committed yet.
-        await nx_collections.intelligence_objects.update_one(
-            {"canonical_id": pio_id},
-            {"$set": {
-                "state": "approved",
-                "human_qa_status": "approved",
-                "updated_at": now,
-            }, "$inc": {"version": 1}},
-        )
-
+        # Do NOT persist plain `approved` before governed publication succeeds.
         passport_payload = {
             "intelligence_id": pio_id,
             "content_hash": pio["content_hash"],
@@ -438,23 +438,61 @@ async def review_intelligence(
                 expected_head_hash=expected_head_hash,
             )
         except StaleExpectedStateError as exc:
+            await nx_collections.intelligence_objects.update_one(
+                {"canonical_id": pio_id},
+                {"$set": {
+                    "state": "publication_failed",
+                    "human_qa_status": "publication_failed",
+                    "publication_failure_reason": "STALE_EXPECTED_STATE",
+                    "updated_at": now,
+                }},
+            )
             await _write_audit(session, "PUBLICATION_FAILED", "intelligence", pio_id, {
                 "reason": "STALE_EXPECTED_STATE",
                 "conflict_id": (exc.conflict or {}).get("conflict_id"),
             })
-            # Leave state as approved (not passport_committed).
             raise HTTPException(409, {
                 "error": "PASSPORT_APPEND_CONFLICT",
                 "message": str(exc),
                 "conflict": exc.conflict,
             })
         except MissingExpectedStateError as exc:
+            await nx_collections.intelligence_objects.update_one(
+                {"canonical_id": pio_id},
+                {"$set": {
+                    "state": "publication_failed",
+                    "human_qa_status": "publication_failed",
+                    "publication_failure_reason": "MISSING_EXPECTED_STATE",
+                    "updated_at": now,
+                }},
+            )
             raise HTTPException(400, str(exc))
         except IdempotencyConflictError as exc:
             raise HTTPException(409, str(exc))
-        except TransactionUnavailableError as exc:
+        except (TransactionUnavailableError, IndexReadinessError) as exc:
+            await nx_collections.intelligence_objects.update_one(
+                {"canonical_id": pio_id},
+                {"$set": {
+                    "state": "publication_failed",
+                    "human_qa_status": "publication_failed",
+                    "publication_failure_reason": getattr(exc, "code", "FAILED"),
+                    "updated_at": now,
+                }},
+            )
+            await _write_audit(session, "PUBLICATION_FAILED", "intelligence", pio_id, {
+                "reason": getattr(exc, "code", "FAILED"),
+            })
             raise HTTPException(503, str(exc))
         except PassportAppendError as exc:
+            await nx_collections.intelligence_objects.update_one(
+                {"canonical_id": pio_id},
+                {"$set": {
+                    "state": "publication_failed",
+                    "human_qa_status": "publication_failed",
+                    "publication_failure_reason": getattr(exc, "code", "FAILED"),
+                    "updated_at": now,
+                }},
+            )
             await _write_audit(session, "PUBLICATION_FAILED", "intelligence", pio_id, {
                 "reason": getattr(exc, "code", "FAILED"),
             })
@@ -463,18 +501,27 @@ async def review_intelligence(
                 "Passport append failed; intelligence not marked passport_committed",
             )
 
+        # Only after Passport receipt: transition to passport_committed.
         await nx_collections.intelligence_objects.update_one(
             {"canonical_id": pio_id},
             {"$set": {
                 "state": "passport_committed",
                 "human_qa_status": "passport_committed",
+                "approval": {
+                    "reviewer_id": session.user_id,
+                    "reviewer_role": session.role,
+                    "at": now,
+                    "notes": body.notes,
+                    "signature": review["signature"],
+                },
                 "passport_entry_id": passport_result["entry"]["canonical_id"],
                 "passport_seq": passport_result["entry"]["seq"],
                 "passport_content_hash": passport_result["entry"]["content_hash"],
                 "passport_revision": passport_result["entry"].get("revision"),
                 "passport_receipt_id": passport_result["receipt"]["canonical_id"],
+                "publication_failure_reason": None,
                 "updated_at": now,
-            }},
+            }, "$inc": {"version": 1}},
         )
         await nx_collections.property_timeline.insert_one({
             "canonical_id": nx_id(),

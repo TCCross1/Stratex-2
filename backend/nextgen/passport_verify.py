@@ -1,16 +1,21 @@
-"""Hash-chain verification for NextGen Passport ledgers (C-P-002).
+"""Hash-chain verification for NextGen Passport ledgers (C-P-002 / C-P-002A).
 
 Verification never mutates the ledger. Historical unsigned entries are
 classified as LEGACY_UNSEALED rather than automatically INVALID.
+
+Bounded by PASSPORT_VERIFY_MAX_ENTRIES — partial inspection never reports VALID.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 from .db import nx_collections, strip_mongo_id
 from .passport_seal import verify_entry_seal
+
+DEFAULT_VERIFY_MAX_ENTRIES = 10_000
 
 
 def _canonical_bytes(obj: Dict[str, Any]) -> bytes:
@@ -30,12 +35,31 @@ def _recompute_content_hash(entry: Dict[str, Any]) -> str:
     return hashlib.sha256(_canonical_bytes(body)).hexdigest()
 
 
+def verify_max_entries() -> int:
+    """Safe positive integer limit; malformed/zero/negative → default."""
+    raw = (os.environ.get("PASSPORT_VERIFY_MAX_ENTRIES") or "").strip()
+    if not raw:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    try:
+        n = int(raw)
+    except ValueError:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    if n < 1:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    return n
+
+
 async def verify_passport_chain(
     *,
     tenant_id: str,
     passport_id: str,
+    max_entries: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Evaluate chain integrity. Never mutates data."""
+    """Evaluate chain integrity. Never mutates data. Bounded by max_entries."""
+    limit = max_entries if max_entries is not None else verify_max_entries()
+    if not isinstance(limit, int) or limit < 1:
+        limit = DEFAULT_VERIFY_MAX_ENTRIES
+
     passport = await nx_collections.passports.find_one({
         "tenant_id": tenant_id,
         "canonical_id": passport_id,
@@ -47,23 +71,33 @@ async def verify_passport_chain(
             "tenant_id": tenant_id,
             "issues": [{"code": "PASSPORT_NOT_FOUND"}],
             "entry_count": 0,
+            "inspected_count": 0,
+            "limit": limit,
+            "truncated": True,
         }
-
-    entries = [
-        strip_mongo_id(e)
-        async for e in nx_collections.passport_entries.find({
-            "tenant_id": tenant_id,
-            "passport_id": passport_id,
-        }).sort("seq", 1)
-    ]
 
     issues: List[Dict[str, Any]] = []
     has_legacy_unsealed = False
     seen_seq: Dict[int, int] = {}
     expected_seq = 1
     prior: Optional[str] = None
+    inspected = 0
+    truncated = False
+    last_entry: Optional[Dict[str, Any]] = None
 
-    for e in entries:
+    cursor = nx_collections.passport_entries.find({
+        "tenant_id": tenant_id,
+        "passport_id": passport_id,
+    }).sort("seq", 1)
+
+    async for raw in cursor:
+        if inspected >= limit:
+            truncated = True
+            break
+        e = strip_mongo_id(raw)
+        inspected += 1
+        last_entry = e
+
         seq = e.get("seq")
         if seq is None:
             issues.append({"code": "MISSING_ENTRY", "detail": "entry missing seq",
@@ -80,7 +114,6 @@ async def verify_passport_chain(
                            "entry_id": e.get("canonical_id")})
 
         if seq != expected_seq:
-            # Gap or out-of-order relative to dense 1..N expectation.
             if seq > expected_seq:
                 issues.append({
                     "code": "MISSING_ENTRY",
@@ -140,27 +173,7 @@ async def verify_passport_chain(
 
         prior = e.get("content_hash")
 
-    head_hash = passport.get("head_hash")
-    head_revision = passport.get("revision")
-    if entries:
-        last = entries[-1]
-        if head_hash and head_hash != last.get("content_hash"):
-            issues.append({
-                "code": "HEAD_MISMATCH",
-                "passport_head_hash": head_hash,
-                "last_entry_hash": last.get("content_hash"),
-            })
-        if head_revision is not None and last.get("revision") is not None:
-            if int(head_revision) != int(last["revision"]):
-                issues.append({
-                    "code": "HEAD_MISMATCH",
-                    "detail": "revision",
-                    "passport_revision": head_revision,
-                    "last_entry_revision": last.get("revision"),
-                })
-
-    # Receipt consistency (best-effort, non-mutating).
-    for e in entries:
+        # Receipt consistency (best-effort, non-mutating).
         receipt = await nx_collections.passport_receipts.find_one({
             "tenant_id": tenant_id,
             "passport_entry_id": e.get("canonical_id"),
@@ -173,6 +186,52 @@ async def verify_passport_chain(
                 "detail": "receipt_mismatch",
                 "entry_id": e.get("canonical_id"),
             })
+
+    # Truncation: never claim VALID / legacy-valid for a partial chain.
+    if truncated:
+        return {
+            "result": "INCOMPLETE",
+            "passport_id": passport_id,
+            "tenant_id": tenant_id,
+            "property_id": passport.get("property_id"),
+            "entry_count": inspected,
+            "inspected_count": inspected,
+            "limit": limit,
+            "truncated": True,
+            "reason": "PASSPORT_VERIFY_MAX_ENTRIES_EXCEEDED",
+            "passport_revision": passport.get("revision"),
+            "passport_head_hash": passport.get("head_hash"),
+            "has_legacy_unsealed_entries": has_legacy_unsealed,
+            "issues": issues + [{
+                "code": "INCOMPLETE",
+                "detail": "verification_limit_exceeded",
+                "limit": limit,
+                "inspected_count": inspected,
+            }],
+            "safe": True,
+            "note": (
+                "Partial chain inspection never reports VALID. "
+                "Large histories require a later governed background verification job."
+            ),
+        }
+
+    head_hash = passport.get("head_hash")
+    head_revision = passport.get("revision")
+    if last_entry:
+        if head_hash and head_hash != last_entry.get("content_hash"):
+            issues.append({
+                "code": "HEAD_MISMATCH",
+                "passport_head_hash": head_hash,
+                "last_entry_hash": last_entry.get("content_hash"),
+            })
+        if head_revision is not None and last_entry.get("revision") is not None:
+            if int(head_revision) != int(last_entry["revision"]):
+                issues.append({
+                    "code": "HEAD_MISMATCH",
+                    "detail": "revision",
+                    "passport_revision": head_revision,
+                    "last_entry_revision": last_entry.get("revision"),
+                })
 
     if any(i["code"] == "DUPLICATE_SEQUENCE" for i in issues):
         result = "DUPLICATE_SEQUENCE"
@@ -204,11 +263,13 @@ async def verify_passport_chain(
         "passport_id": passport_id,
         "tenant_id": tenant_id,
         "property_id": passport.get("property_id"),
-        "entry_count": len(entries),
+        "entry_count": inspected,
+        "inspected_count": inspected,
+        "limit": limit,
+        "truncated": False,
         "passport_revision": passport.get("revision"),
         "passport_head_hash": passport.get("head_hash"),
         "has_legacy_unsealed_entries": has_legacy_unsealed,
         "issues": issues,
-        # Never expose signing keys or raw confidential payloads.
         "safe": True,
     }

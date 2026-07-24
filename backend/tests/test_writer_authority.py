@@ -57,7 +57,12 @@ def test_governed_publish_delegates_to_append_entry():
     pub = _source("nextgen/governed_publish_service.py")
     assert "from .passport_service import append_entry" in pub
     assert "await append_entry(" in pub
-    assert "MODULE_IDENTITY = \"workflow.governed_publish_service\"" in pub
+    assert "MODULE_IDENTITY = \"nextgen.governed_publish_service\"" in pub
+    assert "workflow.governed_publish_service" not in pub
+    # Runtime proof: importable identity matches the real module path.
+    from nextgen.governed_publish_service import MODULE_IDENTITY, governed_publish
+    assert MODULE_IDENTITY == "nextgen.governed_publish_service"
+    assert callable(governed_publish)
 
 
 def test_both_doors_use_unified_approval_policy():

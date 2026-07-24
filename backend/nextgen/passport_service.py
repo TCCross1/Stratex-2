@@ -30,6 +30,7 @@ _passport_provision_lock = asyncio.Lock()
 from .passport_conflicts import create_conflict_record
 from .passport_errors import (
     IdempotencyConflictError,
+    IndexReadinessError,
     MissingExpectedStateError,
     PassportAppendError,
     PropertyIsolationError,
@@ -37,6 +38,7 @@ from .passport_errors import (
     TenantIsolationError,
     TransactionUnavailableError,
 )
+from .passport_indexes import require_indexes_ready_for_publication
 from .passport_seal import SealConfigurationError, seal_entry
 
 logger = logging.getLogger("stratex.passport_service")
@@ -50,18 +52,36 @@ def _canonical_bytes(obj: Dict[str, Any]) -> bytes:
 
 def _request_fingerprint(
     *,
+    tenant_id: str,
+    passport_id: str,
+    property_id: str,
     entry_type: str,
     payload: Dict[str, Any],
     source_type: Optional[str],
     source_id: Optional[str],
     schema_version: str,
+    publication_context: Optional[Dict[str, Any]],
+    expected_revision: Optional[int],
+    expected_head_hash: Optional[str],
+    require_expected_state: bool,
 ) -> str:
+    """Canonical fingerprint of material publication content (C-P-002A).
+
+    Excludes secrets, tokens, MFA values, and transient timestamps.
+    """
     body = {
-        "entry_type": entry_type,
-        "payload": payload,
+        "tenant_id": tenant_id,
+        "passport_id": passport_id,
+        "property_id": property_id,
         "source_type": source_type,
         "source_id": source_id,
+        "entry_type": entry_type,
+        "payload": payload,
         "schema_version": schema_version,
+        "publication_context": publication_context or {},
+        "expected_revision": expected_revision,
+        "expected_head_hash": expected_head_hash,
+        "require_expected_state": bool(require_expected_state),
     }
     return hashlib.sha256(_canonical_bytes(body)).hexdigest()
 
@@ -263,15 +283,37 @@ async def append_entry(
     if passport_id and passport["canonical_id"] != passport_id:
         raise PassportAppendError("passport_id does not match active property passport")
 
+    # Critical index readiness — fail closed in strict/production when not READY.
+    try:
+        require_indexes_ready_for_publication()
+    except IndexReadinessError:
+        await _audit_event(
+            tenant_id=tenant_id,
+            event_type="PASSPORT_APPEND_FAILED",
+            actor_id=authored_by,
+            actor_role=actor_role,
+            resource_kind="passport",
+            resource_id=passport.get("canonical_id") or property_id,
+            payload={"reason": "INDEX_NOT_READY"},
+        )
+        raise
+
     pid = passport["canonical_id"]
     actual_revision = int(passport.get("revision") or 0)
     actual_head = passport.get("head_hash")
     fp = _request_fingerprint(
+        tenant_id=tenant_id,
+        passport_id=pid,
+        property_id=property_id,
         entry_type=entry_type,
         payload=payload,
         source_type=source_type,
         source_id=source_id,
         schema_version=schema_version,
+        publication_context=publication_context,
+        expected_revision=expected_revision,
+        expected_head_hash=expected_head_hash,
+        require_expected_state=require_expected_state,
     )
 
     await _audit_event(

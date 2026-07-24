@@ -1,4 +1,4 @@
-"""Controlled Passport append / conflict / idempotency errors (C-P-002)."""
+"""Controlled Passport append / conflict / idempotency errors (C-P-002 / C-P-002A)."""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -45,3 +45,7 @@ class TenantIsolationError(PassportAppendError):
 
 class PropertyIsolationError(PassportAppendError):
     code = "PROPERTY_ISOLATION"
+
+
+class IndexReadinessError(PassportAppendError):
+    code = "INDEX_NOT_READY"

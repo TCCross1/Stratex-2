@@ -78,3 +78,18 @@ async def nx_session(user: Dict[str, Any] = Depends(current_user)) -> NxSession:
         raise HTTPException(401, "Not authenticated")
     tenant = await _ensure_org_for_user(user)
     return NxSession(user, tenant)
+
+
+async def authorize_property(session: NxSession, property_id: str) -> Dict[str, Any]:
+    """Tenant-scoped property authorization used by NextGen Passport routes.
+
+    Matches the Findings/Intelligence property gate: the property must exist
+    on the authenticated tenant. Returns 404 on miss to avoid existence leaks.
+    """
+    prop = await nx_collections.properties.find_one({
+        "canonical_id": property_id,
+        "tenant_id": session.tenant_id,
+    })
+    if not prop:
+        raise HTTPException(404, "Property not found on your tenant")
+    return prop

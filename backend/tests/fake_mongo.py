@@ -1,18 +1,27 @@
-"""In-memory Mongo double for C-P-002 deterministic unit tests.
+"""In-memory Mongo double for C-P-002 / C-P-002A deterministic unit tests.
 
 Supports the Motor-like surface used by NextGen Passport:
 find_one, find, insert_one, update_one, find_one_and_update, create_index,
-index_information, aggregate, count_documents, sort cursors.
+drop_index, index_information, aggregate, count_documents, sort cursors.
 
-Unique indexes enforce duplicate protection. An optional transactional lock
-simulates multi-document atomicity for concurrency stress tests.
+Unique indexes enforce duplicate protection, including partialFilterExpression.
+An optional transactional lock simulates multi-document atomicity for
+concurrency stress tests.
+
+FakeMongo evidence is simulation — not production transaction proof.
 """
 from __future__ import annotations
 
 import asyncio
 import copy
-import re
 from typing import Any, Dict, List, Optional, Tuple
+
+
+def _match_partial(doc: Dict[str, Any], expr: Optional[Dict[str, Any]]) -> bool:
+    """Evaluate a Mongo-like partialFilterExpression against a document."""
+    if not expr:
+        return True
+    return _match(doc, expr)
 
 
 def _match(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
@@ -46,10 +55,34 @@ def _match(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
                 exists = key in doc and doc[key] is not None
                 if bool(expected["$exists"]) != exists:
                     return False
+            if "$type" in expected:
+                t = expected["$type"]
+                if t == "string" and not isinstance(actual, str):
+                    return False
+                if t == "int" and not isinstance(actual, int):
+                    return False
+                if t == "object" and not isinstance(actual, dict):
+                    return False
         else:
             if actual != expected:
                 return False
     return True
+
+
+def _resolve_group_key(doc: Dict[str, Any], key: Any) -> Any:
+    if isinstance(key, str) and key.startswith("$"):
+        return doc.get(key[1:])
+    if isinstance(key, dict):
+        return {k: _resolve_group_key(doc, v) for k, v in key.items()}
+    return key
+
+
+def _freeze(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return tuple(sorted((k, _freeze(v)) for k, v in obj.items()))
+    if isinstance(obj, list):
+        return tuple(_freeze(v) for v in obj)
+    return obj
 
 
 class _UpdateResult:
@@ -66,7 +99,6 @@ class FakeCursor:
     def sort(self, key, direction=1):
         reverse = direction < 0
         if isinstance(key, list):
-            # multi-key sort — apply last key first
             for k, d in reversed(key):
                 self._docs.sort(key=lambda x: (x.get(k) is None, x.get(k)), reverse=d < 0)
         else:
@@ -115,9 +147,6 @@ class FakeCollection:
             if isinstance(sort, list):
                 for k, d in reversed(sort):
                     docs.sort(key=lambda x: (x.get(k) is None, x.get(k)), reverse=d < 0)
-            else:
-                # motor sometimes passes sort as kw via cursor; ignore here
-                pass
         return copy.deepcopy(docs[0]) if docs else None
 
     def find(self, query: Optional[Dict[str, Any]] = None, **kwargs):
@@ -140,9 +169,7 @@ class FakeCollection:
                     if "$inc" in update:
                         for k, v in update["$inc"].items():
                             new_doc[k] = int(new_doc.get(k) or 0) + int(v)
-                    # unique check excluding self
                     self._docs()[i] = new_doc
-                    # re-validate uniques
                     try:
                         self._check_unique(new_doc, exclude_idx=i)
                     except DuplicateKeyError:
@@ -184,11 +211,14 @@ class FakeCollection:
 
     async def create_index(self, keys, name=None, unique=False, **kwargs):
         idx_name = name or "_".join(f"{k}_{d}" for k, d in keys)
-        # Detect duplicates before accepting unique index.
+        partial = kwargs.get("partialFilterExpression")
         if unique:
             seen = {}
             for d in self._docs():
+                if not _match_partial(d, partial):
+                    continue
                 tup = tuple(d.get(k) for k, _ in keys)
+                # Missing optional fields must not collapse into one duplicate value.
                 if any(v is None for v in tup):
                     continue
                 if tup in seen:
@@ -197,33 +227,44 @@ class FakeCollection:
                     )
                 seen[tup] = True
         self._indexes.setdefault(self.name, {})[idx_name] = {
-            "key": keys, "unique": unique, "name": idx_name,
+            "key": keys,
+            "unique": unique,
+            "name": idx_name,
+            "partialFilterExpression": partial,
         }
         return idx_name
+
+    async def drop_index(self, name: str):
+        idxs = self._indexes.setdefault(self.name, {})
+        idxs.pop(name, None)
 
     async def index_information(self):
         return copy.deepcopy(self._indexes.get(self.name, {}))
 
     def aggregate(self, pipeline):
-        # Minimal $match/$group/$match support for duplicate probe.
         docs = [copy.deepcopy(d) for d in self._docs()]
         for stage in pipeline:
             if "$match" in stage:
                 docs = [d for d in docs if _match(d, stage["$match"])]
             elif "$group" in stage:
                 g = stage["$group"]
-                key = g["_id"]
-                field = key[1:] if isinstance(key, str) and key.startswith("$") else None
-                buckets: Dict[Any, int] = {}
+                key_spec = g["_id"]
+                buckets: Dict[Any, Dict[str, Any]] = {}
                 for d in docs:
-                    k = d.get(field) if field else key
-                    buckets[k] = buckets.get(k, 0) + 1
-                docs = [{"_id": k, "n": n} for k, n in buckets.items()]
+                    resolved = _resolve_group_key(d, key_spec)
+                    frozen = _freeze(resolved)
+                    if frozen not in buckets:
+                        buckets[frozen] = {"_id": resolved, "n": 0}
+                    buckets[frozen]["n"] += 1
+                docs = list(buckets.values())
         return FakeCursor(docs)
 
     def _check_unique(self, doc: Dict[str, Any], exclude_idx: Optional[int] = None):
         for name, meta in (self._indexes.get(self.name) or {}).items():
             if not meta.get("unique"):
+                continue
+            partial = meta.get("partialFilterExpression")
+            if not _match_partial(doc, partial):
                 continue
             keys = meta["key"]
             tup = tuple(doc.get(k) for k, _ in keys)
@@ -231,6 +272,8 @@ class FakeCollection:
                 continue
             for i, other in enumerate(self._docs()):
                 if exclude_idx is not None and i == exclude_idx:
+                    continue
+                if not _match_partial(other, partial):
                     continue
                 ot = tuple(other.get(k) for k, _ in keys)
                 if ot == tup:

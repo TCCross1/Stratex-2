@@ -1,8 +1,8 @@
-# Passport Concurrency and Approval Authority (C-P-002)
+# Passport Concurrency and Approval Authority (C-P-002 / C-P-002A)
 
-**Status:** Implemented on feature branch · **Production readiness: NOT READY**
+**Status:** C-P-002A audit-debt closure on feature branch · **Production readiness: NOT READY**
 **Canonical NextGen ledger writer:** `backend/nextgen/passport_service.py::append_entry`
-**Governed publication authority:** `backend/nextgen/governed_publish_service.py` (`workflow.governed_publish_service`)
+**Governed publication authority:** `backend/nextgen/governed_publish_service.py` (`MODULE_IDENTITY = "nextgen.governed_publish_service"`)
 
 ## Authority model
 
@@ -31,6 +31,8 @@ Accepted Passport history is immutable. Corrections create new entries and versi
 13. No approval endpoint inserts directly into Passport collections.
 14. Tenant and property isolation apply to every append.
 15. Missing expected state fails conservatively on governed paths.
+16. One tenant/property may have only one **active** canonical Property Passport.
+17. Critical Passport unique-index failure marks readiness `FAILED` and blocks strict/production publication.
 
 ## Expected-state concurrency contract
 
@@ -44,7 +46,7 @@ Behavior:
 | Condition | Result |
 |-----------|--------|
 | Current expected state | Proceed to validation / commit |
-| Stale expected state | No overwrite; create OPEN conflict; controlled conflict response |
+| Stale expected state | No overwrite; create/reuse OPEN conflict; controlled conflict response |
 | Missing expected state | Reject governed path |
 | Duplicate same request | Return original committed result |
 | Same idempotency key, different fingerprint | `IDEMPOTENCY_CONFLICT` |
@@ -53,11 +55,9 @@ Behavior:
 
 Collection: `nextgen_passport_idempotency` (tenant + Passport + key unique).
 
-Stored fields: tenant ID, Passport ID, idempotency key, request fingerprint, entry ID, sequence, revision, entry hash, receipt ID, commit status, created timestamp. No secrets.
+Fingerprint includes material operation content: `tenant_id`, `passport_id`, `property_id`, `source_type`, `source_id`, `entry_type`, `payload`, `schema_version`, `publication_context`, `expected_revision`, `expected_head_hash`, `require_expected_state`. Canonical JSON serialization (sorted keys, stable separators). No secrets, tokens, MFA values, or transient timestamps.
 
 Outcomes: `NEW_REQUEST` → `COMMITTED` | `DUPLICATE_SAME_REQUEST` | `IDEMPOTENCY_CONFLICT` | `FAILED`.
-
-Receipts (`nextgen_passport_receipts`) retain the original committed result and fingerprint for audit.
 
 ## Transaction requirements
 
@@ -66,27 +66,42 @@ Receipts (`nextgen_passport_receipts`) retain the original committed result and 
 - If transactions are required but unavailable: **fail closed**, execute no partial append, do not claim production-safe atomicity.
 - Non-strict local/unit mode may proceed with compare-and-swap on Passport head plus unique indexes. **That path is not production-safe.**
 
-## Index definitions
+## Index definitions and readiness
 
 Managed by `backend/nextgen/passport_indexes.py`, invoked at application startup.
 
-| Name | Collection | Unique |
-|------|------------|--------|
-| `uniq_tenant_passport_seq` | passport_entries | yes |
-| `uniq_tenant_passport_entry_id` | passport_entries | yes |
-| `idx_tenant_source_lookup` | passport_entries | no |
-| `uniq_tenant_passport_idempotency_key` | passport_idempotency | yes |
-| `idx_conflict_queue_lookup` | passport_conflicts | no |
-| `idx_passport_head_revision` | passports | no |
-| `uniq_outbox_idempotency_key` | outbox_events | yes |
+| Name | Collection | Unique | Critical |
+|------|------------|--------|----------|
+| `uniq_tenant_passport_seq` | passport_entries | yes | yes |
+| `uniq_tenant_passport_entry_id` | passport_entries | yes | yes |
+| `idx_tenant_source_lookup` | passport_entries | no | no |
+| `uniq_tenant_passport_idempotency_key` | passport_idempotency | yes | yes |
+| `idx_conflict_queue_lookup` | passport_conflicts | no | no |
+| `uniq_active_conflict_fingerprint` | passport_conflicts | yes (partial active) | yes |
+| `idx_passport_head_revision` | passports | no | no |
+| `uniq_active_passport_per_tenant_property` | passports | yes (partial `status=active`) | yes |
+| `uniq_outbox_idempotency_key` | outbox_events | yes | no |
 
-Index creation is idempotent, uses stable names, discloses failures, never silently drops indexes, and never automatically deletes conflicting historical records. Duplicate data blocking a unique index leaves production readiness **NOT READY**.
+Readiness states: `NOT_INITIALIZED` → `INITIALIZING` → `READY` | `FAILED`.
+
+Safe readiness metadata only: state, checked_at, failed index name, redacted error classification. No credentials or connection strings.
+
+- **LOCAL/TEST:** startup may continue; readiness reports `FAILED` when indexes fail; governed publication proceeds unless `PASSPORT_REQUIRE_INDEXES=1`.
+- **PRODUCTION/STRICT:** critical unique-index failure fails closed; governed append/publication blocked; health must not report Passport READY.
+
+Duplicate active Passports: report redacted tenant/property prefixes via `probe_duplicate_active_passports`; **no automatic deletion**.
+
+Exposed on `GET /api/nextgen/health` as `passport_indexes`.
 
 ## Conflict queue and rebase law
 
 Collection: `nextgen_passport_conflicts`.
 
 Statuses: `OPEN` → `UNDER_REVIEW` → `REBASE_APPROVED` → `REBASED` | `REJECTED` | `SUPERSEDED` | `RESOLVED`.
+
+Identical stale retries share a deterministic `conflict_fingerprint` and reuse one active OPEN conflict (`duplicate_delivery_count` increments). Resolved/rejected history remains immutable and is not overwritten.
+
+Conflict routes enforce **tenant + property authorization** (404 on unauthorized to avoid existence leaks).
 
 Rebase must:
 
@@ -101,16 +116,12 @@ Rebase must:
 
 Reviewer roles (minimum): `admin`, `ceo`, `passport_reviewer`, `engineer_reviewer`, `gm`.
 
-Routes under `/api/nextgen/passports/...`.
-
 ## Hash-chain verification
 
 Service: `backend/nextgen/passport_verify.py`
 Endpoint: `GET /api/nextgen/passports/{passport_id}/verify-chain`
 
-Evaluates identity, sequence continuity, duplicates/gaps, previous-hash linkage, content hash, head hash/revision, seal status, schema version, receipt consistency.
-
-Results include: `VALID`, `VALID_WITH_LEGACY_UNSEALED_ENTRIES`, `INVALID_SEQUENCE`, `INVALID_PREVIOUS_HASH`, `INVALID_ENTRY_HASH`, `INVALID_SIGNATURE`, `HEAD_MISMATCH`, `DUPLICATE_SEQUENCE`, `MISSING_ENTRY`, `UNSUPPORTED_SCHEMA`, `INCOMPLETE`, `UNAVAILABLE`.
+Bounded by `PASSPORT_VERIFY_MAX_ENTRIES` (default **10000**, positive integer; zero/negative/malformed → default). Cursor iteration; no unlimited list materialization. Truncation returns `INCOMPLETE` with reason and inspected count — **never** `VALID` for a partial chain. Large histories require a later governed background verification job (not implemented in this phase).
 
 Verification never mutates the ledger. Responses are operator-safe (no signing keys, no stack traces, no raw confidential findings).
 
@@ -121,7 +132,6 @@ Module: `backend/nextgen/passport_seal.py`
 - Algorithm: HMAC-SHA256
 - Env: `PASSPORT_SEAL_KEY_VERSION`, `PASSPORT_SEAL_KEY_<version>`
 - Production fails closed when sealing is required and key material is absent
-- Key version recorded on each sealed entry; rotation verifies old versions while signing with the active version
 - Historical hash-only / tenant-salt entries classified as `LEGACY_UNSEALED` — not rewritten
 - HMAC is integrity sealing, **not** legal notarization or an external timestamp
 - No secrets committed; tests use ephemeral keys
@@ -138,24 +148,18 @@ Uniform separation of duties:
 - Admin / CEO / superadmin status alone must **not** silently bypass SoD
 - No emergency override in this phase
 
-Risk-tier reviewer role differences remain configurable for Intelligence; SoD and audit law remain uniform.
-
-## Publication sequence
+## Intelligence publication consistency (C-P-002A)
 
 ```
-source candidate
-→ evidence validation
-→ approval policy evaluation
-→ separation-of-duties validation
-→ approved source state
-→ governed publication request
-→ canonical append_entry
+review request
+→ approval-policy evaluation
+→ governed publication
 → Passport receipt
-→ projection/outbox event
-→ audit event
+→ Intelligence → passport_committed (+ approval metadata)
+→ outbox / timeline / audit
 ```
 
-Failed append does **not** mark the source `passport_committed` / Passport-linked APPROVED commit fields.
+Do **not** persist plain `approved` before governed publication succeeds. On failure: set `publication_failed` (retryable), emit `PUBLICATION_FAILED` audit, do not emit success outbox. Retry with the same idempotency key (`intelligence.publish:{id}`) reclaims the committed Passport receipt without a second entry.
 
 ## Audit events (minimum)
 
@@ -168,13 +172,15 @@ Never log: signing secrets, authorization headers, passwords, MFA values, comple
 - Multi-document transactions require a transaction-capable MongoDB deployment and `PASSPORT_TRANSACTIONS_AVAILABLE=1`.
 - Unit/concurrency stress tests use an in-memory FakeCollections double; simulated concurrency is **not** production proof.
 - Legacy Passport compatibility writers remain disclosed and gated (C-P-001C); they are not the NextGen canonical writer.
+- Full backend boot may be unavailable without `emergentintegrations` / live Mongo.
 - Production readiness remains **NOT READY** pending independent Atlas audit, transaction-capable deployment validation, and seal key operationalization.
 
 ## Test commands
 
 ```bash
-# Focused C-P-002
+# Focused C-P-002 / C-P-002A
 python -m pytest backend/tests/test_cp002_passport_concurrency.py \
+  backend/tests/test_cp002a_audit_debt.py \
   backend/tests/test_cp002_concurrency_stress.py \
   backend/tests/test_writer_authority.py -q
 
@@ -188,3 +194,5 @@ python -m pytest backend/tests/test_dev_auth.py \
 ## Compatibility / migration law
 
 Do not rewrite historical Passport entries. New stronger requirements apply prospectively. Historical integrity problems appear as reviewable verification findings — never silent resequence, auto-sign, or destructive duplicate cleanup.
+
+C-P-003: NOT STARTED. ATC-001: NOT STARTED. Merge: STOP — not authorized pending Atlas review.

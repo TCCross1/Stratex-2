@@ -265,6 +265,17 @@ async def test_index_definitions_include_required(fake):
     assert "uniq_tenant_passport_seq" in names
     assert "uniq_tenant_passport_idempotency_key" in names
     assert "idx_conflict_queue_lookup" in names
+    assert "uniq_active_passport_per_tenant_property" in names
+    assert "uniq_active_conflict_fingerprint" in names
+    active = next(
+        d for d in defs if d["name"] == "uniq_active_passport_per_tenant_property"
+    )
+    assert active["unique"] is True
+    assert active["partialFilterExpression"] == {"status": "active"}
+    # No index may claim uniqueness while unique=False.
+    for d in defs:
+        if "uniq_" in d["name"]:
+            assert d["unique"] is True, d["name"]
 
 
 @pytest.mark.asyncio

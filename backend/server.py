@@ -2679,22 +2679,25 @@ async def _start_storm_watcher():
     _aio.create_task(storm_watcher_loop())
 
 
-# C-P-002 — idempotent NextGen Passport index governance (never drops indexes,
-# never auto-deletes duplicate historical data).
+# C-P-002 / C-P-002A — idempotent NextGen Passport index governance.
+# Never drops data. Critical unique-index failure marks readiness FAILED and
+# raises in production/strict mode so mutation authority stays disabled.
 @app.on_event("startup")
 async def _ensure_nextgen_passport_indexes():
     try:
-        from nextgen.passport_indexes import ensure_passport_indexes
+        from nextgen.passport_indexes import ensure_passport_indexes, get_index_readiness
         report = await ensure_passport_indexes()
+        readiness = get_index_readiness()
         if not report.get("ready"):
             logger.error(
-                "passport_indexes NOT READY: failed=%s reasons=%s",
+                "passport_indexes NOT READY state=%s failed=%s reasons=%s",
+                readiness.get("state"),
                 report.get("failed"),
                 report.get("not_ready_reasons"),
             )
         else:
             logger.info(
-                "passport_indexes ready created=%s existed=%s",
+                "passport_indexes READY created=%s existed=%s",
                 report.get("created"),
                 report.get("existed"),
             )
@@ -2704,6 +2707,15 @@ async def _ensure_nextgen_passport_indexes():
             type(exc).__name__,
             str(exc)[:300],
         )
+        # In production/strict the ensure function already raised RuntimeError
+        # for critical failures; re-raise so startup fails closed.
+        env = (os.environ.get("APP_ENV") or "").strip().lower()
+        strict = env in {"production", "prod", "live"} or (
+            (os.environ.get("PASSPORT_REQUIRE_INDEXES") or "").strip().lower()
+            in {"1", "true", "yes", "on"}
+        )
+        if strict:
+            raise
 
 app.add_middleware(
     CORSMiddleware,
