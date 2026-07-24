@@ -4,14 +4,19 @@ Write-side remains `outbox.emit_outbox_event`. This module owns claim, delivery
 attempts, backoff, dead-letter, inbox receipts, safe replay, and backlog health.
 
 Does NOT write Passport ledger entries and is NOT a second publication authority.
+
+D-001: dead-letter rows store a recursively scrubbed payload copy. That scrubbed
+DLQ payload is forensic evidence only — never canonical truth for replay.
+Replay always requeues from the durable outbox_events row.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Awaitable, Callable, Dict, Optional
+import re
+from datetime import datetime, timedelta
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from .db import now_iso_utc, nx_collections, nx_id
 
@@ -29,8 +34,52 @@ REPLAY_AUTHORIZED_ROLES = frozenset({"admin", "ops", "service_ops"})
 
 DeliveryHandler = Callable[[Dict[str, Any]], Awaitable[None]]
 
+# Exact / normalized secret key names (case-insensitive match after normalize).
 _SECRET_KEYS = frozenset(
-    {"password", "secret", "authorization", "totp", "mfa", "hmac_key", "token", "api_key"}
+    {
+        "password",
+        "passwd",
+        "secret",
+        "authorization",
+        "totp",
+        "mfa",
+        "hmac_key",
+        "token",
+        "api_key",
+        "apikey",
+        "access_token",
+        "refresh_token",
+        "private_key",
+        "private_keys",
+        "client_secret",
+        "bearer",
+    }
+)
+
+# Substring markers that mark a key as secret-bearing.
+_SECRET_KEY_MARKERS = (
+    "password",
+    "passwd",
+    "secret",
+    "authorization",
+    "token",
+    "api_key",
+    "apikey",
+    "private_key",
+    "hmac_key",
+)
+
+DLQ_MAX_DEPTH = 8
+DLQ_MAX_BYTES = 8192
+_REDACTED = "[REDACTED]"
+_BINARY_OMITTED = "[BINARY_OMITTED]"
+_TRUNCATED_MARKER = "[TRUNCATED]"
+
+_CRED_URL_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)([^/\s:@]+):([^/\s@]+)@")
+_QUERY_SECRET_RE = re.compile(
+    r"([?&](?:password|passwd|secret|token|api_key|apikey|authorization|access_token|"
+    r"refresh_token|private_key|client_secret)=)([^&#\s]+)",
+    re.IGNORECASE,
 )
 
 # Trusted internal worker model (GLOBAL_INTERNAL_WORKER): claim is not tenant-routed;
@@ -59,11 +108,192 @@ def payload_hash(payload: Dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _normalize_key(key: Any) -> str:
+    return str(key).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _is_secret_key(key: Any) -> bool:
+    norm = _normalize_key(key)
+    if norm in _SECRET_KEYS:
+        return True
+    return any(marker in norm for marker in _SECRET_KEY_MARKERS)
+
+
+def _redact_credential_url(value: str) -> str:
+    """Redact userinfo and secret query params from URL-like strings."""
+    if not isinstance(value, str):
+        return value
+    if "://" not in value:
+        # Still scrub secret query fragments when scheme-less.
+        if ("=" in value) and any(
+            m in value.lower() for m in ("token=", "password=", "secret=", "api_key=")
+        ):
+            return _QUERY_SECRET_RE.sub(r"\1" + _REDACTED, value)
+        return value
+
+    redacted = _CRED_URL_RE.sub(r"\1" + _REDACTED + ":" + _REDACTED + "@", value)
+    return _QUERY_SECRET_RE.sub(r"\1" + _REDACTED, redacted)
+
+
+def _json_size(value: Any) -> int:
+    try:
+        return len(
+            json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode(
+                "utf-8"
+            )
+        )
+    except (TypeError, ValueError):
+        return len(str(value).encode("utf-8", errors="replace"))
+
+
+def _sanitize_value(
+    value: Any,
+    *,
+    depth: int,
+    max_depth: int,
+    budget: List[int],
+    flags: Dict[str, bool],
+) -> Any:
+    """Recursively sanitize a value. ``budget`` is a single-int list of remaining bytes."""
+    if budget[0] <= 0:
+        flags["truncated"] = True
+        return _TRUNCATED_MARKER
+
+    if depth > max_depth:
+        flags["truncated"] = True
+        budget[0] = max(0, budget[0] - len(_TRUNCATED_MARKER))
+        return _TRUNCATED_MARKER
+
+    if value is None or isinstance(value, (bool, int, float)):
+        cost = _json_size(value)
+        if cost > budget[0]:
+            flags["truncated"] = True
+            budget[0] = 0
+            return _TRUNCATED_MARKER
+        budget[0] -= cost
+        return value
+
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        flags["binary_omitted"] = True
+        budget[0] = max(0, budget[0] - len(_BINARY_OMITTED))
+        return _BINARY_OMITTED
+
+    if isinstance(value, str):
+        cleaned = _redact_credential_url(value)
+        # Heuristic: non-text / high binary content
+        if "\x00" in cleaned:
+            flags["binary_omitted"] = True
+            budget[0] = max(0, budget[0] - len(_BINARY_OMITTED))
+            return _BINARY_OMITTED
+        cost = _json_size(cleaned)
+        if cost > budget[0]:
+            flags["truncated"] = True
+            keep = max(0, min(len(cleaned), budget[0] - len(_TRUNCATED_MARKER) - 2))
+            budget[0] = 0
+            return cleaned[:keep] + _TRUNCATED_MARKER
+        budget[0] -= cost
+        return cleaned
+
+    if isinstance(value, dict):
+        out: Dict[str, Any] = {}
+        for raw_key, raw_val in value.items():
+            if budget[0] <= 0:
+                flags["truncated"] = True
+                out["__truncated__"] = True
+                break
+            key_str = str(raw_key)
+            if _is_secret_key(key_str):
+                flags["secrets_redacted"] = True
+                out[key_str] = _REDACTED
+                budget[0] = max(0, budget[0] - len(_REDACTED) - len(key_str))
+                continue
+            out[key_str] = _sanitize_value(
+                raw_val,
+                depth=depth + 1,
+                max_depth=max_depth,
+                budget=budget,
+                flags=flags,
+            )
+        return out
+
+    if isinstance(value, (list, tuple)):
+        out_list: List[Any] = []
+        for item in value:
+            if budget[0] <= 0:
+                flags["truncated"] = True
+                out_list.append(_TRUNCATED_MARKER)
+                break
+            out_list.append(
+                _sanitize_value(
+                    item,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                    budget=budget,
+                    flags=flags,
+                )
+            )
+        return out_list
+
+    # Unknown / non-JSON types — stringify bounded
+    text = str(value)
+    cost = _json_size(text)
+    if cost > budget[0]:
+        flags["truncated"] = True
+        budget[0] = 0
+        return _TRUNCATED_MARKER
+    budget[0] -= cost
+    return text
+
+
+def sanitize_dlq_payload(
+    payload: Optional[Any],
+    *,
+    max_depth: int = DLQ_MAX_DEPTH,
+    max_bytes: int = DLQ_MAX_BYTES,
+) -> Dict[str, Any]:
+    """Recursively scrub a payload for dead-letter storage (D-001).
+
+    Returns metadata + sanitized payload. The result is explicitly marked as
+    non-canonical: replay must use the durable outbox_events.payload, never
+    this scrubbed DLQ copy.
+    """
+    original = payload if payload is not None else {}
+    if not isinstance(original, dict):
+        original = {"_non_object_payload": original}
+
+    checksum_src = original if isinstance(payload, dict) or payload is None else {
+        "_wrap": payload
+    }
+    checksum = payload_hash(checksum_src if isinstance(checksum_src, dict) else {"_wrap": checksum_src})
+    budget = [int(max_bytes)]
+    flags = {"truncated": False, "binary_omitted": False, "secrets_redacted": False}
+    scrubbed = _sanitize_value(
+        original, depth=0, max_depth=max_depth, budget=budget, flags=flags
+    )
+    return {
+        "payload": scrubbed if isinstance(scrubbed, dict) else {"_value": scrubbed},
+        "payload_scrubbed": True,
+        "payload_truncated": bool(flags["truncated"]),
+        "payload_checksum": checksum,
+        "payload_is_canonical_truth": False,
+        "binary_omitted": bool(flags["binary_omitted"]),
+        "secrets_redacted": bool(flags["secrets_redacted"]),
+        "scrub_policy": "d001_recursive_v1",
+        "scrub_max_depth": max_depth,
+        "scrub_max_bytes": max_bytes,
+    }
+
+
+def dlq_payload_is_canonical_truth(dlq_row: Optional[Dict[str, Any]]) -> bool:
+    """Law: scrubbed DLQ payloads are never canonical truth for replay."""
+    del dlq_row  # intentionally unused — always False by D-001 policy
+    return False
+
+
 def _scrub(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    safe = dict(payload or {})
-    for banned in _SECRET_KEYS:
-        safe.pop(banned, None)
-    return safe
+    """Audit-safe scrub (recursive, bounded) — never stores secrets in audit."""
+    result = sanitize_dlq_payload(payload, max_depth=6, max_bytes=4096)
+    return result["payload"]
 
 
 async def _audit(
@@ -228,12 +458,19 @@ async def _move_to_dead_letter(
     error_message: str,
 ) -> Dict[str, Any]:
     now = now_iso_utc()
+    # D-001: DLQ stores scrubbed forensic copy only — not canonical payload truth.
+    scrubbed = sanitize_dlq_payload(event.get("payload") or {})
     dl = {
         "canonical_id": nx_id(),
         "event_id": event["event_id"],
         "tenant_id": event.get("tenant_id"),
         "event_type": event.get("event_type"),
-        "payload": event.get("payload") or {},
+        "payload": scrubbed["payload"],
+        "payload_scrubbed": scrubbed["payload_scrubbed"],
+        "payload_truncated": scrubbed["payload_truncated"],
+        "payload_checksum": scrubbed["payload_checksum"],
+        "payload_is_canonical_truth": False,
+        "scrub_policy": scrubbed["scrub_policy"],
         "failure_class": failure_class,
         "error_message": (error_message or "")[:500],
         "attempts": event.get("attempts"),
@@ -267,9 +504,18 @@ async def _move_to_dead_letter(
             "failure_class": failure_class,
             "attempts": event.get("attempts"),
             "event_type": event.get("event_type"),
+            "payload_scrubbed": True,
+            "payload_truncated": scrubbed["payload_truncated"],
+            "payload_checksum": scrubbed["payload_checksum"],
         },
     )
-    return {"status": "dead_lettered", "dead_letter_id": dl["canonical_id"], "at": now}
+    return {
+        "status": "dead_lettered",
+        "dead_letter_id": dl["canonical_id"],
+        "at": now,
+        "payload_scrubbed": True,
+        "payload_truncated": scrubbed["payload_truncated"],
+    }
 
 
 async def record_delivery_failure(
@@ -389,6 +635,9 @@ async def replay_dead_lettered_event(
     Requires authenticated operator_id, authorized operator_role, and a
     documented reason. Does not invent a new event_id (preserves idempotency).
     Does not bypass source approval or append Passport history.
+
+    D-001: never copies scrubbed DLQ payload back onto the outbox row. Canonical
+    delivery payload remains ``outbox_events.payload`` only.
     """
     cleaned_reason = _authorize_replay(
         operator_id=operator_id, operator_role=operator_role, reason=reason
@@ -402,6 +651,8 @@ async def replay_dead_lettered_event(
         raise ValueError(f"event is not dead-lettered or failed: {event_id}")
 
     now = now_iso_utc()
+    # Requeue metadata only — payload on outbox_events is intentionally untouched.
+    # Scrubbed DLQ payload is forensic-only and must never be copied back here.
     update: Dict[str, Any] = {
         "dead_lettered_at": None,
         "available_after": now,
@@ -422,7 +673,14 @@ async def replay_dead_lettered_event(
     )
     await nx_collections.dead_letter_events.update_one(
         {"event_id": event_id, "replayed_at": None},
-        {"$set": {"replayed_at": now, "replayed_by": operator_id.strip()}},
+        {
+            "$set": {
+                "replayed_at": now,
+                "replayed_by": operator_id.strip(),
+                "replay_used_canonical_outbox_payload": True,
+                "replay_rejected_dlq_payload_as_truth": True,
+            }
+        },
     )
     await _audit(
         tenant_id=event.get("tenant_id") or "system",
@@ -434,6 +692,8 @@ async def replay_dead_lettered_event(
             "reason": cleaned_reason,
             "reset_attempts": reset_attempts,
             "operator_role": (operator_role or "").strip().lower(),
+            "replay_source": "outbox_events.payload",
+            "dlq_payload_used": False,
         },
     )
     return {
@@ -442,6 +702,8 @@ async def replay_dead_lettered_event(
         "available_after": now,
         "replayed_by": operator_id.strip(),
         "reason": cleaned_reason,
+        "replay_source": "outbox_events.payload",
+        "dlq_payload_used": False,
     }
 
 
