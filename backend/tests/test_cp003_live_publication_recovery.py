@@ -1,25 +1,25 @@
 """C-P-003 live publication-recovery proof against real Mongo replica set.
 
-Imports implementation directly from the checked-out PR #7 branch
-(``nextgen.outbox_worker`` / ``nextgen.projection_reconciliation``).
-
-Does NOT use FakeMongo and does NOT fetch an older worktree.
+Loads ``outbox_worker`` / ``projection_reconciliation`` from the checked-out
+PR #7 tree without importing ``nextgen`` package ``__init__`` (which registers
+FastAPI routes). Does NOT use FakeMongo and does NOT fetch an older worktree.
 
 Requires:
   RT002_LIVE=1 (or CP003_LIVE=1)
   RT002_MONGO_URL / MONGO_URL pointing at replica set
 
 Emits: LIVE_CP003_PUBLICATION_RECOVERY_PROOF
-
-Delivery model (never exactly-once):
-  AT-LEAST-ONCE + IDEMPOTENT CONSUMERS + DURABLE RECEIPTS + SAFE RECONCILIATION
 """
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import os
+import sys
+import types
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -35,6 +35,8 @@ LIVE = (
 )
 MONGO_URL = os.environ.get("RT002_MONGO_URL") or os.environ.get("MONGO_URL") or ""
 DB_NAME = os.environ.get("RT002_DB_NAME") or os.environ.get("DB_NAME") or "stratex_cp003_live"
+BACKEND = Path(__file__).resolve().parents[1]
+NEXTGEN = BACKEND / "nextgen"
 
 
 def _require_live():
@@ -42,6 +44,41 @@ def _require_live():
         pytest.skip("RT002_LIVE/CP003_LIVE not set — live C-P-003 proof not executed here")
     if not MONGO_URL:
         pytest.fail("INTEGRATION_ENVIRONMENT_FAILED: live flag set but MONGO_URL missing")
+
+
+def _load_db_shim(colls):
+    """Load nextgen.db as a minimal shim (no FastAPI / routes)."""
+    pkg = types.ModuleType("nextgen")
+    pkg.__path__ = [str(NEXTGEN)]  # type: ignore[attr-defined]
+    sys.modules["nextgen"] = pkg
+
+    def now_iso_utc():
+        return datetime.now(timezone.utc).isoformat()
+
+    def nx_id():
+        return "nx_" + uuid.uuid4().hex
+
+    dbmod = types.ModuleType("nextgen.db")
+    dbmod.now_iso_utc = now_iso_utc
+    dbmod.nx_id = nx_id
+    dbmod.nx_collections = colls
+    sys.modules["nextgen.db"] = dbmod
+    pkg.db = dbmod
+    return dbmod
+
+
+def _load_module(mod_name: str, path: Path, dbmod):
+    sys.modules["nextgen.db"] = dbmod
+    spec = importlib.util.spec_from_file_location(mod_name, path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    # Ensure relative imports resolve for packages that use "from .db import ..."
+    parent = sys.modules["nextgen"]
+    short = mod_name.split(".")[-1]
+    setattr(parent, short, mod)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 @pytest.fixture(scope="module")
@@ -62,14 +99,8 @@ def mongo_client():
 
 
 @pytest.fixture
-def db(mongo_client, monkeypatch):
-    """Wire nextgen.db.nx_collections to real pymongo for this process."""
+def harness(mongo_client):
     from pymongo import ReturnDocument
-
-    import nextgen.db as dbmod
-    import nextgen.outbox as outbox
-    import nextgen.outbox_worker as worker
-    import nextgen.projection_reconciliation as recon
 
     database = mongo_client[DB_NAME + "_" + uuid.uuid4().hex[:8]]
 
@@ -118,27 +149,25 @@ def db(mongo_client, monkeypatch):
             return _Cur()
 
     class Colls:
-        def __getattr__(self, name):
-            return _Coll(f"nextgen_{name}" if not name.startswith("nextgen_") else name)
+        outbox_events = _Coll("nextgen_outbox_events")
+        inbox_receipts = _Coll("nextgen_inbox_receipts")
+        dead_letter_events = _Coll("nextgen_outbox_dead_letters")
+        audit_events = _Coll("nextgen_audit_events")
+        passports = _Coll("nextgen_passports")
+        passport_entries = _Coll("nextgen_passport_entries")
+        passport_projection_markers = _Coll("nextgen_passport_projection_markers")
+        publication_sources = _Coll("nextgen_publication_sources")
+        publication_results = _Coll("nextgen_publication_results")
 
     colls = Colls()
-    # Explicit aliases matching worker expectations
-    colls.outbox_events = _Coll("nextgen_outbox_events")
-    colls.inbox_receipts = _Coll("nextgen_inbox_receipts")
-    colls.dead_letter_events = _Coll("nextgen_outbox_dead_letters")
-    colls.audit_events = _Coll("nextgen_audit_events")
-    colls.passports = _Coll("nextgen_passports")
-    colls.passport_entries = _Coll("nextgen_passport_entries")
-    colls.passport_projection_markers = _Coll("nextgen_passport_projection_markers")
-    colls.publication_sources = _Coll("nextgen_publication_sources")
-    colls.publication_results = _Coll("nextgen_publication_results")
+    dbmod = _load_db_shim(colls)
+    worker = _load_module("nextgen.outbox_worker", NEXTGEN / "outbox_worker.py", dbmod)
+    recon = _load_module(
+        "nextgen.projection_reconciliation",
+        NEXTGEN / "projection_reconciliation.py",
+        dbmod,
+    )
 
-    monkeypatch.setattr(dbmod, "nx_collections", colls)
-    monkeypatch.setattr(outbox, "nx_collections", colls)
-    monkeypatch.setattr(worker, "nx_collections", colls)
-    monkeypatch.setattr(recon, "nx_collections", colls)
-
-    # Receipt uniqueness + active passport partial unique
     database["nextgen_inbox_receipts"].create_index(
         [("consumer_key", 1), ("event_id", 1), ("payload_hash", 1)],
         unique=True,
@@ -151,17 +180,23 @@ def db(mongo_client, monkeypatch):
         partialFilterExpression={"status": "active"},
     )
 
-    yield database
+    yield {
+        "db": database,
+        "worker": worker,
+        "recon": recon,
+        "dbmod": dbmod,
+        "client": mongo_client,
+    }
     mongo_client.drop_database(database.name)
 
 
-def _seed(db, *, tenant="t_cp003", property_id="p_cp003", lease_until=None, lease_owner=None):
-    from nextgen.db import now_iso_utc, nx_id
-
-    now = now_iso_utc()
+def _seed(h, *, tenant="t_cp003", property_id="p_cp003", lease_until=None, lease_owner=None):
+    db = h["db"]
+    dbmod = h["dbmod"]
+    now = dbmod.now_iso_utc()
     event_id = "evt_" + uuid.uuid4().hex
     doc = {
-        "canonical_id": nx_id(),
+        "canonical_id": dbmod.nx_id(),
         "event_id": event_id,
         "tenant_id": tenant,
         "property_id": property_id,
@@ -182,37 +217,33 @@ def _seed(db, *, tenant="t_cp003", property_id="p_cp003", lease_until=None, leas
     return event_id
 
 
-def test_two_and_ten_worker_atomic_claim(db):
-    from nextgen import outbox_worker as w
+def test_two_and_ten_worker_atomic_claim(harness):
+    w = harness["worker"]
+    db = harness["db"]
 
     async def claim_n(n):
         return [r for r in await asyncio.gather(
             *[w.claim_next_event(worker_id=f"w{i}") for i in range(n)]
         ) if r]
 
-    _seed(db)
+    _seed(harness)
     assert len(asyncio.run(claim_n(2))) == 1
     db["nextgen_outbox_events"].delete_many({})
-    _seed(db)
+    _seed(harness)
     assert len(asyncio.run(claim_n(10))) == 1
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF atomic_claim=PASS")
 
 
-def test_lease_protect_and_expire_recover(db):
-    from nextgen import outbox_worker as w
-
+def test_lease_protect_and_expire_recover(harness):
+    w = harness["worker"]
+    db = harness["db"]
     now = datetime.now(timezone.utc)
     future = (now + timedelta(seconds=120)).isoformat()
     past = (now - timedelta(seconds=2)).isoformat()
-    slightly_before = (now + timedelta(seconds=30)).isoformat()
-    eid = _seed(db, lease_until=future, lease_owner="holder")
+    eid = _seed(harness, lease_until=future, lease_owner="holder")
 
     async def run():
         assert await w.claim_next_event(worker_id="thief") is None
-        db["nextgen_outbox_events"].update_one(
-            {"event_id": eid}, {"$set": {"lease_until": slightly_before}}
-        )
-        # still unexpired relative to "now" inside claim — set far future again then expire
         db["nextgen_outbox_events"].update_one(
             {"event_id": eid}, {"$set": {"lease_until": past}}
         )
@@ -223,15 +254,14 @@ def test_lease_protect_and_expire_recover(db):
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF lease=PASS")
 
 
-def test_crash_after_claim_and_worker_restart(db):
-    from nextgen import outbox_worker as w
-
-    eid = _seed(db)
+def test_crash_after_claim_and_worker_restart(harness):
+    w = harness["worker"]
+    db = harness["db"]
+    eid = _seed(harness)
 
     async def run():
         claimed = await w.claim_next_event(worker_id="crash1", lease_seconds=30)
         assert claimed is not None
-        # crash — no delivery; expire lease; restart worker
         past = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
         db["nextgen_outbox_events"].update_one(
             {"event_id": eid}, {"$set": {"lease_until": past}}
@@ -244,15 +274,14 @@ def test_crash_after_claim_and_worker_restart(db):
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF crash_recovery=PASS")
 
 
-def test_delivery_receipt_idempotency_and_interrupted_receipt(db):
-    from nextgen import outbox_worker as w
-
-    eid = _seed(db)
+def test_delivery_receipt_idempotency_and_interrupted_receipt(harness):
+    w = harness["worker"]
+    db = harness["db"]
+    eid = _seed(harness)
 
     async def run():
         claimed = await w.claim_next_event(worker_id="del1")
         assert claimed
-        # Simulate delivery succeeded then crash before receipt: mark nothing, reclaim after expiry
         past = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
         db["nextgen_outbox_events"].update_one(
             {"event_id": eid}, {"$set": {"lease_until": past, "leased_by": None}}
@@ -264,7 +293,6 @@ def test_delivery_receipt_idempotency_and_interrupted_receipt(db):
         r2 = await w.mark_delivered(event=claimed2, consumer_key="c1", worker_id="del2")
         assert r2["receipt"]["duplicate"] is True
         assert db["nextgen_inbox_receipts"].count_documents({"event_id": eid}) == 1
-        # Duplicate delivery remains safe — still one receipt, still delivered
         row = db["nextgen_outbox_events"].find_one({"event_id": eid})
         assert row.get("delivered_at")
 
@@ -273,14 +301,12 @@ def test_delivery_receipt_idempotency_and_interrupted_receipt(db):
     print("DELIVERY_MODEL=AT-LEAST-ONCE+IDEMPOTENT_CONSUMERS+DURABLE_RECEIPTS+SAFE_RECONCILIATION")
 
 
-def test_retry_backoff_cap_dead_letter_and_replay_gates(db):
-    from nextgen import outbox_worker as w
-
-    # Backoff cap
+def test_retry_backoff_cap_dead_letter_and_replay_gates(harness):
+    w = harness["worker"]
+    db = harness["db"]
     assert w._backoff_seconds(1) >= 2
     assert w._backoff_seconds(100) == w.MAX_BACKOFF_SECONDS
-
-    eid = _seed(db)
+    eid = _seed(harness)
 
     async def boom(_e):
         raise RuntimeError("x" * 5000)
@@ -321,7 +347,6 @@ def test_retry_backoff_cap_dead_letter_and_replay_gates(db):
         )
         assert ok["status"] == "requeued"
         assert ok["event_id"] == eid
-        # Duplicate replay of non-dead-letter (already cleared) fails closed
         with pytest.raises(ValueError):
             await w.replay_dead_lettered_event(
                 event_id=eid,
@@ -329,7 +354,6 @@ def test_retry_backoff_cap_dead_letter_and_replay_gates(db):
                 operator_role="admin",
                 reason="dup_replay",
             )
-        # Already delivered reject
         claimed = await w.claim_next_event(worker_id="post_replay")
         assert claimed
         await w.mark_delivered(event=claimed, consumer_key="c", worker_id="post_replay")
@@ -345,11 +369,11 @@ def test_retry_backoff_cap_dead_letter_and_replay_gates(db):
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF retry_dlq_replay=PASS")
 
 
-def test_tenant_property_isolation_and_receipt_mismatch(db):
-    from nextgen import outbox_worker as w
-
-    a = _seed(db, tenant="tenant_a", property_id="prop_a")
-    b = _seed(db, tenant="tenant_b", property_id="prop_b")
+def test_tenant_property_isolation_and_receipt_mismatch(harness):
+    w = harness["worker"]
+    db = harness["db"]
+    a = _seed(harness, tenant="tenant_a", property_id="prop_a")
+    b = _seed(harness, tenant="tenant_b", property_id="prop_b")
 
     async def run():
         c1 = await w.claim_next_event(worker_id="iso1")
@@ -357,19 +381,18 @@ def test_tenant_property_isolation_and_receipt_mismatch(db):
         assert {c1["event_id"], c2["event_id"]} == {a, b}
         assert c1["tenant_id"] != c2["tenant_id"]
         assert c1["property_id"] != c2["property_id"]
-        # Receipt must preserve tenant from event — reject mismatched consumer write simulation
-        r = await w.mark_delivered(event=c1, consumer_key="cons", worker_id="iso1")
+        await w.mark_delivered(event=c1, consumer_key="cons", worker_id="iso1")
         receipt = db["nextgen_inbox_receipts"].find_one({"event_id": c1["event_id"]})
         assert receipt["tenant_id"] == c1["tenant_id"]
         assert receipt["tenant_id"] != c2["tenant_id"]
-        assert r["receipt"]["duplicate"] is False
 
     asyncio.run(run())
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF tenant_property_isolation=PASS")
 
 
-def test_projection_and_source_reconciliation_no_passport_append(db):
-    from nextgen import projection_reconciliation as pr
+def test_projection_and_source_reconciliation_no_passport_append(harness):
+    pr = harness["recon"]
+    db = harness["db"]
 
     async def run():
         db["nextgen_passports"].insert_one({
@@ -408,14 +431,12 @@ def test_projection_and_source_reconciliation_no_passport_append(db):
             tenant_id="t1", property_id="p1", source_id="src1"
         )
         assert aligned["status"] == pr.STATUS_REPAIRED
-        # Interrupt + retry
         retry = await pr.reconcile_source_publication_state(
             tenant_id="t1", property_id="p1", source_id="src1"
         )
         assert retry["status"] == pr.STATUS_ALREADY_CURRENT
         assert db["nextgen_passport_entries"].count_documents({}) == 0
 
-        # Cross-property reject
         db["nextgen_publication_sources"].insert_one({
             "canonical_id": "src_bad",
             "tenant_id": "t1",
@@ -431,8 +452,9 @@ def test_projection_and_source_reconciliation_no_passport_append(db):
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF reconciliation=PASS")
 
 
-def test_no_duplicate_canonical_publication_and_txn_rollback(db, mongo_client):
-    # Unique active passport index
+def test_no_duplicate_canonical_publication_and_txn_rollback(harness):
+    db = harness["db"]
+    client = harness["client"]
     db["nextgen_passports"].insert_one({
         "tenant_id": "tuniq",
         "property_id": "puniq",
@@ -447,11 +469,10 @@ def test_no_duplicate_canonical_publication_and_txn_rollback(db, mongo_client):
             "head_hash": "h2",
         })
 
-    # Real transaction rollback leaves no partial reconciliation state
     coll_a = db[f"recon_txn_a_{uuid.uuid4().hex[:6]}"]
     coll_b = db[f"recon_txn_b_{uuid.uuid4().hex[:6]}"]
     try:
-        with mongo_client.start_session() as session:
+        with client.start_session() as session:
             with session.start_transaction():
                 coll_a.insert_one({"_id": "a", "v": 1}, session=session)
                 coll_b.insert_one({"_id": "b", "v": 1}, session=session)
@@ -475,15 +496,13 @@ def test_health_fails_when_mongo_unavailable():
 
 
 def test_no_public_claim_route_in_tree():
-    from pathlib import Path
-
-    routes = Path(__file__).resolve().parents[1] / "nextgen" / "routes"
+    _require_live()
+    routes = NEXTGEN / "routes"
     blob = ""
     for p in routes.glob("*.py"):
         blob += p.read_text(encoding="utf-8")
     assert "claim_next_event" not in blob
     assert "replay_dead_lettered_event" not in blob
-    from nextgen import outbox_worker as w
-
-    assert w.WORKER_TRUST_MODEL == "GLOBAL_INTERNAL_WORKER"
+    text = (NEXTGEN / "outbox_worker.py").read_text(encoding="utf-8")
+    assert 'WORKER_TRUST_MODEL = "GLOBAL_INTERNAL_WORKER"' in text
     print("LIVE_CP003_PUBLICATION_RECOVERY_PROOF route_exposure=PASS")

@@ -36,6 +36,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Exact PR head SHA — never the ephemeral merge ref for pull_request events.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Record exact tested SHA
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          echo "LIVE_TESTED_SHA=$SHA"
+          echo "LIVE_TESTED_SHA=$SHA" >> "$GITHUB_ENV"
+          EXPECTED="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$SHA" = "$EXPECTED"
+          echo "Exact head SHA confirmed: $SHA"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
