@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/project-opportunity-status-projection/0.0.0",
+  "title": "ProjectOpportunityStatusProjection",
+  "description": "Project opportunity status projection for Habitat relationship UX. Full ProjectOpportunityPackage remains NOT_IMPLEMENTED. Must not present fabricated scope as settled fact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "property_id",
+    "status",
+    "package_contract",
+    "package_contract_status",
+    "provenance",
+    "confidence",
+    "unknown_state"
+  ],
+  "properties": {
+    "schema_name": { "const": "ProjectOpportunityStatusProjection" },
+    "schema_version": { "const": "0.0.0" },
+    "contract_status": { "const": "PROPOSED" },
+    "opportunity_id": { "type": ["string", "null"] },
+    "property_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "shared",
+        "homeowner_reviewing",
+        "accepted",
+        "declined",
+        "unavailable",
+        "awaiting_review",
+        "unknown"
+      ]
+    },
+    "title_homeowner_safe": { "type": ["string", "null"] },
+    "linked_finding_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "linked_estimate_ref": { "type": ["string", "null"] },
+    "package_contract": { "const": "ProjectOpportunityPackage" },
+    "package_contract_status": { "const": "NOT_IMPLEMENTED" },
+    "provenance": { "$ref": "./common_display.json#/definitions/ProvenanceDisplay" },
+    "confidence": { "$ref": "./common_display.json#/definitions/ConfidenceDisplay" },
+    "unknown_state": { "$ref": "./common_display.json#/definitions/UnknownStateDisplay" }
+  }
+}

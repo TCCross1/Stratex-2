@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/common-display/0.0.0",
+  "title": "HabitatProvenanceConfidenceUnknownDisplay",
+  "description": "Shared provenance, confidence, and unknown/unavailable/awaiting-review display contract for Habitat projections. Status PROPOSED — not FROZEN.",
+  "definitions": {
+    "ProvenanceDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_type",
+        "source_id",
+        "publication_context",
+        "projected_at",
+        "projector"
+      ],
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "passport_entry",
+            "property_projection",
+            "approved_finding",
+            "estimate_result",
+            "report_publication",
+            "project_opportunity",
+            "habitat_projection"
+          ]
+        },
+        "source_id": { "type": "string", "minLength": 1 },
+        "publication_context": { "type": "string", "minLength": 1 },
+        "passport_revision": { "type": ["integer", "null"], "minimum": 0 },
+        "projected_at": { "type": "string", "minLength": 1 },
+        "projector": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ConfidenceDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["band", "inherited_from_source", "display_label"],
+      "properties": {
+        "band": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "inherited_from_source": { "type": "boolean" },
+        "display_label": { "type": "string", "minLength": 1 },
+        "reduced_for_audience": { "type": "boolean" }
+      }
+    },
+    "UnknownStateDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "blocks_authoritative_presentation"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["known", "unknown", "unavailable", "awaiting_review"]
+        },
+        "reason": { "type": ["string", "null"] },
+        "blocks_authoritative_presentation": { "type": "boolean" }
+      }
+    },
+    "forbidden_homeowner_fields": {
+      "description": "Keys that must never appear on homeowner-safe Habitat projections",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "notes",
+          "approval",
+          "review_history",
+          "author_id",
+          "author_role",
+          "confidence_pct",
+          "confidence_source",
+          "insurance_relevant",
+          "passport_content_hash",
+          "passport_entry_id",
+          "passport_seq",
+          "contractor_pricing",
+          "unit_cost",
+          "unit_cost_cents",
+          "price_book",
+          "price_book_version",
+          "margin",
+          "margin_pct",
+          "internal_notes",
+          "ai_reasoning",
+          "reviewer_id",
+          "reviewer_role",
+          "idempotency_key",
+          "expected_revision",
+          "expected_head_hash"
+        ]
+      }
+    }
+  }
+}

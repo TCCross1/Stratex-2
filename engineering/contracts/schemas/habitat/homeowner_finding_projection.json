@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/homeowner-finding-projection/0.0.0",
+  "title": "HomeownerFindingProjection",
+  "description": "Homeowner-safe finding projection. Strips reviewer identity, notes, confidence methodology, insurance-only content, and audit internals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "canonical_id",
+    "property_id",
+    "taxonomy_category",
+    "severity",
+    "priority",
+    "description",
+    "status",
+    "provenance",
+    "confidence",
+    "unknown_state"
+  ],
+  "properties": {
+    "schema_name": { "const": "HomeownerFindingProjection" },
+    "schema_version": { "const": "0.0.0" },
+    "contract_status": { "const": "PROPOSED" },
+    "canonical_id": { "type": "string", "minLength": 1 },
+    "property_id": { "type": "string", "minLength": 1 },
+    "taxonomy_category": { "type": "string", "minLength": 1 },
+    "taxonomy_component": { "type": ["string", "null"] },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "MAJOR", "MODERATE", "MINOR", "INFORMATIONAL"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["IMMEDIATE", "URGENT", "IMPORTANT", "SCHEDULE", "MONITOR"]
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["APPROVED", "RESOLVED"] },
+    "approved_at": { "type": ["string", "null"] },
+    "resolved_at": { "type": ["string", "null"] },
+    "manual_observation": { "type": "boolean" },
+    "provenance": { "$ref": "./common_display.json#/definitions/ProvenanceDisplay" },
+    "confidence": { "$ref": "./common_display.json#/definitions/ConfidenceDisplay" },
+    "unknown_state": { "$ref": "./common_display.json#/definitions/UnknownStateDisplay" }
+  }
+}

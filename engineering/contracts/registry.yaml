@@ -187,10 +187,15 @@ contracts:
       unknown_state: required
       compatibility: "0.x additive only until ACCEPTED"
       breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_path: engineering/contracts/schemas/habitat/habitat_property_projection.json
+    executable_schema: backend/nextgen/schemas/habitat/property_projection.py
     schema_notes:
       - provenance cites source Passport revision and projection builder
       - confidence is inherited or reduced, never increased above source
       - unknown_state is preserved for homeowner-safe honesty
+      - companion schemas cover finding, estimate-summary, report-reference,
+        and project-opportunity status projections under schemas/habitat/
+      - status remains PROPOSED — not FROZEN / ACCEPTED by LANE_4
 
   - name: ProjectOpportunityPackage
     version: "0.0.0"
@@ -211,3 +216,6 @@ contracts:
       - provenance links opportunity to property projection revision
       - confidence reflects readiness for homeowner conversation
       - unknown_state blocks presenting fabricated scope as settled fact
+      - status projection stub lives at
+        engineering/contracts/schemas/habitat/project_opportunity_status_projection.json
+      - full package remains NOT_IMPLEMENTED until Atlas freeze
