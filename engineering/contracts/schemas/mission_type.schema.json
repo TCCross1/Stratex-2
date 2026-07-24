@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/MissionType/0.0.0",
+  "title": "MissionTypeContract",
+  "description": "ATC-001A mission-type binding. Matrice 4E daytime precision mapping; Matrice 4T nighttime AWE visual/thermal. Future: M400_P1_MAPPING, M400_H30T_AWE.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mission_type",
+    "aircraft_profile_id",
+    "evidence_product_key",
+    "dimensional_role",
+    "thermal_changes_dimensions",
+    "provenance",
+    "confidence",
+    "unknown_state",
+    "meta"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
+        "approval_authority": { "const": "Atlas" }
+      }
+    },
+    "mission_type": {
+      "enum": ["DAYTIME_PRECISION_MAPPING", "NIGHTTIME_AWE_VISUAL_THERMAL"]
+    },
+    "aircraft_profile_id": {
+      "enum": ["M4E_MAPPING", "M4T_AWE", "M400_P1_MAPPING", "M400_H30T_AWE"]
+    },
+    "evidence_product_key": { "enum": ["dayscan", "awe_scan", "elite"] },
+    "dimensional_role": {
+      "enum": ["primary_dimensional_candidate", "not_dimensional_authority"]
+    },
+    "thermal_changes_dimensions": { "const": false },
+    "requires_paired_mission_type": {
+      "type": ["string", "null"],
+      "enum": ["DAYTIME_PRECISION_MAPPING", "NIGHTTIME_AWE_VISUAL_THERMAL", null]
+    },
+    "provenance": { "type": "object" },
+    "confidence": { "type": "object" },
+    "unknown_state": { "type": "object" }
+  }
+}

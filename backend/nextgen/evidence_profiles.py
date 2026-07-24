@@ -3,6 +3,11 @@
 Profiles are configuration data, not conditionals in the UI. Each profile
 enumerates the required evidence categories, the recommended minimum
 counts, and any product-specific validation rules (e.g. AWE thermal delta).
+
+ATC-001A aircraft binding lives in `aircraft_profiles.py` (M4E daytime
+mapping / M4T nighttime AWE). Evidence profiles remain product-key keyed;
+aircraft profiles map onto these product keys without claiming live DJI SDK
+or production-approved geometry.
 """
 from __future__ import annotations
 
