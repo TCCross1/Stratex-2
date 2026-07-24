@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/PreflightResult/0.0.0",
+  "title": "PreflightResult",
+  "description": "ATC-001A deterministic preflight result contract. No real device, no DJI SDK invocation, no production flight authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mission_id",
+    "aircraft_profile_id",
+    "overall",
+    "checks",
+    "real_device_exercised",
+    "production_flight_authority",
+    "dji_sdk_invoked",
+    "provenance",
+    "confidence",
+    "unknown_state",
+    "meta"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
+        "approval_authority": { "const": "Atlas" }
+      }
+    },
+    "mission_id": { "type": "string" },
+    "aircraft_profile_id": { "type": "string" },
+    "overall": { "enum": ["passed", "failed", "warned"] },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "label", "severity", "result"],
+        "properties": {
+          "check_id": { "type": "string" },
+          "label": { "type": "string" },
+          "severity": { "enum": ["hard", "warn", "info"] },
+          "result": { "enum": ["pass", "fail", "warn", "skipped"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "real_device_exercised": { "const": false },
+    "production_flight_authority": { "const": false },
+    "dji_sdk_invoked": { "const": false },
+    "provenance": { "type": "object" },
+    "confidence": { "type": "object" },
+    "unknown_state": { "type": "object" }
+  }
+}

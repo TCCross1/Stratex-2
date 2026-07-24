@@ -40,7 +40,11 @@ contracts:
       - LANE_2_ATC_FIELD
     description: >
       Geometry package that has passed approval policy and is eligible for
-      governed publication into Passport history.
+      governed publication into Passport history. ATC-001A ships a CANDIDATE
+      executable schema only — not production-approved geometry.
+    schema_location: engineering/contracts/schemas/approved_geometry_candidate.schema.json
+    executable_schema: backend/nextgen/schemas/approved_geometry_candidate.py
+    freeze_gate_note: READY_FOR_FREEZE — Atlas freeze required; never FROZEN from LANE_2
     fields:
       provenance: required
       confidence: required
@@ -51,6 +55,8 @@ contracts:
       - provenance ties capture mission, operator, and device package
       - confidence reflects measurement and registration quality
       - unknown_state enumerates missing control points or unresolved surfaces
+      - ATC-001A candidate forbids approved_because_from_4e and RTK accuracy claims
+      - geometry is not approved merely because it originated from a 4E package
 
   - name: EvidenceManifest
     version: "0.0.0"
@@ -60,7 +66,11 @@ contracts:
       - LANE_2_ATC_FIELD
     description: >
       Field-capture evidence inventory for 4E/4T packages, completeness checks,
-      and governed upload metadata. ATC-001 is not implemented by EF-001.
+      and governed upload metadata. ATC-001A adds executable schema + fixtures;
+      live device capture remains out of scope for this checkpoint.
+    schema_location: engineering/contracts/schemas/evidence_manifest.schema.json
+    executable_schema: backend/nextgen/schemas/evidence_manifest.py
+    freeze_gate_note: READY_FOR_FREEZE — Atlas freeze required; never FROZEN from LANE_2
     fields:
       provenance: required
       confidence: required
@@ -71,6 +81,8 @@ contracts:
       - provenance includes mission_id, capture_profile, and package hash
       - confidence covers completeness and integrity of the package
       - unknown_state lists missing required artifacts without fabricating them
+      - passport_accepted must remain false in ATC lane manifests
+      - ATC validates both 4E and 4T before Passport accepts either
 
   - name: ApprovedFinding
     version: "0.0.0"

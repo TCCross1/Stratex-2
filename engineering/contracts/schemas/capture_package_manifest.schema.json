@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/CapturePackageManifest/0.0.0",
+  "title": "CapturePackageManifest",
+  "description": "ATC-001A fixture-assembled capture package manifest. Does not claim physical capture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "package_id",
+    "mission_id",
+    "aircraft_profile_id",
+    "mission_type",
+    "package_hash",
+    "files",
+    "assembled_from_fixture",
+    "physical_capture_claimed",
+    "provenance",
+    "confidence",
+    "unknown_state",
+    "meta"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
+        "approval_authority": { "const": "Atlas" }
+      }
+    },
+    "package_id": { "type": "string" },
+    "mission_id": { "type": "string" },
+    "aircraft_profile_id": { "type": "string" },
+    "mission_type": {
+      "enum": ["DAYTIME_PRECISION_MAPPING", "NIGHTTIME_AWE_VISUAL_THERMAL"]
+    },
+    "package_hash": { "type": "string" },
+    "files": { "type": "array" },
+    "assembled_from_fixture": { "const": true },
+    "physical_capture_claimed": { "const": false },
+    "provenance": { "type": "object" },
+    "confidence": { "type": "object" },
+    "unknown_state": { "type": "object" }
+  }
+}
