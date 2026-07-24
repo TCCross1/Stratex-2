@@ -30,7 +30,9 @@ def _skip_unless_live():
     if not LIVE:
         pytest.skip("RT002_LIVE not set — live Mongo proof not executed here")
     if not MONGO_URL:
-        pytest.skip("MONGO_URL/RT002_MONGO_URL missing — INTEGRATION_ENVIRONMENT_UNAVAILABLE")
+        pytest.fail(
+            "INTEGRATION_ENVIRONMENT_FAILED: RT002_LIVE=1 but MONGO_URL/RT002_MONGO_URL missing"
+        )
 
 
 @pytest.fixture(scope="module")
@@ -42,8 +44,11 @@ def client():
     c = MongoClient(MONGO_URL, serverSelectionTimeoutMS=8000)
     try:
         c.admin.command("ping")
-    except Exception as exc:  # noqa: BLE001 — surface as skip/unavailable
-        pytest.skip(f"INTEGRATION_ENVIRONMENT_UNAVAILABLE: Mongo ping failed ({type(exc).__name__})")
+    except Exception as exc:  # noqa: BLE001 — live mode must fail honestly
+        pytest.fail(
+            f"INTEGRATION_ENVIRONMENT_FAILED: Mongo ping failed under RT002_LIVE=1 "
+            f"({type(exc).__name__})"
+        )
     yield c
     c.close()
 

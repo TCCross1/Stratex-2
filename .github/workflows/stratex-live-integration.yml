@@ -98,6 +98,10 @@ jobs:
           export RT001_MONGO_PORT=27018
           export RT001_MINIO_API_PORT=9000
           export RT001_MINIO_CONSOLE_PORT=9001
+          # Ensure start.sh uses the same ephemeral credentials as RT002_* tests.
+          test -n "${RT001_MINIO_ROOT_USER:-}"
+          test -n "${RT001_MINIO_ROOT_PASSWORD:-}"
+          export RT001_MINIO_BUCKET="${RT002_MINIO_BUCKET}"
           chmod +x engineering/rt001/start.sh engineering/rt001/stop.sh
           ./engineering/rt001/start.sh
           for i in $(seq 1 60); do
@@ -114,8 +118,33 @@ jobs:
             fi
             sleep 2
           done
+          # Wait for minio-init bucket bootstrap (mc) to finish.
+          for i in $(seq 1 30); do
+            st="$(docker inspect -f '{{.State.Status}}' stratex-rt001-minio-init 2>/dev/null || echo missing)"
+            if [[ "$st" == "exited" ]]; then
+              code="$(docker inspect -f '{{.State.ExitCode}}' stratex-rt001-minio-init)"
+              test "$code" = "0"
+              echo "minio-init exited 0"
+              break
+            fi
+            sleep 1
+          done
           docker exec stratex-rt001-mongo1 mongosh --quiet --eval 'db.hello().setName'
           curl -sf http://127.0.0.1:9000/minio/health/live
+          # Confirm S3 auth works with the same ephemeral credentials (no secret print).
+          python - <<'PY'
+          import os, boto3
+          from botocore.client import Config
+          c = boto3.client(
+              "s3",
+              endpoint_url="http://127.0.0.1:9000",
+              aws_access_key_id=os.environ["RT002_MINIO_ACCESS_KEY"],
+              aws_secret_access_key=os.environ["RT002_MINIO_SECRET_KEY"],
+              region_name="us-east-1",
+              config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+          )
+          print("minio_auth_buckets=", len(c.list_buckets().get("Buckets") or []))
+          PY
           NET="$(docker network ls --format '{{.Name}}' | grep -E 'stratex.*default' | head -1)"
           echo "Detected compose network: $NET"
           test -n "$NET"
@@ -143,6 +172,8 @@ jobs:
             -e RT002_MINIO_ACCESS_KEY \
             -e RT002_MINIO_SECRET_KEY \
             -e RT002_MINIO_BUCKET \
+            -e MINIO_ROOT_USER="${RT002_MINIO_ACCESS_KEY}" \
+            -e MINIO_ROOT_PASSWORD="${RT002_MINIO_SECRET_KEY}" \
             -e RT002_DB_NAME \
             -e RT002_CP003_ROOT \
             -e MONGO_URL \
@@ -156,7 +187,7 @@ jobs:
                 backend/tests/test_rt002_live_object_storage.py \
                 backend/tests/test_rt002_cp003_live_claims.py \
                 -m "live_mongo or live_object_storage" \
-                -v --tb=short
+                -v -rs --tb=short
             '
 
       - name: Architecture and security gates

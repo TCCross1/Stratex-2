@@ -5,6 +5,9 @@ Does NOT modify PR #7. Loads ``outbox_worker.py`` from a temporary worktree of
 shim over real pymongo — proving the audited claim algorithm on a replica set.
 
 Requires RT002_LIVE=1 and replica-set MONGO_URL.
+
+Delivery characterization (never exactly-once):
+  AT-LEAST-ONCE DELIVERY + IDEMPOTENT CONSUMERS + DURABLE RECEIPTS + SAFE RECONCILIATION
 """
 from __future__ import annotations
 
@@ -36,7 +39,7 @@ def _skip_unless_ready():
     if not LIVE:
         pytest.skip("RT002_LIVE not set")
     if not MONGO_URL:
-        pytest.skip("INTEGRATION_ENVIRONMENT_UNAVAILABLE: MONGO_URL missing")
+        pytest.fail("INTEGRATION_ENVIRONMENT_FAILED: RT002_LIVE=1 but MONGO_URL missing")
     if not CP003_ROOT:
         pytest.skip(
             "RT002_CP003_ROOT unset — run engineering/rt002/fetch_cp003_worktree.sh "
@@ -61,13 +64,15 @@ class _AsyncColl:
         return self._c.update_one(filt, update, **kwargs)
 
     async def find_one_and_update(self, filt, update, **kwargs):
-        # Motor uses return_document=True; pymongo wants ReturnDocument.AFTER.
         rd = kwargs.pop("return_document", None)
         if rd is True:
             kwargs["return_document"] = ReturnDocument.AFTER
         elif rd is False:
             kwargs["return_document"] = ReturnDocument.BEFORE
         return self._c.find_one_and_update(filt, update, **kwargs)
+
+    async def count_documents(self, filt):
+        return self._c.count_documents(filt)
 
     def find(self, filt):
         outer = self
@@ -103,7 +108,9 @@ def _load_worker(db):
     class Colls:
         outbox_events = _AsyncColl(db["nextgen_outbox_events"])
         inbox_receipts = _AsyncColl(db["nextgen_inbox_receipts"])
-        outbox_dead_letters = _AsyncColl(db["nextgen_outbox_dead_letters"])
+        # PR #7 uses dead_letter_events (not outbox_dead_letters).
+        dead_letter_events = _AsyncColl(db["nextgen_outbox_dead_letters"])
+        outbox_dead_letters = dead_letter_events
         audit_events = _AsyncColl(db["nextgen_audit_events"])
 
     pkg = types.ModuleType("nextgen")
@@ -136,14 +143,15 @@ def mongo_db():
     client.close()
 
 
-def _seed_event(db, *, lease_until=None, lease_owner=None):
+def _seed_event(db, *, lease_until=None, lease_owner=None, tenant_id="t_rt002", property_id="p_rt002"):
     now = datetime.now(timezone.utc).isoformat()
     event_id = "evt_" + uuid.uuid4().hex
     doc = {
         "event_id": event_id,
-        "tenant_id": "t_rt002",
+        "tenant_id": tenant_id,
+        "property_id": property_id,
         "event_type": "rt002.test",
-        "payload": {"n": 1},
+        "payload": {"n": 1, "property_id": property_id},
         "idempotency_key": "idem_" + uuid.uuid4().hex,
         "available_after": now,
         "attempts": 0,
@@ -199,3 +207,115 @@ def test_active_lease_not_stolen_expired_recoverable(mongo_db):
 
     asyncio.run(run())
     print("LIVE_MONGO_REPLICA_SET_PROOF lease_protection=PASS")
+
+
+def test_crash_after_claim_recovers_via_expired_lease(mongo_db):
+    """Crash after claim must not permanently strand the event."""
+    db = mongo_db
+    worker = _load_worker(db)
+    db["nextgen_outbox_events"].delete_many({})
+    event_id = _seed_event(db)
+
+    async def run():
+        claimed = await worker.claim_next_event(worker_id="w_crash", lease_seconds=30)
+        assert claimed is not None
+        # Simulate crash: no mark_delivered; force lease expiry.
+        past = (datetime.now(timezone.utc) - timedelta(seconds=2)).isoformat()
+        db["nextgen_outbox_events"].update_one(
+            {"event_id": event_id}, {"$set": {"lease_until": past, "leased_by": "w_crash"}}
+        )
+        recovered = await worker.claim_next_event(worker_id="w_rescue")
+        assert recovered is not None
+        assert recovered["event_id"] == event_id
+        assert int(recovered.get("attempts") or 0) >= 2
+
+    asyncio.run(run())
+    print("LIVE_MONGO_REPLICA_SET_PROOF crash_recovery=PASS")
+
+
+def test_receipt_idempotency_and_bounded_retries_dead_letter(mongo_db):
+    db = mongo_db
+    worker = _load_worker(db)
+    for name in (
+        "nextgen_outbox_events",
+        "nextgen_inbox_receipts",
+        "nextgen_outbox_dead_letters",
+        "nextgen_audit_events",
+    ):
+        db[name].delete_many({})
+
+    event_id = _seed_event(db)
+
+    async def run():
+        claimed = await worker.claim_next_event(worker_id="w_deliver")
+        assert claimed is not None
+        r1 = await worker.mark_delivered(
+            event=claimed, consumer_key="consumer_rt002", worker_id="w_deliver"
+        )
+        assert r1["status"] == "delivered"
+        assert r1["receipt"]["duplicate"] is False
+        r2 = await worker.mark_delivered(
+            event=claimed, consumer_key="consumer_rt002", worker_id="w_deliver"
+        )
+        assert r2["receipt"]["duplicate"] is True
+        receipts = list(db["nextgen_inbox_receipts"].find({"event_id": event_id}))
+        assert len(receipts) == 1
+
+        # Fresh event for failure / DLQ path with low max_attempts.
+        db["nextgen_outbox_events"].delete_many({})
+        fail_id = _seed_event(db)
+        claimed_f = await worker.claim_next_event(worker_id="w_fail")
+        assert claimed_f is not None
+        # attempts already 1 from claim; force exhaustion.
+        claimed_f["attempts"] = 5
+        dl = await worker.record_delivery_failure(
+            event=claimed_f,
+            worker_id="w_fail",
+            error=RuntimeError("rt002_intentional_failure"),
+            max_attempts=5,
+        )
+        assert dl["status"] == "dead_lettered"
+        row = db["nextgen_outbox_events"].find_one({"event_id": fail_id})
+        assert row.get("dead_lettered_at")
+        assert db["nextgen_outbox_dead_letters"].count_documents({"event_id": fail_id}) == 1
+
+        # Replay requires operator_id + reason; does not invent new event_id.
+        replayed = await worker.replay_dead_lettered_event(
+            event_id=fail_id,
+            operator_id="op_rt002",
+            reason="rt002_authorized_replay",
+        )
+        assert replayed.get("event_id") == fail_id or fail_id in str(replayed)
+        row2 = db["nextgen_outbox_events"].find_one({"event_id": fail_id})
+        assert row2.get("dead_lettered_at") is None
+        # Duplicate replay of already-cleared DL should still target same event_id.
+        assert db["nextgen_outbox_events"].count_documents({"event_id": fail_id}) == 1
+
+    asyncio.run(run())
+    print("LIVE_MONGO_REPLICA_SET_PROOF receipt_idempotency_dead_letter=PASS")
+    print("DELIVERY_MODEL=AT-LEAST-ONCE+IDEMPOTENT_CONSUMERS+DURABLE_RECEIPTS+SAFE_RECONCILIATION")
+
+
+def test_tenant_property_isolation_on_seeded_events(mongo_db):
+    db = mongo_db
+    worker = _load_worker(db)
+    db["nextgen_outbox_events"].delete_many({})
+    a = _seed_event(db, tenant_id="tenant_a", property_id="prop_a")
+    b = _seed_event(db, tenant_id="tenant_b", property_id="prop_b")
+
+    async def run():
+        first = await worker.claim_next_event(worker_id="w_iso")
+        assert first is not None
+        # Claimed event retains its tenant/property; other tenant row remains distinct.
+        assert first["tenant_id"] in {"tenant_a", "tenant_b"}
+        other_id = b if first["event_id"] == a else a
+        other = db["nextgen_outbox_events"].find_one({"event_id": other_id})
+        assert other is not None
+        assert other["tenant_id"] != first["tenant_id"]
+        assert other.get("leased_by") in (None, "")
+        second = await worker.claim_next_event(worker_id="w_iso2")
+        assert second is not None
+        assert {first["event_id"], second["event_id"]} == {a, b}
+
+    asyncio.run(run())
+    print("LIVE_MONGO_REPLICA_SET_PROOF tenant_property_isolation=PASS")

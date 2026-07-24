@@ -2,11 +2,13 @@
 
 Requires:
   RT002_LIVE=1
-  RT002_MINIO_ENDPOINT (e.g. http://127.0.0.1:9000)
+  RT002_MINIO_ENDPOINT (e.g. http://minio:9000)
   RT002_MINIO_ACCESS_KEY / RT002_MINIO_SECRET_KEY (ephemeral CI secrets)
 
 Emits: LIVE_S3_COMPATIBLE_STORAGE_PROOF
 LocalDiskAdapter tests are NOT live proof.
+
+When RT002_LIVE=1, unreachable MinIO is FAILED (not skipped).
 """
 from __future__ import annotations
 
@@ -28,19 +30,20 @@ SECRET = os.environ.get("RT002_MINIO_SECRET_KEY") or os.environ.get("MINIO_ROOT_
 BUCKET = os.environ.get("RT002_MINIO_BUCKET") or "stratex-rt002"
 
 
-def _skip_unless_live():
+def _require_live_config():
     if not LIVE:
         pytest.skip("RT002_LIVE not set — live object-storage proof not executed here")
     if not ENDPOINT or not ACCESS or not SECRET:
-        pytest.skip("INTEGRATION_ENVIRONMENT_UNAVAILABLE: MinIO endpoint/credentials missing")
+        pytest.fail(
+            "INTEGRATION_ENVIRONMENT_FAILED: RT002_LIVE=1 but MinIO endpoint/credentials missing"
+        )
 
 
 @pytest.fixture(scope="module")
 def s3():
-    _skip_unless_live()
+    _require_live_config()
     import boto3
     from botocore.client import Config
-    from botocore.exceptions import ClientError
 
     client = boto3.client(
         "s3",
@@ -48,41 +51,44 @@ def s3():
         aws_access_key_id=ACCESS,
         aws_secret_access_key=SECRET,
         region_name="us-east-1",
-        config=Config(signature_version="s3v4"),
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
-    # Readiness
     try:
         client.list_buckets()
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"INTEGRATION_ENVIRONMENT_UNAVAILABLE: MinIO not reachable ({type(exc).__name__})")
+        pytest.fail(
+            f"INTEGRATION_ENVIRONMENT_FAILED: MinIO not reachable under RT002_LIVE=1 "
+            f"({type(exc).__name__}: {exc})"
+        )
     return client
 
 
 def test_bucket_create_upload_download_checksum(s3):
     bucket = f"{BUCKET}-{uuid.uuid4().hex[:8]}"
-    try:
-        s3.create_bucket(Bucket=bucket)
-    except Exception:
-        # MinIO may already have default bucket; create may be optional.
-        pass
-    # Ensure bucket exists
+    s3.create_bucket(Bucket=bucket)
     names = [b["Name"] for b in s3.list_buckets().get("Buckets", [])]
-    if bucket not in names:
-        s3.create_bucket(Bucket=bucket)
+    assert bucket in names
     key = f"tenant_rt002/property_demo/obj-{uuid.uuid4().hex}.bin"
     payload = b"rt002-live-object-storage-proof-" + uuid.uuid4().bytes
     digest = hashlib.sha256(payload).hexdigest()
     s3.put_object(Bucket=bucket, Key=key, Body=payload, Metadata={"sha256": digest})
+    head = s3.head_object(Bucket=bucket, Key=key)
+    assert head.get("ContentLength") == len(payload)
     obj = s3.get_object(Bucket=bucket, Key=key)
     body = obj["Body"].read()
     assert body == payload
     assert hashlib.sha256(body).hexdigest() == digest
     meta = obj.get("Metadata") or {}
     assert meta.get("sha256") == digest
-    # Ensure metadata has no secret-looking values
     joined = " ".join(f"{k}={v}" for k, v in meta.items()).lower()
     assert "password" not in joined
     assert "secret" not in joined
+    # Duplicate key: overwrite is accepted; content must match latest payload.
+    payload2 = b"rt002-duplicate-key-" + uuid.uuid4().bytes
+    digest2 = hashlib.sha256(payload2).hexdigest()
+    s3.put_object(Bucket=bucket, Key=key, Body=payload2, Metadata={"sha256": digest2})
+    body2 = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+    assert body2 == payload2
     print("LIVE_S3_COMPATIBLE_STORAGE_PROOF upload_download_checksum=PASS")
     s3.delete_object(Bucket=bucket, Key=key)
     try:
@@ -103,7 +109,6 @@ def test_checksum_mismatch_rejection(s3):
     actual = hashlib.sha256(body).hexdigest()
     claimed = (obj.get("Metadata") or {}).get("sha256")
     assert actual != claimed
-    # Application-level rejection
     with pytest.raises(AssertionError):
         assert actual == claimed
     print("LIVE_S3_COMPATIBLE_STORAGE_PROOF checksum_mismatch_rejection=PASS")
