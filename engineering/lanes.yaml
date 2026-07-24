@@ -186,8 +186,8 @@ lanes:
     description: >
       Transaction-capable Mongo, object storage, CI, deployment, secrets,
       environment reproducibility, integration tests, performance and failure
-      testing, Atlas evidence automation. RT-001/RT-002 runtime proof only —
-      no Passport/ATC/Estimator/Habitat business approval authority.
+      testing, Atlas evidence automation. RT-001/RT-002/RT-003 runtime proof
+      only — no Passport/ATC/Estimator/Habitat business approval authority.
     owned_paths:
       - backend/nextgen/db.py
       - backend/nextgen/storage.py
@@ -195,6 +195,8 @@ lanes:
       - engineering/templates/
       - engineering/rt001/
       - engineering/rt002/
+      - engineering/rt003/
+      - engineering/px004/lane5/
       - .github/workflows/
       - stratex
       - backend/tests/test_ef001_engineering_factory.py
@@ -203,6 +205,9 @@ lanes:
       - backend/tests/test_rt002_live_object_storage.py
       - backend/tests/test_rt002_cp003_live_claims.py
       - backend/tests/test_rt002_unit_honesty.py
+      - backend/tests/test_rt003_observability.py
+      - backend/tests/test_rt003_load_budgets.py
+      - backend/tests/test_rt003_security_guards.py
     prohibited_paths:
       - backend/nextgen/passport_service.py
       - backend/nextgen/governed_publish_service.py
@@ -222,8 +227,11 @@ lanes:
       - backend/tests/test_writer_authority.py
       - backend/tests/test_rt001_integration_environment.py
       - backend/tests/test_rt002_unit_honesty.py
+      - backend/tests/test_rt003_observability.py
+      - backend/tests/test_rt003_load_budgets.py
+      - backend/tests/test_rt003_security_guards.py
     contracts: []
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
-    # ATLAS_ARCHITECTURE_APPROVAL granted for RT-001/RT-002 owned-path
-    # registration only (RT-002 directive Phase 3).
+    # ATLAS_ARCHITECTURE_APPROVAL granted for RT-001/RT-002/RT-003 owned-path
+    # registration only (runtime directive; no business authority).
