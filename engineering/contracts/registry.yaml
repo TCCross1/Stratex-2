@@ -1,0 +1,213 @@
+# Contract registry — Stratex High-Velocity Engineering (EF-001)
+# Unfinished contracts are PROPOSED or NOT_IMPLEMENTED — never ACCEPTED here.
+# Approval authority for all shared contracts: Atlas.
+
+version: "0.1.0"
+approval_authority: Atlas
+production_readiness: NOT_READY
+note: >
+  EF-001 registers shared contracts before large dependent implementations.
+  No contract in this registry is claimed as a production-accepted contract.
+
+contracts:
+  - name: PropertyProjection
+    version: "0.0.0"
+    status: PROPOSED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_1_CORE_PASSPORT
+      - LANE_4_HABITAT
+    description: >
+      Canonical property intelligence projection consumed by Core publication
+      paths and Habitat-safe read models.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance must identify source_type, source_id, and publication_context
+      - confidence is a bounded numeric or enumerated band with rationale
+      - unknown_state must be explicit when geometry or facts are incomplete
+
+  - name: ApprovedGeometry
+    version: "0.0.0"
+    status: PROPOSED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_1_CORE_PASSPORT
+      - LANE_2_ATC_FIELD
+    description: >
+      Geometry package that has passed approval policy and is eligible for
+      governed publication into Passport history.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance ties capture mission, operator, and device package
+      - confidence reflects measurement and registration quality
+      - unknown_state enumerates missing control points or unresolved surfaces
+
+  - name: EvidenceManifest
+    version: "0.0.0"
+    status: PROPOSED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_2_ATC_FIELD
+    description: >
+      Field-capture evidence inventory for 4E/4T packages, completeness checks,
+      and governed upload metadata. ATC-001 is not implemented by EF-001.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance includes mission_id, capture_profile, and package hash
+      - confidence covers completeness and integrity of the package
+      - unknown_state lists missing required artifacts without fabricating them
+
+  - name: ApprovedFinding
+    version: "0.0.0"
+    status: PROPOSED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_1_CORE_PASSPORT
+    description: >
+      Finding record approved under separation-of-duties policy and published
+      only through governed_publish → append_entry.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance records approver identity class and source finding id
+      - confidence is retained from analyst assessment and policy outcome
+      - unknown_state must not be collapsed to false certainty on publish
+
+  - name: EstimateInputPackage
+    version: "0.0.0"
+    status: NOT_IMPLEMENTED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_3_ESTIMATOR_REPORT
+    description: >
+      Inputs required to compute a construction estimate from approved geometry
+      and assembly profiles. Estimator feature implementation is out of scope for EF-001.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance identifies geometry revision and price book version
+      - confidence reflects input completeness before calculation
+      - unknown_state blocks silent zero-fills for missing quantities
+
+  - name: EstimateResult
+    version: "0.0.0"
+    status: NOT_IMPLEMENTED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_3_ESTIMATOR_REPORT
+    description: >
+      Computed estimate output including totals, line groups, and confidence
+      summary suitable for governed report composition.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance references EstimateCalculationLedger identity
+      - confidence summarizes calculation and price provenance confidence
+      - unknown_state surfaces unresolved assemblies or price gaps
+
+  - name: EstimateCalculationLedger
+    version: "0.0.0"
+    status: NOT_IMPLEMENTED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_3_ESTIMATOR_REPORT
+    description: >
+      Append-oriented calculation ledger capturing formula inputs, assembly
+      expansions, and price provenance for auditability.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance records calculator version and input package hash
+      - confidence attaches to each material calculation step
+      - unknown_state retains gaps instead of rewriting history
+
+  - name: ReportPublicationPackage
+    version: "0.0.0"
+    status: NOT_IMPLEMENTED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_3_ESTIMATOR_REPORT
+    description: >
+      Premium report composition package binding approved findings, estimates,
+      and evidence references for governed publication.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance lists included Passport entry references
+      - confidence aggregates component confidences without inflation
+      - unknown_state must remain visible in published report metadata
+
+  - name: HabitatPropertyProjection
+    version: "0.0.0"
+    status: PROPOSED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_4_HABITAT
+    description: >
+      Homeowner-safe read projection derived from approved Passport truth.
+      Habitat never writes canonical Passport ledger entries.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance cites source Passport revision and projection builder
+      - confidence is inherited or reduced, never increased above source
+      - unknown_state is preserved for homeowner-safe honesty
+
+  - name: ProjectOpportunityPackage
+    version: "0.0.0"
+    status: NOT_IMPLEMENTED
+    approval_authority: Atlas
+    owning_lanes:
+      - LANE_4_HABITAT
+    description: >
+      Homeowner relationship package describing project opportunities derived
+      from approved findings and estimates without mutating Passport authority.
+    fields:
+      provenance: required
+      confidence: required
+      unknown_state: required
+      compatibility: "0.x additive only until ACCEPTED"
+      breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_notes:
+      - provenance links opportunity to property projection revision
+      - confidence reflects readiness for homeowner conversation
+      - unknown_state blocks presenting fabricated scope as settled fact

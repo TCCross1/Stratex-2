@@ -1,0 +1,48 @@
+name: Stratex Verify (EF-001)
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  stratex-verify:
+    name: Architecture, security, and fast verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Architecture boundaries
+        env:
+          STRATEX_VERIFY_ALLOW_DIRTY: "1"
+        run: |
+          chmod +x ./stratex
+          ./stratex verify --architecture
+
+      - name: Security boundaries
+        env:
+          STRATEX_VERIFY_ALLOW_DIRTY: "1"
+        run: ./stratex verify --security
+
+      - name: Fast verify
+        env:
+          STRATEX_VERIFY_ALLOW_DIRTY: "1"
+        run: ./stratex verify --fast
+
+      # Explicit non-goals for EF-001 CI:
+      # - Do not upload secrets or .env files as artifacts
+      # - Do not auto-merge
+      # - Do not push
