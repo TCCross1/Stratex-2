@@ -1,0 +1,83 @@
+# Contract freeze matrix — EF-002
+# Status values for freeze_gate:
+#   BLOCKED_UNTIL_ATLAS — cannot start dependent builders
+#   READY_FOR_FREEZE — schema still PROPOSED/NOT_IMPLEMENTED; freeze pending Atlas
+#   FROZEN — only after Atlas approval (none frozen in EF-002 itself)
+version: 1
+baseline_main: "63164e85d8168d6abea46a040368f15c9fd48354"
+approval_authority: Atlas
+note: >
+  EF-002 does not freeze production contracts. It schedules freeze work.
+  Unfinished contracts remain PROPOSED or NOT_IMPLEMENTED until Atlas accepts
+  schemas in later checkpoints.
+
+contracts:
+  - id: PropertyProjection
+    owning_lane: LANE_1_CORE_PASSPORT
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
+    required_before_lanes: [LANE_3_ESTIMATOR_REPORT, LANE_4_HABITAT]
+    wave: W1
+
+  - id: ApprovedFinding
+    owning_lane: LANE_1_CORE_PASSPORT
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
+    required_before_lanes: [LANE_3_ESTIMATOR_REPORT, LANE_4_HABITAT]
+    wave: W1
+
+  - id: EvidenceManifest
+    owning_lane: LANE_2_ATC_FIELD
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
+    required_before_lanes: [LANE_1_CORE_PASSPORT, LANE_3_ESTIMATOR_REPORT]
+    wave: W1
+
+  - id: ApprovedGeometry
+    owning_lane: LANE_2_ATC_FIELD
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
+    required_before_lanes: [LANE_1_CORE_PASSPORT, LANE_3_ESTIMATOR_REPORT]
+    wave: W1
+
+  - id: EstimateInputPackage
+    owning_lane: LANE_3_ESTIMATOR_REPORT
+    registry_status: NOT_IMPLEMENTED
+    freeze_gate: BLOCKED_UNTIL_ATLAS
+    required_before_lanes: [LANE_3_ESTIMATOR_REPORT]
+    wave: W2
+
+  - id: EstimateResult
+    owning_lane: LANE_3_ESTIMATOR_REPORT
+    registry_status: NOT_IMPLEMENTED
+    freeze_gate: BLOCKED_UNTIL_ATLAS
+    required_before_lanes: [LANE_4_HABITAT, LANE_1_CORE_PASSPORT]
+    wave: W2
+
+  - id: EstimateCalculationLedger
+    owning_lane: LANE_3_ESTIMATOR_REPORT
+    registry_status: NOT_IMPLEMENTED
+    freeze_gate: BLOCKED_UNTIL_ATLAS
+    required_before_lanes: [LANE_1_CORE_PASSPORT]
+    wave: W2
+
+  - id: ReportPublicationPackage
+    owning_lane: LANE_3_ESTIMATOR_REPORT
+    registry_status: NOT_IMPLEMENTED
+    freeze_gate: BLOCKED_UNTIL_ATLAS
+    required_before_lanes: [LANE_4_HABITAT, LANE_1_CORE_PASSPORT]
+    wave: W2
+
+  - id: HabitatPropertyProjection
+    owning_lane: LANE_4_HABITAT
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
+    required_before_lanes: [LANE_4_HABITAT]
+    wave: W2
+
+  - id: ProjectOpportunityPackage
+    owning_lane: LANE_4_HABITAT
+    registry_status: NOT_IMPLEMENTED
+    freeze_gate: BLOCKED_UNTIL_ATLAS
+    required_before_lanes: [LANE_4_HABITAT, LANE_3_ESTIMATOR_REPORT]
+    wave: W3

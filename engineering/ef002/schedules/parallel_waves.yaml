@@ -1,0 +1,60 @@
+# Parallel execution waves — EF-002 scheduling only
+version: 1
+law: PARALLELIZE IMPLEMENTATION — NEVER AUTHORITY
+baseline_main: "63164e85d8168d6abea46a040368f15c9fd48354"
+
+waves:
+  - id: W0_RUNTIME
+    name: Runtime and Quality Engineering readiness
+    lanes: [LANE_5_RUNTIME_QE]
+    depends_on: []
+    objectives:
+      - Keep ./stratex verify green on main
+      - Maintain CI architecture/security/fast gates
+      - Operate Atlas evidence automation
+      - Provision transaction-capable Mongo / object storage plans (no deploy)
+    start_authorization: ATLAS_LANE_START
+    feature_implementation: false
+
+  - id: W1_CONTRACT_FREEZE
+    name: Shared contract freeze candidates
+    lanes: [LANE_1_CORE_PASSPORT, LANE_2_ATC_FIELD]
+    depends_on: [W0_RUNTIME]
+    objectives:
+      - Advance PropertyProjection / ApprovedFinding / EvidenceManifest /
+        ApprovedGeometry toward Atlas freeze (schemas still not production)
+      - No Passport authority changes
+      - No ATC feature workflows
+    start_authorization: ATLAS_LANE_START
+    feature_implementation: false
+
+  - id: W2_CONSUMER_PREP
+    name: Estimator and Habitat contract consumer prep
+    lanes: [LANE_3_ESTIMATOR_REPORT, LANE_4_HABITAT]
+    depends_on: [W1_CONTRACT_FREEZE]
+    objectives:
+      - Draft Estimate* and Habitat projection contracts to PROPOSED where needed
+      - Define integration handshakes only
+      - No Estimator math / Habitat UX feature work
+    start_authorization: ATLAS_LANE_START
+    feature_implementation: false
+
+  - id: W3_INTEGRATION_REHEARSAL
+    name: Cross-lane integration rehearsal
+    lanes: [LANE_1_CORE_PASSPORT, LANE_2_ATC_FIELD, LANE_3_ESTIMATOR_REPORT, LANE_4_HABITAT, LANE_5_RUNTIME_QE]
+    depends_on: [W2_CONSUMER_PREP]
+    objectives:
+      - Dry-run integration handshake documents
+      - Confirm no duplicate authority owners
+      - Confirm Habitat still cannot write Passport
+    start_authorization: ATLAS_INTEGRATION_START
+    feature_implementation: false
+
+hard_stops:
+  - C-P-003
+  - ATC-001 feature implementation
+  - Estimator feature implementation
+  - Habitat feature implementation
+  - New Passport writer or publisher
+  - Production deployment
+  - Automatic merge
