@@ -136,9 +136,21 @@ def _product_by_key(key: str):
 
 @nextgen_r.get("/health")
 async def nextgen_health():
+    from ..passport_indexes import get_index_readiness
+
+    readiness = get_index_readiness()
+    passport_ready = readiness.get("state") == "READY"
     return {
-        "status": "ok",
+        "status": "ok" if passport_ready else "degraded",
         "phase": "1a",
+        "passport_indexes": {
+            "state": readiness.get("state"),
+            "checked_at": readiness.get("checked_at"),
+            "failed_index": readiness.get("failed_index"),
+            "error_classification": readiness.get("error_classification"),
+            "critical_failed": readiness.get("critical_failed"),
+            # Safe metadata only — no credentials or connection strings.
+        },
         "authorized_scope": [
             "phase_1a_legacy_freeze_and_foundation",
             "phase_1b_application_shell",

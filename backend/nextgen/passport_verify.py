@@ -1,0 +1,275 @@
+"""Hash-chain verification for NextGen Passport ledgers (C-P-002 / C-P-002A).
+
+Verification never mutates the ledger. Historical unsigned entries are
+classified as LEGACY_UNSEALED rather than automatically INVALID.
+
+Bounded by PASSPORT_VERIFY_MAX_ENTRIES — partial inspection never reports VALID.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from typing import Any, Dict, List, Optional
+
+from .db import nx_collections, strip_mongo_id
+from .passport_seal import verify_entry_seal
+
+DEFAULT_VERIFY_MAX_ENTRIES = 10_000
+
+
+def _canonical_bytes(obj: Dict[str, Any]) -> bytes:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _recompute_content_hash(entry: Dict[str, Any]) -> str:
+    body = {
+        "passport_id": entry.get("passport_id"),
+        "seq": entry.get("seq"),
+        "entry_type": entry.get("entry_type"),
+        "payload": entry.get("payload"),
+        "prior_hash": entry.get("prior_hash"),
+        "at": entry.get("at"),
+        "authored_by": entry.get("authored_by"),
+    }
+    return hashlib.sha256(_canonical_bytes(body)).hexdigest()
+
+
+def verify_max_entries() -> int:
+    """Safe positive integer limit; malformed/zero/negative → default."""
+    raw = (os.environ.get("PASSPORT_VERIFY_MAX_ENTRIES") or "").strip()
+    if not raw:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    try:
+        n = int(raw)
+    except ValueError:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    if n < 1:
+        return DEFAULT_VERIFY_MAX_ENTRIES
+    return n
+
+
+async def verify_passport_chain(
+    *,
+    tenant_id: str,
+    passport_id: str,
+    max_entries: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Evaluate chain integrity. Never mutates data. Bounded by max_entries."""
+    limit = max_entries if max_entries is not None else verify_max_entries()
+    if not isinstance(limit, int) or limit < 1:
+        limit = DEFAULT_VERIFY_MAX_ENTRIES
+
+    passport = await nx_collections.passports.find_one({
+        "tenant_id": tenant_id,
+        "canonical_id": passport_id,
+    })
+    if not passport:
+        return {
+            "result": "UNAVAILABLE",
+            "passport_id": passport_id,
+            "tenant_id": tenant_id,
+            "issues": [{"code": "PASSPORT_NOT_FOUND"}],
+            "entry_count": 0,
+            "inspected_count": 0,
+            "limit": limit,
+            "truncated": True,
+        }
+
+    issues: List[Dict[str, Any]] = []
+    has_legacy_unsealed = False
+    seen_seq: Dict[int, int] = {}
+    expected_seq = 1
+    prior: Optional[str] = None
+    inspected = 0
+    truncated = False
+    last_entry: Optional[Dict[str, Any]] = None
+
+    cursor = nx_collections.passport_entries.find({
+        "tenant_id": tenant_id,
+        "passport_id": passport_id,
+    }).sort("seq", 1)
+
+    async for raw in cursor:
+        if inspected >= limit:
+            truncated = True
+            break
+        e = strip_mongo_id(raw)
+        inspected += 1
+        last_entry = e
+
+        seq = e.get("seq")
+        if seq is None:
+            issues.append({"code": "MISSING_ENTRY", "detail": "entry missing seq",
+                           "entry_id": e.get("canonical_id")})
+            continue
+        seen_seq[seq] = seen_seq.get(seq, 0) + 1
+        if seen_seq[seq] > 1:
+            issues.append({"code": "DUPLICATE_SEQUENCE", "seq": seq,
+                           "entry_id": e.get("canonical_id")})
+
+        schema = e.get("schema_version")
+        if schema is not None and str(schema) not in {"1", "2", "2.0"}:
+            issues.append({"code": "UNSUPPORTED_SCHEMA", "schema_version": schema,
+                           "entry_id": e.get("canonical_id")})
+
+        if seq != expected_seq:
+            if seq > expected_seq:
+                issues.append({
+                    "code": "MISSING_ENTRY",
+                    "expected_seq": expected_seq,
+                    "found_seq": seq,
+                })
+            else:
+                issues.append({
+                    "code": "INVALID_SEQUENCE",
+                    "expected_seq": expected_seq,
+                    "found_seq": seq,
+                    "entry_id": e.get("canonical_id"),
+                })
+        expected_seq = max(expected_seq, int(seq) + 1)
+
+        if e.get("prior_hash") != prior:
+            issues.append({
+                "code": "INVALID_PREVIOUS_HASH",
+                "seq": seq,
+                "entry_id": e.get("canonical_id"),
+                "expected_prior": prior,
+                "stored_prior": e.get("prior_hash"),
+            })
+
+        recomputed = _recompute_content_hash(e)
+        if recomputed != e.get("content_hash"):
+            issues.append({
+                "code": "INVALID_ENTRY_HASH",
+                "seq": seq,
+                "entry_id": e.get("canonical_id"),
+            })
+
+        seal_status, seal_detail = verify_entry_seal(e)
+        if seal_status == "LEGACY_UNSEALED":
+            has_legacy_unsealed = True
+        elif seal_status == "SEAL_INVALID":
+            issues.append({
+                "code": "INVALID_SIGNATURE",
+                "seq": seq,
+                "entry_id": e.get("canonical_id"),
+                "detail": seal_detail,
+            })
+        elif seal_status == "SEAL_KEY_MISSING":
+            issues.append({
+                "code": "INCOMPLETE",
+                "seq": seq,
+                "entry_id": e.get("canonical_id"),
+                "detail": "seal_key_missing",
+            })
+        elif seal_status == "SEAL_UNSUPPORTED":
+            issues.append({
+                "code": "UNSUPPORTED_SCHEMA",
+                "seq": seq,
+                "entry_id": e.get("canonical_id"),
+                "detail": seal_detail,
+            })
+
+        prior = e.get("content_hash")
+
+        # Receipt consistency (best-effort, non-mutating).
+        receipt = await nx_collections.passport_receipts.find_one({
+            "tenant_id": tenant_id,
+            "passport_entry_id": e.get("canonical_id"),
+        })
+        if receipt and receipt.get("receipt_hash") not in {
+            None, e.get("content_hash"),
+        }:
+            issues.append({
+                "code": "INVALID_ENTRY_HASH",
+                "detail": "receipt_mismatch",
+                "entry_id": e.get("canonical_id"),
+            })
+
+    # Truncation: never claim VALID / legacy-valid for a partial chain.
+    if truncated:
+        return {
+            "result": "INCOMPLETE",
+            "passport_id": passport_id,
+            "tenant_id": tenant_id,
+            "property_id": passport.get("property_id"),
+            "entry_count": inspected,
+            "inspected_count": inspected,
+            "limit": limit,
+            "truncated": True,
+            "reason": "PASSPORT_VERIFY_MAX_ENTRIES_EXCEEDED",
+            "passport_revision": passport.get("revision"),
+            "passport_head_hash": passport.get("head_hash"),
+            "has_legacy_unsealed_entries": has_legacy_unsealed,
+            "issues": issues + [{
+                "code": "INCOMPLETE",
+                "detail": "verification_limit_exceeded",
+                "limit": limit,
+                "inspected_count": inspected,
+            }],
+            "safe": True,
+            "note": (
+                "Partial chain inspection never reports VALID. "
+                "Large histories require a later governed background verification job."
+            ),
+        }
+
+    head_hash = passport.get("head_hash")
+    head_revision = passport.get("revision")
+    if last_entry:
+        if head_hash and head_hash != last_entry.get("content_hash"):
+            issues.append({
+                "code": "HEAD_MISMATCH",
+                "passport_head_hash": head_hash,
+                "last_entry_hash": last_entry.get("content_hash"),
+            })
+        if head_revision is not None and last_entry.get("revision") is not None:
+            if int(head_revision) != int(last_entry["revision"]):
+                issues.append({
+                    "code": "HEAD_MISMATCH",
+                    "detail": "revision",
+                    "passport_revision": head_revision,
+                    "last_entry_revision": last_entry.get("revision"),
+                })
+
+    if any(i["code"] == "DUPLICATE_SEQUENCE" for i in issues):
+        result = "DUPLICATE_SEQUENCE"
+    elif any(i["code"] == "MISSING_ENTRY" for i in issues):
+        result = "MISSING_ENTRY"
+    elif any(i["code"] == "INVALID_PREVIOUS_HASH" for i in issues):
+        result = "INVALID_PREVIOUS_HASH"
+    elif any(i["code"] == "INVALID_ENTRY_HASH" for i in issues):
+        result = "INVALID_ENTRY_HASH"
+    elif any(i["code"] == "INVALID_SIGNATURE" for i in issues):
+        result = "INVALID_SIGNATURE"
+    elif any(i["code"] == "HEAD_MISMATCH" for i in issues):
+        result = "HEAD_MISMATCH"
+    elif any(i["code"] == "UNSUPPORTED_SCHEMA" for i in issues):
+        result = "UNSUPPORTED_SCHEMA"
+    elif any(i["code"] == "INVALID_SEQUENCE" for i in issues):
+        result = "INVALID_SEQUENCE"
+    elif any(i["code"] == "INCOMPLETE" for i in issues):
+        result = "INCOMPLETE"
+    elif has_legacy_unsealed and not issues:
+        result = "VALID_WITH_LEGACY_UNSEALED_ENTRIES"
+    elif not issues:
+        result = "VALID"
+    else:
+        result = "INVALID_SEQUENCE"
+
+    return {
+        "result": result,
+        "passport_id": passport_id,
+        "tenant_id": tenant_id,
+        "property_id": passport.get("property_id"),
+        "entry_count": inspected,
+        "inspected_count": inspected,
+        "limit": limit,
+        "truncated": False,
+        "passport_revision": passport.get("revision"),
+        "passport_head_hash": passport.get("head_hash"),
+        "has_legacy_unsealed_entries": has_legacy_unsealed,
+        "issues": issues,
+        "safe": True,
+    }

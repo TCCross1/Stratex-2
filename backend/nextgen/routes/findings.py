@@ -36,10 +36,18 @@ from typing import Any, Dict, List, Optional
 from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from ..approval_policy import evaluate_approval_policy
 from ..auth import NxSession, nx_session
 from ..db import now_iso_utc, nx_collections, nx_id, strip_mongo_id
+from ..governed_publish_service import governed_publish, load_expected_state
 from ..outbox import emit_outbox_event
-from ..passport_service import append_entry
+from ..passport_errors import (
+    IdempotencyConflictError,
+    MissingExpectedStateError,
+    PassportAppendError,
+    StaleExpectedStateError,
+    TransactionUnavailableError,
+)
 from ..taxonomy import (
     BUILDING_SYSTEMS,
     PRIORITY,
@@ -107,6 +115,10 @@ class FindingUpdate(BaseModel):
 
 class ReviewBody(BaseModel):
     notes: Optional[str] = None
+    # C-P-002 optimistic concurrency tokens (optional; loaded from head if omitted).
+    expected_revision: Optional[int] = None
+    expected_head_hash: Optional[str] = None
+    correlation_id: Optional[str] = None
 
 
 class SupersedeBody(BaseModel):
@@ -410,28 +422,63 @@ async def approve_finding(
     body: ReviewBody,
     session: NxSession = Depends(nx_session),
 ):
-    if session.role not in APPROVER_ROLES:
-        raise HTTPException(403,
-            f"Role {session.role!r} may not approve findings. "
-            f"Allowed: {sorted(APPROVER_ROLES)}",
-        )
-
     finding = await nx_collections.findings.find_one({
         "canonical_id": finding_id, "tenant_id": session.tenant_id,
     })
     if not finding:
         raise HTTPException(404, "Finding not found")
 
-    if finding["status"] != "PENDING_REVIEW":
-        raise HTTPException(409, f"Cannot approve — status is {finding['status']!r}")
+    await _write_audit(session, "SOURCE_APPROVAL_REQUESTED", "finding", finding_id, {
+        "actor_role": session.role,
+    })
 
-    # Separation of duties — creator cannot approve their own finding.
-    if finding["author_id"] == session.user_id:
-        raise HTTPException(
-            403,
-            "Separation of duties: the finding author may not approve their own finding. "
-            "A different authorized reviewer must approve.",
+    head = await load_expected_state(
+        tenant_id=session.tenant_id, property_id=finding["property_id"],
+    )
+    expected_revision = (
+        body.expected_revision if body.expected_revision is not None
+        else head["revision"]
+    )
+    expected_head_hash = (
+        body.expected_head_hash if body.expected_head_hash is not None
+        else head["head_hash"]
+    )
+
+    decision = evaluate_approval_policy(
+        source_kind="finding",
+        source=finding,
+        actor_id=session.user_id,
+        actor_role=session.role,
+        tenant_id=session.tenant_id,
+        property_id=finding["property_id"],
+        expected_revision=expected_revision,
+        expected_head_hash=expected_head_hash,
+        require_expected_state=True,
+    )
+    if not decision.allowed:
+        event = (
+            "SOURCE_APPROVAL_BLOCKED_SOD"
+            if decision.code == "SEPARATION_OF_DUTIES"
+            else "SOURCE_APPROVAL_REJECTED"
         )
+        await _write_audit(session, event, "finding", finding_id, decision.as_dict())
+        status = 403 if decision.code in {
+            "SEPARATION_OF_DUTIES", "ROLE_INELIGIBLE", "TENANT_MISMATCH",
+            "PROPERTY_MISMATCH",
+        } else 409
+        raise HTTPException(status, decision.reason)
+
+    # Idempotent re-approval: already published once.
+    if finding.get("status") == "APPROVED" and finding.get("passport_entry_id"):
+        return {
+            "finding": _publicize(finding),
+            "passport": {"status": "DUPLICATE_SAME_REQUEST", "entry": {
+                "canonical_id": finding["passport_entry_id"],
+                "seq": finding.get("passport_seq"),
+                "content_hash": finding.get("passport_content_hash"),
+            }},
+            "note": "Finding already approved and published",
+        }
 
     now = now_iso_utc()
     signature = hashlib.sha256(
@@ -447,8 +494,6 @@ async def approve_finding(
     _append_review(finding, "approve", session, notes=body.notes,
                     extra={"signature": signature})
 
-    # Compose and append Passport delta *before* flipping status so the
-    # ledger receipt is captured atomically with the state transition.
     passport_payload = {
         "finding_id": finding_id,
         "finding_version": finding["version"],
@@ -473,14 +518,45 @@ async def approve_finding(
             "public": False,
         },
     }
-    passport_result = await append_entry(
-        tenant_id=session.tenant_id,
-        property_id=finding["property_id"],
-        entry_type="INTELLIGENCE_APPROVED",
-        payload=passport_payload,
-        authored_by=session.user_id,
-    )
 
+    try:
+        passport_result = await governed_publish(
+            tenant_id=session.tenant_id,
+            property_id=finding["property_id"],
+            source_type="finding",
+            source_id=finding_id,
+            entry_type="INTELLIGENCE_APPROVED",
+            payload=passport_payload,
+            actor_id=session.user_id,
+            actor_role=session.role,
+            correlation_id=body.correlation_id,
+            idempotency_key=f"finding.publish:{finding_id}",
+            expected_revision=expected_revision,
+            expected_head_hash=expected_head_hash,
+        )
+    except StaleExpectedStateError as exc:
+        await _write_audit(session, "PUBLICATION_FAILED", "finding", finding_id, {
+            "reason": "STALE_EXPECTED_STATE",
+            "conflict_id": (exc.conflict or {}).get("conflict_id"),
+        })
+        raise HTTPException(409, {
+            "error": "PASSPORT_APPEND_CONFLICT",
+            "message": str(exc),
+            "conflict": exc.conflict,
+        })
+    except MissingExpectedStateError as exc:
+        raise HTTPException(400, str(exc))
+    except IdempotencyConflictError as exc:
+        raise HTTPException(409, str(exc))
+    except TransactionUnavailableError as exc:
+        raise HTTPException(503, str(exc))
+    except PassportAppendError as exc:
+        await _write_audit(session, "PUBLICATION_FAILED", "finding", finding_id, {
+            "reason": getattr(exc, "code", "FAILED"),
+        })
+        raise HTTPException(500, "Passport append failed; finding not marked approved")
+
+    # Only mark APPROVED after successful (or duplicate-same) commit.
     await nx_collections.findings.update_one(
         {"canonical_id": finding_id},
         {"$set": {
@@ -490,11 +566,12 @@ async def approve_finding(
             "passport_entry_id": passport_result["entry"]["canonical_id"],
             "passport_seq": passport_result["entry"]["seq"],
             "passport_content_hash": passport_result["entry"]["content_hash"],
+            "passport_revision": passport_result["entry"].get("revision"),
+            "passport_receipt_id": passport_result["receipt"]["canonical_id"],
             "review_history": finding["review_history"],
         }},
     )
 
-    # Timeline entry (homeowner-safe summary only)
     await nx_collections.property_timeline.insert_one({
         "canonical_id": nx_id(),
         "tenant_id": session.tenant_id,
@@ -512,7 +589,6 @@ async def approve_finding(
         "passport_entry_id": passport_result["entry"]["canonical_id"],
     })
 
-    # Durable outbox
     await emit_outbox_event(
         tenant_id=session.tenant_id,
         event_type="FINDING_APPROVED",
@@ -527,13 +603,15 @@ async def approve_finding(
         producer_resource_kind="finding",
         producer_resource_id=finding_id,
     )
+    await _write_audit(session, "SOURCE_APPROVED", "finding", finding_id, {
+        "passport_entry_id": passport_result["entry"]["canonical_id"],
+        "passport_seq": passport_result["entry"]["seq"],
+    })
     await _write_audit(session, "finding.approved", "finding", finding_id, {
         "passport_entry_id": passport_result["entry"]["canonical_id"],
         "passport_seq": passport_result["entry"]["seq"],
     })
 
-    # If this new finding supersedes an older one, flip the prior to
-    # SUPERSEDED and append the SUPERSEDE_FINDING passport entry.
     if finding.get("supersedes_finding_id"):
         await _finalize_supersession(session, finding_id)
 
@@ -736,6 +814,37 @@ async def _finalize_supersession(session: NxSession, new_finding_id: str) -> Non
         return  # idempotent
 
     now = now_iso_utc()
+    head = await load_expected_state(
+        tenant_id=session.tenant_id, property_id=prior["property_id"],
+    )
+    try:
+        passport = await governed_publish(
+            tenant_id=session.tenant_id,
+            property_id=prior["property_id"],
+            source_type="finding_supersede",
+            source_id=f"{prior_id}->{new_finding_id}",
+            entry_type="SUPERSEDE_FINDING",
+            payload={
+                "prior_finding_id": prior_id,
+                "prior_content_hash": prior["content_hash"],
+                "new_finding_id": new_finding_id,
+                "new_content_hash": new_f["content_hash"],
+                "approved_by": session.user_id,
+            },
+            actor_id=session.user_id,
+            actor_role=session.role,
+            idempotency_key=f"finding.supersede:{prior_id}:{new_finding_id}",
+            expected_revision=head["revision"],
+            expected_head_hash=head["head_hash"],
+        )
+    except (StaleExpectedStateError, PassportAppendError) as exc:
+        # Do not flip prior to SUPERSEDED without a ledger receipt.
+        await _write_audit(session, "PUBLICATION_FAILED", "finding", new_finding_id, {
+            "reason": "SUPERSEDE_PUBLISH_FAILED",
+            "error": type(exc).__name__,
+        })
+        return
+
     await nx_collections.findings.update_one(
         {"canonical_id": prior_id},
         {"$set": {
@@ -743,19 +852,6 @@ async def _finalize_supersession(session: NxSession, new_finding_id: str) -> Non
             "superseded_by_finding_id": new_finding_id,
             "updated_at": now,
         }},
-    )
-    passport = await append_entry(
-        tenant_id=session.tenant_id,
-        property_id=prior["property_id"],
-        entry_type="SUPERSEDE_FINDING",
-        payload={
-            "prior_finding_id": prior_id,
-            "prior_content_hash": prior["content_hash"],
-            "new_finding_id": new_finding_id,
-            "new_content_hash": new_f["content_hash"],
-            "approved_by": session.user_id,
-        },
-        authored_by=session.user_id,
     )
     await nx_collections.property_timeline.insert_one({
         "canonical_id": nx_id(),
