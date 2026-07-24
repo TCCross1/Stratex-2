@@ -175,20 +175,30 @@ lanes:
     description: >
       Transaction-capable Mongo, object storage, CI, deployment, secrets,
       environment reproducibility, integration tests, performance and failure
-      testing, Atlas evidence automation.
+      testing, Atlas evidence automation. RT-001/RT-002 runtime proof only —
+      no Passport/ATC/Estimator/Habitat business approval authority.
     owned_paths:
       - backend/nextgen/db.py
       - backend/nextgen/storage.py
       - engineering/tools/
       - engineering/templates/
+      - engineering/rt001/
+      - engineering/rt002/
       - .github/workflows/
       - stratex
       - backend/tests/test_ef001_engineering_factory.py
+      - backend/tests/test_rt001_integration_environment.py
+      - backend/tests/test_rt002_live_mongo.py
+      - backend/tests/test_rt002_live_object_storage.py
+      - backend/tests/test_rt002_cp003_live_claims.py
+      - backend/tests/test_rt002_unit_honesty.py
     prohibited_paths:
       - backend/nextgen/passport_service.py
       - backend/nextgen/governed_publish_service.py
       - backend/nextgen/approval_policy.py
       - backend/nextgen/routes/habitat.py
+      - backend/nextgen/outbox_worker.py
+      - backend/nextgen/projection_reconciliation.py
     shared_paths_requiring_atlas_approval:
       - engineering/lanes.yaml
       - engineering/contracts/
@@ -199,6 +209,10 @@ lanes:
     required_tests:
       - backend/tests/test_ef001_engineering_factory.py
       - backend/tests/test_writer_authority.py
+      - backend/tests/test_rt001_integration_environment.py
+      - backend/tests/test_rt002_unit_honesty.py
     contracts: []
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+    # ATLAS_ARCHITECTURE_APPROVAL granted for RT-001/RT-002 owned-path
+    # registration only (RT-002 directive Phase 3).

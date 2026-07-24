@@ -1,0 +1,172 @@
+name: Stratex Live Integration (RT-002)
+
+# Remote live proof: real MongoDB replica-set transactions + MinIO object storage.
+# Production readiness: NOT READY. Synthetic data and ephemeral credentials only.
+# No deployment. No production secrets. No auto-merge.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stratex-live-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-integration:
+    name: Live Mongo + object storage proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RT002_LIVE: "1"
+      RT002_DB_NAME: stratex_rt002_ci
+      # Tests run inside compose network — use service DNS names.
+      RT002_MONGO_URL: mongodb://mongo1:27017/?replicaSet=rs0
+      RT002_MINIO_ENDPOINT: http://minio:9000
+      RT002_MINIO_BUCKET: stratex-rt002
+      RT002_CP003_ROOT: /tmp/stratex-rt002-cp003
+      RT001_NETWORK: stratex-rt001_default
+      # Ephemeral credentials generated in-job (never printed).
+      COMPOSE_PROJECT_NAME: stratex-rt002-ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test-only dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Pinned, minimally scoped for RT-002 live proof (disclosed).
+          pip install \
+            "pymongo==4.10.1" \
+            "boto3==1.34.0" \
+            "pytest==8.3.4" \
+            "pyyaml==6.0.2"
+
+      - name: Generate ephemeral MinIO credentials
+        run: |
+          USER="rt002ci$(openssl rand -hex 4)"
+          PASS="$(openssl rand -hex 24)"
+          echo "RT002_MINIO_ACCESS_KEY=$USER" >> "$GITHUB_ENV"
+          echo "RT002_MINIO_SECRET_KEY=$PASS" >> "$GITHUB_ENV"
+          echo "RT001_MINIO_ROOT_USER=$USER" >> "$GITHUB_ENV"
+          echo "RT001_MINIO_ROOT_PASSWORD=$PASS" >> "$GITHUB_ENV"
+          echo "MINIO_ROOT_USER=$USER" >> "$GITHUB_ENV"
+          echo "MINIO_ROOT_PASSWORD=$PASS" >> "$GITHUB_ENV"
+          # Do not echo credential values.
+
+      - name: Verify committed immutable image digests pull
+        run: |
+          set -euo pipefail
+          MONGO_REF=$(python - <<'PY'
+          import yaml
+          print(yaml.safe_load(open("engineering/rt002/IMAGE_DIGESTS.yaml"))["images"]["mongo"]["reference"])
+          PY
+          )
+          MINIO_REF=$(python - <<'PY'
+          import yaml
+          print(yaml.safe_load(open("engineering/rt002/IMAGE_DIGESTS.yaml"))["images"]["minio"]["reference"])
+          PY
+          )
+          MC_REF=$(python - <<'PY'
+          import yaml
+          print(yaml.safe_load(open("engineering/rt002/IMAGE_DIGESTS.yaml"))["images"]["minio_mc"]["reference"])
+          PY
+          )
+          echo "Pulling mongo reference (digest pinned)"
+          docker pull "$MONGO_REF"
+          echo "Pulling minio reference (digest pinned)"
+          docker pull "$MINIO_REF"
+          echo "Pulling mc reference (digest pinned)"
+          docker pull "$MC_REF"
+          docker image inspect "$MONGO_REF" --format '{{index .RepoDigests 0}}'
+          docker image inspect "$MINIO_REF" --format '{{index .RepoDigests 0}}'
+          docker image inspect "$MC_REF" --format '{{index .RepoDigests 0}}'
+
+      - name: Start RT-001 compose stack (digest-pinned)
+        run: |
+          set -euo pipefail
+          export RT001_MONGO_PORT=27018
+          export RT001_MINIO_API_PORT=9000
+          export RT001_MINIO_CONSOLE_PORT=9001
+          chmod +x engineering/rt001/start.sh engineering/rt001/stop.sh
+          ./engineering/rt001/start.sh
+          for i in $(seq 1 60); do
+            if docker exec stratex-rt001-mongo1 mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -q true; then
+              echo "mongo primary ready"
+              break
+            fi
+            sleep 2
+          done
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:9000/minio/health/live >/dev/null; then
+              echo "minio ready"
+              break
+            fi
+            sleep 2
+          done
+          docker exec stratex-rt001-mongo1 mongosh --quiet --eval 'db.hello().setName'
+          curl -sf http://127.0.0.1:9000/minio/health/live
+          docker network ls | grep stratex || true
+
+      - name: Fetch C-P-003 worktree for claim tests (read-only)
+        run: |
+          chmod +x engineering/rt002/fetch_cp003_worktree.sh
+          ./engineering/rt002/fetch_cp003_worktree.sh
+          test -f "$RT002_CP003_ROOT/backend/nextgen/outbox_worker.py"
+
+      - name: Run live integration tests on compose network
+        env:
+          MONGO_URL: ${{ env.RT002_MONGO_URL }}
+          DB_NAME: ${{ env.RT002_DB_NAME }}
+        run: |
+          set -euo pipefail
+          # Execute pytest inside the compose network so replica-set host mongo1 resolves.
+          docker run --rm --network "${RT001_NETWORK}" \
+            -v "$PWD:/work" -v "$RT002_CP003_ROOT:$RT002_CP003_ROOT" \
+            -w /work \
+            -e RT002_LIVE=1 \
+            -e RT002_MONGO_URL \
+            -e RT002_MINIO_ENDPOINT \
+            -e RT002_MINIO_ACCESS_KEY \
+            -e RT002_MINIO_SECRET_KEY \
+            -e RT002_MINIO_BUCKET \
+            -e RT002_DB_NAME \
+            -e RT002_CP003_ROOT \
+            -e MONGO_URL \
+            -e DB_NAME \
+            python:3.12-slim \
+            bash -lc '
+              set -euo pipefail
+              pip install -q pymongo==4.10.1 boto3==1.34.0 pytest==8.3.4 pyyaml==6.0.2
+              python -m pytest \
+                backend/tests/test_rt002_live_mongo.py \
+                backend/tests/test_rt002_live_object_storage.py \
+                backend/tests/test_rt002_cp003_live_claims.py \
+                -m "live_mongo or live_object_storage" \
+                -v --tb=short
+            '
+
+      - name: Architecture and security gates
+        env:
+          STRATEX_VERIFY_ALLOW_DIRTY: "1"
+          MONGO_URL: mongodb://127.0.0.1:27018/?replicaSet=rs0
+          DB_NAME: stratex_rt002_ci
+        run: |
+          chmod +x ./stratex
+          ./stratex verify --architecture
+          ./stratex verify --security
+
+      - name: Teardown
+        if: always()
+        run: |
+          ./engineering/rt001/stop.sh || true
+          docker compose -f engineering/rt001/docker-compose.yml down -v || true
