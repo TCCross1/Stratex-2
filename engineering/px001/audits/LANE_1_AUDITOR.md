@@ -1,7 +1,7 @@
 # Auditor Mission — LANE_1 C-P-003 (checkpoint 1)
 
-**Role:** Independent Auditor (read-only)  
-**Authority:** Verification only — no implementation edits, commit, or push  
+**Role:** Independent Auditor (read-only)
+**Authority:** Verification only — no implementation edits, commit, or push
 **Law:** PARALLELIZE IMPLEMENTATION — NEVER AUTHORITY
 
 ## Mission identity
@@ -90,5 +90,5 @@ No CRITICAL or HIGH findings. No second Passport writer, no second publication a
 2. Preserve singularity: worker remains delivery/recovery only; reconciler remains stub/compare-only.
 3. Production readiness remains **NOT READY** (PR body correctly states draft / independent audits / no auto-merge).
 
-Auditor signature / timestamp: Independent Auditor (read-only) — `2026-07-24T16:28:53Z`  
+Auditor signature / timestamp: Independent Auditor (read-only) — `2026-07-24T16:28:53Z`
 Report path: `/tmp/stratex-px001-audits/LANE_1_AUDITOR.md` (outside git worktree tracked paths)

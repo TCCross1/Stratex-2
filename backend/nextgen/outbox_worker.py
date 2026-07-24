@@ -24,11 +24,18 @@ DEFAULT_LEASE_SECONDS = 30
 BASE_BACKOFF_SECONDS = 2
 MAX_BACKOFF_SECONDS = 300
 
+# Privileged replay — library gate. No public unauthenticated claim/replay route.
+REPLAY_AUTHORIZED_ROLES = frozenset({"admin", "ops", "service_ops"})
+
 DeliveryHandler = Callable[[Dict[str, Any]], Awaitable[None]]
 
 _SECRET_KEYS = frozenset(
     {"password", "secret", "authorization", "totp", "mfa", "hmac_key", "token", "api_key"}
 )
+
+# Trusted internal worker model (GLOBAL_INTERNAL_WORKER): claim is not tenant-routed;
+# every event/receipt must still carry tenant_id (+ property_id when present).
+WORKER_TRUST_MODEL = "GLOBAL_INTERNAL_WORKER"
 
 
 def _parse_iso(value: str) -> datetime:
@@ -352,18 +359,40 @@ async def process_one(
     return {"event_id": event["event_id"], **delivered}
 
 
+def _authorize_replay(*, operator_id: str, operator_role: str, reason: str) -> str:
+    """Fail closed: authentication identity, authorized role, and documented reason."""
+    oid = (operator_id or "").strip()
+    if not oid:
+        raise PermissionError("replay requires authenticated operator_id")
+    role = (operator_role or "").strip().lower()
+    if role not in REPLAY_AUTHORIZED_ROLES:
+        raise PermissionError(
+            f"replay unauthorized for role={role or '<missing>'}; "
+            f"allowed={sorted(REPLAY_AUTHORIZED_ROLES)}"
+        )
+    cleaned = (reason or "").strip()
+    if not cleaned:
+        raise ValueError("replay requires a documented non-empty reason")
+    return cleaned[:300]
+
+
 async def replay_dead_lettered_event(
     *,
     event_id: str,
     operator_id: str,
-    reason: str = "operator_replay",
+    reason: str,
+    operator_role: str,
     reset_attempts: bool = True,
 ) -> Dict[str, Any]:
     """Safe operator replay: re-queue a dead-lettered/failed outbox row.
 
-    Does not invent a new event_id (preserves idempotency). Clears dead-letter
-    markers, releases lease, and makes the row immediately available.
+    Requires authenticated operator_id, authorized operator_role, and a
+    documented reason. Does not invent a new event_id (preserves idempotency).
+    Does not bypass source approval or append Passport history.
     """
+    cleaned_reason = _authorize_replay(
+        operator_id=operator_id, operator_role=operator_role, reason=reason
+    )
     event = await nx_collections.outbox_events.find_one({"event_id": event_id})
     if event is None:
         raise LookupError(f"outbox event not found: {event_id}")
@@ -380,8 +409,9 @@ async def replay_dead_lettered_event(
         "leased_by": None,
         "last_error": None,
         "replayed_at": now,
-        "replayed_by": operator_id,
-        "replay_reason": (reason or "")[:300],
+        "replayed_by": operator_id.strip(),
+        "replay_reason": cleaned_reason,
+        "replay_operator_role": (operator_role or "").strip().lower(),
     }
     if reset_attempts:
         update["attempts"] = 0
@@ -392,21 +422,26 @@ async def replay_dead_lettered_event(
     )
     await nx_collections.dead_letter_events.update_one(
         {"event_id": event_id, "replayed_at": None},
-        {"$set": {"replayed_at": now, "replayed_by": operator_id}},
+        {"$set": {"replayed_at": now, "replayed_by": operator_id.strip()}},
     )
     await _audit(
         tenant_id=event.get("tenant_id") or "system",
         event_type="OUTBOX_REPLAYED",
-        actor_id=operator_id,
+        actor_id=operator_id.strip(),
         resource_kind="outbox_event",
         resource_id=event_id,
-        payload={"reason": reason, "reset_attempts": reset_attempts},
+        payload={
+            "reason": cleaned_reason,
+            "reset_attempts": reset_attempts,
+            "operator_role": (operator_role or "").strip().lower(),
+        },
     )
     return {
         "status": "requeued",
         "event_id": event_id,
         "available_after": now,
-        "replayed_by": operator_id,
+        "replayed_by": operator_id.strip(),
+        "reason": cleaned_reason,
     }
 
 

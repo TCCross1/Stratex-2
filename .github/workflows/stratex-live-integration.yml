@@ -1,6 +1,8 @@
 name: Stratex Live Integration (RT-002)
 
 # Remote live proof: real MongoDB replica-set transactions + MinIO object storage.
+# When C-P-003 modules are present in the checked-out tree, also runs
+# LIVE_CP003_PUBLICATION_RECOVERY_PROOF against the exact PR SHA (no older worktree).
 # Production readiness: NOT READY. Synthetic data and ephemeral credentials only.
 # No deployment. No production secrets. No auto-merge.
 
@@ -22,12 +24,12 @@ jobs:
     timeout-minutes: 30
     env:
       RT002_LIVE: "1"
+      CP003_LIVE: "1"
       RT002_DB_NAME: stratex_rt002_ci
       # Tests run inside compose network — use service DNS names.
       RT002_MONGO_URL: mongodb://mongo1:27017/?replicaSet=rs0
       RT002_MINIO_ENDPOINT: http://minio:9000
       RT002_MINIO_BUCKET: stratex-rt002
-      RT002_CP003_ROOT: /tmp/stratex-rt002-cp003
       # Ephemeral credentials generated in-job (never printed).
       # Leave COMPOSE_PROJECT_NAME unset so compose `name: stratex-rt001` applies.
 
@@ -43,7 +45,7 @@ jobs:
       - name: Install test-only dependencies
         run: |
           python -m pip install --upgrade pip
-          # Pinned, minimally scoped for RT-002 live proof (disclosed).
+          # Pinned, minimally scoped for live proof (disclosed).
           pip install \
             "pymongo==4.10.1" \
             "boto3==1.34.0" \
@@ -63,6 +65,17 @@ jobs:
           echo "MINIO_ROOT_USER=$USER" >> "$GITHUB_ENV"
           echo "MINIO_ROOT_PASSWORD=$PASS" >> "$GITHUB_ENV"
           # Do not echo credential values.
+
+      - name: Detect in-tree C-P-003 modules
+        id: cp003
+        run: |
+          if [[ -f backend/nextgen/outbox_worker.py ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "C-P-003 modules present in checkout SHA=$(git rev-parse HEAD)"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "C-P-003 modules absent — RT-002 regression only"
+          fi
 
       - name: Verify committed immutable image digests pull
         run: |
@@ -98,7 +111,6 @@ jobs:
           export RT001_MONGO_PORT=27018
           export RT001_MINIO_API_PORT=9000
           export RT001_MINIO_CONSOLE_PORT=9001
-          # Ensure start.sh uses the same ephemeral credentials as RT002_* tests.
           test -n "${RT001_MINIO_ROOT_USER:-}"
           test -n "${RT001_MINIO_ROOT_PASSWORD:-}"
           export RT001_MINIO_BUCKET="${RT002_MINIO_BUCKET}"
@@ -118,7 +130,6 @@ jobs:
             fi
             sleep 2
           done
-          # Wait for minio-init bucket bootstrap (mc) to finish.
           for i in $(seq 1 30); do
             st="$(docker inspect -f '{{.State.Status}}' stratex-rt001-minio-init 2>/dev/null || echo missing)"
             if [[ "$st" == "exited" ]]; then
@@ -131,7 +142,6 @@ jobs:
           done
           docker exec stratex-rt001-mongo1 mongosh --quiet --eval 'db.hello().setName'
           curl -sf http://127.0.0.1:9000/minio/health/live
-          # Confirm S3 auth works with the same ephemeral credentials (no secret print).
           python - <<'PY'
           import os, boto3
           from botocore.client import Config
@@ -150,23 +160,25 @@ jobs:
           test -n "$NET"
           echo "RT001_NETWORK=$NET" >> "$GITHUB_ENV"
 
-      - name: Fetch C-P-003 worktree for claim tests (read-only)
-        run: |
-          chmod +x engineering/rt002/fetch_cp003_worktree.sh
-          ./engineering/rt002/fetch_cp003_worktree.sh
-          test -f "$RT002_CP003_ROOT/backend/nextgen/outbox_worker.py"
-
       - name: Run live integration tests on compose network
         env:
           MONGO_URL: ${{ env.RT002_MONGO_URL }}
           DB_NAME: ${{ env.RT002_DB_NAME }}
+          PYTHONPATH: /work/backend
         run: |
           set -euo pipefail
-          # Execute pytest inside the compose network so replica-set host mongo1 resolves.
+          CP003_PRESENT="${{ steps.cp003.outputs.present }}"
+          # Exact checkout SHA — never fetch an older PR #7 worktree for acceptance.
+          echo "LIVE_TESTED_SHA=$(git rev-parse HEAD)"
+          EXTRA=""
+          if [[ "$CP003_PRESENT" == "true" ]]; then
+            EXTRA="backend/tests/test_cp003_live_publication_recovery.py"
+          fi
           docker run --rm --network "${RT001_NETWORK}" \
-            -v "$PWD:/work" -v "$RT002_CP003_ROOT:$RT002_CP003_ROOT" \
+            -v "$PWD:/work" \
             -w /work \
             -e RT002_LIVE=1 \
+            -e CP003_LIVE=1 \
             -e RT002_MONGO_URL \
             -e RT002_MINIO_ENDPOINT \
             -e RT002_MINIO_ACCESS_KEY \
@@ -175,20 +187,20 @@ jobs:
             -e MINIO_ROOT_USER="${RT002_MINIO_ACCESS_KEY}" \
             -e MINIO_ROOT_PASSWORD="${RT002_MINIO_SECRET_KEY}" \
             -e RT002_DB_NAME \
-            -e RT002_CP003_ROOT \
             -e MONGO_URL \
             -e DB_NAME \
+            -e PYTHONPATH=/work/backend \
             python:3.12-slim \
-            bash -lc '
+            bash -lc "
               set -euo pipefail
               pip install -q pymongo==4.10.1 boto3==1.34.0 pytest==8.3.4 pyyaml==6.0.2
               python -m pytest \
                 backend/tests/test_rt002_live_mongo.py \
                 backend/tests/test_rt002_live_object_storage.py \
-                backend/tests/test_rt002_cp003_live_claims.py \
-                -m "live_mongo or live_object_storage" \
+                ${EXTRA} \
+                -m 'live_mongo or live_object_storage or cp003_live' \
                 -v -rs --tb=short
-            '
+            "
 
       - name: Architecture and security gates
         env:

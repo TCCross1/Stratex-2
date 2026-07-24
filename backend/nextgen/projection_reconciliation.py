@@ -1,9 +1,9 @@
-"""C-P-003 projection reconciliation stubs — interfaces only.
+"""C-P-003 projection and source-state reconciliation — derived state only.
 
-Reconciliation compares *existing* projection markers against Passport head
-metadata. It must NEVER fabricate property truth, invent findings, or write
-canonical Passport entries. Full Habitat sync remains out of scope for this
-checkpoint.
+Reconciliation compares *existing* projection/source markers against Passport
+head metadata and publication results. It must NEVER fabricate property truth,
+invent findings, write canonical Passport entries, or call append_entry /
+governed_publish. Full Habitat sync remains out of scope for this checkpoint.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Optional, Protocol
 
-from .db import now_iso_utc, nx_collections
+from .db import now_iso_utc, nx_collections, nx_id
 
 logger = logging.getLogger("stratex.projection_reconciliation")
 
@@ -22,6 +22,9 @@ STATUS_MATCHED = "matched"
 STATUS_DRIFT_DETECTED = "drift_detected"
 STATUS_INSUFFICIENT_DATA = "insufficient_data"
 STATUS_STUB = "stub"
+STATUS_REJECTED = "rejected"
+STATUS_REPAIRED = "repaired"
+STATUS_ALREADY_CURRENT = "already_current"
 
 
 @dataclass
@@ -144,3 +147,236 @@ async def reconcile_property_stub(
         tenant_id=tenant_id, property_id=property_id
     )
     return result.to_dict()
+
+
+async def _audit_reconciliation(
+    *,
+    tenant_id: str,
+    property_id: str,
+    event_type: str,
+    actor_id: str,
+    payload: Dict[str, Any],
+) -> None:
+    safe = dict(payload or {})
+    for banned in ("password", "secret", "authorization", "token", "api_key"):
+        safe.pop(banned, None)
+    await nx_collections.audit_events.insert_one({
+        "canonical_id": nx_id(),
+        "tenant_id": tenant_id,
+        "event_type": event_type,
+        "actor_id": actor_id,
+        "actor_role": "service",
+        "resource_kind": "property",
+        "resource_id": property_id,
+        "at": now_iso_utc(),
+        "payload": safe,
+    })
+
+
+async def repair_projection_marker(
+    *,
+    tenant_id: str,
+    property_id: str,
+    actor_id: str = "reconciler",
+) -> Dict[str, Any]:
+    """Align projection marker to active Passport head — derived state only.
+
+    Never writes passport_entries. Cross-tenant/property mismatches reject.
+    Idempotent when already matched.
+    """
+    now = now_iso_utc()
+    passport = await nx_collections.passports.find_one({
+        "tenant_id": tenant_id,
+        "property_id": property_id,
+        "status": "active",
+    })
+    if not passport or not passport.get("head_hash"):
+        return {
+            "status": STATUS_INSUFFICIENT_DATA,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "checked_at": now,
+            "notes": "No active Passport head available for projection repair.",
+        }
+
+    foreign = await nx_collections.passport_projection_markers.find_one({
+        "property_id": property_id,
+        "tenant_id": {"$ne": tenant_id},
+    })
+    if foreign:
+        await _audit_reconciliation(
+            tenant_id=tenant_id,
+            property_id=property_id,
+            event_type="RECONCILE_REJECTED",
+            actor_id=actor_id,
+            payload={"reason": "cross_tenant_marker", "status": STATUS_REJECTED},
+        )
+        return {
+            "status": STATUS_REJECTED,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "checked_at": now,
+            "notes": "Cross-tenant projection marker rejected.",
+        }
+
+    head = passport["head_hash"]
+    marker = await nx_collections.passport_projection_markers.find_one({
+        "tenant_id": tenant_id,
+        "property_id": property_id,
+    })
+    if marker and marker.get("projected_head_hash") == head:
+        return {
+            "status": STATUS_ALREADY_CURRENT,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "checked_at": now,
+            "notes": "Projection marker already matches Passport head.",
+        }
+
+    if marker:
+        await nx_collections.passport_projection_markers.update_one(
+            {"tenant_id": tenant_id, "property_id": property_id},
+            {"$set": {"projected_head_hash": head, "updated_at": now}},
+        )
+    else:
+        await nx_collections.passport_projection_markers.insert_one({
+            "canonical_id": nx_id(),
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "projected_head_hash": head,
+            "updated_at": now,
+        })
+
+    await _audit_reconciliation(
+        tenant_id=tenant_id,
+        property_id=property_id,
+        event_type="PROJECTION_RECONCILED",
+        actor_id=actor_id,
+        payload={
+            "status": STATUS_REPAIRED,
+            "head_hash_prefix": head[:12],
+            "created_marker": marker is None,
+        },
+    )
+    return {
+        "status": STATUS_REPAIRED,
+        "tenant_id": tenant_id,
+        "property_id": property_id,
+        "checked_at": now,
+        "notes": "Projection marker aligned to Passport head (derived state only).",
+        "passport_entries_written": 0,
+    }
+
+
+async def reconcile_source_publication_state(
+    *,
+    tenant_id: str,
+    property_id: str,
+    source_id: str,
+    actor_id: str = "reconciler",
+) -> Dict[str, Any]:
+    """Source workflow alignment after a valid publication result exists.
+
+    Law: source cannot become approved without a valid publication result.
+    Never rewrites Passport history. Cross-tenant/property rejects.
+    """
+    now = now_iso_utc()
+    source = await nx_collections.publication_sources.find_one({
+        "canonical_id": source_id,
+    })
+    if not source:
+        return {
+            "status": STATUS_INSUFFICIENT_DATA,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "source_id": source_id,
+            "checked_at": now,
+            "notes": "Source record missing.",
+        }
+
+    if source.get("tenant_id") != tenant_id or source.get("property_id") != property_id:
+        await _audit_reconciliation(
+            tenant_id=tenant_id,
+            property_id=property_id,
+            event_type="RECONCILE_REJECTED",
+            actor_id=actor_id,
+            payload={
+                "reason": "cross_tenant_or_property_source",
+                "source_id": source_id,
+            },
+        )
+        return {
+            "status": STATUS_REJECTED,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "source_id": source_id,
+            "checked_at": now,
+            "notes": "Cross-tenant/property source reconciliation rejected.",
+        }
+
+    pub = await nx_collections.publication_results.find_one({
+        "tenant_id": tenant_id,
+        "property_id": property_id,
+        "source_id": source_id,
+        "status": "published",
+    })
+    if not pub:
+        return {
+            "status": STATUS_INSUFFICIENT_DATA,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "source_id": source_id,
+            "checked_at": now,
+            "notes": (
+                "No valid publication result — source cannot become approved "
+                "via reconciliation alone."
+            ),
+            "source_status": source.get("status"),
+        }
+
+    if source.get("status") == "approved" and source.get("publication_result_id") == pub.get(
+        "canonical_id"
+    ):
+        return {
+            "status": STATUS_ALREADY_CURRENT,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+            "source_id": source_id,
+            "checked_at": now,
+            "notes": "Source already aligned to publication result.",
+        }
+
+    await nx_collections.publication_sources.update_one(
+        {
+            "canonical_id": source_id,
+            "tenant_id": tenant_id,
+            "property_id": property_id,
+        },
+        {
+            "$set": {
+                "status": "approved",
+                "publication_result_id": pub.get("canonical_id"),
+                "reconciled_at": now,
+            }
+        },
+    )
+    await _audit_reconciliation(
+        tenant_id=tenant_id,
+        property_id=property_id,
+        event_type="SOURCE_STATE_RECONCILED",
+        actor_id=actor_id,
+        payload={
+            "source_id": source_id,
+            "publication_result_id": pub.get("canonical_id"),
+            "status": STATUS_REPAIRED,
+        },
+    )
+    return {
+        "status": STATUS_REPAIRED,
+        "tenant_id": tenant_id,
+        "property_id": property_id,
+        "source_id": source_id,
+        "checked_at": now,
+        "notes": "Source workflow state aligned to existing publication result.",
+        "passport_entries_written": 0,
+    }

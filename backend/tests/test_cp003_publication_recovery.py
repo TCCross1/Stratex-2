@@ -203,6 +203,7 @@ async def test_safe_replay_requeues_dead_letter(fake):
     result = await outbox_worker.replay_dead_lettered_event(
         event_id=row["event_id"],
         operator_id="op1",
+        operator_role="admin",
         reason="manual_retry",
     )
     assert result["status"] == "requeued"
@@ -233,8 +234,114 @@ async def test_replay_rejects_delivered_event(fake):
     )
     with pytest.raises(ValueError, match="already delivered"):
         await outbox_worker.replay_dead_lettered_event(
-            event_id=emitted["event_id"], operator_id="op1"
+            event_id=emitted["event_id"],
+            operator_id="op1",
+            operator_role="admin",
+            reason="should_fail",
         )
+
+
+@pytest.mark.asyncio
+async def test_replay_requires_reason_and_authorized_role(fake):
+    await _emit(fake, key="rp-auth")
+    await fake.outbox_events.update_one(
+        {"idempotency_key": "rp-auth"},
+        {"$set": {
+            "attempts": 5,
+            "dead_lettered_at": _iso_offset(-10),
+            "last_error": {"failure_class": "X", "message": "x"},
+        }},
+    )
+    row = await fake.outbox_events.find_one({"idempotency_key": "rp-auth"})
+    with pytest.raises(ValueError, match="reason"):
+        await outbox_worker.replay_dead_lettered_event(
+            event_id=row["event_id"],
+            operator_id="op1",
+            operator_role="admin",
+            reason="   ",
+        )
+    with pytest.raises(PermissionError, match="unauthorized"):
+        await outbox_worker.replay_dead_lettered_event(
+            event_id=row["event_id"],
+            operator_id="op1",
+            operator_role="contractor",
+            reason="try_bypass",
+        )
+    with pytest.raises(PermissionError, match="operator_id"):
+        await outbox_worker.replay_dead_lettered_event(
+            event_id=row["event_id"],
+            operator_id="",
+            operator_role="admin",
+            reason="ok_reason",
+        )
+
+
+@pytest.mark.asyncio
+async def test_source_and_projection_reconciliation_safety(fake):
+    await fake.passports.insert_one({
+        "canonical_id": "pp1",
+        "tenant_id": "t1",
+        "property_id": "p1",
+        "status": "active",
+        "head_hash": "hash-pub-1",
+    })
+    # Without publication result, source cannot become approved.
+    await fake.publication_sources.insert_one({
+        "canonical_id": "src1",
+        "tenant_id": "t1",
+        "property_id": "p1",
+        "status": "pending",
+    })
+    denied = await projection_reconciliation.reconcile_source_publication_state(
+        tenant_id="t1", property_id="p1", source_id="src1"
+    )
+    assert denied["status"] == projection_reconciliation.STATUS_INSUFFICIENT_DATA
+    src = await fake.publication_sources.find_one({"canonical_id": "src1"})
+    assert src["status"] == "pending"
+
+    await fake.publication_results.insert_one({
+        "canonical_id": "pub1",
+        "tenant_id": "t1",
+        "property_id": "p1",
+        "source_id": "src1",
+        "status": "published",
+    })
+    repaired = await projection_reconciliation.reconcile_source_publication_state(
+        tenant_id="t1", property_id="p1", source_id="src1"
+    )
+    assert repaired["status"] == projection_reconciliation.STATUS_REPAIRED
+    assert repaired["passport_entries_written"] == 0
+    again = await projection_reconciliation.reconcile_source_publication_state(
+        tenant_id="t1", property_id="p1", source_id="src1"
+    )
+    assert again["status"] == projection_reconciliation.STATUS_ALREADY_CURRENT
+
+    # Cross-tenant source rejected
+    await fake.publication_sources.insert_one({
+        "canonical_id": "src_x",
+        "tenant_id": "t_other",
+        "property_id": "p1",
+        "status": "pending",
+    })
+    bad = await projection_reconciliation.reconcile_source_publication_state(
+        tenant_id="t1", property_id="p1", source_id="src_x"
+    )
+    assert bad["status"] == projection_reconciliation.STATUS_REJECTED
+
+    proj = await projection_reconciliation.repair_projection_marker(
+        tenant_id="t1", property_id="p1"
+    )
+    assert proj["status"] == projection_reconciliation.STATUS_REPAIRED
+    assert await fake.passport_entries.count_documents({}) == 0
+    proj2 = await projection_reconciliation.repair_projection_marker(
+        tenant_id="t1", property_id="p1"
+    )
+    assert proj2["status"] == projection_reconciliation.STATUS_ALREADY_CURRENT
+
+
+@pytest.mark.asyncio
+async def test_worker_trust_model_is_global_internal(fake):
+    assert outbox_worker.WORKER_TRUST_MODEL == "GLOBAL_INTERNAL_WORKER"
 
 
 # ── Health / readiness ───────────────────────────────────────────────────

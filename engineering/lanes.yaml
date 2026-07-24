@@ -24,6 +24,10 @@ lanes:
       - backend/nextgen/passport_seal.py
       - backend/nextgen/passport_verify.py
       - backend/nextgen/outbox.py
+      - backend/nextgen/outbox_worker.py
+      - backend/nextgen/projection_reconciliation.py
+      - backend/tests/test_cp003_publication_recovery.py
+      - backend/tests/test_cp003_live_publication_recovery.py
       - backend/nextgen/routes/passports.py
       - backend/nextgen/routes/intelligence.py
       - backend/nextgen/routes/findings.py
@@ -58,6 +62,8 @@ lanes:
       - backend/tests/test_writer_authority.py
       - backend/tests/test_passport_authority.py
       - backend/tests/test_cp002_passport_concurrency.py
+      - backend/tests/test_cp003_publication_recovery.py
+      - backend/tests/test_cp003_live_publication_recovery.py
     contracts:
       - PropertyProjection
       - ApprovedGeometry

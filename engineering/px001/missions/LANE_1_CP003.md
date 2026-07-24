@@ -1,10 +1,10 @@
 # Mission Record — LANE_1 C-P-003 Publication Recovery (checkpoint 1)
 
-**Role:** Builder  
-**Lane:** `LANE_1_CORE_PASSPORT`  
-**Feature:** C-P-003 (first checkpoint ONLY)  
-**Branch / worktree:** `cursor/lane1-cp003-publication-recovery` @ `/tmp/stratex-lane1`  
-**Base SHA:** `0c09b0cf44fb133852ddbb9ce96cea2e137ade6d`  
+**Role:** Builder
+**Lane:** `LANE_1_CORE_PASSPORT`
+**Feature:** C-P-003 (first checkpoint ONLY)
+**Branch / worktree:** `cursor/lane1-cp003-publication-recovery` @ `/tmp/stratex-lane1`
+**Base SHA:** `0c09b0cf44fb133852ddbb9ce96cea2e137ade6d`
 **Law:** PARALLELIZE IMPLEMENTATION — NEVER AUTHORITY
 
 ## Objective
