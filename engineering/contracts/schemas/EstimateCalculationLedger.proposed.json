@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/EstimateCalculationLedger/0.1.0",
+  "title": "EstimateCalculationLedger",
+  "description": "PROPOSED executable schema for append-oriented estimate calculation ledgers (E-001). Not FROZEN. Atlas is sole freeze/acceptance authority. No Passport publish authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "ledger_id",
+    "created_at",
+    "provenance",
+    "confidence",
+    "entries",
+    "compatibility",
+    "breaking_change"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "EstimateCalculationLedger"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "contract_status": {
+      "type": "string",
+      "const": "PROPOSED",
+      "description": "Must remain PROPOSED until Atlas freezes. Never claim FROZEN here."
+    },
+    "ledger_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calculator_version",
+        "formula_registry_version",
+        "input_package_hash",
+        "source_type"
+      ],
+      "properties": {
+        "calculator_version": { "type": "string" },
+        "formula_registry_version": { "type": "string" },
+        "input_package_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_type": {
+          "type": "string",
+          "const": "deterministic_engine"
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "description": "Ledger-level confidence summary; must not invent inflated certainty."
+    },
+    "unknown_state": {
+      "type": ["string", "null"],
+      "description": "Explicit gaps retained; never silent zero-fill."
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/LedgerEntry" }
+    },
+    "compatibility": {
+      "type": "string",
+      "const": "0.x additive only until ACCEPTED"
+    },
+    "breaking_change": {
+      "type": "string",
+      "const": "requires ATLAS_ARCHITECTURE_APPROVAL"
+    }
+  },
+  "$defs": {
+    "LedgerEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "sequence",
+        "formula_id",
+        "formula_version",
+        "inputs",
+        "output_value",
+        "output_unit",
+        "output_dimension",
+        "confidence",
+        "engine_version"
+      ],
+      "properties": {
+        "entry_id": { "type": "string" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "formula_id": { "type": "string" },
+        "formula_version": { "type": "string" },
+        "inputs": { "type": "object" },
+        "output_value": { "type": "string" },
+        "output_unit": { "type": "string" },
+        "output_dimension": {
+          "type": "string",
+          "enum": [
+            "length",
+            "area",
+            "volume",
+            "count",
+            "board_foot",
+            "roofing_square",
+            "unknown"
+          ]
+        },
+        "waste_policy_id": { "type": ["string", "null"] },
+        "confidence": { "type": "string" },
+        "unknown_state": { "type": ["string", "null"] },
+        "engine_version": { "type": "string" },
+        "notes": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

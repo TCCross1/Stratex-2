@@ -56,10 +56,11 @@ contracts:
 
   - id: EstimateCalculationLedger
     owning_lane: LANE_3_ESTIMATOR_REPORT
-    registry_status: NOT_IMPLEMENTED
-    freeze_gate: BLOCKED_UNTIL_ATLAS
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
     required_before_lanes: [LANE_1_CORE_PASSPORT]
     wave: W2
+    note: E-001 executable PROPOSED schema landed; Atlas freeze still required
 
   - id: ReportPublicationPackage
     owning_lane: LANE_3_ESTIMATOR_REPORT
