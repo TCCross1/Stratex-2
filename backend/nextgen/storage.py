@@ -112,4 +112,66 @@ class LocalDiskAdapter:
         return False
 
 
+class S3CompatibleAdapter:
+    """Optional S3/MinIO-compatible adapter interface stub (RT-001).
+
+    Scaffolding only — does not perform network I/O and does not claim
+    production readiness. Wire a real client (e.g. boto3) behind this
+    surface in a later checkpoint. Prefer LocalDiskAdapter for offline proof.
+    """
+
+    def __init__(
+        self,
+        endpoint_url: Optional[str] = None,
+        access_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
+        bucket: Optional[str] = None,
+        region: Optional[str] = None,
+    ):
+        self.endpoint_url = (
+            endpoint_url or os.environ.get("RT001_S3_ENDPOINT") or os.environ.get("S3_ENDPOINT")
+        )
+        self.access_key = (
+            access_key or os.environ.get("RT001_S3_ACCESS_KEY") or os.environ.get("S3_ACCESS_KEY")
+        )
+        self.secret_key = (
+            secret_key or os.environ.get("RT001_S3_SECRET_KEY") or os.environ.get("S3_SECRET_KEY")
+        )
+        self.bucket = (
+            bucket or os.environ.get("RT001_S3_BUCKET") or os.environ.get("S3_BUCKET") or "stratex"
+        )
+        self.region = region or os.environ.get("RT001_S3_REGION") or os.environ.get("S3_REGION") or "us-east-1"
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.endpoint_url and self.access_key and self.secret_key and self.bucket)
+
+    def object_key(self, tenant_id: str, mission_id: str, digest_hex: str) -> str:
+        return f"s3://{self.bucket}/{_validate(tenant_id)}/{_validate(mission_id)}/{_validate(digest_hex)}"
+
+    def put(
+        self,
+        tenant_id: str,
+        mission_id: str,
+        source: BinaryIO,
+        max_bytes: int = 512 * 1024 * 1024,
+    ) -> Tuple[str, int, str]:
+        raise NotImplementedError(
+            "S3CompatibleAdapter.put is a RT-001 interface stub — "
+            "use LocalDiskAdapter or a later MinIO-wired implementation"
+        )
+
+    def exists(self, tenant_id: str, mission_id: str, digest_hex: str) -> bool:
+        raise NotImplementedError("S3CompatibleAdapter.exists is a RT-001 interface stub")
+
+    def open_read(self, tenant_id: str, mission_id: str, digest_hex: str):
+        raise NotImplementedError("S3CompatibleAdapter.open_read is a RT-001 interface stub")
+
+    def size(self, tenant_id: str, mission_id: str, digest_hex: str) -> int:
+        raise NotImplementedError("S3CompatibleAdapter.size is a RT-001 interface stub")
+
+    def delete_pending(self, tenant_id: str, mission_id: str, digest_hex: str) -> bool:
+        raise NotImplementedError("S3CompatibleAdapter.delete_pending is a RT-001 interface stub")
+
+
 storage = LocalDiskAdapter()
