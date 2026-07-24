@@ -65,9 +65,22 @@ def test_readiness_never_ready_without_components():
     assert r.overall != OverallState.READY
 
 
-def test_rt002_does_not_commit_cp003_business_modules():
-    assert not (ROOT / "backend" / "nextgen" / "outbox_worker.py").exists()
-    assert not (ROOT / "backend" / "nextgen" / "projection_reconciliation.py").exists()
+def test_rt002_lane5_does_not_own_cp003_business_authority():
+    """Lane 5 must never own Passport/outbox business modules or authority."""
+    lanes = yaml.safe_load((ROOT / "engineering" / "lanes.yaml").read_text())
+    lane5 = next(l for l in lanes["lanes"] if l["id"] == "LANE_5_RUNTIME_QE")
+    prohibited = lane5["prohibited_paths"]
+    assert "backend/nextgen/passport_service.py" in prohibited
+    assert "backend/nextgen/outbox_worker.py" in prohibited
+    assert "backend/nextgen/projection_reconciliation.py" in prohibited
+    assert lane5["authority_modules"] == []
+    # If C-P-003 modules are present (post-merge / PR #7), Lane 1 must own them.
+    worker = ROOT / "backend" / "nextgen" / "outbox_worker.py"
+    if worker.is_file():
+        lane1 = next(l for l in lanes["lanes"] if l["id"] == "LANE_1_CORE_PASSPORT")
+        owned = lane1["owned_paths"]
+        assert "backend/nextgen/outbox_worker.py" in owned
+        assert "backend/nextgen/projection_reconciliation.py" in owned
 
 
 def test_live_markers_documented():
