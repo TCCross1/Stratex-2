@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "stratex://contracts/EstimateCalculationLedger/0.1.0",
+  "$id": "stratex://contracts/EstimateCalculationLedger/0.2.0",
   "title": "EstimateCalculationLedger",
-  "description": "PROPOSED executable schema for append-oriented estimate calculation ledgers (E-001). Not FROZEN. Atlas is sole freeze/acceptance authority. No Passport publish authority.",
+  "description": "PROPOSED executable schema for append-oriented estimate calculation ledgers (E-001 foundation, E-002 assembly/materials replay expansion). Not FROZEN. Atlas is sole freeze/acceptance authority. No Passport publish authority. No pricing authority.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -23,7 +23,7 @@
     },
     "schema_version": {
       "type": "string",
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "contract_status": {
       "type": "string",
@@ -58,6 +58,9 @@
           "type": "string",
           "const": "deterministic_engine"
         },
+        "waste_registry_version": { "type": ["string", "null"] },
+        "purchase_rules_version": { "type": ["string", "null"] },
+        "assembly_engine_version": { "type": ["string", "null"] },
         "notes": { "type": ["string", "null"] }
       }
     },
@@ -72,6 +75,11 @@
     "entries": {
       "type": "array",
       "items": { "$ref": "#/$defs/LedgerEntry" }
+    },
+    "replay": {
+      "type": "array",
+      "description": "Ordered deterministic replay steps for full reconstruction (E-002).",
+      "items": { "$ref": "#/$defs/ReplayStep" }
     },
     "compatibility": {
       "type": "string",
@@ -122,6 +130,68 @@
         "confidence": { "type": "string" },
         "unknown_state": { "type": ["string", "null"] },
         "engine_version": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "assembly_family": { "type": ["string", "null"] },
+        "assembly_id": { "type": ["string", "null"] },
+        "material_code": { "type": ["string", "null"] },
+        "purchase_rule_id": { "type": ["string", "null"] },
+        "base_quantity": { "type": ["string", "null"] },
+        "waste_quantity": { "type": ["string", "null"] },
+        "purchase_quantity": { "type": ["string", "null"] },
+        "rounding_mode": { "type": ["string", "null"] },
+        "package_size": { "type": ["string", "null"] }
+      }
+    },
+    "ReplayStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "sequence",
+        "kind",
+        "formula_id",
+        "formula_version",
+        "inputs",
+        "output_value",
+        "output_unit",
+        "output_dimension",
+        "engine_version"
+      ],
+      "properties": {
+        "step_id": { "type": "string" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["assembly", "conversion", "math"]
+        },
+        "formula_id": { "type": "string" },
+        "formula_version": { "type": "string" },
+        "inputs": { "type": "object" },
+        "output_value": { "type": "string" },
+        "output_unit": { "type": "string" },
+        "output_dimension": {
+          "type": "string",
+          "enum": [
+            "length",
+            "area",
+            "volume",
+            "count",
+            "board_foot",
+            "roofing_square",
+            "unknown"
+          ]
+        },
+        "engine_version": { "type": "string" },
+        "assembly_family": { "type": ["string", "null"] },
+        "assembly_id": { "type": ["string", "null"] },
+        "material_code": { "type": ["string", "null"] },
+        "purchase_rule_id": { "type": ["string", "null"] },
+        "waste_policy_id": { "type": ["string", "null"] },
+        "rounding_mode": { "type": ["string", "null"] },
+        "package_size": { "type": ["string", "null"] },
+        "base_quantity": { "type": ["string", "null"] },
+        "waste_quantity": { "type": ["string", "null"] },
+        "purchase_quantity": { "type": ["string", "null"] },
         "notes": { "type": ["string", "null"] }
       }
     }

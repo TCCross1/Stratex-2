@@ -44,7 +44,7 @@ class FormulaRegistry:
     @property
     def registry_version(self) -> str:
         # Aggregate version for ledger provenance — bump when any formula changes.
-        return "e001.1.0.0"
+        return "e002.1.0.0"
 
     def as_dict(self) -> dict:
         return {k: v.as_dict() for k, v in sorted(self._formulas.items())}
@@ -149,6 +149,87 @@ FORMULA_REGISTRY = FormulaRegistry(
             "net * waste_multiplier",
             "unknown",
             "net * policy.multiplier",
+        ),
+        # E-002 assembly + materials conversion formulas
+        "materials.convert.v1": _f(
+            "materials.convert.v1",
+            "1.0.0",
+            "Materials conversion",
+            "purchase = round(waste(base) * unit_factor, package_size)",
+            "count",
+            "round_purchase(apply_waste(base) * unit_factor)",
+        ),
+        "assembly.roofing.field_area.v1": _f(
+            "assembly.roofing.field_area.v1",
+            "1.0.0",
+            "Roofing field area",
+            "roof_area_sqft",
+            "area",
+            "roof_area_sqft",
+        ),
+        "assembly.roofing.squares.v1": _f(
+            "assembly.roofing.squares.v1",
+            "1.0.0",
+            "Roofing squares from area",
+            "roof_area_sqft / 100",
+            "roofing_square",
+            "roof_area_sqft / 100",
+        ),
+        "assembly.roofing.underlayment.v1": _f(
+            "assembly.roofing.underlayment.v1",
+            "1.0.0",
+            "Roofing underlayment area",
+            "roof_area_sqft",
+            "area",
+            "roof_area_sqft",
+        ),
+        "assembly.roofing.ridge.v1": _f(
+            "assembly.roofing.ridge.v1",
+            "1.0.0",
+            "Roofing ridge length",
+            "ridge_length_ft",
+            "length",
+            "ridge_length_ft",
+        ),
+        "assembly.siding.net_area.v1": _f(
+            "assembly.siding.net_area.v1",
+            "1.0.0",
+            "Siding net area",
+            "wall_area_sqft - opening_area_sqft",
+            "area",
+            "wall - openings",
+        ),
+        "assembly.concrete.volume.v1": _f(
+            "assembly.concrete.volume.v1",
+            "1.0.0",
+            "Concrete assembly volume",
+            "length_ft * width_ft * thickness_ft",
+            "volume",
+            "L * W * T",
+        ),
+        "assembly.flooring.area.v1": _f(
+            "assembly.flooring.area.v1",
+            "1.0.0",
+            "Flooring area",
+            "floor_area_sqft",
+            "area",
+            "floor_area_sqft",
+        ),
+        "assembly.drywall.area.v1": _f(
+            "assembly.drywall.area.v1",
+            "1.0.0",
+            "Drywall total area",
+            "wall_area_sqft + ceiling_area_sqft",
+            "area",
+            "wall + ceiling",
+        ),
+        "assembly.insulation.area.v1": _f(
+            "assembly.insulation.area.v1",
+            "1.0.0",
+            "Insulation coverage area",
+            "area_sqft",
+            "area",
+            "area_sqft",
         ),
     }
 )

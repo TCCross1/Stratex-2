@@ -71,7 +71,9 @@ def test_ledger_schema_is_proposed_not_frozen():
     assert "version: \"0.0.0\"" in block or 'version: "0.0.0"' in block
     assert "status: FROZEN" not in block
     assert "status: ACCEPTED" not in block
-    assert schema["properties"]["schema_version"]["const"] == "0.1.0"
+    # E-002 additive bump (0.1.0 → 0.2.0); remains PROPOSED, never FROZEN.
+    assert schema["properties"]["schema_version"]["const"] == "0.2.0"
+    assert schema["properties"]["schema_version"]["const"] == LEDGER_SCHEMA_VERSION
 
 
 def test_estimator_math_facade_exports_engine():
@@ -240,7 +242,7 @@ def test_waste_and_formula_registries():
         WASTE_REGISTRY.get("does.not.exist")
 
     assert "board_foot.v1" in FORMULA_REGISTRY.list_ids()
-    assert FORMULA_REGISTRY.registry_version.startswith("e001.")
+    assert FORMULA_REGISTRY.registry_version.startswith("e00")
     with pytest.raises(UnknownInputError):
         FORMULA_REGISTRY.get("missing.formula")
 

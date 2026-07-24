@@ -166,8 +166,9 @@ contracts:
       - unknown_state retains gaps instead of rewriting history
       - executable schema path: engineering/contracts/schemas/EstimateCalculationLedger.proposed.json
       - python models: backend/nextgen/estimator/ledger.py
-      - executable schema_version field is 0.1.0 while registry version remains 0.0.0 until Atlas accept
+      - executable schema_version field is 0.2.0 (E-002 additive replay) while registry version remains 0.0.0 until Atlas accept
       - contract_status must remain PROPOSED until Atlas freeze
+      - E-002 adds optional replay[] plus transparent base/waste/purchase fields; still no pricing
 
   - name: ReportPublicationPackage
     version: "0.0.0"
