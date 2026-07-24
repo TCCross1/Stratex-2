@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/report-publication-reference/0.0.0",
+  "title": "ReportPublicationReference",
+  "description": "Reference stub to ReportPublicationPackage for Habitat linking. Does not implement the Estimator report package.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "property_id",
+    "template",
+    "status",
+    "package_contract",
+    "package_contract_status",
+    "provenance",
+    "confidence",
+    "unknown_state"
+  ],
+  "properties": {
+    "schema_name": { "const": "ReportPublicationReference" },
+    "schema_version": { "const": "0.0.0" },
+    "contract_status": { "const": "PROPOSED" },
+    "publication_id": { "type": ["string", "null"] },
+    "property_id": { "type": "string", "minLength": 1 },
+    "template": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["published", "unavailable", "awaiting_review", "unknown"]
+    },
+    "published_at": { "type": ["string", "null"] },
+    "reference_uri": { "type": ["string", "null"] },
+    "package_contract": { "const": "ReportPublicationPackage" },
+    "package_contract_status": { "const": "NOT_IMPLEMENTED" },
+    "provenance": { "$ref": "./common_display.json#/definitions/ProvenanceDisplay" },
+    "confidence": { "$ref": "./common_display.json#/definitions/ConfidenceDisplay" },
+    "unknown_state": { "$ref": "./common_display.json#/definitions/UnknownStateDisplay" }
+  }
+}

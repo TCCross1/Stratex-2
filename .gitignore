@@ -160,3 +160,9 @@ frontend/node_modules/.cache/default-development/109.pack
 .atlas/
 .tmp-nextgen-storage/
 .venv-cp001c/
+
+# RT-001 local integration runtime (secrets, storage, compose state)
+.rt001/
+
+# Allow committed RT-001 placeholder env template (matches .env.* rule above)
+!engineering/rt001/.env.example

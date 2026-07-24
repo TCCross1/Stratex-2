@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/ApprovedGeometry/candidate/0.0.0",
+  "title": "ApprovedGeometryCandidate",
+  "description": "ATC-001A geometry CANDIDATE only. Geometry is not approved merely because from 4E. No RTK accuracy claim. PROPOSED / READY_FOR_FREEZE.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_id",
+    "mission_id",
+    "aircraft_profile_id",
+    "source_evidence_manifest_id",
+    "approval_status",
+    "approved_because_from_4e",
+    "is_production_approved",
+    "rtk_accuracy_claimed",
+    "provenance",
+    "confidence",
+    "unknown_state",
+    "meta"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "contract_name": { "const": "ApprovedGeometry" },
+        "contract_version": { "const": "0.0.0" },
+        "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
+        "approval_authority": { "const": "Atlas" }
+      }
+    },
+    "candidate_id": { "type": "string" },
+    "mission_id": { "type": "string" },
+    "aircraft_profile_id": { "enum": ["M4E_MAPPING", "M400_P1_MAPPING"] },
+    "source_evidence_manifest_id": { "type": "string" },
+    "approval_status": {
+      "enum": ["CANDIDATE", "NOT_APPROVED", "REJECTED_CANDIDATE"]
+    },
+    "approved_because_from_4e": { "const": false },
+    "is_production_approved": { "const": false },
+    "rtk_accuracy_claimed": { "const": false },
+    "extents": { "type": ["object", "null"] },
+    "control_points_unknown": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "provenance": { "type": "object" },
+    "confidence": { "type": "object" },
+    "unknown_state": { "type": "object" }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stratex://contracts/AweEvidenceCandidate/0.0.0",
+  "title": "AweEvidenceCandidate",
+  "description": "ATC-001A AWE evidence CANDIDATE. 4T is not dimensional authority; thermal does not change dimensions; no automated thermal diagnosis. PROPOSED / READY_FOR_FREEZE.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_id",
+    "mission_id",
+    "aircraft_profile_id",
+    "source_evidence_manifest_id",
+    "approval_status",
+    "is_dimensional_authority",
+    "thermal_changes_dimensions",
+    "automated_thermal_diagnosis",
+    "is_production_approved",
+    "provenance",
+    "confidence",
+    "unknown_state",
+    "meta"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "contract_name": { "const": "AweEvidenceCandidate" },
+        "contract_version": { "const": "0.0.0" },
+        "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
+        "approval_authority": { "const": "Atlas" }
+      }
+    },
+    "candidate_id": { "type": "string" },
+    "mission_id": { "type": "string" },
+    "aircraft_profile_id": { "enum": ["M4T_AWE", "M400_H30T_AWE"] },
+    "source_evidence_manifest_id": { "type": "string" },
+    "approval_status": {
+      "enum": ["CANDIDATE", "NOT_APPROVED", "REJECTED_CANDIDATE"]
+    },
+    "is_dimensional_authority": { "const": false },
+    "thermal_changes_dimensions": { "const": false },
+    "automated_thermal_diagnosis": { "const": false },
+    "is_production_approved": { "const": false },
+    "observations": { "type": "array" },
+    "provenance": { "type": "object" },
+    "confidence": { "type": "object" },
+    "unknown_state": { "type": "object" }
+  }
+}

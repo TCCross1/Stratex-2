@@ -30,6 +30,10 @@ contracts:
     owning_lane: LANE_2_ATC_FIELD
     registry_status: PROPOSED
     freeze_gate: READY_FOR_FREEZE
+    schema_location: engineering/contracts/schemas/evidence_manifest.schema.json
+    atc001a_note: >
+      Executable candidate schema + fixtures landed in ATC-001A; status remains
+      PROPOSED. Atlas freeze still required before dependent Passport acceptors.
     required_before_lanes: [LANE_1_CORE_PASSPORT, LANE_3_ESTIMATOR_REPORT]
     wave: W1
 
@@ -37,6 +41,10 @@ contracts:
     owning_lane: LANE_2_ATC_FIELD
     registry_status: PROPOSED
     freeze_gate: READY_FOR_FREEZE
+    schema_location: engineering/contracts/schemas/approved_geometry_candidate.schema.json
+    atc001a_note: >
+      Candidate-only schema (not production-approved). Geometry is not approved
+      merely because from 4E. Freeze gate remains READY_FOR_FREEZE — not FROZEN.
     required_before_lanes: [LANE_1_CORE_PASSPORT, LANE_3_ESTIMATOR_REPORT]
     wave: W1
 
@@ -56,10 +64,11 @@ contracts:
 
   - id: EstimateCalculationLedger
     owning_lane: LANE_3_ESTIMATOR_REPORT
-    registry_status: NOT_IMPLEMENTED
-    freeze_gate: BLOCKED_UNTIL_ATLAS
+    registry_status: PROPOSED
+    freeze_gate: READY_FOR_FREEZE
     required_before_lanes: [LANE_1_CORE_PASSPORT]
     wave: W2
+    note: E-001 executable PROPOSED schema landed; Atlas freeze still required
 
   - id: ReportPublicationPackage
     owning_lane: LANE_3_ESTIMATOR_REPORT

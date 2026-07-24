@@ -40,7 +40,11 @@ contracts:
       - LANE_2_ATC_FIELD
     description: >
       Geometry package that has passed approval policy and is eligible for
-      governed publication into Passport history.
+      governed publication into Passport history. ATC-001A ships a CANDIDATE
+      executable schema only — not production-approved geometry.
+    schema_location: engineering/contracts/schemas/approved_geometry_candidate.schema.json
+    executable_schema: backend/nextgen/schemas/approved_geometry_candidate.py
+    freeze_gate_note: READY_FOR_FREEZE — Atlas freeze required; never FROZEN from LANE_2
     fields:
       provenance: required
       confidence: required
@@ -51,6 +55,8 @@ contracts:
       - provenance ties capture mission, operator, and device package
       - confidence reflects measurement and registration quality
       - unknown_state enumerates missing control points or unresolved surfaces
+      - ATC-001A candidate forbids approved_because_from_4e and RTK accuracy claims
+      - geometry is not approved merely because it originated from a 4E package
 
   - name: EvidenceManifest
     version: "0.0.0"
@@ -60,7 +66,11 @@ contracts:
       - LANE_2_ATC_FIELD
     description: >
       Field-capture evidence inventory for 4E/4T packages, completeness checks,
-      and governed upload metadata. ATC-001 is not implemented by EF-001.
+      and governed upload metadata. ATC-001A adds executable schema + fixtures;
+      live device capture remains out of scope for this checkpoint.
+    schema_location: engineering/contracts/schemas/evidence_manifest.schema.json
+    executable_schema: backend/nextgen/schemas/evidence_manifest.py
+    freeze_gate_note: READY_FOR_FREEZE — Atlas freeze required; never FROZEN from LANE_2
     fields:
       provenance: required
       confidence: required
@@ -71,6 +81,8 @@ contracts:
       - provenance includes mission_id, capture_profile, and package hash
       - confidence covers completeness and integrity of the package
       - unknown_state lists missing required artifacts without fabricating them
+      - passport_accepted must remain false in ATC lane manifests
+      - ATC validates both 4E and 4T before Passport accepts either
 
   - name: ApprovedFinding
     version: "0.0.0"
@@ -134,13 +146,14 @@ contracts:
 
   - name: EstimateCalculationLedger
     version: "0.0.0"
-    status: NOT_IMPLEMENTED
+    status: PROPOSED
     approval_authority: Atlas
     owning_lanes:
       - LANE_3_ESTIMATOR_REPORT
     description: >
       Append-oriented calculation ledger capturing formula inputs, assembly
-      expansions, and price provenance for auditability.
+      expansions, and price provenance for auditability. E-001 advances an
+      executable PROPOSED schema only — not FROZEN / ACCEPTED.
     fields:
       provenance: required
       confidence: required
@@ -151,6 +164,10 @@ contracts:
       - provenance records calculator version and input package hash
       - confidence attaches to each material calculation step
       - unknown_state retains gaps instead of rewriting history
+      - executable schema path: engineering/contracts/schemas/EstimateCalculationLedger.proposed.json
+      - python models: backend/nextgen/estimator/ledger.py
+      - executable schema_version field is 0.1.0 while registry version remains 0.0.0 until Atlas accept
+      - contract_status must remain PROPOSED until Atlas freeze
 
   - name: ReportPublicationPackage
     version: "0.0.0"
@@ -187,10 +204,15 @@ contracts:
       unknown_state: required
       compatibility: "0.x additive only until ACCEPTED"
       breaking_change: requires ATLAS_ARCHITECTURE_APPROVAL
+    schema_path: engineering/contracts/schemas/habitat/habitat_property_projection.json
+    executable_schema: backend/nextgen/schemas/habitat/property_projection.py
     schema_notes:
       - provenance cites source Passport revision and projection builder
       - confidence is inherited or reduced, never increased above source
       - unknown_state is preserved for homeowner-safe honesty
+      - companion schemas cover finding, estimate-summary, report-reference,
+        and project-opportunity status projections under schemas/habitat/
+      - status remains PROPOSED — not FROZEN / ACCEPTED by LANE_4
 
   - name: ProjectOpportunityPackage
     version: "0.0.0"
@@ -211,3 +233,6 @@ contracts:
       - provenance links opportunity to property projection revision
       - confidence reflects readiness for homeowner conversation
       - unknown_state blocks presenting fabricated scope as settled fact
+      - status projection stub lives at
+        engineering/contracts/schemas/habitat/project_opportunity_status_projection.json
+      - full package remains NOT_IMPLEMENTED until Atlas freeze

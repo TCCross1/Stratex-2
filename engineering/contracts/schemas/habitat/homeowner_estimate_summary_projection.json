@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/homeowner-estimate-summary-projection/0.0.0",
+  "title": "HomeownerEstimateSummaryProjection",
+  "description": "Homeowner-safe estimate summary. Contractor-private pricing, unit costs, margins, and price-book internals are forbidden.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "property_id",
+    "availability",
+    "currency",
+    "provenance",
+    "confidence",
+    "unknown_state"
+  ],
+  "properties": {
+    "schema_name": { "const": "HomeownerEstimateSummaryProjection" },
+    "schema_version": { "const": "0.0.0" },
+    "contract_status": { "const": "PROPOSED" },
+    "property_id": { "type": "string", "minLength": 1 },
+    "estimate_ref": { "type": ["string", "null"] },
+    "availability": {
+      "type": "string",
+      "enum": ["available", "unavailable", "awaiting_review", "unknown"]
+    },
+    "currency": { "const": "USD" },
+    "total_range_label": { "type": ["string", "null"] },
+    "line_group_count": { "type": ["integer", "null"], "minimum": 0 },
+    "includes_tax": { "type": ["boolean", "null"] },
+    "provenance": { "$ref": "./common_display.json#/definitions/ProvenanceDisplay" },
+    "confidence": { "$ref": "./common_display.json#/definitions/ConfidenceDisplay" },
+    "unknown_state": { "$ref": "./common_display.json#/definitions/UnknownStateDisplay" }
+  }
+}

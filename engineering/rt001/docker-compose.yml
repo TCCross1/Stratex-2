@@ -1,0 +1,101 @@
+# RT-001 local integration stack — Mongo replica set + MinIO
+# Production readiness: NOT READY. Local/dev scaffolding only.
+# Base SHA: 0c09b0cf44fb133852ddbb9ce96cea2e137ade6d
+
+name: stratex-rt001
+
+services:
+  mongo1:
+    image: mongo:7.0
+    hostname: mongo1
+    container_name: stratex-rt001-mongo1
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "${RT001_MONGO_PORT:-27018}:27017"
+    volumes:
+      - rt001_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  mongo-init:
+    image: mongo:7.0
+    container_name: stratex-rt001-mongo-init
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        mongosh --host mongo1:27017 --quiet --eval '
+          try {
+            const s = rs.status();
+            if (s.ok) { quit(0); }
+          } catch (e) {}
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "mongo1:27017" }]
+          });
+        '
+        # Wait until primary is elected
+        for i in $(seq 1 30); do
+          state=$(mongosh --host mongo1:27017 --quiet --eval 'rs.isMaster().ismaster' || true)
+          if [ "$$state" = "true" ]; then
+            echo "replica set primary ready"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "replica set init timed out" >&2
+        exit 1
+
+  minio:
+    # Pinned floating tags for live-proof prep when dated RELEASE tags 404.
+    # Production readiness: NOT READY — do not treat :latest as production pin.
+    image: minio/minio:latest
+    container_name: stratex-rt001-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: "${RT001_MINIO_ROOT_USER:-rt001minio}"
+      MINIO_ROOT_PASSWORD: "${RT001_MINIO_ROOT_PASSWORD:-rt001minio-change-me}"
+    ports:
+      - "${RT001_MINIO_API_PORT:-9000}:9000"
+      - "${RT001_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rt001_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: stratex-rt001-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      RT001_MINIO_ROOT_USER: "${RT001_MINIO_ROOT_USER:-rt001minio}"
+      RT001_MINIO_ROOT_PASSWORD: "${RT001_MINIO_ROOT_PASSWORD:-rt001minio-change-me}"
+      RT001_MINIO_BUCKET: "${RT001_MINIO_BUCKET:-stratex-rt001}"
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$RT001_MINIO_ROOT_USER" "$$RT001_MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/"$$RT001_MINIO_BUCKET"
+        echo "minio bucket ready"
+
+volumes:
+  rt001_mongo_data:
+  rt001_minio_data:

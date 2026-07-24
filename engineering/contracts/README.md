@@ -14,6 +14,9 @@ Contract-first development is mandatory for shared surfaces across lanes.
 
 Machine-readable registry: [`registry.yaml`](./registry.yaml).
 
+Executable / JSON Schema drafts (still **PROPOSED** / freeze **READY_FOR_FREEZE**):
+[`schemas/`](./schemas/). Atlas freezes; lanes must not mark `FROZEN`.
+
 | Contract | Status | Version |
 | --- | --- | --- |
 | PropertyProjection | PROPOSED | 0.0.0 |
@@ -22,7 +25,7 @@ Machine-readable registry: [`registry.yaml`](./registry.yaml).
 | ApprovedFinding | PROPOSED | 0.0.0 |
 | EstimateInputPackage | NOT_IMPLEMENTED | 0.0.0 |
 | EstimateResult | NOT_IMPLEMENTED | 0.0.0 |
-| EstimateCalculationLedger | NOT_IMPLEMENTED | 0.0.0 |
+| EstimateCalculationLedger | PROPOSED | 0.0.0 |
 | ReportPublicationPackage | NOT_IMPLEMENTED | 0.0.0 |
 | HabitatPropertyProjection | PROPOSED | 0.0.0 |
 | ProjectOpportunityPackage | NOT_IMPLEMENTED | 0.0.0 |

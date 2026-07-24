@@ -81,6 +81,38 @@ def test_habitat_has_no_canonical_passport_write():
     assert "governed_publish" not in habitat
     assert "passport_entries.insert_one" not in habitat
     assert "property_passports" not in habitat
+    # Import / module coupling must also stay absent (projection-only surface).
+    assert "from ..passport_service" not in habitat
+    assert "from ..governed_publish_service" not in habitat
+    assert "from ..approval_policy" not in habitat
+    assert "passport_entries" not in habitat
+    assert "nextgen_passport_entries" not in habitat
+    for i, line in enumerate(habitat.splitlines(), 1):
+        if "insert_one" not in line:
+            continue
+        assert "passport" not in line.lower(), (
+            f"habitat.py:{i} must not insert into passport collections: {line}"
+        )
+
+
+def test_habitat_projection_schemas_have_no_passport_write_authority():
+    schemas_dir = BACKEND / "nextgen" / "schemas" / "habitat"
+    assert schemas_dir.is_dir()
+    import_needles = (
+        "from ..passport_service",
+        "from ..governed_publish_service",
+        "from ..approval_policy",
+        "from nextgen.passport_service",
+        "from nextgen.governed_publish_service",
+        "from nextgen.approval_policy",
+        "passport_entries.insert_one",
+        "await append_entry",
+        "await governed_publish",
+    )
+    for path in schemas_dir.glob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        for needle in import_needles:
+            assert needle not in text, f"{path.name} must not contain {needle!r}"
 
 
 def test_legacy_internal_writers_remain_disclosed():
