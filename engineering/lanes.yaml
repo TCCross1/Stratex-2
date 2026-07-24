@@ -1,0 +1,204 @@
+# Stratex High-Velocity Engineering Lanes (EF-001)
+# Law: PARALLELIZE IMPLEMENTATION — NEVER AUTHORITY.
+# Merge gate: ATLAS_MERGE_AUTHORIZATION
+# Shared authority token: ATLAS_ARCHITECTURE_APPROVAL
+
+version: "0.1.0"
+merge_gate: ATLAS_MERGE_AUTHORIZATION
+atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+production_readiness: NOT_READY
+
+lanes:
+  - id: LANE_1_CORE_PASSPORT
+    name: Core and Passport Integrity
+    description: >
+      Canonical Passport services, approval governance, property intelligence,
+      projections, publication, outbox, audit and timeline.
+    owned_paths:
+      - backend/nextgen/passport_service.py
+      - backend/nextgen/governed_publish_service.py
+      - backend/nextgen/approval_policy.py
+      - backend/nextgen/passport_conflicts.py
+      - backend/nextgen/passport_errors.py
+      - backend/nextgen/passport_indexes.py
+      - backend/nextgen/passport_seal.py
+      - backend/nextgen/passport_verify.py
+      - backend/nextgen/outbox.py
+      - backend/nextgen/routes/passports.py
+      - backend/nextgen/routes/intelligence.py
+      - backend/nextgen/routes/findings.py
+      - backend/nextgen/routes/properties.py
+      - backend/nextgen/routes/audit.py
+      - backend/nextgen/routes/organizations.py
+      - frontend/src/nextgen/PassportPage.jsx
+      - frontend/src/nextgen/IntelligencePage.jsx
+      - frontend/src/nextgen/FindingsWorkspace.jsx
+      - frontend/src/nextgen/PropertiesPage.jsx
+      - frontend/src/nextgen/PropertyIntelligenceSummary.jsx
+      - PASSPORT_CONCURRENCY_AND_APPROVAL_AUTHORITY.md
+      - SECURITY_PASSPORT_AUTHORITY_CHECKPOINT.md
+    prohibited_paths:
+      - backend/nextgen/routes/habitat.py
+      - frontend/src/nextgen/HabitatPage.jsx
+      - frontend/src/nextgen/HabitatPublic.jsx
+      - .emergent/
+      - test_reports/
+    shared_paths_requiring_atlas_approval:
+      - engineering/lanes.yaml
+      - engineering/contracts/
+      - backend/nextgen/db.py
+      - backend/nextgen/models.py
+      - backend/nextgen/auth.py
+      - STRATEX_HIGH_VELOCITY_ENGINEERING_SYSTEM.md
+    authority_modules:
+      - nextgen.passport_service.append_entry
+      - nextgen.governed_publish_service.governed_publish
+      - nextgen.approval_policy.evaluate_approval_policy
+    required_tests:
+      - backend/tests/test_writer_authority.py
+      - backend/tests/test_passport_authority.py
+      - backend/tests/test_cp002_passport_concurrency.py
+    contracts:
+      - PropertyProjection
+      - ApprovedGeometry
+      - ApprovedFinding
+    merge_gate: ATLAS_MERGE_AUTHORIZATION
+    atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+
+  - id: LANE_2_ATC_FIELD
+    name: ATC and Field Capture
+    description: >
+      4E mapping missions, 4T AWE missions, readiness, mission orchestration,
+      evidence manifests, capture-state workflows. ATC-001 is not implemented by EF-001.
+    owned_paths:
+      - backend/nextgen/awe.py
+      - backend/nextgen/evidence_profiles.py
+      - backend/nextgen/routes/missions.py
+      - backend/nextgen/routes/evidence.py
+      - backend/nextgen/routes/workflow.py
+      - frontend/src/nextgen/MissionsPage.jsx
+      - frontend/src/nextgen/AwePage.jsx
+      - frontend/src/nextgen/EvidencePage.jsx
+      - hardware-gateway/
+    prohibited_paths:
+      - backend/nextgen/passport_service.py
+      - backend/nextgen/governed_publish_service.py
+      - backend/nextgen/approval_policy.py
+      - backend/nextgen/routes/habitat.py
+      - .emergent/
+      - test_reports/
+    shared_paths_requiring_atlas_approval:
+      - engineering/lanes.yaml
+      - engineering/contracts/
+      - backend/nextgen/storage.py
+      - backend/nextgen/db.py
+      - STRATEX_HIGH_VELOCITY_ENGINEERING_SYSTEM.md
+    authority_modules: []
+    required_tests:
+      - backend/tests/test_nextgen_phase1a.py
+      - backend/tests/test_nextgen_wave2a.py
+    contracts:
+      - EvidenceManifest
+      - ApprovedGeometry
+    merge_gate: ATLAS_MERGE_AUTHORIZATION
+    atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+
+  - id: LANE_3_ESTIMATOR_REPORT
+    name: Estimator and Report Engine
+    description: >
+      Construction mathematics, assembly profiles, quantity calculations,
+      price provenance, estimate ledger, estimate confidence, premium report
+      composition. Estimator feature implementation is out of scope for EF-001.
+    owned_paths:
+      - backend/nextgen/routes/catalog.py
+      - frontend/src/nextgen/ReportsBinderPage.jsx
+      - stratex_pitch/
+      - sample_deliverable/
+    prohibited_paths:
+      - backend/nextgen/passport_service.py
+      - backend/nextgen/governed_publish_service.py
+      - backend/nextgen/approval_policy.py
+      - backend/nextgen/routes/habitat.py
+      - .emergent/
+      - test_reports/
+    shared_paths_requiring_atlas_approval:
+      - engineering/lanes.yaml
+      - engineering/contracts/
+      - backend/nextgen/models.py
+      - STRATEX_HIGH_VELOCITY_ENGINEERING_SYSTEM.md
+    authority_modules: []
+    required_tests:
+      - backend/tests/test_iter20_claim_snapshot.py
+    contracts:
+      - EstimateInputPackage
+      - EstimateResult
+      - EstimateCalculationLedger
+      - ReportPublicationPackage
+    merge_gate: ATLAS_MERGE_AUTHORIZATION
+    atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+
+  - id: LANE_4_HABITAT
+    name: Habitat Experience
+    description: >
+      Homeowner-safe projections, property summary, findings, reports,
+      estimates, projects, Project Opportunities, homeowner relationship
+      workflows. Habitat remains unable to write canonical Passport truth.
+    owned_paths:
+      - backend/nextgen/routes/habitat.py
+      - frontend/src/nextgen/HabitatPage.jsx
+      - frontend/src/nextgen/HabitatPublic.jsx
+    prohibited_paths:
+      - backend/nextgen/passport_service.py
+      - backend/nextgen/governed_publish_service.py
+      - backend/nextgen/approval_policy.py
+      - backend/nextgen/passport_seal.py
+      - .emergent/
+      - test_reports/
+    shared_paths_requiring_atlas_approval:
+      - engineering/lanes.yaml
+      - engineering/contracts/
+      - backend/nextgen/models.py
+      - frontend/src/nextgen/api.js
+      - STRATEX_HIGH_VELOCITY_ENGINEERING_SYSTEM.md
+    authority_modules: []
+    required_tests:
+      - backend/tests/test_writer_authority.py
+    contracts:
+      - HabitatPropertyProjection
+      - ProjectOpportunityPackage
+      - PropertyProjection
+    merge_gate: ATLAS_MERGE_AUTHORIZATION
+    atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
+
+  - id: LANE_5_RUNTIME_QE
+    name: Runtime and Quality Engineering
+    description: >
+      Transaction-capable Mongo, object storage, CI, deployment, secrets,
+      environment reproducibility, integration tests, performance and failure
+      testing, Atlas evidence automation.
+    owned_paths:
+      - backend/nextgen/db.py
+      - backend/nextgen/storage.py
+      - engineering/tools/
+      - engineering/templates/
+      - .github/workflows/
+      - stratex
+      - backend/tests/test_ef001_engineering_factory.py
+    prohibited_paths:
+      - backend/nextgen/passport_service.py
+      - backend/nextgen/governed_publish_service.py
+      - backend/nextgen/approval_policy.py
+      - backend/nextgen/routes/habitat.py
+    shared_paths_requiring_atlas_approval:
+      - engineering/lanes.yaml
+      - engineering/contracts/
+      - .gitignore
+      - STRATEX_HIGH_VELOCITY_ENGINEERING_SYSTEM.md
+      - backend/nextgen/auth.py
+    authority_modules: []
+    required_tests:
+      - backend/tests/test_ef001_engineering_factory.py
+      - backend/tests/test_writer_authority.py
+    contracts: []
+    merge_gate: ATLAS_MERGE_AUTHORIZATION
+    atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL

@@ -1,0 +1,846 @@
+#!/usr/bin/env python3
+"""Stratex High-Velocity Engineering CLI (EF-001).
+
+One-command verification, lane planning, and Atlas evidence generation.
+Never push or merge automatically.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+
+ROOT = Path(__file__).resolve().parent
+
+PREFERRED_PYTHON = ROOT / ".venv-cp001c" / "bin" / "python"
+
+SCOPE_GUARDED_PREFIXES = (
+    ".emergent/",
+    "test_reports/",
+    "screenshots/",
+)
+SCOPE_GUARDED_NAMES = {
+    ".env",
+    "screenshots",
+}
+
+AUTHORITY_MODULES = (
+    "nextgen.passport_service.append_entry",
+    "nextgen.governed_publish_service.governed_publish",
+    "nextgen.approval_policy.evaluate_approval_policy",
+)
+
+SECRET_PATTERNS = [
+    re.compile(r"(?i)(api[_-]?key|secret|token|password|passwd)\s*[=:]\s*['\"]?[^\s'\"]{8,}"),
+    re.compile(r"(?i)bearer\s+[a-z0-9\-._~+/]+=*"),
+    re.compile(r"(?i)mongodb(\+srv)?://[^\s\"']+"),
+    re.compile(r"(?i)AKIA[0-9A-Z]{16}"),
+    re.compile(r"(?i)-----BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY-----"),
+]
+
+AUTH_BYPASS_ASSIGN = re.compile(
+    r"""(?i)^\s*(DEV_NO_AUTH|DEMO_MFA_BYPASS|DEMO_SMS_BYPASS)\s*=\s*(True|['\"]?(?:true|1|yes|on)['\"]?)\s*(#.*)?$"""
+)
+AUTH_BYPASS_SETDEFAULT = re.compile(
+    r"""(?i)(?:os\.environ\.setdefault|setdefault)\(\s*['\"](?:DEV_NO_AUTH|DEMO_MFA_BYPASS|DEMO_SMS_BYPASS)['\"]\s*,\s*['\"]?(?:true|1|yes|on)['\"]?"""
+)
+SEAL_SECRET_HARDCODE = re.compile(
+    r"""(?i)^\s*(PASSPORT_SEAL_SECRET|SEAL_SECRET|seal_secret)\s*=\s*['\"][^'\"]{4,}['\"]"""
+)
+
+
+@dataclass
+class CheckResult:
+    name: str
+    ok: bool
+    messages: List[str] = field(default_factory=list)
+    classification: Optional[str] = None
+
+    def extend(self, msg: str) -> None:
+        self.messages.append(msg)
+
+
+def discover_python() -> str:
+    """Prefer project venv, else current interpreter; also try PATH python3."""
+    candidates: List[str] = []
+    if PREFERRED_PYTHON.is_file() and os.access(PREFERRED_PYTHON, os.X_OK):
+        candidates.append(str(PREFERRED_PYTHON))
+    if Path(sys.executable).exists():
+        candidates.append(sys.executable)
+    path_py = shutil.which("python3")
+    if path_py:
+        candidates.append(path_py)
+
+    def _can_import_yaml(exe: str) -> bool:
+        try:
+            proc = subprocess.run(
+                [exe, "-c", "import yaml"],
+                capture_output=True,
+                text=True,
+            )
+            return proc.returncode == 0
+        except OSError:
+            return False
+
+    # Prefer first candidate that can import PyYAML; else first existing.
+    for exe in candidates:
+        if _can_import_yaml(exe):
+            return exe
+    return candidates[0] if candidates else sys.executable
+
+
+def load_yaml(path: Path) -> Any:
+    try:
+        import yaml  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit(
+            "PyYAML is required for ./stratex. Install pyyaml or use "
+            f"{PREFERRED_PYTHON}."
+        ) from exc
+    with path.open(encoding="utf-8") as fh:
+        return yaml.safe_load(fh)
+
+
+def lanes_path() -> Path:
+    return ROOT / "engineering" / "lanes.yaml"
+
+
+def contracts_path() -> Path:
+    return ROOT / "engineering" / "contracts" / "registry.yaml"
+
+
+def load_lanes() -> Dict[str, Any]:
+    data = load_yaml(lanes_path())
+    if not isinstance(data, dict) or "lanes" not in data:
+        raise SystemExit(f"Invalid lanes registry: {lanes_path()}")
+    return data
+
+
+def load_contracts() -> Dict[str, Any]:
+    data = load_yaml(contracts_path())
+    if not isinstance(data, dict) or "contracts" not in data:
+        raise SystemExit(f"Invalid contracts registry: {contracts_path()}")
+    return data
+
+
+def run_git(*args: str, check: bool = False) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=check,
+    )
+
+
+def git_changed_paths(base: Optional[str] = None) -> List[str]:
+    paths: Set[str] = set()
+    if base:
+        proc = run_git("diff", "--name-only", f"{base}...HEAD")
+        paths.update(p for p in proc.stdout.splitlines() if p.strip())
+    proc = run_git("diff", "--name-only", "HEAD")
+    paths.update(p for p in proc.stdout.splitlines() if p.strip())
+    proc = run_git("diff", "--name-only", "--cached")
+    paths.update(p for p in proc.stdout.splitlines() if p.strip())
+    proc = run_git("ls-files", "--others", "--exclude-standard")
+    paths.update(p for p in proc.stdout.splitlines() if p.strip())
+    return sorted(paths)
+
+
+def git_tracked_paths() -> Set[str]:
+    proc = run_git("ls-files")
+    return {p for p in proc.stdout.splitlines() if p.strip()}
+
+
+def parse_scope_override() -> Optional[Dict[str, Any]]:
+    raw = os.environ.get("ATLAS_SCOPE_OVERRIDE", "").strip()
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {"_invalid": True, "raw_error": "ATLAS_SCOPE_OVERRIDE is not valid JSON"}
+    required = {"reason", "changed_paths", "approving_authority", "evidence_reference"}
+    missing = required - set(data)
+    if missing:
+        data["_invalid"] = True
+        data["_missing"] = sorted(missing)
+        return data
+    if data.get("approving_authority") != "Atlas":
+        data["_invalid"] = True
+        data["_authority_error"] = "approving_authority must be Atlas"
+    if not isinstance(data.get("changed_paths"), list):
+        data["_invalid"] = True
+        data["_paths_error"] = "changed_paths must be a list"
+    return data
+
+
+def _normalize_rel(rel: str) -> str:
+    norm = rel.replace("\\", "/")
+    while norm.startswith("./"):
+        norm = norm[2:]
+    return norm
+
+
+def path_is_scope_guarded(rel: str) -> bool:
+    norm = _normalize_rel(rel)
+    if norm in SCOPE_GUARDED_NAMES or Path(norm).name == ".env":
+        return True
+    if norm == ".env" or norm.startswith(".env.") or norm.endswith("/.env"):
+        return True
+    for prefix in SCOPE_GUARDED_PREFIXES:
+        if norm == prefix.rstrip("/") or norm.startswith(prefix):
+            return True
+    if "/screenshots/" in f"/{norm}/" or norm.endswith("/screenshots"):
+        return True
+    return False
+
+
+def detect_scope_violations(
+    changed_paths: Sequence[str],
+    *,
+    historical_paths: Optional[Set[str]] = None,
+) -> List[str]:
+    """Flag guarded paths only when they appear in the active changeset.
+
+    Historical unchanged tracked files are not flagged.
+    """
+    historical_paths = historical_paths or set()
+    override = parse_scope_override()
+    allowed: Set[str] = set()
+    if override and not override.get("_invalid"):
+        allowed = {_normalize_rel(str(p)) for p in override["changed_paths"]}
+
+    violations: List[str] = []
+    changed_norm = {_normalize_rel(p) for p in changed_paths}
+    for rel in changed_paths:
+        norm = _normalize_rel(rel)
+        if not path_is_scope_guarded(norm):
+            continue
+        # Unchanged historical paths must not be flagged.
+        if norm in historical_paths and norm not in changed_norm:
+            continue
+        if norm in allowed:
+            continue
+        # Also allow prefix matches listed in override.changed_paths
+        if any(norm == a or norm.startswith(a.rstrip("/") + "/") or a.startswith(norm) for a in allowed):
+            continue
+        violations.append(norm)
+    return sorted(set(violations))
+
+
+def check_git_clean() -> CheckResult:
+    result = CheckResult(name="git_status", ok=True)
+    proc = run_git("status", "--porcelain")
+    dirty = bool(proc.stdout.strip())
+    allow_dirty = os.environ.get("STRATEX_VERIFY_ALLOW_DIRTY", "").strip() == "1"
+    if dirty and not allow_dirty:
+        result.ok = False
+        result.extend("Working tree is dirty. Commit/stash or set STRATEX_VERIFY_ALLOW_DIRTY=1.")
+    elif dirty and allow_dirty:
+        result.extend("Working tree dirty; softened by STRATEX_VERIFY_ALLOW_DIRTY=1.")
+    else:
+        result.extend("Working tree clean.")
+    return result
+
+
+def _iter_python_sources(base: Path) -> List[Path]:
+    if not base.exists():
+        return []
+    out: List[Path] = []
+    for path in base.rglob("*.py"):
+        if any(part in {"__pycache__", ".venv", "venv", "node_modules"} for part in path.parts):
+            continue
+        out.append(path)
+    return out
+
+
+def _read(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def check_architecture() -> CheckResult:
+    result = CheckResult(name="architecture", ok=True)
+    backend = ROOT / "backend"
+    nextgen = backend / "nextgen"
+    passport_service = nextgen / "passport_service.py"
+    governed = nextgen / "governed_publish_service.py"
+    approval = nextgen / "approval_policy.py"
+    habitat = nextgen / "routes" / "habitat.py"
+    findings = nextgen / "routes" / "findings.py"
+    intelligence = nextgen / "routes" / "intelligence.py"
+    frontend = ROOT / "frontend"
+
+    # 1) One append_entry writer definition in passport_service
+    ps = _read(passport_service)
+    if "async def append_entry" not in ps and "def append_entry" not in ps:
+        result.ok = False
+        result.extend("Missing append_entry in nextgen/passport_service.py")
+    else:
+        result.extend("append_entry present in passport_service")
+
+    # 2) No secondary passport_entries.insert_one outside passport_service
+    # Scan implementation modules only (exclude tests/docs assertions).
+    offenders: List[str] = []
+    scan_roots = [nextgen, backend / "routes"]
+    for scan_root in scan_roots:
+        for path in _iter_python_sources(scan_root):
+            if path.resolve() == passport_service.resolve():
+                continue
+            if "tests" in path.parts:
+                continue
+            text = _read(path)
+            for i, line in enumerate(text.splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if "passport_entries.insert_one" in line:
+                    offenders.append(f"{path.relative_to(ROOT)}:{i}")
+                elif "nextgen_passport_entries" in line and re.search(
+                    r"\binsert_one\s*\(", line
+                ):
+                    offenders.append(f"{path.relative_to(ROOT)}:{i}")
+    if offenders:
+        result.ok = False
+        result.extend("Secondary passport_entries.insert_one found: " + ", ".join(offenders[:20]))
+    else:
+        result.extend("No secondary passport_entries.insert_one outside passport_service")
+
+    # 3) MODULE_IDENTITY
+    gov = _read(governed)
+    if 'MODULE_IDENTITY = "nextgen.governed_publish_service"' not in gov:
+        result.ok = False
+        result.extend('MODULE_IDENTITY must be "nextgen.governed_publish_service"')
+    else:
+        result.extend("MODULE_IDENTITY nextgen.governed_publish_service OK")
+    if "workflow.governed_publish_service" in gov:
+        result.ok = False
+        result.extend("Illegal workflow.governed_publish_service identity reference")
+
+    # 4) Habitat no write
+    hab = _read(habitat)
+    for needle in ("append_entry", "governed_publish", "passport_entries.insert_one"):
+        if needle in hab:
+            result.ok = False
+            result.extend(f"Habitat must not contain Passport write capability: {needle}")
+    if result.ok or all(
+        n not in hab for n in ("append_entry", "governed_publish", "passport_entries.insert_one")
+    ):
+        result.extend("Habitat has no Passport write path")
+
+    # 5) Findings/intelligence use approval_policy + governed_publish
+    for label, path in (("findings", findings), ("intelligence", intelligence)):
+        text = _read(path)
+        if "evaluate_approval_policy" not in text:
+            result.ok = False
+            result.extend(f"{label} must use evaluate_approval_policy")
+        if "governed_publish" not in text:
+            result.ok = False
+            result.extend(f"{label} must use governed_publish")
+        if "passport_entries.insert_one" in text:
+            result.ok = False
+            result.extend(f"{label} must not insert passport_entries directly")
+        if "await append_entry(" in text:
+            result.ok = False
+            result.extend(f"{label} must not call append_entry directly")
+
+    # 6) Five lanes, no duplicate authority
+    try:
+        lanes_data = load_lanes()
+        lanes = lanes_data.get("lanes") or []
+        if len(lanes) != 5:
+            result.ok = False
+            result.extend(f"Expected 5 lanes, found {len(lanes)}")
+        else:
+            result.extend("Five lanes registered")
+        owners: Dict[str, List[str]] = {m: [] for m in AUTHORITY_MODULES}
+        for lane in lanes:
+            lid = lane.get("id", "?")
+            for mod in lane.get("authority_modules") or []:
+                owners.setdefault(mod, []).append(lid)
+        for mod in AUTHORITY_MODULES:
+            lids = owners.get(mod) or []
+            if lids != ["LANE_1_CORE_PASSPORT"]:
+                result.ok = False
+                result.extend(f"Authority {mod} must be owned only by LANE_1_CORE_PASSPORT; found {lids}")
+        # Duplicate detection across any modules
+        seen: Dict[str, str] = {}
+        for lane in lanes:
+            for mod in lane.get("authority_modules") or []:
+                if mod in seen and seen[mod] != lane.get("id"):
+                    result.ok = False
+                    result.extend(f"Duplicate authority {mod}: {seen[mod]} and {lane.get('id')}")
+                seen[mod] = lane.get("id", "?")
+        if all((owners.get(m) or []) == ["LANE_1_CORE_PASSPORT"] for m in AUTHORITY_MODULES):
+            result.extend("Authority modules uniquely owned by LANE_1")
+        if lanes_data.get("merge_gate") != "ATLAS_MERGE_AUTHORIZATION":
+            result.ok = False
+            result.extend("lanes.yaml merge_gate must be ATLAS_MERGE_AUTHORIZATION")
+        if lanes_data.get("atlas_approval_token") != "ATLAS_ARCHITECTURE_APPROVAL":
+            result.ok = False
+            result.extend("lanes.yaml atlas_approval_token must be ATLAS_ARCHITECTURE_APPROVAL")
+    except SystemExit as exc:
+        result.ok = False
+        result.extend(str(exc))
+
+    # 7) Frontend no passport write
+    frontend_offenders: List[str] = []
+    if frontend.exists():
+        for path in list(frontend.rglob("*.js")) + list(frontend.rglob("*.jsx")) + list(
+            frontend.rglob("*.ts")
+        ) + list(frontend.rglob("*.tsx")):
+            if "node_modules" in path.parts:
+                continue
+            text = _read(path)
+            for needle in (
+                "passport_entries.insert_one",
+                "append_entry(",
+                "governed_publish(",
+            ):
+                if needle in text:
+                    frontend_offenders.append(f"{path.relative_to(ROOT)}:{needle}")
+    if frontend_offenders:
+        result.ok = False
+        result.extend("Frontend Passport write signals: " + ", ".join(frontend_offenders[:20]))
+    else:
+        result.extend("Frontend has no Passport write path")
+
+    # Approval policy module exists
+    if "def evaluate_approval_policy" not in _read(approval):
+        result.ok = False
+        result.extend("evaluate_approval_policy missing from approval_policy.py")
+
+    return result
+
+
+def check_security(changed_paths: Optional[Sequence[str]] = None) -> CheckResult:
+    result = CheckResult(name="security", ok=True)
+    changed = list(changed_paths) if changed_paths is not None else git_changed_paths()
+    tracked = git_tracked_paths()
+
+    # Tracked .env in changeset or tracked tree
+    env_hits = []
+    for rel in sorted(tracked):
+        norm = rel.replace("\\", "/").lstrip("./")
+        base = Path(norm).name
+        if base == ".env" or norm.startswith(".env.") or "/.env." in norm or norm.endswith(".env"):
+            # *.env ignored patterns aside, flag literal .env tracked files
+            if base == ".env" or norm == ".env" or "/.env" in f"/{norm}":
+                if norm == ".env" or norm.endswith("/.env") or base == ".env":
+                    env_hits.append(norm)
+    # Also flag .env appearing in changeset even if untracked attempt
+    for rel in changed:
+        norm = rel.replace("\\", "/").lstrip("./")
+        if Path(norm).name == ".env" or norm == ".env":
+            env_hits.append(norm)
+    env_hits = sorted(set(env_hits))
+    if env_hits:
+        result.ok = False
+        result.extend("Tracked or changeset .env files forbidden: " + ", ".join(env_hits))
+    else:
+        result.extend("No tracked .env in changeset/tree")
+
+    # Secret patterns — classify count only
+    total_hits = 0
+    scan_paths = changed or []
+    for rel in scan_paths:
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".zip"}:
+            continue
+        text = _read(path)
+        for pat in SECRET_PATTERNS:
+            total_hits += len(pat.findall(text))
+    result.extend(f"Secret pattern hits (count only): {total_hits}")
+    # Counts are informational; hardcoded seal / auth bypass are hard failures.
+
+    # Default auth bypass / hardcoded seal — implementation modules only
+    bypass_hits: List[str] = []
+    seal_hits: List[str] = []
+    for path in _iter_python_sources(ROOT / "backend"):
+        if "tests" in path.parts:
+            continue
+        text = _read(path)
+        rel = str(path.relative_to(ROOT))
+        for i, line in enumerate(text.splitlines(), 1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if AUTH_BYPASS_ASSIGN.match(line) or AUTH_BYPASS_SETDEFAULT.search(line):
+                bypass_hits.append(f"{rel}:{i}")
+            if SEAL_SECRET_HARDCODE.match(line):
+                if "os.environ" not in line and "getenv" not in line:
+                    seal_hits.append(f"{rel}:{i}")
+
+    if bypass_hits:
+        result.ok = False
+        result.extend("Default auth bypass hardcoding detected: " + ", ".join(bypass_hits[:20]))
+    else:
+        result.extend("No default auth bypass hardcoding detected")
+
+    if seal_hits:
+        result.ok = False
+        result.extend("Hardcoded seal secret detected: " + ", ".join(sorted(set(seal_hits))[:20]))
+    else:
+        result.extend("No hardcoded seal secret detected")
+
+    # Scope guard on changeset
+    historical = tracked - set(changed)
+    violations = detect_scope_violations(changed, historical_paths=historical)
+    override = parse_scope_override()
+    if override and override.get("_invalid"):
+        result.ok = False
+        result.extend(f"Invalid ATLAS_SCOPE_OVERRIDE: {override}")
+    if violations:
+        result.ok = False
+        result.extend(
+            "Scope guard violations (require ATLAS_SCOPE_OVERRIDE): " + ", ".join(violations)
+        )
+    else:
+        result.extend("Scope guard clean for active changeset")
+
+    return result
+
+
+def check_fast() -> List[CheckResult]:
+    """Fast gates: git/architecture/security + contract registry sanity.
+
+    Does not invoke pytest (avoids recursion when tests call ``./stratex verify``).
+    """
+    results = [check_git_clean(), check_architecture(), check_security()]
+    contracts_check = CheckResult(name="contracts_registry", ok=True)
+    try:
+        data = load_contracts()
+        contracts = data.get("contracts") or []
+        if len(contracts) != 10:
+            contracts_check.ok = False
+            contracts_check.extend(f"Expected 10 contracts, found {len(contracts)}")
+        for c in contracts:
+            status = c.get("status")
+            version = str(c.get("version"))
+            if status not in {"PROPOSED", "NOT_IMPLEMENTED"}:
+                contracts_check.ok = False
+                contracts_check.extend(
+                    f"{c.get('name')}: status must be PROPOSED or NOT_IMPLEMENTED, got {status}"
+                )
+            if status == "ACCEPTED":
+                contracts_check.ok = False
+                contracts_check.extend(f"{c.get('name')}: ACCEPTED forbidden during EF-001")
+            if version != "0.0.0":
+                contracts_check.ok = False
+                contracts_check.extend(f"{c.get('name')}: version must be 0.0.0 during EF-001")
+            if c.get("approval_authority") != "Atlas":
+                contracts_check.ok = False
+                contracts_check.extend(f"{c.get('name')}: approval_authority must be Atlas")
+            fields = c.get("fields") or {}
+            for key in (
+                "provenance",
+                "confidence",
+                "unknown_state",
+                "compatibility",
+                "breaking_change",
+            ):
+                if key not in fields:
+                    contracts_check.ok = False
+                    contracts_check.extend(f"{c.get('name')}: missing fields.{key}")
+        if contracts_check.ok:
+            contracts_check.extend("Contract registry EF-001 constraints OK")
+    except SystemExit as exc:
+        contracts_check.ok = False
+        contracts_check.extend(str(exc))
+    results.append(contracts_check)
+
+    # Honest unavailable-dep reporting without claiming pass
+    py = discover_python()
+    dep = CheckResult(name="dependency_report", ok=True)
+    try:
+        proc = subprocess.run(
+            [py, "-c", "import yaml; print('ok')"],
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            dep.ok = False
+            dep.classification = "INTEGRATION_ENVIRONMENT_UNAVAILABLE"
+            dep.extend("INTEGRATION_ENVIRONMENT_UNAVAILABLE: PyYAML not importable")
+        else:
+            dep.extend(f"PyYAML available via {py}")
+    except OSError as exc:
+        dep.ok = False
+        dep.classification = "INTEGRATION_ENVIRONMENT_UNAVAILABLE"
+        dep.extend(f"INTEGRATION_ENVIRONMENT_UNAVAILABLE: {exc}")
+    results.append(dep)
+    return results
+
+
+def check_full() -> List[CheckResult]:
+    results = check_fast()
+    # Integration / dependency availability honesty
+    py = discover_python()
+    missing: List[str] = []
+    integ = CheckResult(name="integration_environment", ok=True)
+    try:
+        for mod in ("motor", "pymongo", "fastapi", "yaml"):
+            proc = subprocess.run(
+                [py, "-c", f"import {mod}"],
+                capture_output=True,
+                text=True,
+            )
+            if proc.returncode != 0:
+                missing.append(mod)
+    except OSError as exc:
+        integ.ok = False
+        integ.classification = "INTEGRATION_ENVIRONMENT_UNAVAILABLE"
+        integ.extend(f"INTEGRATION_ENVIRONMENT_UNAVAILABLE: interpreter unavailable: {exc}")
+        results.append(integ)
+        return results
+
+    if missing:
+        integ.ok = False
+        integ.classification = "INTEGRATION_ENVIRONMENT_UNAVAILABLE"
+        integ.extend(
+            "INTEGRATION_ENVIRONMENT_UNAVAILABLE: missing modules: " + ", ".join(missing)
+        )
+    else:
+        # Still may lack Mongo — probe env presence only, never values
+        if not any(k in os.environ for k in ("MONGO_URL", "MONGODB_URI", "DATABASE_URL")):
+            integ.ok = False
+            integ.classification = "INTEGRATION_ENVIRONMENT_UNAVAILABLE"
+            integ.extend(
+                "INTEGRATION_ENVIRONMENT_UNAVAILABLE: no Mongo connection env key present"
+            )
+        else:
+            integ.extend(
+                "Integration dependency imports available; Mongo env key present (value not logged)"
+            )
+    results.append(integ)
+    return results
+
+
+def print_results(results: Sequence[CheckResult]) -> int:
+    exit_code = 0
+    for r in results:
+        status = "PASS" if r.ok else "FAIL"
+        if r.classification and not r.ok:
+            status = r.classification
+            # Unavailable integration is a failing classification but distinct label
+            exit_code = 1
+        elif not r.ok:
+            exit_code = 1
+        print(f"[{status}] {r.name}")
+        for msg in r.messages:
+            print(f"  - {msg}")
+    return exit_code
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    # Mutual mode selection
+    modes = [args.fast, args.full, args.architecture, args.security]
+    if not any(modes):
+        args.fast = True
+
+    results: List[CheckResult] = []
+    if args.architecture and not (args.fast or args.full or args.security):
+        results.append(check_architecture())
+    elif args.security and not (args.fast or args.full or args.architecture):
+        results.append(check_security())
+    elif args.full:
+        results.extend(check_full())
+    elif args.fast:
+        results.extend(check_fast())
+    else:
+        # Combinations e.g. --architecture --security
+        if args.architecture:
+            results.append(check_architecture())
+        if args.security:
+            results.append(check_security())
+        if args.fast:
+            results.extend(check_fast())
+        if args.full:
+            results.extend(check_full())
+
+    # Never push/merge
+    print("stratex: verify complete (no push/merge performed)")
+    return print_results(results)
+
+
+def cmd_evidence(args: argparse.Namespace) -> int:
+    tools_dir = ROOT / "engineering" / "tools"
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    from atlas_evidence import generate_evidence  # type: ignore
+
+    out = generate_evidence(ROOT, base=args.base)
+    print(f"Evidence written to {out}")
+    print("stratex: evidence complete (no push/merge performed)")
+    return 0
+
+
+def lane_worktree_path(lane_id: str) -> Path:
+    return ROOT.parent / f"stratex-{lane_id.lower().replace('_', '-')}"
+
+
+def cmd_lane_list(_: argparse.Namespace) -> int:
+    data = load_lanes()
+    print(f"merge_gate: {data.get('merge_gate')}")
+    print(f"atlas_approval_token: {data.get('atlas_approval_token')}")
+    for lane in data.get("lanes") or []:
+        auth = lane.get("authority_modules") or []
+        print(f"- {lane.get('id')}: {lane.get('name')} (authority={len(auth)})")
+    return 0
+
+
+def cmd_lane_plan(args: argparse.Namespace) -> int:
+    data = load_lanes()
+    lane = next((l for l in data.get("lanes") or [] if l.get("id") == args.lane_id), None)
+    if not lane:
+        print(f"Unknown lane: {args.lane_id}", file=sys.stderr)
+        return 1
+    print(json.dumps(lane, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_lane_status(args: argparse.Namespace) -> int:
+    data = load_lanes()
+    lane = next((l for l in data.get("lanes") or [] if l.get("id") == args.lane_id), None)
+    if not lane:
+        print(f"Unknown lane: {args.lane_id}", file=sys.stderr)
+        return 1
+    wt = lane_worktree_path(args.lane_id)
+    status = {
+        "lane_id": args.lane_id,
+        "worktree": str(wt),
+        "worktree_exists": wt.exists(),
+        "owned_paths": lane.get("owned_paths") or [],
+        "authority_modules": lane.get("authority_modules") or [],
+        "merge_gate": lane.get("merge_gate") or data.get("merge_gate"),
+        "contracts": lane.get("contracts") or [],
+    }
+    print(json.dumps(status, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_lane_create(args: argparse.Namespace) -> int:
+    data = load_lanes()
+    lane = next((l for l in data.get("lanes") or [] if l.get("id") == args.lane_id), None)
+    if not lane:
+        print(f"Unknown lane: {args.lane_id}", file=sys.stderr)
+        return 1
+    wt = lane_worktree_path(args.lane_id)
+    branch = f"lane/{args.lane_id.lower()}"
+    plan = {
+        "action": "create_lane_worktree",
+        "lane_id": args.lane_id,
+        "branch": branch,
+        "worktree": str(wt),
+        "dry_run": bool(args.dry_run),
+        "confirm": bool(args.confirm),
+        "push": False,
+        "merge": False,
+    }
+    if args.dry_run:
+        print(json.dumps({**plan, "status": "dry_run"}, indent=2, sort_keys=True))
+        print("stratex: lane create dry-run only (no push/merge performed)")
+        return 0
+
+    if wt.exists() and not args.confirm:
+        print(
+            json.dumps(
+                {
+                    **plan,
+                    "status": "blocked_worktree_collision",
+                    "error": f"Worktree path exists: {wt}. Re-run with --confirm to proceed.",
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.confirm:
+        print(
+            "Refusing to create worktree without --confirm (and use --dry-run to preview).",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Create local worktree/branch only — never push/merge.
+    if wt.exists():
+        print(f"Using existing worktree path after --confirm: {wt}")
+        print(json.dumps({**plan, "status": "confirmed_existing"}, indent=2, sort_keys=True))
+        return 0
+
+    proc = run_git("worktree", "add", "-b", branch, str(wt))
+    if proc.returncode != 0:
+        # Branch may already exist — try without -b
+        proc2 = run_git("worktree", "add", str(wt), branch)
+        if proc2.returncode != 0:
+            print(proc.stderr or proc.stdout, file=sys.stderr)
+            print(proc2.stderr or proc2.stdout, file=sys.stderr)
+            return 1
+    print(json.dumps({**plan, "status": "created"}, indent=2, sort_keys=True))
+    print("stratex: lane create complete (no push/merge performed)")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="stratex",
+        description="Stratex High-Velocity Engineering CLI (EF-001)",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    verify = sub.add_parser("verify", help="Run verification gates")
+    verify.add_argument("--fast", action="store_true", help="Fast local verification")
+    verify.add_argument("--full", action="store_true", help="Full verification including integration honesty")
+    verify.add_argument("--architecture", action="store_true", help="Architecture boundary checks")
+    verify.add_argument("--security", action="store_true", help="Security boundary checks")
+    verify.set_defaults(func=cmd_verify)
+
+    evidence = sub.add_parser("evidence", help="Generate redacted Atlas evidence package")
+    evidence.add_argument("--base", default=None, help="Optional git base ref for changed-path inventory")
+    evidence.set_defaults(func=cmd_evidence)
+
+    lane = sub.add_parser("lane", help="Lane planning and worktree helpers")
+    lane_sub = lane.add_subparsers(dest="lane_command", required=True)
+
+    lane_list = lane_sub.add_parser("list", help="List lanes")
+    lane_list.set_defaults(func=cmd_lane_list)
+
+    lane_plan = lane_sub.add_parser("plan", help="Show lane plan JSON")
+    lane_plan.add_argument("lane_id")
+    lane_plan.set_defaults(func=cmd_lane_plan)
+
+    lane_status = lane_sub.add_parser("status", help="Show lane status")
+    lane_status.add_argument("lane_id")
+    lane_status.set_defaults(func=cmd_lane_status)
+
+    lane_create = lane_sub.add_parser("create", help="Create lane worktree (never pushes/merges)")
+    lane_create.add_argument("lane_id")
+    lane_create.add_argument("--dry-run", action="store_true")
+    lane_create.add_argument("--confirm", action="store_true")
+    lane_create.set_defaults(func=cmd_lane_create)
+
+    return parser
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

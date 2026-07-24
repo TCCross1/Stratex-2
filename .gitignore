@@ -155,3 +155,8 @@ frontend/node_modules/.cache/default-development/104.pack
 frontend/node_modules/.cache/default-development/105.pack
 frontend/node_modules/.cache/default-development/107.pack
 frontend/node_modules/.cache/default-development/109.pack
+
+# Atlas evidence packages (generated; never commit)
+.atlas/
+.tmp-nextgen-storage/
+.venv-cp001c/
