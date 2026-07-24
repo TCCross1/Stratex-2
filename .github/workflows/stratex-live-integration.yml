@@ -28,9 +28,8 @@ jobs:
       RT002_MINIO_ENDPOINT: http://minio:9000
       RT002_MINIO_BUCKET: stratex-rt002
       RT002_CP003_ROOT: /tmp/stratex-rt002-cp003
-      RT001_NETWORK: stratex-rt001_default
       # Ephemeral credentials generated in-job (never printed).
-      COMPOSE_PROJECT_NAME: stratex-rt002-ci
+      # Leave COMPOSE_PROJECT_NAME unset so compose `name: stratex-rt001` applies.
 
     steps:
       - name: Checkout
@@ -55,6 +54,8 @@ jobs:
         run: |
           USER="rt002ci$(openssl rand -hex 4)"
           PASS="$(openssl rand -hex 24)"
+          echo "::add-mask::$USER"
+          echo "::add-mask::$PASS"
           echo "RT002_MINIO_ACCESS_KEY=$USER" >> "$GITHUB_ENV"
           echo "RT002_MINIO_SECRET_KEY=$PASS" >> "$GITHUB_ENV"
           echo "RT001_MINIO_ROOT_USER=$USER" >> "$GITHUB_ENV"
@@ -115,7 +116,10 @@ jobs:
           done
           docker exec stratex-rt001-mongo1 mongosh --quiet --eval 'db.hello().setName'
           curl -sf http://127.0.0.1:9000/minio/health/live
-          docker network ls | grep stratex || true
+          NET="$(docker network ls --format '{{.Name}}' | grep -E 'stratex.*default' | head -1)"
+          echo "Detected compose network: $NET"
+          test -n "$NET"
+          echo "RT001_NETWORK=$NET" >> "$GITHUB_ENV"
 
       - name: Fetch C-P-003 worktree for claim tests (read-only)
         run: |
