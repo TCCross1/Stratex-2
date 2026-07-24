@@ -56,7 +56,9 @@ services:
         exit 1
 
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    # Pinned floating tags for live-proof prep when dated RELEASE tags 404.
+    # Production readiness: NOT READY — do not treat :latest as production pin.
+    image: minio/minio:latest
     container_name: stratex-rt001-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
@@ -75,7 +77,7 @@ services:
       start_period: 5s
 
   minio-init:
-    image: minio/mc:RELEASE.2024-11-17T19-35-38Z
+    image: minio/mc:latest
     container_name: stratex-rt001-minio-init
     depends_on:
       minio:

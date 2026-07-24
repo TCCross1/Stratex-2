@@ -34,3 +34,26 @@ Integrated in serialized order onto this wave branch:
 
 Draft integration PR only. No automatic merge to main.
 Requires independent audit of this wave + `ATLAS_MERGE_AUTHORIZATION`.
+
+## RT-001 live-proof preparation (PX-003)
+
+Attempted in Atlas cloud environment:
+
+1. Installed `docker.io` + compose plugin (CLI available).
+2. Started `dockerd` manually (no systemd).
+3. Updated MinIO image refs from dated RELEASE tags (404) to `minio/minio:latest` / `minio/mc:latest` for prep only — **NOT a production pin**.
+4. `mongo:7.0` image extract failed: overlayfs whiteout `operation not permitted`.
+5. Container create failed: nested overlay mount `invalid argument`.
+
+### Classifications
+
+| Check | Result |
+| --- | --- |
+| Docker CLI | AVAILABLE |
+| Docker daemon (manual) | AVAILABLE |
+| Live Mongo replica-set proof | UNAVAILABLE (host nested-overlay limitation) |
+| Live MinIO proof | UNAVAILABLE (same host limitation) |
+| LocalDiskAdapter checksum proof | OK (non-production) |
+| Honesty of UNAVAILABLE reporting | PASS |
+
+C-P-003 final acceptance remains **BLOCKED_UNTIL_LANE5_TXN_PROOF**.
