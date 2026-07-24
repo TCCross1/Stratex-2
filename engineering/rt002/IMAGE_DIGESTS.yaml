@@ -1,0 +1,31 @@
+# RT-002 immutable image digests — resolved from Docker Hub, not invented.
+# Production readiness: NOT READY.
+# Captured via hub.docker.com tag API before commit (2026-07-24).
+version: "1"
+production_readiness: NOT_READY
+images:
+  mongo:
+    repository: docker.io/library/mongo
+    tag: "7.0"
+    digest: "sha256:9bdaeb6dac6e7e762e84e2f84103d1f9bb078fa1ba6bde8bb9d2274f655ad173"
+    reference: "mongo:7.0@sha256:9bdaeb6dac6e7e762e84e2f84103d1f9bb078fa1ba6bde8bb9d2274f655ad173"
+    source: "https://hub.docker.com/v2/repositories/library/mongo/tags/7.0"
+  minio:
+    repository: docker.io/minio/minio
+    tag: "RELEASE.2025-09-07T16-13-09Z"
+    digest: "sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e"
+    reference: "minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e"
+    source: "https://hub.docker.com/v2/repositories/minio/minio/tags/RELEASE.2025-09-07T16-13-09Z"
+  minio_mc:
+    repository: docker.io/minio/mc
+    tag: "RELEASE.2025-08-13T08-35-41Z"
+    digest: "sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727"
+    reference: "minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727"
+    source: "https://hub.docker.com/v2/repositories/minio/mc/tags/RELEASE.2025-08-13T08-35-41Z"
+github_actions:
+  actions/checkout:
+    ref: "v4"
+    commit: "11d5960a326750d5838078e36cf38b85af677262"
+  actions/setup-python:
+    ref: "v5"
+    commit: "a26af69be951a213d495a4c3e4e4022e16d87065"

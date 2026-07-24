@@ -38,9 +38,22 @@ fi
 
 mkdir -p "$ROOT/.rt001"
 SECRETS="$ROOT/.rt001/secrets.env"
+
+# Preserve CI/caller-provided credentials before any file sourcing.
+# RT-002 GitHub Actions exports ephemeral RT001_MINIO_* — those must win over
+# a freshly generated .rt001/secrets.env so live object-storage tests authenticate.
+_PRE_MINIO_USER="${RT001_MINIO_ROOT_USER:-}"
+_PRE_MINIO_PASS="${RT001_MINIO_ROOT_PASSWORD:-}"
+_PRE_MINIO_BUCKET="${RT001_MINIO_BUCKET:-}"
+_PRE_MONGO_PORT="${RT001_MONGO_PORT:-}"
+
 if [[ ! -f "$SECRETS" ]]; then
-  echo "No .rt001/secrets.env — generating placeholders via generate_local_secrets.sh"
-  "$RT001_DIR/generate_local_secrets.sh"
+  if [[ -n "$_PRE_MINIO_USER" && -n "$_PRE_MINIO_PASS" ]]; then
+    echo "Using caller-provided MinIO credentials (no secrets.env generate)"
+  else
+    echo "No .rt001/secrets.env — generating placeholders via generate_local_secrets.sh"
+    "$RT001_DIR/generate_local_secrets.sh"
+  fi
 fi
 
 # shellcheck disable=SC1090
@@ -49,6 +62,14 @@ set -a
 [[ -f "$RT001_DIR/.env.example" ]] && . "$RT001_DIR/.env.example"
 [[ -f "$SECRETS" ]] && . "$SECRETS"
 set +a
+
+# Caller/CI overrides always win (prevents credential mismatch with RT-002 tests).
+[[ -n "$_PRE_MINIO_USER" ]] && export RT001_MINIO_ROOT_USER="$_PRE_MINIO_USER"
+[[ -n "$_PRE_MINIO_PASS" ]] && export RT001_MINIO_ROOT_PASSWORD="$_PRE_MINIO_PASS"
+[[ -n "$_PRE_MINIO_BUCKET" ]] && export RT001_MINIO_BUCKET="$_PRE_MINIO_BUCKET"
+[[ -n "$_PRE_MONGO_PORT" ]] && export RT001_MONGO_PORT="$_PRE_MONGO_PORT"
+export MINIO_ROOT_USER="${RT001_MINIO_ROOT_USER}"
+export MINIO_ROOT_PASSWORD="${RT001_MINIO_ROOT_PASSWORD}"
 
 echo "[OK] starting RT-001 stack (Mongo replica set + MinIO)"
 "${COMPOSE[@]}" -f "$RT001_DIR/docker-compose.yml" --project-directory "$RT001_DIR" up -d

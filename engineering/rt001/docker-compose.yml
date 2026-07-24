@@ -1,12 +1,13 @@
 # RT-001 local integration stack — Mongo replica set + MinIO
-# Production readiness: NOT READY. Local/dev scaffolding only.
-# Base SHA: 0c09b0cf44fb133852ddbb9ce96cea2e137ade6d
+# Production readiness: NOT READY. Local/dev + CI live-proof scaffolding.
+# Immutable digests: engineering/rt002/IMAGE_DIGESTS.yaml (RT-002).
+# Base main: 219485d46d3ff2e66463f280c4fd10ddd8e78b57
 
 name: stratex-rt001
 
 services:
   mongo1:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:9bdaeb6dac6e7e762e84e2f84103d1f9bb078fa1ba6bde8bb9d2274f655ad173
     hostname: mongo1
     container_name: stratex-rt001-mongo1
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
@@ -18,11 +19,11 @@ services:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 10s
+      retries: 30
+      start_period: 15s
 
   mongo-init:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:9bdaeb6dac6e7e762e84e2f84103d1f9bb078fa1ba6bde8bb9d2274f655ad173
     container_name: stratex-rt001-mongo-init
     depends_on:
       mongo1:
@@ -43,8 +44,7 @@ services:
             members: [{ _id: 0, host: "mongo1:27017" }]
           });
         '
-        # Wait until primary is elected
-        for i in $(seq 1 30); do
+        for i in $(seq 1 60); do
           state=$(mongosh --host mongo1:27017 --quiet --eval 'rs.isMaster().ismaster' || true)
           if [ "$$state" = "true" ]; then
             echo "replica set primary ready"
@@ -56,9 +56,8 @@ services:
         exit 1
 
   minio:
-    # Pinned floating tags for live-proof prep when dated RELEASE tags 404.
-    # Production readiness: NOT READY — do not treat :latest as production pin.
-    image: minio/minio:latest
+    # Digest-pinned RELEASE tag — NOT :latest. Production readiness: NOT READY.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     container_name: stratex-rt001-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
@@ -73,11 +72,11 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     container_name: stratex-rt001-minio-init
     depends_on:
       minio:
