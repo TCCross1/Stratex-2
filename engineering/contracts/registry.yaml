@@ -146,13 +146,14 @@ contracts:
 
   - name: EstimateCalculationLedger
     version: "0.0.0"
-    status: NOT_IMPLEMENTED
+    status: PROPOSED
     approval_authority: Atlas
     owning_lanes:
       - LANE_3_ESTIMATOR_REPORT
     description: >
       Append-oriented calculation ledger capturing formula inputs, assembly
-      expansions, and price provenance for auditability.
+      expansions, and price provenance for auditability. E-001 advances an
+      executable PROPOSED schema only — not FROZEN / ACCEPTED.
     fields:
       provenance: required
       confidence: required
@@ -163,6 +164,10 @@ contracts:
       - provenance records calculator version and input package hash
       - confidence attaches to each material calculation step
       - unknown_state retains gaps instead of rewriting history
+      - executable schema path: engineering/contracts/schemas/EstimateCalculationLedger.proposed.json
+      - python models: backend/nextgen/estimator/ledger.py
+      - executable schema_version field is 0.1.0 while registry version remains 0.0.0 until Atlas accept
+      - contract_status must remain PROPOSED until Atlas freeze
 
   - name: ReportPublicationPackage
     version: "0.0.0"
