@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stratex://contracts/habitat/habitat-property-projection/0.0.0",
+  "title": "HabitatPropertyProjection",
+  "description": "Homeowner-safe read projection derived from approved Passport truth. Registry status PROPOSED. Habitat never writes canonical Passport ledger entries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "contract_status",
+    "audience",
+    "property_summary",
+    "findings",
+    "report_references",
+    "project_opportunities",
+    "awe_available",
+    "provenance",
+    "confidence",
+    "unknown_state"
+  ],
+  "properties": {
+    "schema_name": { "const": "HabitatPropertyProjection" },
+    "schema_version": { "const": "0.0.0" },
+    "contract_status": { "const": "PROPOSED" },
+    "audience": { "type": "string", "enum": ["homeowner", "public"] },
+    "property_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property_id", "address"],
+      "properties": {
+        "property_id": { "type": "string", "minLength": 1 },
+        "address": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["line1", "city", "region", "postal_code"],
+          "properties": {
+            "line1": { "type": "string" },
+            "city": { "type": "string" },
+            "region": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country_iso": { "type": "string" },
+            "unit_label": { "type": ["string", "null"] }
+          }
+        },
+        "inspection_date": { "type": ["string", "null"] }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "./homeowner_finding_projection.json" }
+    },
+    "estimate_summary": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "./homeowner_estimate_summary_projection.json" }
+      ]
+    },
+    "report_references": {
+      "type": "array",
+      "items": { "$ref": "./report_publication_reference.json" }
+    },
+    "project_opportunities": {
+      "type": "array",
+      "items": { "$ref": "./project_opportunity_status_projection.json" }
+    },
+    "awe_available": { "type": "boolean" },
+    "awe_release_state": { "type": ["string", "null"] },
+    "provenance": { "$ref": "./common_display.json#/definitions/ProvenanceDisplay" },
+    "confidence": { "$ref": "./common_display.json#/definitions/ConfidenceDisplay" },
+    "unknown_state": { "$ref": "./common_display.json#/definitions/UnknownStateDisplay" }
+  }
+}

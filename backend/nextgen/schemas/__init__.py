@@ -1,10 +1,10 @@
-"""ATC-001A executable contract schemas (pydantic) + JSON Schema export helpers.
+"""NextGen executable contract schemas — PX-003 reconciled package root.
 
-Statuses remain PROPOSED / READY_FOR_FREEZE. Atlas freezes; this lane does not.
+LANE_2 owns ATC candidate schemas at this package root.
+LANE_4 owns homeowner-safe projections under ``nextgen.schemas.habitat``.
 
-LANE_2 owns ATC candidate schemas at this package root. Habitat projections are
-owned by LANE_4 under ``nextgen.schemas.habitat``. Parallel-merge rule: keep ATC
-exports here and preserve the optional habitat subpackage import below.
+Statuses remain PROPOSED / READY_FOR_FREEZE. Atlas freezes; this wave does not.
+Law: PARALLELIZE IMPLEMENTATION — NEVER AUTHORITY.
 """
 from __future__ import annotations
 
@@ -18,11 +18,8 @@ from .evidence_manifest import (
 )
 from .preflight import CapturePackageFile, CapturePackageManifest, PreflightCheckItem, PreflightResult
 
-# Optional coexistence with LANE_4 habitat package (present after dual-lane merge).
-try:
-    from . import habitat as habitat
-except ImportError:  # pragma: no cover - habitat lands via LANE_4
-    habitat = None  # type: ignore[assignment]
+# Habitat subpackage provided by LANE_4 (present after PX-003 serialized merge).
+from . import habitat as habitat
 
 __all__ = [
     "ApprovedGeometryCandidate",
