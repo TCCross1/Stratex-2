@@ -266,6 +266,18 @@ def test_unknown_inputs_never_silent_zero():
     with pytest.raises(UnknownInputError):
         eng.apply_waste(Decimal("10"), None)
 
+    with pytest.raises(UnknownInputError):
+        eng.roofing_squares(float("nan"))
+
+    with pytest.raises(UnknownInputError):
+        eng.roofing_squares(float("inf"))
+
+    with pytest.raises(UnknownInputError):
+        eng.apply_waste(Decimal("NaN"), "roofing.shingles.v1")
+
+    with pytest.raises(UnknownInputError):
+        eng.apply_waste(Decimal("Infinity"), "roofing.shingles.v1")
+
 
 # ── provenance + ledger ─────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 from .errors import DimensionalError, ParseError, UnknownInputError
 
-NumberLike = Union[Decimal, int, str]
+NumberLike = Union[Decimal, int, float, str]
 
 
 class Dimension(str, Enum):
@@ -22,21 +22,41 @@ class Dimension(str, Enum):
     UNKNOWN = "unknown"
 
 
+def _reject_non_finite(decimal_value: Decimal, *, name: str) -> Decimal:
+    """Reject NaN / ±Infinity — not known construction quantities."""
+    if not decimal_value.is_finite():
+        raise UnknownInputError(
+            name,
+            f"non-finite quantity is unknown, not calculable: {decimal_value!r}",
+        )
+    return decimal_value
+
+
 def _to_decimal(value: NumberLike, *, name: str = "value") -> Decimal:
     if value is None:
         raise UnknownInputError(name, "value is None")
+    if isinstance(value, float):
+        # float NaN/Inf must not enter authoritative Decimal math.
+        if value != value or value in (float("inf"), float("-inf")):
+            raise UnknownInputError(name, f"non-finite float is unknown: {value!r}")
+        try:
+            return _reject_non_finite(Decimal(str(value)), name=name)
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise UnknownInputError(
+                name, f"not a decimal-compatible number: {value!r}"
+            ) from exc
     if isinstance(value, Decimal):
-        return value
+        return _reject_non_finite(value, name=name)
     if isinstance(value, bool):
         raise UnknownInputError(name, "boolean is not a numeric quantity")
     try:
-        return Decimal(str(value))
+        return _reject_non_finite(Decimal(str(value)), name=name)
     except (InvalidOperation, ValueError, TypeError) as exc:
         raise UnknownInputError(name, f"not a decimal-compatible number: {value!r}") from exc
 
 
 def require_known(value: Optional[NumberLike], *, name: str) -> Decimal:
-    """Require an explicit numeric input — never coerce None/empty to zero."""
+    """Require an explicit finite numeric input — never coerce None/empty/NaN/Inf to zero."""
     if value is None:
         raise UnknownInputError(name, "missing required numeric input")
     if isinstance(value, str) and not value.strip():
