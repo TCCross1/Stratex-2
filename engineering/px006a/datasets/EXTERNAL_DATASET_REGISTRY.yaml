@@ -240,6 +240,62 @@ datasets:
   limitations:
   - License must be read from acquired repository before fixture derivation.
   review_status: ACQUIRED
+- dataset_id: COPR
+  display_name: OpenDroneMap COPR
+  source_organization: OpenDroneMap / Michele M. Tobias / Alex Mandel
+  source_page: https://github.com/OpenDroneMap/odm_data_copr
+  acquisition_url: https://github.com/OpenDroneMap/odm_data_copr.git
+  acquisition_method: git_clone
+  expected_image_count: 41
+  expected_size_bytes: 157286400
+  observed_image_count: 42
+  observed_size_bytes: 331277745
+  repository_commit: 97cd18478ca1885f5713a11bf98d4bf96308b399
+  retrieval_timestamp: '2026-07-25T15:06:26.708506+00:00'
+  license_name: CC-BY-SA-4.0
+  license_file: license.txt
+  license_file_sha256: da27d7ba00309175b64d8428a411a21a97673fb47bc4f3ee4b68afb6daa680d2
+  license_verified_at: '2026-07-25T16:58:00+00:00'
+  license_status: VERIFIED_RESTRICTED
+  commercial_reuse_status: LICENSE_TERMS_APPLY
+  commercial_development_status: LICENSE_TERMS_APPLY
+  redistribution_status: CONDITIONAL
+  attribution_requirement: REQUIRED
+  share_alike_requirement: REQUIRED
+  tracked_third_party_fixture_status: PROHIBITED_UNLESS_REVIEWED
+  raw_data_git_status: PROHIBITED
+  attribution_text: "Michele M. Tobias; Alex Mandel; OpenDroneMap odm_data_copr (CC BY-SA 4.0)"
+  sensor_make: UNKNOWN
+  sensor_model: UNKNOWN
+  aircraft_make: UNKNOWN
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_ABSENT
+  GCP_present: true
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: 13a36e860a0e69e96004511ae66ff91141f3dc1992581fce592d240adf1e3d0a
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - gcp_aware_roof_benchmark
+  - residential_geometry_development
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  - physical_accuracy_claims
+  - unrestricted_redistribution
+  - tracked_third_party_imagery_fixtures
+  limitations:
+  - Public ODM corpus; no field-measured residential truth bundled.
+  - CC-BY-SA-4.0 share-alike and attribution apply; never treat as CC0.
+  - Prior incorrect CC0 registry assumption corrected in PX-006B-F1.
+  review_status: ACQUIRED
 - dataset_id: DJI_TERRA_SAMPLE
   display_name: DJI Terra official sample
   source_organization: DJI

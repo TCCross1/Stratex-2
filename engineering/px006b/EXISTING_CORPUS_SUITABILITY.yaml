@@ -1,0 +1,389 @@
+{
+  "datasets": [
+    {
+      "authoritative": false,
+      "dataset_id": "MYGLA",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap Mygla starter",
+      "dsm_availability": false,
+      "gcp_availability": false,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PRESENT",
+        "total_bytes": 155494079,
+        "total_images": 29
+      },
+      "known_dimensions": false,
+      "license_name": "CC-BY-3.0",
+      "license_status": "VERIFIED_RESTRICTED",
+      "license_suitability": "VERIFIED_RESTRICTED",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "Starter ODM corpus (~29 images); useful for pipeline smoke only.",
+        "Not a residential roof benchmark corpus."
+      ],
+      "oblique_coverage": "limited",
+      "obstruction_level": "moderate",
+      "orthophoto_usefulness": "high",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": true,
+        "odm_digest": "sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1",
+        "output_classes": {
+          "cameras": true,
+          "dsm": false,
+          "dtm": false,
+          "mesh": false,
+          "orthophoto": true,
+          "point_cloud": true,
+          "report": true,
+          "textured_model": false
+        },
+        "profile": "smoke",
+        "promoted": true,
+        "reconstruction_version": "/tmp/stratex-external-datasets/reconstructions/MYGLA/smoke_run2",
+        "status": "SUCCESS"
+      },
+      "residential_structures_present": false,
+      "roof_complexity": "low",
+      "roof_visibility": "partial",
+      "suitability_classification": "CAPTURE_QUALITY_ONLY",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": false,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "moderate",
+      "visible_buildings_present": true,
+      "wall_visibility": "limited"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "AUKERMAN",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap Aukerman",
+      "dsm_availability": false,
+      "gcp_availability": false,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PARTIAL",
+        "total_bytes": 544771263,
+        "total_images": 78
+      },
+      "known_dimensions": false,
+      "license_name": "CC0-1.0",
+      "license_status": "VERIFIED_PERMISSIVE",
+      "license_suitability": "VERIFIED_PERMISSIVE",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "Ohio dairy farm with barns and agricultural structures.",
+        "Pitched roofs present; not detached residential homes."
+      ],
+      "oblique_coverage": "partial",
+      "obstruction_level": "low",
+      "orthophoto_usefulness": "pending_reconstruction",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": false,
+        "status": "NOT_ATTEMPTED"
+      },
+      "residential_structures_present": false,
+      "roof_complexity": "moderate",
+      "roof_visibility": "good",
+      "suitability_classification": "USEFUL_SMALL_BUILDING",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": true,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "low",
+      "visible_buildings_present": true,
+      "wall_visibility": "partial"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "BELLUS",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap Bellus",
+      "dsm_availability": false,
+      "gcp_availability": true,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PRESENT",
+        "total_bytes": 752694437,
+        "total_images": 122
+      },
+      "known_dimensions": false,
+      "license_name": "CC0-1.0",
+      "license_status": "VERIFIED_PERMISSIVE",
+      "license_suitability": "VERIFIED_PERMISSIVE",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "Construction-site structures with GCP file.",
+        "Strong GCP/control reference for development benchmarking."
+      ],
+      "oblique_coverage": "partial",
+      "obstruction_level": "moderate",
+      "orthophoto_usefulness": "high",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": true,
+        "odm_digest": "sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1",
+        "output_classes": {
+          "cameras": true,
+          "dsm": false,
+          "dtm": false,
+          "mesh": false,
+          "orthophoto": true,
+          "point_cloud": true,
+          "report": true,
+          "textured_model": false
+        },
+        "profile": "gcp-reduced",
+        "promoted": true,
+        "reconstruction_version": "/tmp/stratex-external-datasets/reconstructions/BELLUS/gcp_run2",
+        "status": "SUCCESS"
+      },
+      "residential_structures_present": false,
+      "roof_complexity": "moderate",
+      "roof_visibility": "good",
+      "suitability_classification": "USEFUL_SMALL_BUILDING",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": true,
+      "suitability_wall_plane_benchmarking": true,
+      "vegetation_level": "low",
+      "visible_buildings_present": true,
+      "wall_visibility": "good"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "CALITERRA",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap Caliterra",
+      "dsm_availability": false,
+      "gcp_availability": false,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PARTIAL",
+        "total_bytes": 286328402,
+        "total_images": 78
+      },
+      "known_dimensions": false,
+      "license_name": "CC0-1.0",
+      "license_status": "VERIFIED_PERMISSIVE",
+      "license_suitability": "VERIFIED_PERMISSIVE",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "Chile vineyard/residential estate structures.",
+        "Best existing corpus candidate for residential roof-plane work."
+      ],
+      "oblique_coverage": "partial",
+      "obstruction_level": "moderate",
+      "orthophoto_usefulness": "pending_reconstruction",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": false,
+        "status": "NOT_ATTEMPTED"
+      },
+      "residential_structures_present": true,
+      "roof_complexity": "moderate",
+      "roof_visibility": "good",
+      "suitability_classification": "HIGH_VALUE_RESIDENTIAL",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": true,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "moderate",
+      "visible_buildings_present": true,
+      "wall_visibility": "partial"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "GARFIELD",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap Garfield MSP",
+      "dsm_availability": false,
+      "gcp_availability": false,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PRESENT",
+        "total_bytes": 335401527,
+        "total_images": 140
+      },
+      "known_dimensions": false,
+      "license_name": "CC0-1.0",
+      "license_status": "VERIFIED_PERMISSIVE",
+      "license_suitability": "VERIFIED_PERMISSIVE",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "Minneapolis-St Paul urban/industrial mix; neighbor contamination risk."
+      ],
+      "oblique_coverage": "partial",
+      "obstruction_level": "high",
+      "orthophoto_usefulness": "pending_reconstruction",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": false,
+        "status": "NOT_ATTEMPTED"
+      },
+      "residential_structures_present": false,
+      "roof_complexity": "high",
+      "roof_visibility": "partial",
+      "suitability_classification": "GENERAL_GEOMETRY_ONLY",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": false,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "moderate",
+      "visible_buildings_present": true,
+      "wall_visibility": "partial"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "COPR",
+      "detached_structures_present": true,
+      "display_name": "OpenDroneMap COPR",
+      "dsm_availability": false,
+      "gcp_availability": true,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_ABSENT",
+        "total_bytes": 165767968,
+        "total_images": 42
+      },
+      "known_dimensions": false,
+      "license_name": "CC-BY-SA-4.0",
+      "license_status": "VERIFIED_RESTRICTED",
+      "license_suitability": "VERIFIED_RESTRICTED",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "ODM COPR corpus with explicit CC-BY-SA-4.0 license.txt and GCP control files.",
+        "Share-alike and attribution required; never treat as CC0.",
+        "Acquired in PX-006B for GCP-aware roof benchmark development."
+      ],
+      "oblique_coverage": "partial",
+      "obstruction_level": "low",
+      "orthophoto_usefulness": "pending_reconstruction",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": false,
+        "status": "NOT_ATTEMPTED"
+      },
+      "residential_structures_present": false,
+      "roof_complexity": "moderate",
+      "roof_visibility": "good",
+      "suitability_classification": "USEFUL_SMALL_BUILDING",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": true,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "low",
+      "visible_buildings_present": true,
+      "wall_visibility": "partial"
+    },
+    {
+      "authoritative": false,
+      "dataset_id": "DJI_TERRA_SAMPLE",
+      "detached_structures_present": "unknown",
+      "display_name": "DJI Terra official sample",
+      "dsm_availability": false,
+      "gcp_availability": false,
+      "image_overlap": "unknown",
+      "inventory_summary": {
+        "gps_status": "GPS_PRESENT",
+        "total_bytes": 7188110805,
+        "total_images": 238
+      },
+      "known_dimensions": false,
+      "license_name": "DJI_TERMS_REVIEW_REQUIRED",
+      "license_status": "REVIEW_REQUIRED",
+      "license_suitability": "REVIEW_REQUIRED",
+      "mesh_availability": false,
+      "nadir_coverage": "good",
+      "notes": [
+        "License redistribution prohibited; inventory/metadata only.",
+        "Reconstruction blocked by license gate."
+      ],
+      "oblique_coverage": "unknown",
+      "obstruction_level": "unknown",
+      "orthophoto_usefulness": "pending_reconstruction",
+      "physical_validation": "NOT_PERFORMED",
+      "point_cloud_density": "unknown_without_local_reconstruction",
+      "privacy_classification": "DEVELOPMENT_EXTERNAL_IMAGERY",
+      "privacy_limitations": [
+        "DEVELOPMENT_EXTERNAL_IMAGERY"
+      ],
+      "reconstruction_summary": {
+        "executed": false,
+        "odm_digest": "sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1",
+        "output_classes": {
+          "cameras": false,
+          "dsm": false,
+          "dtm": false,
+          "mesh": false,
+          "orthophoto": false,
+          "point_cloud": false,
+          "report": false,
+          "textured_model": false
+        },
+        "profile": "smoke",
+        "promoted": false,
+        "reconstruction_version": null,
+        "status": "LICENSE_BLOCKED"
+      },
+      "residential_structures_present": "unknown",
+      "roof_complexity": "unknown",
+      "roof_visibility": "unknown",
+      "suitability_classification": "LICENSE_RESTRICTED_INVENTORY_ONLY",
+      "suitability_opening_detection": false,
+      "suitability_roof_plane_benchmarking": false,
+      "suitability_wall_plane_benchmarking": false,
+      "vegetation_level": "unknown",
+      "visible_buildings_present": true,
+      "wall_visibility": "unknown"
+    }
+  ],
+  "physical_validation": "NOT_PERFORMED",
+  "production_readiness": "NOT_READY",
+  "summary": {
+    "datasets_reviewed": 7,
+    "high_value_residential": [
+      "CALITERRA"
+    ],
+    "license_blocked": [
+      "DJI_TERRA_SAMPLE"
+    ],
+    "residential_structures_identified": 1,
+    "small_building_candidates": 4
+  },
+  "version": "0.1.0"
+}

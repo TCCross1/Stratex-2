@@ -1,0 +1,97 @@
+{
+  "physical_validation": "NOT_PERFORMED",
+  "production_readiness": "NOT_READY",
+  "structures": [
+    {
+      "annotation_status": "BENCHMARK_ACCEPTED",
+      "area_difference": 66.77638888888889,
+      "authoritative": false,
+      "benchmark_disposition": "ACCEPTED_WITH_LIMITATIONS",
+      "benchmark_structure_id": "mygla_starter_structure",
+      "building_type": "unknown_small_structure",
+      "confidence_state": "HIGH_DEVELOPMENT_CONFIDENCE",
+      "dataset": "MYGLA",
+      "disagreement": {
+        "area_percent_differences": [
+          0.0
+        ],
+        "authoritative": false,
+        "azimuth_differences_deg": [
+          2.0
+        ],
+        "footprint_iou": 0.9354838709677419,
+        "pass_a": "anno_5ef2ff880564",
+        "pass_b": "anno_e787f0b96750",
+        "physical_validation": "NOT_PERFORMED",
+        "plane_count_difference": 0,
+        "preserved_without_averaging": true,
+        "review_state": "SECOND_REVIEW_REQUIRED",
+        "roof_boundary_iou": 0.9310344827586207,
+        "slope_differences_deg": [
+          2.0
+        ]
+      },
+      "failure_classes": [
+        "NADIR_ONLY_ROOF_LIMITATION"
+      ],
+      "gcp_status": "absent",
+      "image_count": 29,
+      "roof_boundary_metric": 0.765625,
+      "roof_complexity": "low",
+      "roof_plane_metric": {
+        "false_split": true,
+        "merged_planes": false,
+        "missed_plane": false,
+        "plane_count_difference": 2
+      },
+      "roof_type": "unknown",
+      "structure_iou": 0.7346938775510204
+    },
+    {
+      "annotation_status": "BENCHMARK_ACCEPTED",
+      "area_difference": 97.69111111111111,
+      "authoritative": false,
+      "benchmark_disposition": "ACCEPTED_WITH_LIMITATIONS",
+      "benchmark_structure_id": "bellus_gcp_structure",
+      "building_type": "construction_structure",
+      "confidence_state": "HIGH_DEVELOPMENT_CONFIDENCE",
+      "dataset": "BELLUS",
+      "disagreement": {
+        "area_percent_differences": [
+          0.0
+        ],
+        "authoritative": false,
+        "azimuth_differences_deg": [
+          2.0
+        ],
+        "footprint_iou": 0.9354838709677419,
+        "pass_a": "anno_0eb6427f576c",
+        "pass_b": "anno_d53f2d733092",
+        "physical_validation": "NOT_PERFORMED",
+        "plane_count_difference": 0,
+        "preserved_without_averaging": true,
+        "review_state": "SECOND_REVIEW_REQUIRED",
+        "roof_boundary_iou": 0.9310344827586207,
+        "slope_differences_deg": [
+          2.0
+        ]
+      },
+      "failure_classes": [
+        "NADIR_ONLY_ROOF_LIMITATION"
+      ],
+      "gcp_status": "accepted_and_used",
+      "image_count": 122,
+      "roof_boundary_metric": 0.765625,
+      "roof_complexity": "moderate",
+      "roof_plane_metric": {
+        "false_split": true,
+        "merged_planes": false,
+        "missed_plane": false,
+        "plane_count_difference": 2
+      },
+      "roof_type": "low_slope",
+      "structure_iou": 0.7346938775510204
+    }
+  ],
+  "version": "0.1.0"
+}

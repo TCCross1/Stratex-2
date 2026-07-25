@@ -35,8 +35,12 @@ LICENSE_CANDIDATE_NAMES = (
 # Conservative known markers — identification only, not legal advice.
 _KNOWN_MARKERS = (
     ("CC0", re.compile(r"\bCC0\b|Creative Commons Zero|cc0-1\.0", re.I)),
-    ("CC-BY-3.0", re.compile(r"creativecommons\.org/licenses/by/3\.0|CC-BY\b|CC BY 3\.0", re.I)),
-    ("CC-BY-4.0", re.compile(r"creativecommons\.org/licenses/by/4\.0", re.I)),
+    ("CC-BY-SA-4.0", re.compile(
+        r"creativecommons\.org/licenses/by-sa/4\.0|CC BY-SA 4\.0|CC-BY-SA\b",
+        re.I,
+    )),
+    ("CC-BY-3.0", re.compile(r"creativecommons\.org/licenses/by/3\.0|CC BY 3\.0", re.I)),
+    ("CC-BY-4.0", re.compile(r"creativecommons\.org/licenses/by/4\.0|CC BY 4\.0", re.I)),
     ("MIT", re.compile(r"\bMIT License\b", re.I)),
     ("Apache-2.0", re.compile(r"Apache License.*Version 2\.0", re.I | re.S)),
     ("BSD-3-Clause", re.compile(r"BSD 3-Clause|Redistribution and use in source", re.I)),
@@ -138,47 +142,120 @@ def license_check(dataset_id: str) -> Dict[str, Any]:
         )
 
     # Conservative aggregation — never upgrade UNKNOWN to permissive without text.
-    known = {"CC0", "CC-BY-3.0", "CC-BY-4.0", "MIT", "Apache-2.0", "BSD-3-Clause"}
-    if identified and all(n == "CC0" for n in identified):
+    # Authoritative license files outrank registry assumptions and README summaries.
+    known = {
+        "CC0",
+        "CC-BY-3.0",
+        "CC-BY-4.0",
+        "CC-BY-SA-4.0",
+        "MIT",
+        "Apache-2.0",
+        "BSD-3-Clause",
+    }
+    unique_ids = sorted(set(identified))
+    has_cc0 = "CC0" in unique_ids
+    has_by_sa = any(n.startswith("CC-BY-SA") for n in unique_ids)
+    has_by = any(n.startswith("CC-BY") and "SA" not in n for n in unique_ids)
+    conflicting = (has_cc0 and (has_by or has_by_sa)) or (has_by and has_by_sa and len(unique_ids) > 1)
+
+    result["share_alike_requirement"] = "NOT_APPLICABLE"
+    result["tracked_third_party_fixture_status"] = "PROHIBITED_UNLESS_REVIEWED"
+    result["raw_data_git_status"] = "PROHIBITED"
+    result["commercial_development_status"] = "UNKNOWN"
+
+    if conflicting:
+        result["license_name"] = ",".join(unique_ids)
+        result["license_status"] = "REVIEW_REQUIRED"
+        result["redistribution_status"] = "BLOCKED_UNTIL_VERIFIED"
+        result["commercial_reuse_status"] = "UNKNOWN"
+        result["commercial_development_status"] = "LICENSE_TERMS_UNCLEAR"
+        result["attribution_requirement"] = "REQUIRED"
+        result["share_alike_requirement"] = "UNCLEAR"
+        result["tracked_derivative_fixtures_allowed"] = False
+        result["tracked_third_party_fixture_status"] = "PROHIBITED_UNLESS_REVIEWED"
+        result["notes"].append(
+            "Conflicting license markers present — fail closed. "
+            "Authoritative license file must be reconciled before any redistribution claim."
+        )
+    elif identified and all(n == "CC0" for n in identified):
         result["license_name"] = "CC0-1.0"
         result["license_status"] = "VERIFIED_PERMISSIVE"
         result["redistribution_status"] = "PERMITTED_WITH_SOURCE_ATTRIBUTION"
         result["commercial_reuse_status"] = "PERMITTED_UNDER_CC0"
+        result["commercial_development_status"] = "PERMITTED_UNDER_CC0"
         result["attribution_requirement"] = "RECORD_SOURCE"
+        result["share_alike_requirement"] = "NOT_REQUIRED"
         result["tracked_derivative_fixtures_allowed"] = True
+        result["tracked_third_party_fixture_status"] = "TINY_SYNTHETIC_DERIVATIVES_ONLY"
         result["notes"].append(
             "CC0 text matched. Tiny synthetic derived fixtures may be tracked; "
             "raw third-party imagery still must not be committed."
         )
+    elif identified and all(n in known for n in identified) and has_by_sa:
+        result["license_name"] = ",".join(unique_ids)
+        result["license_status"] = "VERIFIED_RESTRICTED"
+        result["redistribution_status"] = "CONDITIONAL"
+        result["commercial_reuse_status"] = "LICENSE_TERMS_APPLY"
+        result["commercial_development_status"] = "LICENSE_TERMS_APPLY"
+        result["attribution_requirement"] = "REQUIRED"
+        result["share_alike_requirement"] = "REQUIRED"
+        result["tracked_derivative_fixtures_allowed"] = False
+        result["tracked_third_party_fixture_status"] = "PROHIBITED_UNLESS_REVIEWED"
+        result["raw_data_git_status"] = "PROHIBITED"
+        result["notes"].append(
+            "CC-BY-SA marker matched from authoritative license file. Attribution and "
+            "share-alike required. Imagery binaries must not be committed; commercial "
+            "development remains subject to license terms."
+        )
     elif identified and all(n in known for n in identified) and any(
         n.startswith("CC-BY") for n in identified
     ):
-        result["license_name"] = ",".join(sorted(set(identified)))
+        result["license_name"] = ",".join(unique_ids)
         result["license_status"] = "VERIFIED_RESTRICTED"
-        result["redistribution_status"] = "ATTRIBUTION_REQUIRED_NO_TRACKED_IMAGERY"
+        result["redistribution_status"] = "CONDITIONAL"
         result["commercial_reuse_status"] = "REVIEW_REQUIRED"
+        result["commercial_development_status"] = "LICENSE_TERMS_APPLY"
         result["attribution_requirement"] = "REQUIRED"
+        result["share_alike_requirement"] = "NOT_REQUIRED"
         result["tracked_derivative_fixtures_allowed"] = False
+        result["tracked_third_party_fixture_status"] = "PROHIBITED_UNLESS_REVIEWED"
         result["notes"].append(
-            "CC-BY marker matched. Attribution required. Third-party imagery binaries "
-            "must not be committed; commercial reuse requires separate review."
+            "CC-BY marker matched. Attribution required. Third-party imagery "
+            "binaries must not be committed; commercial reuse requires separate review."
         )
     elif any(n == "UNKNOWN" for n in identified) or not identified:
         result["license_name"] = identified[0] if identified else "UNKNOWN"
         result["license_status"] = "REVIEW_REQUIRED"
+        result["redistribution_status"] = "BLOCKED_UNTIL_VERIFIED"
         result["tracked_derivative_fixtures_allowed"] = False
         result["notes"].append("Ambiguous or unknown license text — manual review required.")
     else:
         # Known open-source license markers but not CC0 — block tracked imagery fixtures.
-        result["license_name"] = ",".join(sorted(set(identified)))
+        result["license_name"] = ",".join(unique_ids)
         result["license_status"] = "VERIFIED_RESTRICTED"
-        result["redistribution_status"] = "RESTRICTED_REVIEW_ATTRIBUTION"
+        result["redistribution_status"] = "CONDITIONAL"
         result["commercial_reuse_status"] = "REVIEW_REQUIRED"
+        result["commercial_development_status"] = "LICENSE_TERMS_APPLY"
         result["tracked_derivative_fixtures_allowed"] = False
         result["notes"].append(
             "Known open-source license markers found, but redistribution of imagery "
             "binaries remains blocked pending explicit dataset terms review."
         )
+
+    # Registry conflict: authoritative file outranks prior registry assumption.
+    registry_name = str(entry.get("license_name") or "")
+    if (
+        result["license_status"] in {"VERIFIED_RESTRICTED", "VERIFIED_PERMISSIVE"}
+        and registry_name
+        and registry_name != result["license_name"]
+        and registry_name not in result["license_name"]
+    ):
+        result["notes"].append(
+            f"Registry license_name={registry_name!r} differs from authoritative "
+            f"file classification={result['license_name']!r}; file wins."
+        )
+        if "CC0" in registry_name and "CC-BY-SA" in result["license_name"]:
+            result["errors"].append("registry_cc0_assumption_rejected_by_license_file")
 
     # MYGLA: if still unknown, inspect README for CC-BY (conservative restricted).
     if result["license_status"] == "REVIEW_REQUIRED":

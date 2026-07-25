@@ -84,6 +84,7 @@ def test_registry_allowlist_contains_authorized_sources():
         "BELLUS",
         "CALITERRA",
         "GARFIELD",
+        "COPR",
         "DJI_TERRA_SAMPLE",
     }
     urls = list_allowlisted_urls()
