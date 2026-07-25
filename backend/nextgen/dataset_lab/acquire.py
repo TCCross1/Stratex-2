@@ -192,12 +192,30 @@ def _download_archive(
         tmp.unlink()
     tracker = RedirectTracker(max_redirects=MAX_REDIRECTS)
     opener = urllib.request.build_opener(tracker)
+    http_meta: Dict[str, Any] = {"redirects": list(tracker.history)}
+    # HEAD preflight for Content-Length when supported.
+    try:
+        head_req = urllib.request.Request(
+            url,
+            headers={"User-Agent": f"Stratex-DatasetLab/{LAB_VERSION}"},
+            method="HEAD",
+        )
+        with opener.open(head_req, timeout=min(60, timeout)) as head_resp:
+            cl = head_resp.headers.get("Content-Length")
+            http_meta["preflight_content_length"] = int(cl) if cl else None
+            if cl and int(cl) > MAX_ARCHIVE_BYTES:
+                raise AcquisitionSecurityError(
+                    f"archive Content-Length exceeds max size: {cl} > {MAX_ARCHIVE_BYTES}"
+                )
+    except AcquisitionSecurityError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        http_meta["preflight_warning"] = f"{type(exc).__name__}: {exc}"
     req = urllib.request.Request(
         url,
         headers={"User-Agent": f"Stratex-DatasetLab/{LAB_VERSION}"},
         method="GET",
     )
-    http_meta: Dict[str, Any] = {"redirects": list(tracker.history)}
     try:
         with opener.open(req, timeout=timeout) as resp:
             http_meta["final_url"] = resp.geturl()
@@ -327,9 +345,26 @@ def acquire_dataset(
                 receipt["observed_file_count"] = len(manifest)
         elif method == "https_archive":
             archive_path = root / "source.zip"
-            dl = _download_archive(
-                url, archive_path, timeout=timeout, dry_run=dry_run
-            )
+            # Idempotent reuse when a complete archive is already present.
+            if (
+                not dry_run
+                and archive_path.is_file()
+                and archive_path.stat().st_size > 0
+                and archive_path.stat().st_size <= MAX_ARCHIVE_BYTES
+            ):
+                dl = {
+                    "status": "downloaded",
+                    "url": url,
+                    "destination": str(archive_path),
+                    "method": "https_archive",
+                    "size_bytes": archive_path.stat().st_size,
+                    "archive_checksum": sha256_file(archive_path),
+                    "http_metadata": {"reused_local_archive": True},
+                }
+            else:
+                dl = _download_archive(
+                    url, archive_path, timeout=timeout, dry_run=dry_run
+                )
             receipt.update(dl)
             if not dry_run:
                 # Extract to quarantine then promote.

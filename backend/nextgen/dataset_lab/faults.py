@@ -98,11 +98,24 @@ def _detect_faults(scenario: str, root: Path, meta: Dict[str, Any]) -> Dict[str,
         bad = False
         try:
             from PIL import Image
+            import PIL.ImageFile
 
+            # Do not silently accept truncated streams in the fault lab.
+            PIL.ImageFile.LOAD_TRUNCATED_IMAGES = False
             for img in images:
+                data = img.read_bytes()
+                if scenario == "truncated_jpeg" and not data.endswith(b"\xff\xd9"):
+                    bad = True
+                    break
+                if scenario == "random_binary_as_jpeg" and not data.startswith(b"\xff\xd8"):
+                    bad = True
+                    break
                 try:
                     with Image.open(img) as im:
                         im.verify()
+                    # Force full decode of a fresh handle
+                    with Image.open(img) as im2:
+                        im2.load()
                 except Exception:
                     bad = True
                     break

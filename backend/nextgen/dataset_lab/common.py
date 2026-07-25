@@ -55,12 +55,12 @@ READINESS_RESULTS = frozenset(
 )
 
 # Acquisition safety ceilings.
-MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB
+MAX_ARCHIVE_BYTES = 8 * 1024 * 1024 * 1024  # 8 GiB bound (DJI Terra sample Content-Length ~6.39 GiB)
 MAX_REPO_BYTES = 3 * 1024 * 1024 * 1024  # 3 GiB
 MAX_REDIRECTS = 3
 DEFAULT_TIMEOUT_SECONDS = 120
 MAX_ARCHIVE_ENTRIES = 50_000
-MAX_SINGLE_ENTRY_BYTES = 512 * 1024 * 1024
+MAX_SINGLE_ENTRY_BYTES = 7 * 1024 * 1024 * 1024  # 7 GiB per entry (nested DJI 3D sample ~2.8GiB+)
 MAX_COMPRESSION_RATIO = 100.0
 
 IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".tif", ".tiff", ".png", ".dng", ".rjpeg"})

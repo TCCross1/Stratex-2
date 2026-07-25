@@ -21,6 +21,11 @@ LICENSE_CANDIDATE_NAMES = (
     "LICENSE",
     "LICENSE.md",
     "LICENSE.txt",
+    "license",
+    "license.md",
+    "license.txt",
+    "license.html",
+    "LICENSE.html",
     "COPYING",
     "COPYING.txt",
     "LICENCE",
@@ -30,6 +35,8 @@ LICENSE_CANDIDATE_NAMES = (
 # Conservative known markers — identification only, not legal advice.
 _KNOWN_MARKERS = (
     ("CC0", re.compile(r"\bCC0\b|Creative Commons Zero|cc0-1\.0", re.I)),
+    ("CC-BY-3.0", re.compile(r"creativecommons\.org/licenses/by/3\.0|CC-BY\b|CC BY 3\.0", re.I)),
+    ("CC-BY-4.0", re.compile(r"creativecommons\.org/licenses/by/4\.0", re.I)),
     ("MIT", re.compile(r"\bMIT License\b", re.I)),
     ("Apache-2.0", re.compile(r"Apache License.*Version 2\.0", re.I | re.S)),
     ("BSD-3-Clause", re.compile(r"BSD 3-Clause|Redistribution and use in source", re.I)),
@@ -110,17 +117,13 @@ def license_check(dataset_id: str) -> Dict[str, Any]:
         return result
 
     files = _find_license_files(content)
-    if not files:
-        result["license_status"] = "REVIEW_REQUIRED"
-        result["notes"].append(
-            "No LICENSE file found. Manual review required. "
-            "Never guess permissive status from repository visibility."
-        )
-        write_json(receipt_dir(safe) / "license-check-latest.json", result)
-        write_json(dataset_dir(safe) / "license_status.json", result)
-        return result
-
     identified: List[str] = []
+    if not files:
+        result["notes"].append(
+            "No LICENSE file found in standard locations. "
+            "Will inspect README for explicit license markers only; "
+            "never guess permissive status from repository visibility."
+        )
     for path in files:
         text = path.read_text(encoding="utf-8", errors="replace")[:200_000]
         name, confidence = _identify_license(text)
@@ -134,26 +137,39 @@ def license_check(dataset_id: str) -> Dict[str, Any]:
             }
         )
 
-    # Conservative aggregation
-    if all(n == "CC0" for n in identified):
+    # Conservative aggregation — never upgrade UNKNOWN to permissive without text.
+    known = {"CC0", "CC-BY-3.0", "CC-BY-4.0", "MIT", "Apache-2.0", "BSD-3-Clause"}
+    if identified and all(n == "CC0" for n in identified):
         result["license_name"] = "CC0-1.0"
         result["license_status"] = "VERIFIED_PERMISSIVE"
         result["redistribution_status"] = "PERMITTED_WITH_SOURCE_ATTRIBUTION"
         result["commercial_reuse_status"] = "PERMITTED_UNDER_CC0"
+        result["attribution_requirement"] = "RECORD_SOURCE"
         result["tracked_derivative_fixtures_allowed"] = True
         result["notes"].append(
             "CC0 text matched. Tiny synthetic derived fixtures may be tracked; "
             "raw third-party imagery still must not be committed."
         )
-    elif any(n == "UNKNOWN" for n in identified) and not all(
-        n in {"MIT", "Apache-2.0", "BSD-3-Clause", "CC0"} for n in identified
+    elif identified and all(n in known for n in identified) and any(
+        n.startswith("CC-BY") for n in identified
     ):
-        result["license_name"] = identified[0]
+        result["license_name"] = ",".join(sorted(set(identified)))
+        result["license_status"] = "VERIFIED_RESTRICTED"
+        result["redistribution_status"] = "ATTRIBUTION_REQUIRED_NO_TRACKED_IMAGERY"
+        result["commercial_reuse_status"] = "REVIEW_REQUIRED"
+        result["attribution_requirement"] = "REQUIRED"
+        result["tracked_derivative_fixtures_allowed"] = False
+        result["notes"].append(
+            "CC-BY marker matched. Attribution required. Third-party imagery binaries "
+            "must not be committed; commercial reuse requires separate review."
+        )
+    elif any(n == "UNKNOWN" for n in identified) or not identified:
+        result["license_name"] = identified[0] if identified else "UNKNOWN"
         result["license_status"] = "REVIEW_REQUIRED"
         result["tracked_derivative_fixtures_allowed"] = False
         result["notes"].append("Ambiguous or unknown license text — manual review required.")
     else:
-        # Known permissive family but not CC0 — still block tracked imagery fixtures.
+        # Known open-source license markers but not CC0 — block tracked imagery fixtures.
         result["license_name"] = ",".join(sorted(set(identified)))
         result["license_status"] = "VERIFIED_RESTRICTED"
         result["redistribution_status"] = "RESTRICTED_REVIEW_ATTRIBUTION"
@@ -163,6 +179,32 @@ def license_check(dataset_id: str) -> Dict[str, Any]:
             "Known open-source license markers found, but redistribution of imagery "
             "binaries remains blocked pending explicit dataset terms review."
         )
+
+    # MYGLA: if still unknown, inspect README for CC-BY (conservative restricted).
+    if result["license_status"] == "REVIEW_REQUIRED":
+        readme = content / "README.md"
+        if readme.is_file():
+            rtext = readme.read_text(encoding="utf-8", errors="replace")[:200_000]
+            name, conf = _identify_license(rtext)
+            if name.startswith("CC-BY"):
+                result["license_name"] = name
+                result["license_status"] = "VERIFIED_RESTRICTED"
+                result["redistribution_status"] = "ATTRIBUTION_REQUIRED_NO_TRACKED_IMAGERY"
+                result["commercial_reuse_status"] = "REVIEW_REQUIRED"
+                result["attribution_requirement"] = "REQUIRED"
+                result["tracked_derivative_fixtures_allowed"] = False
+                result["license_files"].append(
+                    {
+                        "path": "README.md",
+                        "sha256": sha256_file(readme),
+                        "identified_as": name,
+                        "confidence": conf,
+                    }
+                )
+                result["notes"].append(
+                    "License inferred conservatively from README CC-BY reference only; "
+                    "imagery still not redistributable via Git."
+                )
 
     write_json(receipt_dir(safe) / "license-check-latest.json", result)
     write_json(dataset_dir(safe) / "license_status.json", result)

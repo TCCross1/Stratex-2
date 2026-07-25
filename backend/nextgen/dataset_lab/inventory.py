@@ -51,8 +51,10 @@ def _safe_exif(path) -> Dict[str, Any]:
             if not exif:
                 return out
             tagged = {TAGS.get(k, str(k)): v for k, v in exif.items()}
-            out["camera_make"] = str(tagged.get("Make") or "") or None
-            out["camera_model"] = str(tagged.get("Model") or "") or None
+            make = str(tagged.get("Make") or "").replace("\x00", "").strip()
+            model = str(tagged.get("Model") or "").replace("\x00", "").strip()
+            out["camera_make"] = make or None
+            out["camera_model"] = model or None
             out["orientation"] = tagged.get("Orientation")
             out["timestamp"] = (
                 str(tagged.get("DateTime") or tagged.get("DateTimeOriginal") or "")
