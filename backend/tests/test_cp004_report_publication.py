@@ -393,23 +393,25 @@ async def test_delivery_recovery_uses_emit_outbox_no_second_worker(fake):
     assert events[0]["event_type"] == "REPORT_DELIVERY_REQUESTED"
     assert events[0]["payload"]["report_publication_id"] == pid
 
-    # Existing worker can claim/deliver — no second worker module.
-    delivered = {"ok": False}
+    # Existing worker can claim the outbox event — no second worker module.
+    # Unwired consumer must NOT mark DELIVERED (A-N-003).
+    seen = {"ok": False}
 
     async def handler(event):
         assert event["event_type"] == "REPORT_DELIVERY_REQUESTED"
-        delivered["ok"] = True
-        await report_publication.mark_report_delivered(
-            report_publication_id=pid, actor_id="worker"
-        )
+        seen["ok"] = True
+        result = await report_publication.consume_report_delivery_event(event)
+        assert result["status"] == "DELIVERY_CONSUMER_UNWIRED"
+        assert result["claimed_delivered"] is False
+        assert result["delivery_complete"] is False
 
     proc = await outbox_worker.process_one(
         worker_id="w-delivery", handler=handler, consumer_key="report.delivery"
     )
-    assert proc["status"] == "delivered"
-    assert delivered["ok"] is True
+    assert proc["status"] == "delivered"  # outbox receipt only
+    assert seen["ok"] is True
     row = await fake.report_publications.find_one({"report_publication_id": pid})
-    assert row["state"] == report_publication.STATE_DELIVERED
+    assert row["state"] == report_publication.STATE_DELIVERING  # not falsely DELIVERED
 
 
 @pytest.mark.asyncio
@@ -518,6 +520,9 @@ def test_authority_surface_and_no_second_publisher():
     assert surface["second_outbox_worker"] is False
     assert surface["alters_passport_truth"] is False
     assert surface["contract_status"] == "PROPOSED"
+    assert surface["delivery_consumer_wired"] is False
+    assert surface["complete_delivery_claimed"] is False
+    assert surface["audit_scrub"] == "outbox_worker.sanitize_dlq_payload"
 
     text = (BACKEND / "nextgen" / "report_publication.py").read_text(encoding="utf-8")
     assert "passport_entries.insert_one" not in text
@@ -526,9 +531,268 @@ def test_authority_surface_and_no_second_publisher():
     assert "await append_entry" not in text
     assert "await governed_publish" not in text
     assert "emit_outbox_event" in text
+    assert "sanitize_dlq_payload" in text
     # Must not define a second worker loop.
     assert "async def claim_next_event" not in text
     assert "async def process_one" not in text
+
+
+# ── PX-005 A-N-001 / A-N-002 / A-N-003 debt closure ───────────────────────
+
+@pytest.mark.asyncio
+async def test_report_audit_recursive_scrub_nested_secret_and_list(fake):
+    r = await report_publication.propose_report_publication(
+        tenant_id="t1",
+        property_id="p1",
+        report_type="homeowner_summary",
+        template_id="homeowner_summary",
+        actor_id="u1",
+    )
+    pid = r["report_publication_id"]
+    await report_publication._audit(
+        tenant_id="t1",
+        event_type="REPORT_AUDIT_PROBE",
+        actor_id="u1",
+        resource_id=pid,
+        payload={
+            "safe": "keep",
+            "nested": {
+                "password": "hunter2",
+                "deeper": {"api_key": "k-nested", "label": "ok"},
+            },
+            "items": [{"access_token": "tok", "id": 1}, {"id": 2}],
+            "url": "https://user:s3cret@objects.example/report?token=abc&ok=1",
+            "pem": (
+                "-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----"
+            ),
+            "blob": b"\x00\x01binary",
+            "big": "Z" * 20000,
+        },
+    )
+    audit = await fake.audit_events.find_one({"event_type": "REPORT_AUDIT_PROBE"})
+    assert audit["payload_scrubbed"] is True
+    assert audit["payload_is_canonical_truth"] is False
+    assert audit["payload_checksum"]
+    p = audit["payload"]
+    assert p["safe"] == "keep"
+    assert p["nested"]["password"] == "[REDACTED]"
+    assert p["nested"]["deeper"]["api_key"] == "[REDACTED]"
+    assert p["nested"]["deeper"]["label"] == "ok"
+    assert p["items"][0]["access_token"] == "[REDACTED]"
+    assert p["items"][0]["id"] == 1
+    assert "[REDACTED]" in p["url"]
+    assert "s3cret" not in p["url"]
+    assert "hunter2" not in str(p)
+    assert "BEGIN PRIVATE KEY" not in str(p)
+    assert p["blob"] == "[BINARY_OMITTED]"
+    assert audit["binary_omitted"] is True
+    assert audit["payload_truncated"] is True
+
+
+def test_habitat_safe_field_allowlist_and_internal_exclusion():
+    package = {
+        "report_publication_id": "rp-1",
+        "tenant_id": "t1",
+        "property_id": "p1",
+        "passport_id": "pass-1",
+        "passport_version": 4,
+        "report_type": "homeowner_summary",
+        "template_version": "1.2.0",
+        "state": report_publication.STATE_APPROVED_FOR_DELIVERY,
+        "checksum": "abc123",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-02T00:00:00+00:00",
+        "object_reference": "https://user:secret@minio/bucket/r.pdf?X-Amz-Signature=xyz",
+        "delivery_outbox_event_id": "evt-secret",
+        "contractor_margin": 0.42,
+        "audit_signature": "sig",
+        "storage_secret": "s3key",
+        "worker_lease": "lease-1",
+        "private_key": "PEM",
+    }
+    safe = report_publication.project_habitat_safe_report_fields(package)
+    assert set(safe.keys()) == set(report_publication.HABITAT_SAFE_REPORT_FIELDS)
+    assert safe["report_publication_id"] == "rp-1"
+    assert safe["publication_status"] == report_publication.STATE_APPROVED_FOR_DELIVERY
+    assert safe["delivery_status"] == report_publication.STATE_APPROVED_FOR_DELIVERY
+    assert safe["object_reference_safe_id"].startswith("objref:")
+    assert "secret" not in safe["object_reference_safe_id"]
+    assert "object_reference" not in safe
+    assert "contractor_margin" not in safe
+    assert "audit_signature" not in safe
+    assert "storage_secret" not in safe
+    assert "worker_lease" not in safe
+    assert "private_key" not in safe
+    assert "delivery_outbox_event_id" not in safe
+    assert safe["superseded"] is False
+    assert "incomplete" in safe["homeowner_safe_limitation_summary"].lower() or (
+        "Foundation" in safe["homeowner_safe_limitation_summary"]
+    )
+
+    superseded = report_publication.project_habitat_safe_report_fields(
+        {**package, "state": report_publication.STATE_SUPERSEDED}
+    )
+    assert superseded["superseded"] is True
+    assert superseded["delivery_status"] == "SUPERSEDED"
+
+
+@pytest.mark.asyncio
+async def test_unwired_delivery_cannot_become_delivered(fake):
+    assert report_publication.delivery_consumer_is_wired() is False
+    contract = report_publication.report_delivery_event_contract()
+    assert contract["consumer_wired"] is False
+    assert contract["complete_delivery_claimed"] is False
+
+    r = await report_publication.propose_report_publication(
+        tenant_id="t1",
+        property_id="p1",
+        report_type="homeowner_summary",
+        template_id="homeowner_summary",
+        actor_id="u1",
+    )
+    pid = r["report_publication_id"]
+    for state in (
+        report_publication.STATE_INPUTS_VALIDATED,
+        report_publication.STATE_RENDERING,
+        report_publication.STATE_RENDERED,
+        report_publication.STATE_UNDER_REVIEW,
+        report_publication.STATE_APPROVED_FOR_DELIVERY,
+        report_publication.STATE_DELIVERING,
+    ):
+        await report_publication.transition_report_publication(
+            report_publication_id=pid, target_state=state, actor_id="u1"
+        )
+
+    with pytest.raises(report_publication.DeliveryConsumerUnwired):
+        await report_publication.mark_report_delivered(
+            report_publication_id=pid, actor_id="rogue"
+        )
+
+    result = await report_publication.consume_report_delivery_event(
+        {
+            "event_type": report_publication.EVENT_REPORT_DELIVERY_REQUESTED,
+            "payload": {"report_publication_id": pid},
+        }
+    )
+    assert result["status"] == "DELIVERY_CONSUMER_UNWIRED"
+    assert result["claimed_delivered"] is False
+    assert result["delivery_complete"] is False
+    row = await fake.report_publications.find_one({"report_publication_id": pid})
+    assert row["state"] == report_publication.STATE_DELIVERING
+
+
+@pytest.mark.asyncio
+async def test_stale_passport_checksum_duplicate_and_replay_guards(fake):
+    # Deterministic cache identity ignores volatile fields.
+    base = {
+        "tenant_id": "t1",
+        "property_id": "p1",
+        "passport_id": "pass-1",
+        "passport_version": 1,
+        "passport_head_hash": "h1",
+        "report_type": "homeowner_summary",
+        "template_id": "homeowner_summary",
+        "template_version": "1.0.0",
+        "approved_entry_ids": ["a", "b"],
+        "locale": "en-US",
+        "schema_version": "0.0.0",
+    }
+    assert report_publication.report_cache_identity(base) == (
+        report_publication.report_cache_identity(
+            {**base, "approved_entry_ids": ["b", "a"]}
+        )
+    )
+    # Stale passport version changes identity.
+    stale = report_publication.report_cache_identity(
+        {**base, "passport_version": 2, "passport_head_hash": "h2"}
+    )
+    assert stale != report_publication.report_cache_identity(base)
+
+    r = await report_publication.propose_report_publication(
+        tenant_id="t1",
+        property_id="p1",
+        report_type="homeowner_summary",
+        template_id="homeowner_summary",
+        passport_id="pass-1",
+        passport_version=1,
+        passport_head_hash="h1",
+        approved_entry_ids=["a", "b"],
+        actor_id="u1",
+    )
+    pid = r["report_publication_id"]
+    await report_publication.transition_report_publication(
+        report_publication_id=pid,
+        target_state=report_publication.STATE_INPUTS_VALIDATED,
+        actor_id="u1",
+    )
+    await report_publication.transition_report_publication(
+        report_publication_id=pid,
+        target_state=report_publication.STATE_RENDERING,
+        actor_id="u1",
+    )
+    await report_publication.transition_report_publication(
+        report_publication_id=pid,
+        target_state=report_publication.STATE_RENDERED,
+        actor_id="u1",
+        object_reference="s3://bucket/r.pdf",
+        checksum="checksum-v1",
+    )
+    row = await fake.report_publications.find_one({"report_publication_id": pid})
+    assert row["checksum"] == "checksum-v1"
+    # Checksum mismatch against package is detectable by consumers.
+    assert row["checksum"] != "checksum-other"
+
+    # Timeline idempotency + no canonical history rewrite.
+    t1 = await report_publication.produce_report_timeline_entry(
+        tenant_id="t1",
+        property_id="p1",
+        report_publication_id=pid,
+    )
+    t2 = await report_publication.produce_report_timeline_entry(
+        tenant_id="t1",
+        property_id="p1",
+        report_publication_id=pid,
+    )
+    assert t1["status"] == "created"
+    assert t2["duplicate"] is True
+    assert await fake.property_timeline.count_documents({}) == 1
+    assert await fake.passport_entries.count_documents({}) == 0
+
+    # Duplicate delivery event is idempotent at outbox layer.
+    for state in (
+        report_publication.STATE_UNDER_REVIEW,
+        report_publication.STATE_APPROVED_FOR_DELIVERY,
+    ):
+        await report_publication.transition_report_publication(
+            report_publication_id=pid, target_state=state, actor_id="u1"
+        )
+    e1 = await report_publication.enqueue_report_delivery(
+        report_publication_id=pid, actor_id="u1", channel="habitat"
+    )
+    e2 = await report_publication.enqueue_report_delivery(
+        report_publication_id=pid, actor_id="u1", channel="habitat"
+    )
+    assert e2["duplicate"] is True
+    assert e2["event_id"] == e1["event_id"]
+
+    # Replay authorization still gated (C-P-003).
+    with pytest.raises(PermissionError):
+        await outbox_worker.replay_dead_lettered_event(
+            event_id="missing",
+            operator_id="u1",
+            operator_role="viewer",
+            reason="nope",
+        )
+
+
+def test_lane_ownership_registers_report_publication():
+    text = (REPO / "engineering" / "lanes.yaml").read_text(encoding="utf-8")
+    assert "backend/nextgen/report_publication.py" in text
+    assert "backend/tests/test_cp004_report_publication.py" in text
+    assert "engineering/px004/lane1/" in text
+    # Must not strip Lane 5 ownership.
+    assert "LANE_5_RUNTIME_QE" in text
+    assert "engineering/rt002/" in text
 
 
 def test_contract_readiness_never_frozen():

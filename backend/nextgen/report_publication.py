@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from .db import now_iso_utc, nx_collections, nx_id
 from .outbox import emit_outbox_event
+from .outbox_worker import sanitize_dlq_payload
 
 logger = logging.getLogger("stratex.report_publication")
 
@@ -28,6 +29,64 @@ MODULE_IDENTITY = "nextgen.report_publication"
 PACKAGE_CONTRACT = "ReportPublicationPackage"
 CONTRACT_STATUS = "PROPOSED"  # never FROZEN from this lane
 CONTRACT_VERSION = "0.0.0"
+
+# Delivery consumer is explicit but unwired in this checkpoint (A-N-003).
+REPORT_DELIVERY_CONSUMER_WIRED = False
+REPORT_DELIVERY_CONSUMER_STATUS = "UNWIRED"
+REPORT_DELIVERY_EVENT_CONTRACT = {
+    "event_type": "REPORT_DELIVERY_REQUESTED",
+    "contract_version": "0.0.0",
+    "consumer_status": REPORT_DELIVERY_CONSUMER_STATUS,
+    "consumer_wired": REPORT_DELIVERY_CONSUMER_WIRED,
+    "complete_delivery_claimed": False,
+}
+
+# Homeowner-safe Habitat projection allowlist (A-N-002). Exact fields only.
+HABITAT_SAFE_REPORT_FIELDS = (
+    "report_publication_id",
+    "tenant_id",
+    "property_id",
+    "passport_id",
+    "passport_version",
+    "report_type",
+    "template_version",
+    "publication_status",
+    "delivery_status",
+    "object_reference_safe_id",
+    "checksum",
+    "generated_at",
+    "approved_at",
+    "superseded",
+    "homeowner_safe_limitation_summary",
+)
+
+# Never projected to Habitat from this producer.
+HABITAT_INTERNAL_EXCLUDED_FIELDS = frozenset(
+    {
+        "worker_lease",
+        "lease_until",
+        "leased_by",
+        "audit_signature",
+        "storage_secret",
+        "object_storage_secret",
+        "presigned_url",
+        "signed_url",
+        "password",
+        "token",
+        "authorization",
+        "private_key",
+        "contractor_margin",
+        "contractor_cost",
+        "wholesale_cost",
+        "internal_cost",
+        "markup",
+        "commission",
+        "profit",
+        "hmac_key",
+        "delivery_outbox_event_id",
+        "object_reference",  # may carry credential-bearing URLs; use safe id
+    }
+)
 
 # Lifecycle states (ordered for documentation; transitions enforced below).
 STATE_PROPOSED = "PROPOSED"
@@ -107,6 +166,10 @@ class InvalidPublicationTransition(ReportPublicationError):
 
 class PassportTruthGuardError(ReportPublicationError):
     """Raised when an operation would invent or mutate Passport truth."""
+
+
+class DeliveryConsumerUnwired(ReportPublicationError):
+    """Raised when code attempts DELIVERED without a wired delivery consumer."""
 
 
 def _fingerprint(payload: Dict[str, Any]) -> str:
@@ -457,13 +520,85 @@ async def enqueue_report_delivery(
     }
 
 
+def delivery_consumer_is_wired() -> bool:
+    """Checkpoint honesty: delivery consumer interface exists but is unwired."""
+    return bool(REPORT_DELIVERY_CONSUMER_WIRED)
+
+
+def report_delivery_event_contract() -> Dict[str, Any]:
+    """Explicit event contract for report delivery recovery."""
+    return dict(REPORT_DELIVERY_EVENT_CONTRACT)
+
+
+async def consume_report_delivery_event(
+    event: Dict[str, Any],
+    *,
+    actor_id: str = "report.delivery.consumer",
+) -> Dict[str, Any]:
+    """Explicit delivery consumer interface (A-N-003).
+
+    When unwired (this checkpoint), returns a controlled unsupported state and
+    never transitions a package to DELIVERED. Complete delivery is not claimed.
+    """
+    event_type = (event or {}).get("event_type")
+    payload = (event or {}).get("payload") or {}
+    report_publication_id = payload.get("report_publication_id")
+    if event_type != EVENT_REPORT_DELIVERY_REQUESTED:
+        return {
+            "status": "UNSUPPORTED_EVENT",
+            "delivery_complete": False,
+            "claimed_delivered": False,
+            "publication_state": None,
+            "event_contract": report_delivery_event_contract(),
+            "notes": f"unsupported event_type={event_type!r}",
+        }
+    if not delivery_consumer_is_wired():
+        package = None
+        if report_publication_id:
+            package = await nx_collections.report_publications.find_one(
+                {"report_publication_id": report_publication_id}
+            )
+        return {
+            "status": "DELIVERY_CONSUMER_UNWIRED",
+            "delivery_complete": False,
+            "claimed_delivered": False,
+            "report_publication_id": report_publication_id,
+            "publication_state": None if package is None else package.get("state"),
+            "event_contract": report_delivery_event_contract(),
+            "notes": (
+                "Report delivery consumer interface is explicit but unwired in "
+                "this checkpoint; cannot report DELIVERED."
+            ),
+            "actor_id": actor_id,
+        }
+    # Future wired path only — unreachable while REPORT_DELIVERY_CONSUMER_WIRED is False.
+    return await mark_report_delivered(
+        report_publication_id=report_publication_id,
+        actor_id=actor_id,
+        delivery_receipt="wired_consumer_ack",
+        consumer_wired_ack=True,
+    )
+
+
 async def mark_report_delivered(
     *,
     report_publication_id: str,
     actor_id: str = "system",
     delivery_receipt: Optional[str] = None,
+    consumer_wired_ack: bool = False,
 ) -> Dict[str, Any]:
-    """Mark package DELIVERED after successful outbox consumer handling."""
+    """Mark package DELIVERED only when a wired consumer acknowledges delivery.
+
+    Unwired checkpoint consumers must use ``consume_report_delivery_event``,
+    which cannot reach DELIVERED. Passing ``consumer_wired_ack=True`` is reserved
+    for an actually wired consumer or explicit state-machine tests of the
+    transition graph — it does not claim production delivery completeness.
+    """
+    if not delivery_consumer_is_wired() and not consumer_wired_ack:
+        raise DeliveryConsumerUnwired(
+            "cannot mark DELIVERED: report delivery consumer is UNWIRED "
+            "(complete delivery not claimed in this checkpoint)"
+        )
     result = await transition_report_publication(
         report_publication_id=report_publication_id,
         target_state=STATE_DELIVERED,
@@ -484,7 +619,82 @@ async def mark_report_delivered(
         producer_resource_kind="report_publication",
         producer_resource_id=report_publication_id,
     )
+    result["complete_delivery_claimed"] = bool(delivery_consumer_is_wired())
+    result["delivery_consumer_status"] = REPORT_DELIVERY_CONSUMER_STATUS
     return result
+
+
+def _object_reference_safe_id(object_reference: Optional[str]) -> Optional[str]:
+    """Opaque safe identifier for Habitat — never a credential-bearing URL."""
+    if not object_reference:
+        return None
+    return "objref:" + _fingerprint({"object_reference_v1": str(object_reference)})[:32]
+
+
+def project_habitat_safe_report_fields(
+    package: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Project exact homeowner-safe report fields for Habitat (A-N-002).
+
+    Excludes worker, audit-signature, storage-secret, and contractor financial
+    fields. ``object_reference`` is never emitted raw — only a safe identifier.
+    """
+    if not isinstance(package, dict):
+        raise ReportPublicationError("package must be a dict")
+
+    state = package.get("state")
+    superseded = state == STATE_SUPERSEDED
+    publication_status = state
+    if state in (STATE_DELIVERED, STATE_DELIVERING, STATE_APPROVED_FOR_DELIVERY):
+        delivery_status = state
+    elif state == STATE_FAILED:
+        delivery_status = "FAILED"
+    elif superseded:
+        delivery_status = "SUPERSEDED"
+    else:
+        delivery_status = "NOT_DELIVERED"
+
+    approved_at = package.get("approved_at")
+    if approved_at is None and state in (
+        STATE_APPROVED_FOR_DELIVERY,
+        STATE_DELIVERING,
+        STATE_DELIVERED,
+    ):
+        approved_at = package.get("updated_at")
+
+    limitation = package.get("homeowner_safe_limitation_summary")
+    if not limitation:
+        limitation = (
+            "Foundation report reference only. Premium rendering and production "
+            "delivery remain incomplete. Not a complete homeowner deliverable."
+        )
+
+    projected = {
+        "report_publication_id": package.get("report_publication_id"),
+        "tenant_id": package.get("tenant_id"),
+        "property_id": package.get("property_id"),
+        "passport_id": package.get("passport_id"),
+        "passport_version": package.get("passport_version"),
+        "report_type": package.get("report_type"),
+        "template_version": package.get("template_version"),
+        "publication_status": publication_status,
+        "delivery_status": delivery_status,
+        "object_reference_safe_id": _object_reference_safe_id(
+            package.get("object_reference")
+        ),
+        "checksum": package.get("checksum"),
+        "generated_at": package.get("generated_at") or package.get("created_at"),
+        "approved_at": approved_at,
+        "superseded": superseded,
+        "homeowner_safe_limitation_summary": limitation,
+    }
+    # Enforce allowlist + internal exclusion.
+    safe = {k: projected[k] for k in HABITAT_SAFE_REPORT_FIELDS if k in projected}
+    for banned in HABITAT_INTERNAL_EXCLUDED_FIELDS:
+        safe.pop(banned, None)
+    assert "object_reference" not in safe
+    assert not (HABITAT_INTERNAL_EXCLUDED_FIELDS & set(safe.keys()))
+    return safe
 
 
 async def produce_bounded_passport_projection(
@@ -728,17 +938,12 @@ async def _audit(
     resource_id: str,
     payload: Optional[Dict[str, Any]] = None,
 ) -> None:
-    safe = dict(payload or {})
-    for banned in (
-        "password",
-        "secret",
-        "authorization",
-        "token",
-        "api_key",
-        "private_key",
-        "hmac_key",
-    ):
-        safe.pop(banned, None)
+    """Persist report-publication audit using the accepted recursive scrub (A-N-001).
+
+    Reuses ``outbox_worker.sanitize_dlq_payload`` — no weaker second sanitizer.
+    Never stores raw report payloads, object-storage credentials, or signed URLs.
+    """
+    scrubbed = sanitize_dlq_payload(payload or {}, max_depth=6, max_bytes=4096)
     await nx_collections.audit_events.insert_one(
         {
             "canonical_id": nx_id(),
@@ -749,14 +954,23 @@ async def _audit(
             "resource_kind": "report_publication",
             "resource_id": resource_id,
             "at": now_iso_utc(),
-            "payload": safe,
+            "payload": scrubbed["payload"],
+            "payload_scrubbed": True,
+            "payload_truncated": scrubbed["payload_truncated"],
+            "payload_checksum": scrubbed["payload_checksum"],
+            "payload_is_canonical_truth": False,
+            "scrub_policy": scrubbed["scrub_policy"],
+            "secrets_redacted": scrubbed["secrets_redacted"],
+            "binary_omitted": scrubbed["binary_omitted"],
         }
     )
     logger.info(
-        "report_publication_audit event_type=%s resource_id=%s actor_id=%s",
+        "report_publication_audit event_type=%s resource_id=%s actor_id=%s "
+        "payload_scrubbed=true truncated=%s",
         event_type,
         resource_id,
         actor_id,
+        scrubbed["payload_truncated"],
     )
 
 
@@ -769,6 +983,11 @@ def authority_surface_check() -> Dict[str, Any]:
         "second_publisher": False,
         "second_outbox_worker": False,
         "delivery_via": "outbox.emit_outbox_event",
+        "delivery_consumer_wired": delivery_consumer_is_wired(),
+        "delivery_consumer_status": REPORT_DELIVERY_CONSUMER_STATUS,
+        "complete_delivery_claimed": False,
+        "habitat_safe_fields": list(HABITAT_SAFE_REPORT_FIELDS),
+        "audit_scrub": "outbox_worker.sanitize_dlq_payload",
         "alters_passport_truth": False,
         "contract_status": CONTRACT_STATUS,
         "package_contract": PACKAGE_CONTRACT,

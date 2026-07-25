@@ -26,8 +26,11 @@ lanes:
       - backend/nextgen/outbox.py
       - backend/nextgen/outbox_worker.py
       - backend/nextgen/projection_reconciliation.py
+      - backend/nextgen/report_publication.py
       - backend/tests/test_cp003_publication_recovery.py
       - backend/tests/test_cp003_live_publication_recovery.py
+      - backend/tests/test_cp004_report_publication.py
+      - engineering/px004/lane1/
       - backend/nextgen/routes/passports.py
       - backend/nextgen/routes/intelligence.py
       - backend/nextgen/routes/findings.py
@@ -64,10 +67,12 @@ lanes:
       - backend/tests/test_cp002_passport_concurrency.py
       - backend/tests/test_cp003_publication_recovery.py
       - backend/tests/test_cp003_live_publication_recovery.py
+      - backend/tests/test_cp004_report_publication.py
     contracts:
       - PropertyProjection
       - ApprovedGeometry
       - ApprovedFinding
+      - ReportPublicationPackage
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
 

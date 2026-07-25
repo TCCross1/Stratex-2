@@ -71,6 +71,8 @@ _SECRET_KEY_MARKERS = (
 
 DLQ_MAX_DEPTH = 8
 DLQ_MAX_BYTES = 8192
+DLQ_MAX_COLLECTION_ITEMS = 64
+DLQ_MAX_VALUE_CHARS = 2048
 _REDACTED = "[REDACTED]"
 _BINARY_OMITTED = "[BINARY_OMITTED]"
 _TRUNCATED_MARKER = "[TRUNCATED]"
@@ -80,6 +82,10 @@ _QUERY_SECRET_RE = re.compile(
     r"([?&](?:password|passwd|secret|token|api_key|apikey|authorization|access_token|"
     r"refresh_token|private_key|client_secret)=)([^&#\s]+)",
     re.IGNORECASE,
+)
+_PRIVATE_KEY_PEM_RE = re.compile(
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----",
+    re.DOTALL,
 )
 
 # Trusted internal worker model (GLOBAL_INTERNAL_WORKER): claim is not tenant-routed;
@@ -119,10 +125,24 @@ def _is_secret_key(key: Any) -> bool:
     return any(marker in norm for marker in _SECRET_KEY_MARKERS)
 
 
+def _redact_private_key_text(value: str) -> str:
+    """Redact PEM / armor private-key blocks embedded in string values."""
+    if not isinstance(value, str):
+        return value
+    if "PRIVATE KEY-----" not in value and "private key" not in value.lower():
+        return value
+    redacted = _PRIVATE_KEY_PEM_RE.sub(_REDACTED, value)
+    lower = redacted.lower()
+    if "begin private key" in lower or "begin rsa private key" in lower:
+        return _REDACTED
+    return redacted
+
+
 def _redact_credential_url(value: str) -> str:
     """Redact userinfo and secret query params from URL-like strings."""
     if not isinstance(value, str):
         return value
+    value = _redact_private_key_text(value)
     if "://" not in value:
         # Still scrub secret query fragments when scheme-less.
         if ("=" in value) and any(
@@ -180,11 +200,16 @@ def _sanitize_value(
 
     if isinstance(value, str):
         cleaned = _redact_credential_url(value)
+        if cleaned == _REDACTED and value != _REDACTED:
+            flags["secrets_redacted"] = True
         # Heuristic: non-text / high binary content
         if "\x00" in cleaned:
             flags["binary_omitted"] = True
             budget[0] = max(0, budget[0] - len(_BINARY_OMITTED))
             return _BINARY_OMITTED
+        if len(cleaned) > DLQ_MAX_VALUE_CHARS:
+            flags["truncated"] = True
+            cleaned = cleaned[:DLQ_MAX_VALUE_CHARS] + _TRUNCATED_MARKER
         cost = _json_size(cleaned)
         if cost > budget[0]:
             flags["truncated"] = True
@@ -196,10 +221,14 @@ def _sanitize_value(
 
     if isinstance(value, dict):
         out: Dict[str, Any] = {}
-        for raw_key, raw_val in value.items():
+        for idx, (raw_key, raw_val) in enumerate(value.items()):
             if budget[0] <= 0:
                 flags["truncated"] = True
                 out["__truncated__"] = True
+                break
+            if idx >= DLQ_MAX_COLLECTION_ITEMS:
+                flags["truncated"] = True
+                out["__collection_truncated__"] = True
                 break
             key_str = str(raw_key)
             if _is_secret_key(key_str):
@@ -218,8 +247,12 @@ def _sanitize_value(
 
     if isinstance(value, (list, tuple)):
         out_list: List[Any] = []
-        for item in value:
+        for idx, item in enumerate(value):
             if budget[0] <= 0:
+                flags["truncated"] = True
+                out_list.append(_TRUNCATED_MARKER)
+                break
+            if idx >= DLQ_MAX_COLLECTION_ITEMS:
                 flags["truncated"] = True
                 out_list.append(_TRUNCATED_MARKER)
                 break
