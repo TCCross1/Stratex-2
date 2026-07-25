@@ -214,4 +214,3 @@ dataset_artifact_dir = artifact_dir
 
 def sha256_hex(data: bytes) -> str:
     return sha256_bytes(data)
-
