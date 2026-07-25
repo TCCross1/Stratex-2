@@ -597,7 +597,10 @@ def run_odm_reconstruction(
     except Exception:
         pass
     write_json(art / f"reconstruction_{run_name}.json", receipt)
-    write_json(art / "reconstruction_latest.json", receipt)
+    # Only successful promoted runs update reconstruction_latest.json so negative
+    # proofs cannot overwrite the authoritative success receipt.
+    if receipt.get("status") == "SUCCESS" and receipt.get("promoted"):
+        write_json(art / "reconstruction_latest.json", receipt)
     # Output manifest alongside receipt
     if receipt.get("promoted") and receipt.get("output_checksums"):
         write_json(
