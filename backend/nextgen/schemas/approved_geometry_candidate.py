@@ -26,7 +26,7 @@ class ApprovedGeometryCandidate(BaseModel):
     """Candidate only — never a production ApprovedGeometry acceptance."""
 
     meta: ContractMeta = Field(
-        default_factory=lambda: ContractMeta(contract_name="ApprovedGeometry")
+        default_factory=lambda: ContractMeta(contract_name="ApprovedGeometryCandidate")
     )
     candidate_id: str
     mission_id: str

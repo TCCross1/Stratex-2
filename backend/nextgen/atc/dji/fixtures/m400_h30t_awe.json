@@ -1,0 +1,58 @@
+{
+  "manifest": {
+    "package_id": "syn-pkg-m400-h30t-001",
+    "profile_id": "M400_H30T_AWE",
+    "format_id": "stratex.synthetic.dji_package/v0",
+    "format_version": "0.0.0",
+    "manifest_sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "created_at_fixture": "2026-07-24T00:00:00Z",
+    "synthetic": true,
+    "live_dji_sdk": false,
+    "physical_capture_claimed": false,
+    "rtk_accuracy_claimed": false
+  },
+  "inventory": [
+    {
+      "artifact_id": "thermal-h30t-001",
+      "relative_path": "thermal/h30t_001.rjpg",
+      "category": "THERMAL_RADIOMETRIC",
+      "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb01",
+      "bytes_claimed": 4096,
+      "required": true,
+      "present": true,
+      "paired_with": "rgb-h30t-001"
+    },
+    {
+      "artifact_id": "rgb-h30t-001",
+      "relative_path": "rgb/h30t_001.jpg",
+      "category": "RGB_IMAGE",
+      "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc01",
+      "bytes_claimed": 2048,
+      "required": true,
+      "present": true,
+      "paired_with": "thermal-h30t-001"
+    },
+    {
+      "artifact_id": "flight-log",
+      "relative_path": "logs/flight.json",
+      "category": "FLIGHT_LOG",
+      "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd01",
+      "bytes_claimed": 256,
+      "required": true,
+      "present": true
+    }
+  ],
+  "rjpg_metadata": [
+    {
+      "artifact_id": "thermal-h30t-001",
+      "relative_path": "thermal/h30t_001.rjpg",
+      "radiometric": true,
+      "camera_model_fixture": "synthetic-h30t-thermal",
+      "capture_timestamp_fixture": "2026-07-24T03:00:00Z",
+      "ambient_c_fixture": 16.0,
+      "emissivity_fixture": 0.94,
+      "automated_diagnosis": false,
+      "synthetic": true
+    }
+  ]
+}

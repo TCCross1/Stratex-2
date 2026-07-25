@@ -80,10 +80,18 @@ lanes:
     name: ATC and Field Capture
     description: >
       4E mapping missions, 4T AWE missions, readiness, mission orchestration,
-      evidence manifests, capture-state workflows. ATC-001 is not implemented by EF-001.
+      evidence manifests, capture-state workflows. ATC produces candidates only —
+      never final Passport approval authority.
     owned_paths:
       - backend/nextgen/awe.py
       - backend/nextgen/evidence_profiles.py
+      - backend/nextgen/atc/
+      - backend/nextgen/schemas/atc/
+      - backend/nextgen/schemas/approved_geometry_candidate.py
+      - backend/nextgen/schemas/awe_evidence_candidate.py
+      - backend/tests/test_atc001a_contract_orchestration.py
+      - backend/tests/test_atc001b_evidence_boundary.py
+      - engineering/px004/lane2/
       - backend/nextgen/routes/missions.py
       - backend/nextgen/routes/evidence.py
       - backend/nextgen/routes/workflow.py
@@ -108,9 +116,13 @@ lanes:
     required_tests:
       - backend/tests/test_nextgen_phase1a.py
       - backend/tests/test_nextgen_wave2a.py
+      - backend/tests/test_atc001a_contract_orchestration.py
+      - backend/tests/test_atc001b_evidence_boundary.py
     contracts:
       - EvidenceManifest
       - ApprovedGeometry
+      - GeometryCandidate
+      - AWEEvidenceCandidate
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
 
