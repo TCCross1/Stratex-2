@@ -25,10 +25,19 @@ AWEEvidenceCandidate = AweEvidenceCandidate
 MIGRATION_NOTES = (
     "ATC-001B aliases: GeometryCandidate == ApprovedGeometryCandidate (ATC-001A); "
     "AWEEvidenceCandidate == AweEvidenceCandidate (ATC-001A spelling). "
+    "Candidate meta.contract_name must be ApprovedGeometryCandidate or "
+    "GeometryCandidate — never ApprovedGeometry for unapproved data. "
+    "Deprecated alias: historical payloads that used meta.contract_name="
+    "ApprovedGeometry for candidates are rejected as MISLABELED_APPROVED "
+    "(versioned 0.0.0 migration; consumers must not infer approval from the "
+    "legacy name). "
     "Do not treat GeometryCandidate as ApprovedGeometry. "
     "Do not treat AWEEvidenceCandidate as ApprovedFinding. "
     "Promotion to approved contracts is outside LANE_2 ATC authority."
 )
+
+# Explicit deprecated alias — documented, versioned, not silently accepted.
+DEPRECATED_CANDIDATE_CONTRACT_NAMES = frozenset({"ApprovedGeometry"})
 
 
 def alias_map() -> Dict[str, Type]:

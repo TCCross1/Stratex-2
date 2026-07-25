@@ -23,7 +23,7 @@
     "meta": {
       "type": "object",
       "properties": {
-        "contract_name": { "const": "ApprovedGeometry" },
+        "contract_name": { "const": "ApprovedGeometryCandidate" },
         "contract_version": { "const": "0.0.0" },
         "lifecycle_status": { "enum": ["PROPOSED", "READY_FOR_FREEZE"] },
         "approval_authority": { "const": "Atlas" }

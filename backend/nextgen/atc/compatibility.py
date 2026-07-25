@@ -137,7 +137,8 @@ def validate_compatibility(
     """
     data = _as_mapping(payload)
     meta = _meta_dict(data)
-    contract_name = expected_contract or meta.get("contract_name") or "Unknown"
+    declared_name = meta.get("contract_name") or "Unknown"
+    contract_name = expected_contract or declared_name
     # Normalize alias names for field tables
     field_key = contract_name
     if contract_name == "ApprovedGeometryCandidate":
@@ -147,6 +148,39 @@ def validate_compatibility(
 
     version = str(meta.get("contract_version") or "0.0.0")
     issues: List[CompatibilityIssue] = []
+
+    # C-N-001: unapproved candidate-shaped payloads must not claim ApprovedGeometry.
+    candidate_shaped = (
+        "candidate_id" in data
+        or field_key in {"GeometryCandidate", "AWEEvidenceCandidate"}
+        or expected_contract
+        in {
+            "GeometryCandidate",
+            "ApprovedGeometryCandidate",
+            "AWEEvidenceCandidate",
+            "AweEvidenceCandidate",
+        }
+    )
+    if candidate_shaped and declared_name == "ApprovedGeometry":
+        issues.append(
+            CompatibilityIssue(
+                code="MISLABELED_APPROVED",
+                severity="error",
+                message=(
+                    "Unapproved candidate must not declare meta.contract_name="
+                    "ApprovedGeometry (deprecated alias; consumers must not "
+                    "infer approval from the legacy name)"
+                ),
+                field="meta.contract_name",
+            )
+        )
+        # Force candidate identity for remaining checks when expected.
+        if expected_contract in {
+            "GeometryCandidate",
+            "ApprovedGeometryCandidate",
+        }:
+            contract_name = expected_contract
+            field_key = "GeometryCandidate"
 
     supported = SUPPORTED_CONTRACT_VERSIONS.get(contract_name)
     if supported is None:
@@ -252,6 +286,58 @@ def _check_doctrine(
                     field="automated_thermal_diagnosis",
                 )
             )
+        # C-N-002: raw dict must mirror typed AWE approval-boundary validation.
+        if data.get("is_production_approved") is True:
+            issues.append(
+                CompatibilityIssue(
+                    code="PREMATURE_APPROVAL",
+                    severity="error",
+                    message="AWE evidence candidate must not be production-approved by ATC",
+                    field="is_production_approved",
+                )
+            )
+        approval_status = data.get("approval_status")
+        if approval_status is not None and approval_status not in {
+            "CANDIDATE",
+            "NOT_APPROVED",
+            "REJECTED_CANDIDATE",
+        }:
+            issues.append(
+                CompatibilityIssue(
+                    code="PREMATURE_APPROVAL",
+                    severity="error",
+                    message=(
+                        f"AWE approval_status={approval_status!r} is not a "
+                        "candidate/readiness state"
+                    ),
+                    field="approval_status",
+                )
+            )
+        # Unrecognized approval-ish fields are never trusted.
+        for untrusted in ("approved", "final_approval", "passport_approved"):
+            if untrusted in data and data.get(untrusted) not in (None, False):
+                issues.append(
+                    CompatibilityIssue(
+                        code="UNTRUSTED_APPROVAL_FIELD",
+                        severity="error",
+                        message=(
+                            f"Unrecognized approval field {untrusted!r} is not "
+                            "trusted on AWE candidates"
+                        ),
+                        field=untrusted,
+                    )
+                )
+        for idx, obs in enumerate(data.get("observations") or []):
+            obs_map = obs.model_dump() if hasattr(obs, "model_dump") else dict(obs or {})
+            if obs_map.get("automated_diagnosis") is True:
+                issues.append(
+                    CompatibilityIssue(
+                        code="THERMAL_DIAGNOSIS_VIOLATION",
+                        severity="error",
+                        message="observation must not claim automated diagnosis",
+                        field=f"observations[{idx}].automated_diagnosis",
+                    )
+                )
         # Geometry-like keys must not appear on thermal candidates
         for geom_key in ("extents", "rtk_accuracy_claimed", "approved_because_from_4e"):
             if geom_key in data and data.get(geom_key) not in (None, False):

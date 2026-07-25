@@ -47,6 +47,14 @@ Executable enum (fixture evaluation only):
 - `REJECTED_PACKAGE`
 - `UNSUPPORTED_FORMAT`
 
+### C-N-003 pipeline limitation honesty (PX-005)
+
+Synthetic parser → quality-gate pipeline remains foundational. It does **not**
+claim complete professional review or approval. Synthetic packages stop at
+`USABLE_WITH_LIMITATIONS` with explicit `SYNTHETIC_FIXTURE` and
+`MISSING_PROFESSIONAL_REVIEW` limitations. Remaining review/approval producer
+is outside ATC (Atlas / LANE_1 Passport path).
+
 ## Authority confirmation
 
 ATC-001B modules under `backend/nextgen/atc/` and `backend/nextgen/schemas/atc/`:

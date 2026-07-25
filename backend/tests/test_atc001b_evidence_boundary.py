@@ -156,8 +156,92 @@ def test_geometry_candidate_alias_is_not_approved_geometry():
     )
     assert cand.is_production_approved is False
     assert cand.approval_status == "CANDIDATE"
+    # C-N-001: candidate identity must not claim ApprovedGeometry.
+    assert cand.meta.contract_name == "ApprovedGeometryCandidate"
+    assert cand.meta.contract_name != "ApprovedGeometry"
     # Distinct consumer type
     assert GeometryCandidate is not ApprovedGeometry
+
+
+def test_candidate_must_not_declare_approved_geometry_contract_name():
+    payload = {
+        "meta": {"contract_name": "ApprovedGeometry", "contract_version": "0.0.0"},
+        "candidate_id": "geo-legacy",
+        "mission_id": "m-4e",
+        "aircraft_profile_id": "M4E_MAPPING",
+        "source_evidence_manifest_id": "em-1",
+        "approval_status": "CANDIDATE",
+        "approved_because_from_4e": False,
+        "is_production_approved": False,
+        "rtk_accuracy_claimed": False,
+        "provenance": {
+            "source_type": "synthetic_fixture",
+            "source_id": "fx-1",
+            "captured_at": "2026-01-01T00:00:00Z",
+        },
+        "confidence": {"band": "low", "notes": "fixture"},
+        "unknown_state": {"incomplete": True, "missing_artifacts": [], "unresolved_surfaces": []},
+    }
+    result = validate_compatibility(
+        payload, expected_contract="GeometryCandidate"
+    )
+    assert result.ok is False
+    assert any(i.code == "MISLABELED_APPROVED" for i in result.errors)
+
+
+def test_awe_raw_dict_approval_boundary_matches_typed():
+    base = {
+        "meta": {"contract_name": "AWEEvidenceCandidate", "contract_version": "0.0.0"},
+        "candidate_id": "awe-raw",
+        "mission_id": "m-4t",
+        "aircraft_profile_id": "M4T_AWE",
+        "source_evidence_manifest_id": "em-4t",
+        "approval_status": "CANDIDATE",
+        "is_dimensional_authority": False,
+        "thermal_changes_dimensions": False,
+        "automated_thermal_diagnosis": False,
+        "is_production_approved": False,
+        "observations": [],
+        "provenance": {
+            "source_type": "synthetic_fixture",
+            "source_id": "fx-awe",
+            "captured_at": "2026-01-01T00:00:00Z",
+        },
+        "confidence": {"band": "low", "notes": "fixture"},
+        "unknown_state": {"incomplete": True, "missing_artifacts": [], "unresolved_surfaces": []},
+    }
+    ok = validate_compatibility(base, expected_contract="AWEEvidenceCandidate")
+    assert ok.ok is True
+
+    premature = dict(base)
+    premature["is_production_approved"] = True
+    bad = validate_compatibility(premature, expected_contract="AWEEvidenceCandidate")
+    assert bad.ok is False
+    assert any(i.code == "PREMATURE_APPROVAL" for i in bad.errors)
+
+    approved_status = dict(base)
+    approved_status["approval_status"] = "APPROVED"
+    bad2 = validate_compatibility(approved_status, expected_contract="AWEEvidenceCandidate")
+    assert bad2.ok is False
+    assert any(i.code == "PREMATURE_APPROVAL" for i in bad2.errors)
+
+    untrusted = dict(base)
+    untrusted["approved"] = True
+    bad3 = validate_compatibility(untrusted, expected_contract="AWEEvidenceCandidate")
+    assert bad3.ok is False
+    assert any(i.code == "UNTRUSTED_APPROVAL_FIELD" for i in bad3.errors)
+
+    obs_bad = dict(base)
+    obs_bad["observations"] = [
+        {
+            "observation_id": "o1",
+            "artifact_id": "a1",
+            "automated_diagnosis": True,
+        }
+    ]
+    bad4 = validate_compatibility(obs_bad, expected_contract="AWEEvidenceCandidate")
+    assert bad4.ok is False
+    assert any(i.code == "THERMAL_DIAGNOSIS_VIOLATION" for i in bad4.errors)
 
 
 def test_awe_evidence_candidate_alias_is_not_approved_finding():
@@ -425,13 +509,25 @@ def test_quality_gate_evaluation_matrix():
     "profile_id",
     ["M4E_MAPPING", "M4T_AWE", "M400_P1_MAPPING", "M400_H30T_AWE"],
 )
-def test_pipeline_assessment_ready_for_review(profile_id):
+def test_pipeline_assessment_stops_at_limited_candidate_readiness(profile_id):
+    """C-N-003: synthetic pipeline must not claim complete review/approval."""
     assessment = assess_synthetic_package(profile_id)
     assert assessment.format_supported is True
     assert assessment.checksums_ok is True
-    assert assessment.quality.gate == PackageQualityGate.READY_FOR_REVIEW
+    # Honesty: synthetic + missing professional review → limitations gate.
+    assert assessment.quality.gate == PackageQualityGate.USABLE_WITH_LIMITATIONS
+    assert "SYNTHETIC_FIXTURE" in assessment.quality.warnings or (
+        "SYNTHETIC_FIXTURE" in assessment.quality.reasons
+        or "SYNTHETIC_FIXTURE" in (assessment.quality.warnings + assessment.quality.reasons)
+    )
+    # evaluate_package_quality puts limitations into warnings for USABLE_WITH_LIMITATIONS
+    assert "MISSING_PROFESSIONAL_REVIEW" in (
+        assessment.quality.warnings + assessment.quality.reasons
+    )
     assert assessment.quality.physical_capture_claimed is False
     assert assessment.quality.live_dji_sdk is False
+    # Still candidate/readiness — never final approval gate name.
+    assert assessment.quality.gate is not PackageQualityGate.READY_FOR_REVIEW
 
 
 def test_pipeline_with_limitations():

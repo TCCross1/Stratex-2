@@ -44,13 +44,30 @@ def assess_synthetic_package(
     pairing_required = boundary.may_produce(ProducerOutputKind.AWE_EVIDENCE_CANDIDATE)
     pairing_ok: Optional[bool] = pairing.ok if pairing_required else None
 
+    # C-N-003: synthetic/parser honesty limitations must affect the quality gate.
+    # Pipeline remains foundational — candidate/readiness only; no complete review
+    # or approval claim. Missing professional review stays explicit.
+    honesty_codes = []
+    for w in warnings:
+        code = getattr(w, "code", w)
+        honesty_codes.append(code.value if hasattr(code, "value") else str(code))
+    honesty_limitations = list(limitations or [])
+    for code in honesty_codes:
+        if code not in honesty_limitations:
+            honesty_limitations.append(code)
+    # Always mark synthetic fixture path as limited.
+    if "SYNTHETIC_FIXTURE" not in honesty_limitations:
+        honesty_limitations.append("SYNTHETIC_FIXTURE")
+    if "MISSING_PROFESSIONAL_REVIEW" not in honesty_limitations:
+        honesty_limitations.append("MISSING_PROFESSIONAL_REVIEW")
+
     quality = evaluate_package_quality(
         profile_id=profile_id,
         format_supported=format_ok,
         checksums_ok=checksums.ok,
         required_artifacts_present=required_ok,
         pairing_ok=pairing_ok,
-        limitations=limitations,
+        limitations=honesty_limitations,
     )
     return PackageAssessment(
         profile_id=profile_id,

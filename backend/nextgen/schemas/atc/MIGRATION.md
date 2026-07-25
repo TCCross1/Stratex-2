@@ -13,6 +13,17 @@
 | `ApprovedGeometry` | Registry contract `ApprovedGeometry` | Consumer marker | ATC must not emit |
 | `ApprovedFinding` | Registry contract `ApprovedFinding` | Consumer marker | ATC must not emit |
 
+## C-N-001 candidate contract naming (PX-005)
+
+- Unapproved candidate payloads must declare `meta.contract_name` as
+  `ApprovedGeometryCandidate` or `GeometryCandidate`.
+- Declaring `ApprovedGeometry` on candidate-shaped data is a **deprecated**
+  mislabel (`MISLABELED_APPROVED`). Consumers must not infer approval from that
+  legacy name. No silent breaking rename of the consumer `ApprovedGeometry`
+  contract.
+- Typed and raw validation produce equivalent authority outcomes for approval
+  boundaries (C-N-002).
+
 ## Doctrine
 
 1. Geometry is **not** approved merely because it came from 4E / `M4E_MAPPING` / `M400_P1_MAPPING`.
