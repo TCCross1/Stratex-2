@@ -31,12 +31,25 @@ class FormulaRegistry:
     def __init__(self, formulas: Dict[str, FormulaSpec]) -> None:
         self._formulas = dict(formulas)
 
-    def get(self, formula_id: Optional[str]) -> FormulaSpec:
+    def get(
+        self,
+        formula_id: Optional[str],
+        *,
+        version: Optional[str] = None,
+    ) -> FormulaSpec:
         if formula_id is None:
             raise UnknownInputError("formula_id", "formula id is required")
         if formula_id not in self._formulas:
             raise UnknownInputError("formula_id", f"unknown formula {formula_id!r}")
-        return self._formulas[formula_id]
+        spec = self._formulas[formula_id]
+        if version is not None and spec.version != version:
+            raise UnknownInputError(
+                "formula_version",
+                f"recorded formula version {version!r} unavailable for "
+                f"{formula_id!r}; current={spec.version!r} "
+                "(replay must not silently load current rules)",
+            )
+        return spec
 
     def list_ids(self) -> list[str]:
         return sorted(self._formulas.keys())

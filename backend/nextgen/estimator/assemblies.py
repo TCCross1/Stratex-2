@@ -31,6 +31,34 @@ ASSEMBLY_FAMILIES = frozenset(
     }
 )
 
+# Canonical material identifiers (D-N-001). Compatibility aliases are versioned
+# and documented — never emitted inconsistently from new expansions.
+CANONICAL_MATERIAL_CODES = frozenset(
+    {
+        "asphalt_shingles",
+        "underlayment",
+        "ridge_cap",
+        "siding_panel",
+        "ready_mix",
+        "flooring_plank",
+        "drywall_sheet",
+        "batt_insulation",
+    }
+)
+# Deprecated alias → canonical (consumers may accept; new emissions use canonical).
+MATERIAL_CODE_ALIASES = {
+    "field_shingles": "asphalt_shingles",  # deprecated E-002 pre-PX-005 alias
+}
+
+
+def canonicalize_material_code(code: str) -> str:
+    """Return canonical material_code; map documented deprecated aliases."""
+    if code in CANONICAL_MATERIAL_CODES:
+        return code
+    if code in MATERIAL_CODE_ALIASES:
+        return MATERIAL_CODE_ALIASES[code]
+    return code
+
 
 @dataclass(frozen=True)
 class AssemblyLine:
@@ -207,19 +235,35 @@ class AssemblyQuantityEngine:
             raise DimensionalError("roof_area_sqft cannot be negative")
 
         squares_spec = self._formula("assembly.roofing.squares.v1")
-        squares = area / Decimal("100")
+        # D-N-003: measured area and base roofing squares are distinct.
+        measured_area_sqft = area
+        base_squares = measured_area_sqft / Decimal("100")
+        # Exercise squares formula + math engine path for provenance/replay.
+        squares_result = self.math.roofing_squares(measured_area_sqft)
+        if squares_result.value != base_squares:
+            raise DimensionalError("roofing squares math/engine mismatch")
+        _ = squares_spec
         lines = [
             AssemblyLine(
-                material_code="field_shingles",
+                material_code="asphalt_shingles",
                 family="roofing",
-                base_quantity=area,
+                base_quantity=measured_area_sqft,
                 unit="sq_ft",
                 dimension=Dimension.AREA,
                 formula_id="assembly.roofing.field_area.v1",
                 formula_version=self._formula("assembly.roofing.field_area.v1").version,
                 default_purchase_rule_id="roofing.shingles.bundle.v1",
-                input_refs={"roof_area_sqft": str(area), "squares": str(squares)},
-                notes="field coverage area; squares recorded in input_refs",
+                input_refs={
+                    "measured_area_sqft": str(measured_area_sqft),
+                    "roof_area_sqft": str(measured_area_sqft),
+                    "base_squares": str(base_squares),
+                    "squares_formula_id": squares_spec.formula_id,
+                    "squares_formula_version": squares_spec.version,
+                },
+                notes=(
+                    "measured roof area (sq_ft) with distinct base_squares; "
+                    "waste/purchase squares recorded on conversion"
+                ),
             ),
             AssemblyLine(
                 material_code="underlayment",
@@ -230,7 +274,10 @@ class AssemblyQuantityEngine:
                 formula_id="assembly.roofing.underlayment.v1",
                 formula_version=self._formula("assembly.roofing.underlayment.v1").version,
                 default_purchase_rule_id="roofing.underlayment.roll.v1",
-                input_refs={"roof_area_sqft": str(area)},
+                input_refs={
+                    "measured_area_sqft": str(measured_area_sqft),
+                    "roof_area_sqft": str(area),
+                },
             ),
         ]
         # Explicit ridge / starter lengths — missing means omit line (not zero-fill).
@@ -251,8 +298,6 @@ class AssemblyQuantityEngine:
                     input_refs={"ridge_length_ft": str(ridge)},
                 )
             )
-        # squares_spec referenced to keep formula registry exercised for replay
-        _ = squares_spec
         return lines
 
     def _expand_siding(self, inputs: Mapping[str, Any]) -> List[AssemblyLine]:

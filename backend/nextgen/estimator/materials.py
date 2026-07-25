@@ -102,7 +102,27 @@ class MaterialsConversionEngine:
             "package_size": str(transparent.package_size),
             "unit_factor": str(rule.unit_factor),
             "input_unit": unit,
+            "base_unit": transparent.base_unit,
             "purchase_unit": transparent.purchase_unit,
+            "material_code": transparent.material_code or rule.material_code,
+            "measured_area_sqft": (
+                None
+                if transparent.measured_area_sqft is None
+                else str(transparent.measured_area_sqft)
+            ),
+            "base_squares": (
+                None if transparent.base_squares is None else str(transparent.base_squares)
+            ),
+            "waste_squares": (
+                None
+                if transparent.waste_squares is None
+                else str(transparent.waste_squares)
+            ),
+            "purchase_squares": (
+                None
+                if transparent.purchase_squares is None
+                else str(transparent.purchase_squares)
+            ),
             "purchase_rules_version": self.purchase_rules.registry_version
             or PURCHASE_RULES_VERSION,
         }

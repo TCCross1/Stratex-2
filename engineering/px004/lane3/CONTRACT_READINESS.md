@@ -28,8 +28,20 @@
 | Purchase rules registry | `backend/nextgen/estimator/purchase_rules.py` | Versioned package / increment rules; transparent base/waste/purchase |
 | Waste registry expansion | `backend/nextgen/estimator/waste.py` | Flooring / drywall / insulation policies (additive) |
 | Formula registry expansion | `backend/nextgen/estimator/formulas.py` | Assembly + materials.convert formulas; registry_version `e002.1.0.0` |
-| Ledger replay expansion | `backend/nextgen/estimator/ledger.py` + schema `0.2.0` | Ordered `replay[]` for full deterministic reconstruction |
-| Tests | `backend/tests/test_estimator_e002_assemblies.py` | Family coverage, rejection, replay, no-pricing guard |
+| Ledger replay expansion | `backend/nextgen/estimator/ledger.py` + schema `0.2.0` | Ordered `replay[]` + executable `execute_ledger_replay` |
+| Tests | `backend/tests/test_estimator_e002_assemblies.py` | Family coverage, rejection, executable replay, no-pricing guard |
+
+### PX-005 debt closure
+
+- **D-N-001:** Canonical material identifier is `asphalt_shingles` (assembly, conversion,
+  ledger, purchase rule). Deprecated alias `field_shingles` → `asphalt_shingles`
+  is documented/versioned via `MATERIAL_CODE_ALIASES` and not emitted by new expansions.
+- **D-N-002:** `execute_ledger_replay` recalculates using recorded formula/rule versions,
+  compares to recorded outputs, fails on mismatch or missing versions, never invokes AI,
+  never silently loads current rules in place of recorded versions.
+- **D-N-003:** Roofing conversion records distinct `measured_area_sqft`, `base_squares`,
+  `waste_squares`, `purchase_squares`, package `purchase_quantity`, rounding, and
+  formula/rule versions — not one unexplained number.
 
 E-001 Construction Math Engine remains authoritative for primitive math
 (`ENGINE_VERSION = e001.1.0.0`). E-002 engines compose it; they do not replace it.

@@ -11,14 +11,20 @@ from __future__ import annotations
 from .assemblies import (
     ASSEMBLY_ENGINE_VERSION,
     ASSEMBLY_FAMILIES,
+    CANONICAL_MATERIAL_CODES,
+    MATERIAL_CODE_ALIASES,
     AssemblyExpansion,
     AssemblyLine,
     AssemblyQuantityEngine,
+    canonicalize_material_code,
 )
 from .engine import ConstructionMathEngine, ENGINE_VERSION
 from .errors import (
     DimensionalError,
     EstimatorMathError,
+    LedgerReplayError,
+    LedgerReplayMismatch,
+    LedgerReplayVersionMissing,
     ParseError,
     UnknownInputError,
 )
@@ -30,6 +36,7 @@ from .ledger import (
     ReplayStep,
     build_assembly_ledger,
     build_ledger,
+    execute_ledger_replay,
     replay_is_deterministic,
 )
 from .materials import (
@@ -57,13 +64,19 @@ from .waste import WASTE_REGISTRY, WASTE_REGISTRY_VERSION, WastePolicy, WasteReg
 __all__ = [
     "ASSEMBLY_ENGINE_VERSION",
     "ASSEMBLY_FAMILIES",
+    "CANONICAL_MATERIAL_CODES",
+    "MATERIAL_CODE_ALIASES",
     "AssemblyExpansion",
     "AssemblyLine",
     "AssemblyQuantityEngine",
+    "canonicalize_material_code",
     "ConstructionMathEngine",
     "ENGINE_VERSION",
     "DimensionalError",
     "EstimatorMathError",
+    "LedgerReplayError",
+    "LedgerReplayMismatch",
+    "LedgerReplayVersionMissing",
     "ParseError",
     "UnknownInputError",
     "FORMULA_REGISTRY",
@@ -75,6 +88,7 @@ __all__ = [
     "ReplayStep",
     "build_assembly_ledger",
     "build_ledger",
+    "execute_ledger_replay",
     "replay_is_deterministic",
     "MATERIALS_ENGINE_VERSION",
     "MaterialConversionResult",

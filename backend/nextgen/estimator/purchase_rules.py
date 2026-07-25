@@ -57,7 +57,12 @@ class PurchaseRule:
 
 @dataclass(frozen=True)
 class TransparentQuantities:
-    """Base / waste / purchase breakdown — never a price."""
+    """Base / waste / purchase breakdown — never a price.
+
+    For roofing area rules, base/waste/purchase squares are recorded distinctly
+    from package purchase units (D-N-003). Never collapse into one unexplained
+    number.
+    """
 
     base_quantity: Decimal
     waste_quantity: Decimal
@@ -70,6 +75,11 @@ class TransparentQuantities:
     purchase_rule_version: str
     rounding_mode: str
     package_size: Decimal
+    measured_area_sqft: Optional[Decimal] = None
+    base_squares: Optional[Decimal] = None
+    waste_squares: Optional[Decimal] = None
+    purchase_squares: Optional[Decimal] = None
+    material_code: Optional[str] = None
 
     def as_dict(self) -> dict:
         return {
@@ -84,6 +94,15 @@ class TransparentQuantities:
             "purchase_rule_version": self.purchase_rule_version,
             "rounding_mode": self.rounding_mode,
             "package_size": str(self.package_size),
+            "measured_area_sqft": (
+                None if self.measured_area_sqft is None else str(self.measured_area_sqft)
+            ),
+            "base_squares": None if self.base_squares is None else str(self.base_squares),
+            "waste_squares": None if self.waste_squares is None else str(self.waste_squares),
+            "purchase_squares": (
+                None if self.purchase_squares is None else str(self.purchase_squares)
+            ),
+            "material_code": self.material_code,
         }
 
 
@@ -136,7 +155,12 @@ class PurchaseRulesRegistry:
         self.waste = waste_registry or WASTE_REGISTRY
         self.registry_version = registry_version
 
-    def get(self, rule_id: Optional[str]) -> PurchaseRule:
+    def get(
+        self,
+        rule_id: Optional[str],
+        *,
+        version: Optional[str] = None,
+    ) -> PurchaseRule:
         if rule_id is None:
             raise UnknownInputError("purchase_rule_id", "purchase rule id is required")
         if rule_id not in self._rules:
@@ -144,7 +168,15 @@ class PurchaseRulesRegistry:
                 "purchase_rule_id",
                 f"unknown purchase rule {rule_id!r}",
             )
-        return self._rules[rule_id]
+        rule = self._rules[rule_id]
+        if version is not None and rule.version != version:
+            raise UnknownInputError(
+                "purchase_rule_version",
+                f"recorded purchase rule version {version!r} unavailable for "
+                f"{rule_id!r}; current={rule.version!r} "
+                "(replay must not silently load current rules)",
+            )
+        return rule
 
     def list_ids(self) -> list[str]:
         return sorted(self._rules.keys())
@@ -213,6 +245,16 @@ class PurchaseRulesRegistry:
                 f"unknown rounding mode {rule.rounding!r}",
             )
 
+        measured_area = None
+        base_sq = None
+        waste_sq = None
+        purchase_sq = None
+        if rule.input_unit == "sq_ft" and rule.input_dimension == Dimension.AREA:
+            measured_area = base
+            base_sq = base / Decimal("100")
+            waste_sq = waste_qty / Decimal("100")
+            purchase_sq = with_waste / Decimal("100")
+
         return TransparentQuantities(
             base_quantity=base,
             waste_quantity=waste_qty,
@@ -225,6 +267,11 @@ class PurchaseRulesRegistry:
             purchase_rule_version=rule.version,
             rounding_mode=rule.rounding,
             package_size=rule.package_size,
+            measured_area_sqft=measured_area,
+            base_squares=base_sq,
+            waste_squares=waste_sq,
+            purchase_squares=purchase_sq,
+            material_code=rule.material_code,
         )
 
 

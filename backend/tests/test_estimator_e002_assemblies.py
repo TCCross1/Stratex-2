@@ -14,9 +14,11 @@ import pytest
 from nextgen.estimator import (
     ASSEMBLY_ENGINE_VERSION,
     ASSEMBLY_FAMILIES,
+    CANONICAL_MATERIAL_CODES,
     ENGINE_VERSION,
     FORMULA_REGISTRY,
     LEDGER_SCHEMA_VERSION,
+    MATERIAL_CODE_ALIASES,
     MATERIALS_ENGINE_VERSION,
     PURCHASE_RULES,
     PURCHASE_RULES_VERSION,
@@ -26,12 +28,16 @@ from nextgen.estimator import (
     ConstructionMathEngine,
     DimensionalError,
     EstimateCalculationLedger,
+    LedgerReplayMismatch,
+    LedgerReplayVersionMissing,
     MaterialsConversionEngine,
     PurchaseRule,
     PurchaseRulesRegistry,
     UnknownInputError,
     build_assembly_ledger,
     build_ledger,
+    canonicalize_material_code,
+    execute_ledger_replay,
     replay_is_deterministic,
 )
 from nextgen.estimator.units import Dimension
@@ -100,7 +106,10 @@ def test_roofing_assembly_with_ridge_and_purchases():
     )
     assert expansion.family == "roofing"
     codes = {line.material_code for line in expansion.lines}
-    assert codes == {"field_shingles", "underlayment", "ridge_cap"}
+    assert codes == {"asphalt_shingles", "underlayment", "ridge_cap"}
+    shingle_line = next(l for l in expansion.lines if l.material_code == "asphalt_shingles")
+    assert shingle_line.input_refs["measured_area_sqft"] == "2500"
+    assert shingle_line.input_refs["base_squares"] == "25"
 
     # 2500 * 1.10 / 33.3 → ceil = 83 bundles
     shingle_conv = next(
@@ -112,6 +121,12 @@ def test_roofing_assembly_with_ridge_and_purchases():
     assert shingle_conv.transparent.waste_quantity == Decimal("250")
     assert shingle_conv.transparent.purchase_quantity == Decimal("83")
     assert shingle_conv.transparent.purchase_unit == "bundle"
+    # D-N-003 distinct squares vs packages
+    assert shingle_conv.transparent.measured_area_sqft == Decimal("2500")
+    assert shingle_conv.transparent.base_squares == Decimal("25")
+    assert shingle_conv.transparent.waste_squares == Decimal("2.5")
+    assert shingle_conv.transparent.purchase_squares == Decimal("27.5")
+    assert shingle_conv.transparent.material_code == "asphalt_shingles"
     # provenance carries formula/version/rounding/waste
     refs = shingle_conv.purchase_result.provenance.input_refs
     assert refs["rounding_mode"] == "ceil_packages"
@@ -295,6 +310,11 @@ def test_assembly_ledger_full_deterministic_replay():
     assert len(ledger.entries) == len(ledger.replay)
     assert len(ledger.replay) >= 4  # 3 assembly lines + conversions
     assert replay_is_deterministic(ledger)
+    verified = execute_ledger_replay(ledger)
+    assert verified["ok"] is True
+    assert verified["ai_arithmetic"] is False
+    assert verified["used_current_rules_silently"] is False
+    assert verified["steps_verified"] == len(ledger.replay)
 
     kinds = {step.kind for step in ledger.replay}
     assert "assembly" in kinds
@@ -306,12 +326,94 @@ def test_assembly_ledger_full_deterministic_replay():
     assert all(e.base_quantity is not None for e in conv_entries)
     assert all(e.waste_quantity is not None for e in conv_entries)
     assert all(e.rounding_mode is not None for e in conv_entries)
+    # Canonical material identifier consistency (D-N-001)
+    shingle_entries = [e for e in ledger.entries if e.material_code == "asphalt_shingles"]
+    assert shingle_entries
+    assert all(e.material_code == "asphalt_shingles" for e in shingle_entries)
 
     dumped = ledger.model_dump()
     restored = EstimateCalculationLedger.model_validate(dumped)
     assert restored.ledger_id == ledger.ledger_id
     assert len(restored.replay) == len(ledger.replay)
     assert restored.contract_status == "PROPOSED"
+    assert execute_ledger_replay(restored)["ok"] is True
+
+
+def test_canonical_material_identifier_and_legacy_alias():
+    assert "asphalt_shingles" in CANONICAL_MATERIAL_CODES
+    assert MATERIAL_CODE_ALIASES["field_shingles"] == "asphalt_shingles"
+    assert canonicalize_material_code("field_shingles") == "asphalt_shingles"
+    assert canonicalize_material_code("asphalt_shingles") == "asphalt_shingles"
+    rule = PURCHASE_RULES.get("roofing.shingles.bundle.v1")
+    assert rule.material_code == "asphalt_shingles"
+
+
+def test_executable_replay_mismatch_and_missing_version():
+    eng = AssemblyQuantityEngine()
+    expansion = eng.expand(
+        "roofing",
+        {"roof_area_sqft": Decimal("1000"), "ridge_length_ft": Decimal("20")},
+        assembly_id="roof.replay.v2",
+    )
+    ledger = build_assembly_ledger(
+        ledger_id="led-e002-mismatch",
+        expansion=expansion,
+        formula_registry_version=FORMULA_REGISTRY.registry_version,
+        waste_registry_version=WASTE_REGISTRY_VERSION,
+        purchase_rules_version=PURCHASE_RULES_VERSION,
+    )
+    # Tamper recorded output → integrity failure
+    bad_steps = []
+    for step in ledger.replay:
+        data = step.model_dump()
+        if step.kind == "assembly" and step.material_code == "asphalt_shingles":
+            data["output_value"] = "999999"
+        bad_steps.append(type(step).model_validate(data))
+    tampered = ledger.model_copy(update={"replay": bad_steps})
+    with pytest.raises(LedgerReplayMismatch):
+        execute_ledger_replay(tampered)
+
+    # Missing formula version
+    missing = []
+    for step in ledger.replay:
+        data = step.model_dump()
+        if step.kind == "assembly":
+            data["formula_version"] = "9.9.9"
+        missing.append(type(step).model_validate(data))
+    missing_ledger = ledger.model_copy(update={"replay": missing})
+    with pytest.raises(LedgerReplayVersionMissing):
+        execute_ledger_replay(missing_ledger)
+
+    # Missing assembly id
+    no_asm = []
+    for step in ledger.replay:
+        data = step.model_dump()
+        if step.kind == "assembly":
+            data["assembly_id"] = None
+        no_asm.append(type(step).model_validate(data))
+    with pytest.raises(LedgerReplayVersionMissing):
+        execute_ledger_replay(ledger.model_copy(update={"replay": no_asm}))
+
+
+def test_changed_current_rule_does_not_alter_historical_replay():
+    eng = AssemblyQuantityEngine()
+    expansion = eng.expand(
+        "roofing",
+        {"roof_area_sqft": Decimal("500")},
+        assembly_id="roof.hist.v1",
+    )
+    ledger = build_assembly_ledger(
+        ledger_id="led-hist",
+        expansion=expansion,
+        formula_registry_version=FORMULA_REGISTRY.registry_version,
+        waste_registry_version=WASTE_REGISTRY_VERSION,
+        purchase_rules_version=PURCHASE_RULES_VERSION,
+    )
+    # Historical ledger still verifies against recorded versions.
+    assert execute_ledger_replay(ledger)["ok"] is True
+    # Asking for a non-recorded purchase rule version fails explicitly.
+    with pytest.raises(UnknownInputError):
+        PURCHASE_RULES.get("roofing.shingles.bundle.v1", version="0.0.0")
 
 
 def test_e001_build_ledger_still_works_with_expanded_schema():
