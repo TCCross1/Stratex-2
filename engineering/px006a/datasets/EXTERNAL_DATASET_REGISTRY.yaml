@@ -1,0 +1,290 @@
+version: 0.1.0
+production_readiness: NOT_READY
+truth_status: NON_CANONICAL_TEST_DATA
+physical_validation: NOT_PERFORMED
+contract_status: PROPOSED
+governance:
+  data_origin: EXTERNAL_PUBLIC_DATASET
+  property_use: DEVELOPMENT_ONLY
+  customer_use: PROHIBITED
+  passport_publication: PROHIBITED
+  habitat_canonical_display: PROHIBITED
+  field_accuracy_claim: PROHIBITED
+datasets:
+- dataset_id: MYGLA
+  display_name: OpenDroneMap Mygla starter
+  source_organization: merkato / OpenDroneMap community
+  source_page: https://github.com/merkato/odm_mygla_dataset
+  acquisition_url: https://github.com/merkato/odm_mygla_dataset.git
+  acquisition_method: git_clone
+  expected_image_count: 29
+  expected_size_bytes: 157286400
+  observed_image_count: 29
+  observed_size_bytes: 309621661
+  repository_commit: cf0ef2f1dd779c04fc0d55324692c60fe6cc7597
+  retrieval_timestamp: '2026-07-25T10:38:03.217337+00:00'
+  license_name: CC-BY-3.0
+  license_file: README.md
+  license_status: VERIFIED_RESTRICTED
+  commercial_reuse_status: REVIEW_REQUIRED
+  redistribution_status: ATTRIBUTION_REQUIRED_NO_TRACKED_IMAGERY
+  attribution_requirement: REQUIRED
+  sensor_make: DJI
+  sensor_model: FC300C
+  aircraft_make: DJI
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_PRESENT
+  GCP_present: false
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: 4023802aae8e7382835b97a15aabcc84b5a7adc7322789326e2d4a0e3f3a061f
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - software_compatibility
+  - parser_smoke
+  - CI_reduced_fixture_derivation_when_license_verified
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  - physical_accuracy_claims
+  - homeowner_delivery
+  limitations:
+  - Public dataset; not Stratex-controlled field capture.
+  - No contractor/insurance-grade accuracy claim permitted.
+  review_status: ACQUIRED
+- dataset_id: AUKERMAN
+  display_name: OpenDroneMap Aukerman
+  source_organization: OpenDroneMap
+  source_page: https://github.com/OpenDroneMap/odm_data_aukerman
+  acquisition_url: https://github.com/OpenDroneMap/odm_data_aukerman.git
+  acquisition_method: git_clone
+  expected_image_count: 77
+  expected_size_bytes: 569376768
+  observed_image_count: 78
+  observed_size_bytes: 1088337963
+  repository_commit: 4e8031630f4193494c79b1c1d3524108826d1ba9
+  retrieval_timestamp: '2026-07-25T10:38:19.189491+00:00'
+  license_name: CC0-1.0
+  license_file: license.txt
+  license_status: VERIFIED_PERMISSIVE
+  commercial_reuse_status: PERMITTED_UNDER_CC0
+  redistribution_status: PERMITTED_WITH_SOURCE_ATTRIBUTION
+  attribution_requirement: RECORD_SOURCE
+  sensor_make: SONY
+  sensor_model: DSC-WX220
+  aircraft_make: UNKNOWN
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_PARTIAL
+  GCP_present: false
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: ffc91880567a5bbc6d4b27b5e084f518f2abeedb53e5b7fee1cef27262046e74
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - geotagged_mapping_ingest
+  - photogrammetry_pipeline_compatibility
+  - incomplete_evidence_fault_tests
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  - physical_accuracy_claims
+  limitations:
+  - Public ODM corpus; not physical validation.
+  review_status: ACQUIRED
+- dataset_id: BELLUS
+  display_name: OpenDroneMap Bellus
+  source_organization: OpenDroneMap
+  source_page: https://github.com/OpenDroneMap/odm_data_bellus
+  acquisition_url: https://github.com/OpenDroneMap/odm_data_bellus.git
+  acquisition_method: git_clone
+  expected_image_count: 122
+  expected_size_bytes: 751619276
+  observed_image_count: 122
+  observed_size_bytes: 1503659926
+  repository_commit: 36f80864035e243aa443420b9be867770d7e8118
+  retrieval_timestamp: '2026-07-25T10:38:33.501285+00:00'
+  license_name: CC0-1.0
+  license_file: license.txt
+  license_status: VERIFIED_PERMISSIVE
+  commercial_reuse_status: PERMITTED_UNDER_CC0
+  redistribution_status: PERMITTED_WITH_SOURCE_ATTRIBUTION
+  attribution_requirement: RECORD_SOURCE
+  sensor_make: Canon
+  sensor_model: Canon PowerShot S110
+  aircraft_make: UNKNOWN
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_PRESENT
+  GCP_present: true
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: cd09ad1768542a6fb4e956d84a5c84cef6bcf0a93f0472840278af36af54234f
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - gcp_aware_validation
+  - control_file_ingestion
+  - dimensional_confidence_testing
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  - physical_accuracy_claims
+  limitations:
+  - GCP presence does not imply survey-grade accuracy.
+  review_status: ACQUIRED
+- dataset_id: CALITERRA
+  display_name: OpenDroneMap Caliterra
+  source_organization: OpenDroneMap
+  source_page: https://github.com/OpenDroneMap/odm_data_caliterra
+  acquisition_url: https://github.com/OpenDroneMap/odm_data_caliterra.git
+  acquisition_method: git_clone
+  expected_image_count: 77
+  expected_size_bytes: 285212672
+  observed_image_count: 78
+  observed_size_bytes: 572155683
+  repository_commit: bec3dc7296e90aacb3930eb9df8061849fbfe0d0
+  retrieval_timestamp: '2026-07-25T10:38:39.321690+00:00'
+  license_name: CC0-1.0
+  license_file: license.html
+  license_status: VERIFIED_PERMISSIVE
+  commercial_reuse_status: PERMITTED_UNDER_CC0
+  redistribution_status: PERMITTED_WITH_SOURCE_ATTRIBUTION
+  attribution_requirement: RECORD_SOURCE
+  sensor_make: Canon
+  sensor_model: Canon PowerShot SX260 HS
+  aircraft_make: UNKNOWN
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_PARTIAL
+  GCP_present: false
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: fd88019bb91f6598f335984b62d822a6588db1b328bccced7489a38ff66e77f2
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - camera_metadata_variability
+  - reconstruction_compatibility
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  limitations:
+  - License must be read from acquired repository before fixture derivation.
+  review_status: ACQUIRED
+- dataset_id: GARFIELD
+  display_name: OpenDroneMap Garfield MSP
+  source_organization: OpenDroneMap
+  source_page: https://github.com/OpenDroneMap/odm_data_garfield_msp
+  acquisition_url: https://github.com/OpenDroneMap/odm_data_garfield_msp.git
+  acquisition_method: git_clone
+  expected_image_count: 140
+  expected_size_bytes: 555745280
+  observed_image_count: 140
+  observed_size_bytes: 556330517
+  repository_commit: b526478fbd39adc1d0e14229db39b9b224c8cf68
+  retrieval_timestamp: '2026-07-25T10:38:47.385071+00:00'
+  license_name: CC0-1.0
+  license_file: license.txt
+  license_status: VERIFIED_PERMISSIVE
+  commercial_reuse_status: PERMITTED_UNDER_CC0
+  redistribution_status: PERMITTED_WITH_SOURCE_ATTRIBUTION
+  attribution_requirement: RECORD_SOURCE
+  sensor_make: Parrot
+  sensor_model: Sequoia
+  aircraft_make: UNKNOWN
+  aircraft_model: UNKNOWN
+  image_formats:
+  - JPEG
+  EXIF_GPS_present: GPS_PRESENT
+  GCP_present: false
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: false
+  checksum_algorithm: SHA-256
+  archive_checksum: null
+  file_manifest_checksum: 05b14aec0f375dc860928f775a8c5cb8e0e2e48c9f0d75d9cc53d5c38f3e3a64
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - larger_image_count_testing
+  - backlog_and_manifest_performance
+  - duplicate_partial_set_experiments
+  prohibited_uses:
+  - passport_canonical_truth
+  - customer_property_representation
+  limitations:
+  - License must be read from acquired repository before fixture derivation.
+  review_status: ACQUIRED
+- dataset_id: DJI_TERRA_SAMPLE
+  display_name: DJI Terra official sample
+  source_organization: DJI
+  source_page: https://www.dji.com/downloads/products/dji-terra
+  acquisition_url: https://terra-1-g.djicdn.com/6a83f01a46e9477d9af4727d9c4b9375/Terra/Sample%20File/Sample%20File.zip
+  acquisition_method: https_archive
+  expected_image_count: null
+  expected_size_bytes: null
+  observed_image_count: 238
+  observed_size_bytes: 7188110805
+  repository_commit: null
+  retrieval_timestamp: '2026-07-25T10:48:02.422712+00:00'
+  license_name: DJI_TERMS_REVIEW_REQUIRED
+  license_file: null
+  license_status: REVIEW_REQUIRED
+  commercial_reuse_status: UNKNOWN
+  redistribution_status: PROHIBITED
+  attribution_requirement: REQUIRED
+  sensor_make: DJI
+  sensor_model: M3E
+  aircraft_make: DJI
+  aircraft_model: UNKNOWN
+  image_formats:
+  - UNKNOWN
+  EXIF_GPS_present: GPS_PRESENT
+  GCP_present: false
+  RTK_claimed_by_source: false
+  thermal_present: false
+  LiDAR_present: false
+  reconstruction_outputs_present: UNKNOWN
+  checksum_algorithm: SHA-256
+  archive_checksum: 21cda8561ef75b9b07f730257e128a072a8153acc07f5c19b19ad53f6e418f1a
+  file_manifest_checksum: 6dc0b4dfd642e890a2ad2c1a127bf48cbfe6e0851ecd3a434a38238fe86e399d
+  privacy_classification: DEVELOPMENT_EXTERNAL_IMAGERY
+  truth_status: NON_CANONICAL_TEST_DATA
+  approved_uses:
+  - local_evaluation_after_license_record
+  - terra_project_structure_inventory
+  prohibited_uses:
+  - redistribution
+  - tracked_fixture_derivation
+  - passport_canonical_truth
+  - customer_property_representation
+  - commercial_reuse_without_explicit_permission
+  limitations:
+  - LICENSE_REVIEW_REQUIRED — do not assume CC0 or redistributable.
+  - redistribution_allowed=false unless explicitly proven otherwise.
+  review_status: ACQUIRED

@@ -86,6 +86,9 @@ lanes:
       - backend/nextgen/awe.py
       - backend/nextgen/evidence_profiles.py
       - backend/nextgen/atc/
+      - backend/nextgen/dataset_lab/
+      - engineering/px006a/
+      - backend/tests/test_px006a_dataset_lab.py
       - backend/nextgen/schemas/atc/
       - backend/nextgen/schemas/approved_geometry_candidate.py
       - backend/nextgen/schemas/awe_evidence_candidate.py
