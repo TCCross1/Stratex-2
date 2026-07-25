@@ -1,0 +1,31 @@
+# PX-006A-R1 Immutable OpenDroneMap Image Registry
+# Digests must be resolved from the local Docker engine after pulling a versioned tag.
+# Never invent digests. Never execute opendronemap/odm:latest.
+version: "0.1.0"
+intended_use: DEVELOPMENT_RECONSTRUCTION_ONLY
+production_readiness: NOT_READY
+physical_validation: NOT_PERFORMED
+
+image:
+  repository: opendronemap/odm
+  version: "3.5.6"
+  tag: "3.5.6"
+  digest: "sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1"
+  pinned_reference: "opendronemap/odm@sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1"
+  image_id: "sha256:94e0fc0b05b9d2d2af172f1583e04747aa1cb444e9fd3693b28e1761890c88a0"
+  architecture: amd64
+  os: linux
+  multi_architecture: true
+  resolved_at: "2026-07-25T13:23:50Z"
+  resolution_method: docker_pull_versioned_tag_then_image_inspect_RepoDigests
+  verified: true
+  source_reference: https://hub.docker.com/r/opendronemap/odm/tags
+  github_release_reference: https://github.com/OpenDroneMap/ODM/releases/tag/v3.5.6
+  pull_log_digest_line: "Digest: sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1"
+  host_storage_driver: vfs
+  notes:
+    - Floating tag latest is rejected for execution.
+    - Runtime must use pinned_reference (repository@sha256:...).
+    - Platform-specific Hub digests differ from RepoDigest; RepoDigest from engine is authoritative.
+    - Host required Docker storage-driver=vfs due to nested overlayfs invalid-argument failure.
+    - RepoDigest unchanged across storage-driver remediation and re-pull.

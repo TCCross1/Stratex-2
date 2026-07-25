@@ -42,3 +42,14 @@ python -m nextgen.dataset_lab run --dataset MYGLA --profile smoke
 ## Atlas
 
 No merge without separate Atlas authorization.
+
+## Immutable ODM reconstruction
+
+```bash
+# Uses engineering/px006a/ODM_IMAGE_DIGEST.yaml pinned digest only
+python -m nextgen.dataset_lab reconstruct MYGLA --profile smoke
+python -m nextgen.dataset_lab reconstruct BELLUS --profile gcp-reduced
+```
+
+Never execute `opendronemap/odm:latest`. Large reconstruction outputs remain under
+`STRATEX_DATASET_ROOT` and are never committed.
