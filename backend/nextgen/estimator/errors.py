@@ -39,3 +39,22 @@ class ParseError(EstimatorMathError):
         if detail:
             msg = f"{msg}: {detail}"
         super().__init__(msg)
+
+
+class LedgerReplayError(EstimatorMathError):
+    """Controlled integrity failure during executable ledger replay."""
+
+    def __init__(self, detail: str, *, code: str = "REPLAY_INTEGRITY") -> None:
+        self.detail = detail
+        self.code = code
+        super().__init__(f"ledger_replay_error:{code}: {detail}")
+
+
+class LedgerReplayMismatch(LedgerReplayError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail, code="REPLAY_MISMATCH")
+
+
+class LedgerReplayVersionMissing(LedgerReplayError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail, code="REPLAY_VERSION_MISSING")

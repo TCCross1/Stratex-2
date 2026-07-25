@@ -143,5 +143,29 @@ WASTE_REGISTRY = WasteRegistry(
             "No waste applied (identity multiplier)",
             "0",
         ),
+        # E-002 assembly families
+        "flooring.plank.v1": _policy(
+            "flooring.plank.v1",
+            "1.0.0",
+            "flooring",
+            "Engineered plank flooring waste (8%)",
+            "8",
+        ),
+        "drywall.sheet.v1": _policy(
+            "drywall.sheet.v1",
+            "1.0.0",
+            "drywall",
+            "Drywall sheet waste (10%)",
+            "10",
+        ),
+        "insulation.batt.v1": _policy(
+            "insulation.batt.v1",
+            "1.0.0",
+            "insulation",
+            "Batt insulation waste (5%)",
+            "5",
+        ),
     }
 )
+
+WASTE_REGISTRY_VERSION = "e002.1.0.0"

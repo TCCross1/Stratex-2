@@ -130,9 +130,15 @@ lanes:
     name: Estimator and Report Engine
     description: >
       Construction mathematics, assembly profiles, quantity calculations,
-      price provenance, estimate ledger, estimate confidence, premium report
-      composition. Estimator feature implementation is out of scope for EF-001.
+      estimate ledger with executable historical replay, estimate confidence,
+      premium report composition. AI does not perform authoritative arithmetic.
+      No price invention.
     owned_paths:
+      - backend/nextgen/estimator/
+      - backend/tests/test_estimator_e001_math_foundation.py
+      - backend/tests/test_estimator_e002_assemblies.py
+      - engineering/px004/lane3/
+      - engineering/estimator/
       - backend/nextgen/routes/catalog.py
       - frontend/src/nextgen/ReportsBinderPage.jsx
       - stratex_pitch/
@@ -152,10 +158,14 @@ lanes:
     authority_modules: []
     required_tests:
       - backend/tests/test_iter20_claim_snapshot.py
+      - backend/tests/test_estimator_e001_math_foundation.py
+      - backend/tests/test_estimator_e002_assemblies.py
     contracts:
       - EstimateInputPackage
       - EstimateResult
       - EstimateCalculationLedger
+      - AssemblyDefinition
+      - MaterialConversionResult
       - ReportPublicationPackage
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
