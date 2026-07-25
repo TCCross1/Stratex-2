@@ -19,6 +19,7 @@ from . import (  # noqa: F401
     intelligence,
     findings,
     habitat,
+    explanations,
 )
 
 # Then mount onto the shared /api router.

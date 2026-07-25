@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   nxGetMission, nxEvidenceProfile, nxListEvidence, nxUploadEvidence,
-  nxValidatePackage, nxFinalizePackage, nxListPackages, nxManifestJsonUrl,
+  nxValidatePackage, nxFinalizePackage, nxListPackages, nxOpenManifestJson,
   nxGetEvidence, nxDeleteEvidence, nxRetryMetadata,
 } from "@/nextgen/api";
 
@@ -48,6 +48,7 @@ export default function EvidencePage() {
   const [drawer, setDrawer] = useState(null);
   const [err, setErr] = useState(null);
   const [finalizeBusy, setFinalizeBusy] = useState(false);
+  const [downloadingManifest, setDownloadingManifest] = useState(false);
   const dropRef = useRef(null);
 
   const load = async () => {
@@ -310,10 +311,25 @@ export default function EvidencePage() {
                 {finalizedPkg ? "Finalized" : "Finalize Package"}
               </button>
               {finalizedPkg && (
-                <a className="nx-btn ghost" href={nxManifestJsonUrl(finalizedPkg.canonical_id)}
-                  download data-testid="nx-download-manifest">
-                  Download Manifest JSON
-                </a>
+                <button
+                  className="nx-btn ghost"
+                  onClick={async () => {
+                    if (downloadingManifest) return;
+                    setDownloadingManifest(true);
+                    setErr(null);
+                    try {
+                      await nxOpenManifestJson(finalizedPkg.canonical_id);
+                    } catch (err) {
+                      setErr(err.message || "Failed to download manifest.");
+                    } finally {
+                      setDownloadingManifest(false);
+                    }
+                  }}
+                  disabled={downloadingManifest}
+                  data-testid="nx-download-manifest"
+                >
+                  {downloadingManifest ? "Downloading manifest..." : "Download Manifest JSON"}
+                </button>
               )}
             </div>
           </div>

@@ -1,6 +1,6 @@
 // NextGen API client — talks to /api/nextgen/* only.
 // Reuses the shared axios instance from lib/api.js (auth header + 422 flatten).
-import { api } from "@/lib/api";
+import { api, normalizeBlobError } from "@/lib/api";
 
 const NX = "/nextgen";
 
@@ -62,10 +62,28 @@ export const nxFinalizePackage = (missionId, operator_notes) =>
   api.post(`${V1}/missions/${missionId}/package/finalize`, { operator_notes }).then((r) => r.data);
 export const nxListPackages = (missionId) =>
   api.get(`${V1}/missions/${missionId}/packages`).then((r) => r.data);
-export const nxManifestJsonUrl = (packageId) => {
-  const t = localStorage.getItem("stratex_token");
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-  return `${BACKEND_URL}/api${V1}/packages/${packageId}/manifest.json?_t=${t}`;
+// Delay revocation by 2 minutes to allow the browser enough time to download the manifest before cleanup
+const BLOB_REVOKE_DELAY_MS = 120000;
+
+export const nxOpenManifestJson = async (packageId) => {
+  try {
+    const r = await api.get(`${V1}/packages/${packageId}/manifest.json`, {
+      responseType: "blob",
+    });
+    const blob = new Blob([r.data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `manifest-${packageId}.json`;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+  } catch (err) {
+    const errMsg = await normalizeBlobError(err);
+    throw new Error(errMsg);
+  }
 };
 export const nxUploadEvidence = (missionId, formData, onProgress) =>
   api.post(`${V1}/missions/${missionId}/evidence`, formData, {
@@ -93,6 +111,26 @@ export const nxPropertyReport = (propertyId, template) =>
 export const nxReportTemplates = () =>
   api.get(`${V1}/report-templates`).then((r) => r.data);
 
+// ─── Directive 008 Property Passport endpoints ───
+export const nxPropertyDna = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/dna`).then((r) => r.data);
+export const nxUpdatePropertyDna = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/dna/update`, body).then((r) => r.data);
+export const nxListWarranties = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/warranties`).then((r) => r.data);
+export const nxCreateWarranty = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/warranties`, body).then((r) => r.data);
+export const nxRenewWarranty = (propertyId, warrantyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/warranties/${warrantyId}/renew`, body).then((r) => r.data);
+export const nxPropertyMaintenance = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/maintenance`).then((r) => r.data);
+export const nxPropertyFinancials = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/financials`).then((r) => r.data);
+export const nxUpdateFinancials = (propertyId, body) =>
+  api.post(`${V1}/properties/${propertyId}/financials`, body).then((r) => r.data);
+export const nxVersionComparison = (propertyId) =>
+  api.get(`${V1}/properties/${propertyId}/compare`).then((r) => r.data);
+
 // ─── Directive 008 · Wave 2C · AWE + Habitat + HTML report ───
 export const nxPropertyAwe = (propertyId) =>
   api.get(`${V1}/properties/${propertyId}/awe`).then((r) => r.data);
@@ -103,26 +141,55 @@ export const nxListHabitatGrants = (propertyId) =>
   api.get(`${V1}/properties/${propertyId}/habitat-grants`).then((r) => r.data);
 export const nxRevokeGrant = (grantId) =>
   api.post(`${V1}/habitat-grants/${grantId}/revoke`).then((r) => r.data);
-export const nxHabitatReportHtmlUrl = (propertyId, template) => {
-  // NOTE: legacy caller shape — returns a full URL. New callers should prefer
-  // nxOpenReportHtml() below which does NOT embed the bearer token in the URL.
-  const t = localStorage.getItem("stratex_token");
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-  return `${BACKEND_URL}/api${V1}/properties/${propertyId}/report/${template}/html?_t=${t}`;
-};
 // Directive 009: fetch HTML with Authorization header (no bearer in URL/history/referer),
 // then open the resulting blob in a new tab.
 export const nxOpenReportHtml = async (propertyId, template) => {
-  const r = await api.get(`${V1}/properties/${propertyId}/report/${template}/html`, {
-    responseType: "text",
-    headers: { Accept: "text/html" },
-  });
-  const blob = new Blob([r.data], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, "_blank", "noopener,noreferrer");
-  // Best-effort cleanup — revoke after tab loads (or ~2 min max).
-  setTimeout(() => URL.revokeObjectURL(url), 120000);
-  return w;
+  const w = window.open("", "_blank", "noopener,noreferrer");
+  if (!w) {
+    throw new Error("Popup blocked. Please allow popups for this site to view the HTML report.");
+  }
+  if (w.opener) {
+    w.opener = null;
+  }
+  w.document.write(`
+    <html>
+      <head>
+        <title>Loading HTML Report...</title>
+        <style>
+          body {
+            background-color: #0B111A;
+            color: #E6EEF6;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div>Loading HTML Report...</div>
+      </body>
+    </html>
+  `);
+  w.document.close();
+
+  try {
+    const r = await api.get(`${V1}/properties/${propertyId}/report/${template}/html`, {
+      responseType: "text",
+      headers: { Accept: "text/html" },
+    });
+    const blob = new Blob([r.data], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    w.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+    return w;
+  } catch (err) {
+    w.close();
+    const errMsg = await normalizeBlobError(err);
+    throw new Error(errMsg);
+  }
 };
 // Public — no auth
 export const nxHabitatPublicRead = (token) => {

@@ -4,7 +4,7 @@ import {
   Home, Briefcase, Camera, Layers, Ruler, DoorOpen, Package,
   Waves, AlertCircle, Calculator, FileText, ShieldCheck, Share2,
   Folder, History, ScrollText, ArrowUpRight, Building2,
-  ChevronRight, Box, MapPin,
+  ChevronRight, Box, MapPin, Users,
 } from "lucide-react";
 import { nxGetProperty, nxListMissions, nxPropertyPassport,
   nxPropertyTimeline, nxPropertyAwe, nxListHabitatGrants } from "@/nextgen/api";
@@ -18,7 +18,7 @@ const WORKSPACE_NAV = [
   { seg: "jobs",            label: "Jobs",              icon: Briefcase,     impl: true },
   { seg: "mission-capture", label: "Mission & Capture", icon: Camera,        impl: true },
   { seg: "evidence",        label: "Evidence",          icon: Camera,        impl: true },
-  { seg: "digital-twin",    label: "Digital Twin",      icon: Box,           impl: false },
+  { seg: "digital-twin",    label: "Digital Twin",      icon: Box,           impl: true },
   { seg: "cad-bim",         label: "CAD / BIM",         icon: Layers,        impl: false },
   { seg: "measurements",    label: "Measurements",      icon: Ruler,         impl: false },
   { seg: "openings",        label: "Windows & Doors",   icon: DoorOpen,      impl: false },
@@ -29,7 +29,8 @@ const WORKSPACE_NAV = [
   { seg: "reports",         label: "Reports",           icon: FileText,      impl: true },
   { seg: "passport",        label: "Property Passport", icon: ShieldCheck,   impl: true },
   { seg: "habitat",         label: "Habitat",           icon: Share2,        impl: true },
-  { seg: "documents",       label: "Documents",         icon: Folder,        impl: false },
+  { seg: "documents",       label: "Documents",         icon: Folder,        impl: true },
+  { seg: "contractors",     label: "Contractors",       icon: Users,         impl: true },
   { seg: "history",         label: "History",           icon: History,       impl: true },
   { seg: "audit",           label: "Audit",             icon: ScrollText,    impl: true },
 ];

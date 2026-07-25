@@ -43,7 +43,156 @@ export const createJob = (body) => inst.post("/contractor/jobs", body).then(r =>
 export const computeProposal = (id) => inst.post(`/contractor/jobs/${id}/compute-proposal`).then(r => r.data);
 export const auditApprove = (id) => inst.post(`/contractor/jobs/${id}/audit-approve`).then(r => r.data);
 export const markSent = (id) => inst.post(`/contractor/jobs/${id}/mark-sent`).then(r => r.data);
-export const contractorPdfUrl = (id) => `${API}/contractor/jobs/${id}/report.pdf?_t=${localStorage.getItem("stratex_token")}`;
+// Delay revocation by 2 minutes to allow the browser enough time to load the PDF blob URL in the new tab before cleanup
+const BLOB_REVOKE_DELAY_MS = 120000;
+const MAX_PLAIN_TEXT_ERROR_LENGTH = 200;
+
+const formatValidationErrorArray = (arr) => {
+  if (!Array.isArray(arr)) return "Invalid validation error format";
+  return arr
+    .map((e) => {
+      const loc = (e && e.loc && Array.isArray(e.loc)) ? (e.loc.slice(-1)[0] || "field") : "field";
+      const msg = (e && e.msg) ? e.msg : "validation error";
+      return `${loc}: ${msg}`;
+    })
+    .filter(Boolean)
+    .join(" · ");
+};
+
+const isSafePlainTextError = (text) => {
+  if (typeof text !== "string") return false;
+  return text.length < MAX_PLAIN_TEXT_ERROR_LENGTH && !text.includes("Authorization") && !text.includes("Bearer");
+};
+
+export const normalizeBlobError = async (err) => {
+  const fallback = "An unexpected error occurred";
+  if (!err) return fallback;
+
+  // 1. Check if the error has a response and response data is a Blob
+  if (err.response?.data instanceof Blob) {
+    try {
+      const blob = err.response.data;
+      const text = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => {
+          console.error("FileReader failed to read blob error response");
+          resolve("");
+        };
+        reader.readAsText(blob);
+      });
+
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && typeof parsed === "object") {
+            const errorContent = parsed.detail || parsed.message;
+            if (errorContent) {
+              if (typeof errorContent === "string") return errorContent;
+              if (Array.isArray(errorContent)) {
+                return formatValidationErrorArray(errorContent);
+              }
+              return JSON.stringify(errorContent);
+            }
+          }
+        } catch {
+          // If JSON parse fails, check if the text is plain text and not overly long or contains sensitive stuff
+          if (!blob.type.startsWith("application/json") && isSafePlainTextError(text)) {
+            return text;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Normal JSON response / Axios errors
+  const resData = err.response?.data;
+  if (resData) {
+    if (typeof resData === "string") {
+      try {
+        const parsed = JSON.parse(resData);
+        const detail = parsed.detail || parsed.message;
+        if (detail) {
+          if (typeof detail === "string") return detail;
+          return JSON.stringify(detail);
+        }
+      } catch {
+        if (isSafePlainTextError(resData)) {
+          return resData;
+        }
+      }
+    } else if (typeof resData === "object") {
+      const detail = resData.detail || resData.message;
+      if (detail) {
+        if (typeof detail === "string") return detail;
+        if (Array.isArray(detail)) {
+          return formatValidationErrorArray(detail);
+        }
+        return JSON.stringify(detail);
+      }
+    }
+  }
+
+  // 3. Error.message
+  if (err.message) {
+    if (err.message.includes("Authorization") || err.message.includes("Bearer")) {
+      return fallback;
+    }
+    return err.message;
+  }
+
+  return fallback;
+};
+
+export const openContractorPdf = async (id) => {
+  const w = window.open("", "_blank", "noopener,noreferrer");
+  if (!w) {
+    throw new Error("Popup blocked. Please allow popups for this site to view the PDF report.");
+  }
+  if (w.opener) {
+    w.opener = null;
+  }
+  w.document.write(`
+    <html>
+      <head>
+        <title>Loading PDF...</title>
+        <style>
+          body {
+            background-color: #0B111A;
+            color: #E6EEF6;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div>Loading PDF...</div>
+      </body>
+    </html>
+  `);
+  w.document.close();
+
+  try {
+    const r = await inst.get(`/contractor/jobs/${id}/report.pdf`, {
+      responseType: "blob",
+    });
+    const blob = new Blob([r.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    w.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), BLOB_REVOKE_DELAY_MS);
+    return w;
+  } catch (err) {
+    w.close();
+    const errMsg = await normalizeBlobError(err);
+    throw new Error(errMsg);
+  }
+};
 
 // ---------- Operator ----------
 export const listOperatorJobs = () => inst.get("/operator/jobs").then(r => r.data);

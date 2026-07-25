@@ -83,6 +83,7 @@ import {
   MeasurementsPage as WsMeasurements, OpeningsPage as WsOpenings,
   MaterialsPage as WsMaterials, FindingsPage as WsFindings,
   EstimatePage as WsEstimate, DocumentsPage as WsDocuments,
+  ContractorPage as WsContractors,
 } from "@/nextgen/PropertyWorkspacePages";
 import {
   AlertsPage as NxAlerts,
@@ -246,6 +247,7 @@ function AppShell() {
             <Route path="passport" element={<WsPassport/>}/>
             <Route path="habitat" element={<WsHabitat/>}/>
             <Route path="documents" element={<WsDocuments/>}/>
+            <Route path="contractors" element={<WsContractors/>}/>
             <Route path="history" element={<WsHistory/>}/>
             <Route path="audit" element={<WsAudit/>}/>
           </Route>

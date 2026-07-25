@@ -6,7 +6,7 @@ import ForensicOverlay, { AnomalySelector, ProjectIdentityCard, QuantEstimationC
 import useIsMobile from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth";
 import {
-  listContractorJobs, createJob, getContractorJob, computeProposal, auditApprove, markSent, contractorPdfUrl,
+  listContractorJobs, createJob, getContractorJob, computeProposal, auditApprove, markSent, openContractorPdf,
   getMaterials, saveMaterials,
 } from "@/lib/api";
 import { Plus, MapPin, Lock, FileText, Download, Shield, DollarSign, CheckCircle2, Send, Layers, Box, ChevronRight, Calculator, Mail, Loader2, AlertTriangle, Wind, Cloud, Radio, Zap, ScrollText, Home, Activity, Calendar } from "lucide-react";
@@ -294,6 +294,7 @@ export function JobDetail() {
   const [reschedule, setReschedule] = useState(null);
   const [weather, setWeather] = useState(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const load = async () => { const j = await getContractorJob(id); setJob(j); const an=(j.mission?.anomalies||j.anomalies||[]); if(an[0]) setSelectedAnomaly(an[0]); };
   useEffect(()=>{ load().catch(()=>{}); }, [id]);
@@ -677,7 +678,28 @@ export function JobDetail() {
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                   <div className="flex items-center gap-2 text-teal font-mono text-[11px] uppercase tracking-widest"><DollarSign size={14}/> Locked Proposal — {pricing.lock_mode}</div>
                   <div className="flex gap-2 flex-wrap">
-                    <a href={contractorPdfUrl(id)} target="_blank" rel="noreferrer" className="btn-hud btn-hud-ghost" data-testid="job-pdf-btn"><Download size={14}/> PDF</a>
+                    <button
+                      onClick={async () => {
+                        if (pdfBusy) return;
+                        setPdfBusy(true);
+                        try {
+                          await openContractorPdf(id);
+                        } catch (err) {
+                          toast.error(err.message || "The report could not be loaded.");
+                        } finally {
+                          setPdfBusy(false);
+                        }
+                      }}
+                      disabled={pdfBusy}
+                      className="btn-hud btn-hud-ghost"
+                      data-testid="job-pdf-btn"
+                    >
+                      {pdfBusy ? (
+                        <><Loader2 size={14} className="animate-spin" /> Loading PDF…</>
+                      ) : (
+                        <><Download size={14}/> PDF</>
+                      )}
+                    </button>
                     <button onClick={()=>{setEmailTo(job.homeowner_email||""); setEmailOpen(true);}} className="btn-hud btn-hud-ghost" data-testid="email-proposal-btn"><Mail size={14}/> Email</button>
                     {job.status === "PROPOSAL_READY" && <button onClick={()=>run(()=>auditApprove(id), "Audit approved")} disabled={busy} className="btn-hud" data-testid="audit-approve-btn"><CheckCircle2 size={14}/> Audit Approved</button>}
                     {job.status === "AUDIT_APPROVED" && <button onClick={()=>run(()=>markSent(id), "Marked sent")} disabled={busy} className="btn-hud btn-hud-alert" data-testid="mark-sent-btn"><Send size={14}/> Mark Sent</button>}
