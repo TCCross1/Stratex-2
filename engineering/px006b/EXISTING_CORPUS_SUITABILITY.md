@@ -82,4 +82,3 @@ Development benchmark suitability only. Not physical validation.
 
   - License redistribution prohibited; inventory/metadata only.
   - Reconstruction blocked by license gate.
-
