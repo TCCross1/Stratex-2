@@ -177,6 +177,11 @@ lanes:
       estimates, projects, Project Opportunities, homeowner relationship
       workflows. Habitat remains unable to write canonical Passport truth.
     owned_paths:
+      - backend/nextgen/habitat/
+      - backend/nextgen/schemas/habitat/
+      - backend/tests/test_habitat_p002_read_model.py
+      - backend/tests/test_habitat_projection_contracts.py
+      - engineering/px004/lane4/
       - backend/nextgen/routes/habitat.py
       - frontend/src/nextgen/HabitatPage.jsx
       - frontend/src/nextgen/HabitatPublic.jsx
@@ -196,10 +201,13 @@ lanes:
     authority_modules: []
     required_tests:
       - backend/tests/test_writer_authority.py
+      - backend/tests/test_habitat_p002_read_model.py
+      - backend/tests/test_habitat_projection_contracts.py
     contracts:
       - HabitatPropertyProjection
       - ProjectOpportunityPackage
       - PropertyProjection
+      - RealityModelReference
     merge_gate: ATLAS_MERGE_AUTHORIZATION
     atlas_approval_token: ATLAS_ARCHITECTURE_APPROVAL
 
