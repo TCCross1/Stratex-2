@@ -166,3 +166,18 @@ frontend/node_modules/.cache/default-development/109.pack
 
 # Allow committed RT-001 placeholder env template (matches .env.* rule above)
 !engineering/rt001/.env.example
+
+
+# PX-006A external dataset laboratory — local binaries never tracked
+.external-datasets/
+datasets/raw/
+datasets/cache/
+datasets/reconstructions/
+*.las
+*.laz
+*.ply
+*.obj
+*.mtl
+*.tif
+*.tiff
+# *.zip already covered by **/*.zip
