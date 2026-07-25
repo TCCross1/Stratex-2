@@ -1,0 +1,118 @@
+version: "0.1.0"
+production_readiness: NOT_READY
+physical_validation: NOT_PERFORMED
+research_date: "2026-07-25"
+sources_researched:
+  - organization: OpenDroneMap
+    page: https://github.com/OpenDroneMap/ODMdata
+    notes: Primary allowlist source for photogrammetry corpora
+  - organization: OpenDroneMap
+    page: https://github.com/OpenDroneMap/odm_data_copr
+    notes: GCP-aware corpus; explicit CC-BY-SA-4.0 license.txt (never CC0)
+  - organization: OpenDroneMap
+    page: https://github.com/OpenDroneMap/odm_data_toledo
+    notes: No explicit license file in repository root
+  - organization: OpenDroneMap
+    page: https://github.com/OpenDroneMap/odm_data_waterbury
+    notes: RTK corpus; no explicit license file in repository root
+  - organization: OpenDroneMap
+    page: https://github.com/OpenDroneMap/odm_data_seneca
+    notes: Farm-field corpus; not residential
+  - organization: Zeitview / academic
+    page: https://openaccess.thecvf.com/content/WACV2024/papers/Corley_ZRG_A_Dataset_for_Multimodal_3D_Residential_Rooftop_Understanding_WACV_2024_paper.pdf
+    notes: ZRG residential rooftop dataset; academic release gated; not acquired in PX-006B
+  - organization: DJI
+    page: https://www.dji.com/downloads/products/dji-terra
+    notes: Already inventoried as DJI_TERRA_SAMPLE; redistribution prohibited
+
+candidates:
+  - dataset_id: COPR
+    source_organization: OpenDroneMap / Michele M. Tobias / Alex Mandel
+    source_page: https://github.com/OpenDroneMap/odm_data_copr
+    acquisition_url: https://github.com/OpenDroneMap/odm_data_copr.git
+    image_count: 42
+    approximate_size_bytes: 331277745
+    structure_type: small_building_with_gcp
+    license: CC-BY-SA-4.0
+    license_file: license.txt
+    redistribution_status: CONDITIONAL
+    commercial_development_status: LICENSE_TERMS_APPLY
+    attribution_requirement: REQUIRED
+    share_alike_requirement: REQUIRED
+    tracked_third_party_fixture_status: PROHIBITED_UNLESS_REVIEWED
+    raw_data_git_status: PROHIBITED
+    license_file: license.txt
+    license_file_sha256: da27d7ba00309175b64d8428a411a21a97673fb47bc4f3ee4b68afb6daa680d2
+    license_verified_at: '2026-07-25T16:58:00+00:00'
+    attribution_text: "Michele M. Tobias; Alex Mandel; OpenDroneMap odm_data_copr (CC BY-SA 4.0)"
+    privacy_risk: low_external_public_corpus
+    technical_value: high_for_gcp_roof_benchmark
+    acquisition_decision: APPROVED_WITH_ATTRIBUTION
+    acquired: true
+    notes:
+      - "license.txt explicitly states Creative Commons Attribution-ShareAlike 4.0"
+      - "Never treat as CC0; share-alike and attribution apply"
+      - "PX-006B-F1 corrected prior incorrect CC0 registry assumption"
+  - dataset_id: TOLEDO
+    source_organization: OpenDroneMap
+    source_page: https://github.com/OpenDroneMap/odm_data_toledo
+    acquisition_url: https://github.com/OpenDroneMap/odm_data_toledo.git
+    image_count: 87
+    approximate_size_bytes: 470000000
+    structure_type: urban_small_building
+    license: UNKNOWN
+    redistribution_status: UNKNOWN
+    commercial_development_status: UNKNOWN
+    privacy_risk: moderate_without_license_file
+    technical_value: moderate
+    acquisition_decision: LICENSE_REVIEW_REQUIRED
+    acquired: false
+  - dataset_id: WATERBURY
+    source_organization: OpenDroneMap
+    source_page: https://github.com/OpenDroneMap/odm_data_waterbury
+    acquisition_url: https://github.com/OpenDroneMap/odm_data_waterbury.git
+    image_count: 248
+    approximate_size_bytes: 2013265920
+    structure_type: mixed_with_rtk
+    license: UNKNOWN
+    redistribution_status: UNKNOWN
+    commercial_development_status: UNKNOWN
+    privacy_risk: moderate_without_license_file
+    technical_value: high_if_license_verified
+    acquisition_decision: LICENSE_REVIEW_REQUIRED
+    acquired: false
+  - dataset_id: SENECA
+    source_organization: Ohio Department of Transportation
+    source_page: https://github.com/OpenDroneMap/odm_data_seneca
+    acquisition_url: https://github.com/OpenDroneMap/odm_data_seneca.git
+    image_count: 167
+    approximate_size_bytes: 375000000
+    structure_type: farm_fields
+    license: UNKNOWN
+    redistribution_status: UNKNOWN
+    commercial_development_status: UNKNOWN
+    privacy_risk: low
+    technical_value: low_for_residential_roof_benchmark
+    acquisition_decision: REJECTED
+    acquired: false
+  - dataset_id: ZRG
+    source_organization: Zeitview / academic
+    source_page: https://github.com/isaaccorley/zrg
+    acquisition_url: academic_release_gated
+    image_count: unknown
+    approximate_size_bytes: unknown
+    structure_type: residential_rooftop
+    license: academic_benchmark_gated
+    redistribution_status: UNKNOWN
+    commercial_development_status: REVIEW_REQUIRED
+    privacy_risk: high_without_release_review
+    technical_value: high_if_authorized
+    acquisition_decision: LICENSE_REVIEW_REQUIRED
+    acquired: false
+
+summary:
+  candidates_researched: 5
+  approved_for_local_development: 1
+  license_review_required: 3
+  rejected: 1
+  bytes_acquired_additional: 331277745
