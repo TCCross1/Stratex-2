@@ -306,6 +306,34 @@ def test_report_reference_only_when_approved_for_delivery():
     )
     assert published_only is None  # published alone ≠ approved for delivery
 
+    # RENDERED / UNDER_REVIEW never imply approved (E-N-001)
+    for status in ("RENDERED", "UNDER_REVIEW", "FAILED", "SUPERSEDED", "PROPOSED"):
+        assert (
+            project_report_reference(
+                {
+                    "report_publication_id": "rp-x",
+                    "publication_status": status,
+                    "report_type": "homeowner_summary",
+                    "approved_for_delivery": True,  # flag must not override
+                },
+                property_id="prop-1",
+                projected_at="2026-07-24T12:00:00+00:00",
+                passport_revision=1,
+            )
+            is None
+        )
+
+    # Missing / unknown status fail closed
+    assert (
+        project_report_reference(
+            {"report_publication_id": "rp-missing", "report_type": "homeowner_summary"},
+            property_id="prop-1",
+            projected_at="2026-07-24T12:00:00+00:00",
+            passport_revision=1,
+        )
+        is None
+    )
+
     deliverable = project_report_reference(
         {
             "publication_id": "pub-2",
@@ -322,6 +350,31 @@ def test_report_reference_only_when_approved_for_delivery():
     assert deliverable is not None
     assert deliverable.publication_id == "pub-2"
     assert deliverable.status == "published"
+
+    # Exact C-P-004 package field mapping (E-N-003)
+    cp004 = project_report_reference(
+        {
+            "report_publication_id": "rp-cp004",
+            "publication_status": "APPROVED_FOR_DELIVERY",
+            "delivery_status": "APPROVED_FOR_DELIVERY",
+            "report_type": "homeowner_summary",
+            "template_version": "1.2.0",
+            "object_reference_safe_id": "objref:abc123",
+            "checksum": "deadbeef",
+            "generated_at": "2026-07-21T00:00:00+00:00",
+            "approved_at": "2026-07-22T00:00:00+00:00",
+            "superseded": False,
+        },
+        property_id="prop-1",
+        projected_at="2026-07-24T12:00:00+00:00",
+        passport_revision=1,
+    )
+    assert cp004 is not None
+    assert cp004.publication_id == "rp-cp004"
+    assert cp004.template == "homeowner_summary"
+    assert cp004.reference_uri == "objref:abc123"
+    assert cp004.published_at == "2026-07-22T00:00:00+00:00"
+    assert cp004.status == "published"
 
 
 # ── Estimate consumer / privacy ──────────────────────────────────────────
@@ -366,6 +419,60 @@ def test_redact_homeowner_secrets_removes_tokens_and_costs():
         }
     )
     assert cleaned == {"ok": True, "nested": {"label": "safe"}}
+
+
+def test_compound_private_field_redaction_matrix():
+    cleaned = redact_homeowner_secrets(
+        {
+            "safe": 1,
+            "marginPct": 12,
+            "Margin": 1,
+            "margin-pct": 9,
+            "grossMargin": 0.2,
+            "Profit": 100,
+            "contractorMargin": 0.3,
+            "private.cost": 44,
+            "api-key": "k",
+            "nested": {"unitCostCents": 500, "label": "ok"},
+            "SecretToken": "x",
+            "presignedUrl": "https://signed",
+            "auditSignature": "sig",
+        }
+    )
+    assert cleaned["safe"] == 1
+    assert cleaned["nested"] == {"label": "ok"}
+    for banned in (
+        "marginPct",
+        "Margin",
+        "margin-pct",
+        "grossMargin",
+        "Profit",
+        "contractorMargin",
+        "private.cost",
+        "api-key",
+        "SecretToken",
+        "presignedUrl",
+        "auditSignature",
+    ):
+        assert banned not in cleaned
+    assert "unitCostCents" not in cleaned["nested"]
+
+
+def test_estimate_maps_exact_ledger_id():
+    model = project_estimate_summary(
+        {
+            "ledger_id": "led-e002-001",
+            "availability": "available",
+            "assembly_engine_version": "e002.1.0.0",
+            "total_range_label": None,
+            "line_group_count": 2,
+        },
+        property_id="prop-1",
+        projected_at="2026-07-24T12:00:00+00:00",
+        passport_revision=2,
+    )
+    assert model.estimate_ref == "led-e002-001"
+    assert "e002.1.0.0" in model.provenance.source_id
 
 
 # ── Opportunity consumer ─────────────────────────────────────────────────
@@ -431,21 +538,28 @@ def test_build_homeowner_property_read_model_end_to_end():
                 ),
             ],
             estimate={
-                "canonical_id": "est-1",
+                "ledger_id": "led-est-1",
                 "availability": "awaiting_review",
                 "margin_pct": 40,
+                "contractorMargin": 0.4,
             },
             reports=[
                 {
-                    "publication_id": "pub-x",
-                    "status": "published",
-                    "approved_for_delivery": True,
-                    "template": "homeowner_summary",
-                    "published_at": "2026-07-21T00:00:00+00:00",
+                    "report_publication_id": "pub-x",
+                    "publication_status": "APPROVED_FOR_DELIVERY",
+                    "report_type": "homeowner_summary",
+                    "object_reference_safe_id": "objref:pub-x",
+                    "approved_at": "2026-07-21T00:00:00+00:00",
+                    "superseded": False,
                 },
                 {
-                    "publication_id": "pub-y",
-                    "status": "awaiting_review",
+                    "report_publication_id": "pub-y",
+                    "publication_status": "UNDER_REVIEW",
+                },
+                {
+                    "report_publication_id": "pub-z",
+                    "publication_status": "SUPERSEDED",
+                    "superseded": True,
                 },
             ],
             opportunities=[

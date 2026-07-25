@@ -34,9 +34,27 @@ from .reality_model import RealityModelBundle, build_reality_model
 
 MODULE_IDENTITY = "nextgen.habitat.read_model"
 
-# Report is deliverable to homeowner only when source explicitly approves delivery.
+# C-P-004 / Habitat: only explicitly delivery-approved states may appear available.
+# RENDERED / UNDER_REVIEW / FAILED / SUPERSEDED / PROPOSED never imply approved.
 _REPORT_DELIVERY_APPROVED_STATUSES = frozenset(
-    {"published", "approved_for_delivery", "customer_releasable"}
+    {
+        "APPROVED_FOR_DELIVERY",
+        "DELIVERING",
+        "DELIVERED",
+        # Legacy explicit homeowner-delivery markers (fail-closed mapping).
+        "CUSTOMER_RELEASABLE",
+    }
+)
+_REPORT_NON_CURRENT_STATUSES = frozenset({"SUPERSEDED"})
+_REPORT_FAILED_STATUSES = frozenset({"FAILED"})
+_REPORT_UNAPPROVED_STATUSES = frozenset(
+    {
+        "PROPOSED",
+        "INPUTS_VALIDATED",
+        "RENDERING",
+        "RENDERED",
+        "UNDER_REVIEW",
+    }
 )
 
 # Statuses that imply contracts / payments. Plain "accepted" is relationship-only
@@ -233,9 +251,22 @@ def project_estimate_summary(
         availability=availability,
     )
 
+    # E-N-003: exact Estimator identifiers — ledger_id / estimate_ref / canonical_id.
+    # No invented fallback identifier when all are absent.
+    estimate_ref = (
+        cleaned.get("estimate_ref")
+        or cleaned.get("ledger_id")
+        or cleaned.get("canonical_id")
+    )
+    calc_version = (
+        cleaned.get("calculation_version")
+        or cleaned.get("assembly_engine_version")
+        or cleaned.get("schema_version")
+    )
+
     payload = {
         "property_id": property_id,
-        "estimate_ref": cleaned.get("estimate_ref") or cleaned.get("canonical_id"),
+        "estimate_ref": estimate_ref,
         "availability": availability,
         "currency": "USD",
         "total_range_label": cleaned.get("total_range_label"),
@@ -243,11 +274,7 @@ def project_estimate_summary(
         "includes_tax": cleaned.get("includes_tax"),
         "provenance": _provenance(
             source_type="estimate_result",
-            source_id=str(
-                cleaned.get("estimate_ref")
-                or cleaned.get("canonical_id")
-                or f"{property_id}:estimate"
-            ),
+            source_id=str(estimate_ref or f"{property_id}:estimate"),
             context="habitat.estimate_consumer",
             projected_at=projected_at,
             passport_revision=passport_revision,
@@ -263,23 +290,85 @@ def project_estimate_summary(
         ).model_dump(),
         "unknown_state": unknown.model_dump(),
     }
+    # Keep calculation version only in provenance notes path via source_id context —
+    # never emit contractor-private fields. Stale versions remain distinct via ref.
+    if calc_version is not None:
+        payload["provenance"]["source_id"] = (
+            f"{payload['provenance']['source_id']}@v{calc_version}"
+        )
     payload = redact_homeowner_secrets(payload)
     assert_homeowner_safe_payload(payload)
     assert_no_private_cost_fields(payload)
     return HomeownerEstimateSummaryProjection.model_validate(payload)
 
 
+def _report_status_token(raw: Mapping[str, Any]) -> Optional[str]:
+    """Resolve publication/delivery status without inventing a value."""
+    for key in (
+        "publication_status",
+        "delivery_status",
+        "status",
+    ):
+        value = raw.get(key)
+        if value is None or value == "":
+            continue
+        return str(value).strip().upper()
+    return None
+
+
 def _report_approved_for_delivery(raw: Mapping[str, Any]) -> bool:
-    status = str(raw.get("status") or "").lower()
+    """Strict fail-closed gate (E-N-001).
+
+    - Missing status → not approved
+    - Unknown status → not approved
+    - RENDERED / UNDER_REVIEW never imply approved
+    - FAILED remains failed (not silently unavailable-as-approved)
+    - SUPERSEDED is never current/homeowner-available
+    - Boolean flags cannot override a non-delivery status
+    """
+    if raw.get("superseded") is True:
+        return False
+    status = _report_status_token(raw)
+    if status is None:
+        return False
+    if status in _REPORT_NON_CURRENT_STATUSES:
+        return False
+    if status in _REPORT_FAILED_STATUSES:
+        return False
+    if status in _REPORT_UNAPPROVED_STATUSES:
+        return False
     if status in _REPORT_DELIVERY_APPROVED_STATUSES:
-        # Explicit denial wins.
+        # Explicit denial still wins.
         if raw.get("approved_for_delivery") is False:
             return False
-        if status == "published" and raw.get("approved_for_delivery") is None:
-            # published alone is insufficient unless delivery flag or template gate
-            return bool(raw.get("delivery_approved") or raw.get("homeowner_deliverable"))
         return True
-    return bool(raw.get("approved_for_delivery") or raw.get("delivery_approved"))
+    # Legacy lowercase "published" alone is insufficient (fail closed).
+    if status == "PUBLISHED":
+        return bool(
+            raw.get("approved_for_delivery") is True
+            or raw.get("delivery_approved") is True
+            or raw.get("homeowner_deliverable") is True
+        )
+    # Unknown status → fail closed. Never trust bare boolean overrides.
+    return False
+
+
+def _map_report_consumer_status(raw: Mapping[str, Any], *, approved: bool) -> str:
+    """Honest consumer status — never rewrite unknown/failed into published."""
+    status = _report_status_token(raw)
+    if status is None:
+        return "unknown"
+    if status in _REPORT_NON_CURRENT_STATUSES:
+        return "unavailable"
+    if status in _REPORT_FAILED_STATUSES:
+        return "unavailable"
+    if status in {"UNDER_REVIEW", "RENDERED", "RENDERING", "PROPOSED", "INPUTS_VALIDATED"}:
+        return "awaiting_review"
+    if approved and status in _REPORT_DELIVERY_APPROVED_STATUSES:
+        return "published"
+    if status == "PUBLISHED" and approved:
+        return "published"
+    return "unknown"
 
 
 def project_report_reference(
@@ -289,26 +378,64 @@ def project_report_reference(
     projected_at: str,
     passport_revision: Optional[int],
 ) -> Optional[ReportPublicationReference]:
-    """Emit report reference only when approved for homeowner delivery."""
-    if not _report_approved_for_delivery(raw):
+    """Emit report reference only when approved for homeowner delivery.
+
+    Maps exact C-P-004 ReportPublicationPackage / habitat-safe fields (E-N-003):
+    report_publication_id, publication_status, template_version/report_type,
+    object_reference_safe_id, generated_at/approved_at, superseded.
+    """
+    if raw.get("superseded") is True:
+        return None
+    status_token = _report_status_token(raw)
+    if status_token in _REPORT_NON_CURRENT_STATUSES:
         return None
 
-    unknown = UnknownStateDisplay.known()
-    status = "published"
-    publication_id = raw.get("publication_id") or raw.get("canonical_id")
+    approved = _report_approved_for_delivery(raw)
+    if not approved:
+        return None
+
+    # Exact producer field mapping — no invented fallback identifier.
+    publication_id = (
+        raw.get("report_publication_id")
+        or raw.get("publication_id")
+        or raw.get("canonical_id")
+    )
     if not publication_id:
         return None
 
-    awaiting_is_not_approved(status=status, unknown_state=unknown)
+    consumer_status = _map_report_consumer_status(raw, approved=True)
+    if consumer_status != "published":
+        return None
+
+    unknown = UnknownStateDisplay.known()
+    template = (
+        raw.get("template")
+        or raw.get("report_type")
+        or raw.get("template_version")
+    )
+    if not template:
+        return None
+
+    published_at = (
+        raw.get("approved_at")
+        or raw.get("generated_at")
+        or raw.get("published_at")
+    )
+    reference_uri = (
+        raw.get("object_reference_safe_id")
+        or raw.get("reference_uri")
+    )
+
+    awaiting_is_not_approved(status=consumer_status, unknown_state=unknown)
 
     payload = redact_homeowner_secrets(
         {
             "publication_id": publication_id,
             "property_id": property_id,
-            "template": raw.get("template") or "homeowner_summary",
-            "status": status,
-            "published_at": raw.get("published_at"),
-            "reference_uri": raw.get("reference_uri"),
+            "template": str(template),
+            "status": consumer_status,
+            "published_at": published_at,
+            "reference_uri": reference_uri,
             "provenance": _provenance(
                 source_type="report_publication",
                 source_id=str(publication_id),
@@ -323,6 +450,7 @@ def project_report_reference(
         }
     )
     assert_homeowner_safe_payload(payload)
+    assert_no_private_cost_fields(payload)
     return ReportPublicationReference.model_validate(payload)
 
 

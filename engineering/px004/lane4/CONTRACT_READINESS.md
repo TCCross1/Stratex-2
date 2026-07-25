@@ -20,6 +20,17 @@
 | Privacy redaction of secrets / private costs | Implemented (`privacy.py`) |
 | Canonical Passport write authority | **ABSENT** |
 
+### PX-005 debt closure
+
+- **E-N-001:** Strict report-status gate — missing/unknown fail closed; RENDERED /
+  UNDER_REVIEW never imply approved; SUPERSEDED never current; FAILED stays failed;
+  boolean flags cannot override non-delivery states; no unsafe rewrite to `published`.
+- **E-N-002:** Compound private-field redaction across snake/camel/Pascal/kebab/dotted
+  and nested objects (margin/profit/markup/secret/presigned URL/audit signature/etc.).
+- **E-N-003:** Exact mapping from C-P-004 `report_publication_id` /
+  `publication_status` / `object_reference_safe_id` / timestamps, and Estimator
+  `ledger_id` (+ calculation version) without invented fallback identifiers.
+
 ## Contracts
 
 | Contract | Registry | Consumer readiness |
