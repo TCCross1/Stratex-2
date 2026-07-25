@@ -57,8 +57,36 @@ CUSTOMER_PAYLOAD_KEYS = frozenset(
         "photo_bytes",
         "image_bytes",
         "file_bytes",
+        "object_url",
+        "presigned_url",
+        "signed_url",
+        "tenant_id",
+        "property_id",
+        "contractor_margin",
+        "wholesale_cost",
+        "internal_cost",
+        "markup",
+        "commission",
+        "profit",
     }
 )
+
+# High-cardinality identifiers must never become global metric labels.
+HIGH_CARDINALITY_LABEL_KEYS = frozenset(
+    {
+        "tenant_id",
+        "property_id",
+        "passport_id",
+        "report_publication_id",
+        "event_id",
+        "user_id",
+        "actor_id",
+        "object_url",
+        "presigned_url",
+    }
+)
+
+EXCEPTION_TEXT_MAX_CHARS = 240
 
 _REDACTED = "[REDACTED]"
 _CONN_CRED_RE = re.compile(r"(://)([^/\s:@]+):([^@/\s]+)(@)")
@@ -71,15 +99,38 @@ def _key_is_sensitive(key: str) -> bool:
     return any(frag in normalized for frag in SECRET_KEY_FRAGMENTS)
 
 
+def bound_exception_text(exc: Any) -> str:
+    """Bound exception text for telemetry — never dump full payloads."""
+    text = str(exc)
+    if len(text) > EXCEPTION_TEXT_MAX_CHARS:
+        return text[:EXCEPTION_TEXT_MAX_CHARS] + "...[truncated]"
+    return text
+
+
 def scrub_for_log(value: Any, *, _depth: int = 0) -> Any:
     """Return a JSON-safe structure with secrets/customer payloads removed."""
     if _depth > 6:
         return "[TRUNCATED_DEPTH]"
     if value is None or isinstance(value, (bool, int, float)):
         return value
+    if isinstance(value, BaseException):
+        return bound_exception_text(value)
     if isinstance(value, str):
         if "://" in value and "@" in value:
             return _CONN_CRED_RE.sub(r"\1***:***\4", value)
+        # Credential-bearing or signed object URLs without userinfo.
+        lower = value.lower()
+        if "://" in value and any(
+            marker in lower
+            for marker in (
+                "x-amz-signature=",
+                "x-amz-credential=",
+                "signature=",
+                "access_key",
+                "token=",
+            )
+        ):
+            return _REDACTED
         if len(value) > 512:
             return value[:128] + f"...[truncated len={len(value)}]"
         return value
@@ -163,6 +214,8 @@ class SafeMetrics:
         clean: Dict[str, str] = {}
         for k, v in (labels or {}).items():
             key = str(k)
+            if key in HIGH_CARDINALITY_LABEL_KEYS:
+                continue
             if key not in allowed:
                 continue
             if _key_is_sensitive(key):

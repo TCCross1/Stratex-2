@@ -48,8 +48,11 @@ DEFAULT_BUDGETS: Dict[str, LoadBudget] = {
         max_payload_bytes=2048,
         target_p95_ms=25.0,
     ),
-    "scrub_throughput": LoadBudget(
-        name="scrub_throughput",
+    # Honest name: this budget exercises the same local JSON serialize+hash
+    # microbenchmark as json_hash_roundtrip with tighter ceilings. It does NOT
+    # measure end-to-end sanitize_dlq_payload / observability scrub throughput.
+    "json_serialize_hash_microbench": LoadBudget(
+        name="json_serialize_hash_microbench",
         max_iterations=100,
         max_wall_ms=3_000.0,
         max_ops_per_sec=20_000.0,

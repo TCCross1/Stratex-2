@@ -59,7 +59,11 @@ def test_load_harness_caps_requested_iterations():
     assert result.iterations <= 10
 
 
-def test_scrub_budget_runs():
-    result = run_bounded_synthetic_load(DEFAULT_BUDGETS["scrub_throughput"], iterations=25)
+def test_json_serialize_hash_microbench_budget_runs():
+    assert "scrub_throughput" not in DEFAULT_BUDGETS
+    budget = DEFAULT_BUDGETS["json_serialize_hash_microbench"]
+    assert budget.name == "json_serialize_hash_microbench"
+    result = run_bounded_synthetic_load(budget, iterations=25)
     assert result.errors == 0
     assert result.within_budget is True
+    assert result.budget_name == "json_serialize_hash_microbench"

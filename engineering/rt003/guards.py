@@ -104,10 +104,113 @@ def guard_floating_python_image() -> GuardFinding:
     )
 
 
-def guard_dlq_scrub_detection() -> GuardFinding:
-    """Detect whether dead-letter path scrubs secret keys from payload.
+def _extract_move_to_dead_letter_body(text: str) -> Optional[str]:
+    if "async def _move_to_dead_letter" not in text:
+        return None
+    start = text.index("async def _move_to_dead_letter")
+    rest = text[start:]
+    m = re.search(r"\nasync def |\ndef ", rest[1:])
+    return rest[: m.start() + 1] if m else rest
 
-    Lane 5 must not rewrite outbox_worker. Honest FINDING if scrub is absent.
+
+def analyze_dlq_scrub_source(text: str) -> GuardFinding:
+    """Classify DLQ scrub safety from source text (B-N-001).
+
+    Accepts the C-P-003/C-P-004 recursive ``sanitize_dlq_payload`` path.
+    Fails on raw persistence, shallow-only scrub, or sanitizer bypass.
+    No branch-specific hard-coded exceptions.
+    """
+    body = _extract_move_to_dead_letter_body(text)
+    if body is None:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="UNAVAILABLE",
+            summary="_move_to_dead_letter not found",
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+
+    copies_raw = bool(
+        re.search(
+            r"""["']payload["']\s*:\s*event\.get\(\s*["']payload["']""",
+            body,
+        )
+    )
+    uses_recursive = "sanitize_dlq_payload(" in body
+    uses_legacy_scrub = "_scrub(" in body and "payload" in body
+    uses_accepted_scrub = uses_recursive or uses_legacy_scrub
+    marks_non_canonical = "payload_is_canonical_truth" in body
+    has_recursive_helper = (
+        "def sanitize_dlq_payload" in text and "def _sanitize_value" in text
+    )
+    # Shallow-only: top-level key pops / banned list without recursive sanitize.
+    shallow_only = (
+        ("safe.pop(" in body or "for banned in" in body)
+        and not uses_accepted_scrub
+    )
+    # Bypass: scrub call present but raw event payload still assigned to row.
+    bypass = uses_accepted_scrub and copies_raw
+
+    if copies_raw and not uses_accepted_scrub:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="FAIL",
+            summary="DLQ copies raw event payload without accepted recursive scrub",
+            details=[
+                "Detected payload assignment from event.get('payload') without sanitize_dlq_payload/_scrub",
+            ],
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+    if shallow_only:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="FAIL",
+            summary="DLQ uses shallow-only scrub; nested secrets would persist",
+            details=["Top-level pop/banned-key scrub without recursive sanitize_dlq_payload"],
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+    if bypass:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="FAIL",
+            summary="DLQ sanitizer bypass: raw event payload still persisted",
+            details=[
+                "sanitize/_scrub referenced but payload still assigned from event.get('payload')",
+            ],
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+    if uses_recursive and has_recursive_helper and marks_non_canonical:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="PASS",
+            summary="DLQ path uses accepted recursive sanitize_dlq_payload and marks non-canonical",
+            details=[
+                "sanitize_dlq_payload referenced in _move_to_dead_letter",
+                "payload_is_canonical_truth present",
+                "_sanitize_value recursive helper present",
+            ],
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+    if uses_legacy_scrub and not copies_raw:
+        return GuardFinding(
+            guard_id="dlq_scrub_detection",
+            status="PASS",
+            summary="DLQ path scrubbed via _scrub without raw payload persistence",
+            details=["_scrub referenced in _move_to_dead_letter"],
+            remediation_owner="LANE_1_CORE_PASSPORT",
+        )
+    return GuardFinding(
+        guard_id="dlq_scrub_detection",
+        status="FAIL",
+        summary="Unable to confirm accepted recursive DLQ payload scrubbing",
+        details=["No clear sanitize_dlq_payload/_scrub usage on DLQ payload path"],
+        remediation_owner="LANE_1_CORE_PASSPORT",
+    )
+
+
+def guard_dlq_scrub_detection() -> GuardFinding:
+    """Detect whether dead-letter path uses accepted recursive scrub.
+
+    Lane 5 must not rewrite outbox_worker. Reads tree source only.
     """
     if not OUTBOX_WORKER.is_file():
         return GuardFinding(
@@ -117,54 +220,7 @@ def guard_dlq_scrub_detection() -> GuardFinding:
             details=[str(OUTBOX_WORKER)],
             remediation_owner="LANE_1_CORE_PASSPORT",
         )
-    text = OUTBOX_WORKER.read_text(encoding="utf-8")
-    if "async def _move_to_dead_letter" not in text:
-        return GuardFinding(
-            guard_id="dlq_scrub_detection",
-            status="UNAVAILABLE",
-            summary="_move_to_dead_letter not found",
-            remediation_owner="LANE_1_CORE_PASSPORT",
-        )
-
-    # Extract the dead-letter function body (until next top-level async def).
-    start = text.index("async def _move_to_dead_letter")
-    rest = text[start:]
-    m = re.search(r"\nasync def |\ndef ", rest[1:])
-    body = rest[: m.start() + 1] if m else rest
-
-    copies_raw = (
-        '"payload": event.get("payload")' in body
-        or "\"payload\": event.get('payload')" in body
-        or "payload\": event.get(\"payload\") or {}" in body
-    )
-    uses_scrub = "_scrub(" in body and "payload" in body
-
-    if copies_raw and not uses_scrub:
-        return GuardFinding(
-            guard_id="dlq_scrub_detection",
-            status="FINDING",
-            summary="DLQ copies raw event payload without _scrub — residual secret-mirror risk",
-            details=[
-                "Detected payload assignment from event.get('payload') without _scrub in _move_to_dead_letter",
-                "Audit path uses _scrub; DLQ path does not",
-            ],
-            remediation_owner="LANE_1_CORE_PASSPORT",
-        )
-    if uses_scrub:
-        return GuardFinding(
-            guard_id="dlq_scrub_detection",
-            status="PASS",
-            summary="DLQ path appears to scrub payload before persistence",
-            details=["_scrub referenced in _move_to_dead_letter"],
-            remediation_owner="LANE_1_CORE_PASSPORT",
-        )
-    return GuardFinding(
-        guard_id="dlq_scrub_detection",
-        status="FINDING",
-        summary="Unable to confirm DLQ payload scrubbing",
-        details=["No clear _scrub usage on DLQ payload path"],
-        remediation_owner="LANE_1_CORE_PASSPORT",
-    )
+    return analyze_dlq_scrub_source(OUTBOX_WORKER.read_text(encoding="utf-8"))
 
 
 def guard_duplicate_writer() -> GuardFinding:

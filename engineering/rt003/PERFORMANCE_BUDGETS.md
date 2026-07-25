@@ -16,7 +16,11 @@ live Mongo/MinIO soak tests, not customer traffic.
 | Budget | Max iterations | Max wall ms | Ops/sec safety cap | Soft p95 target |
 |--------|----------------|-------------|--------------------|-----------------|
 | `json_hash_roundtrip` | 200 | 5000 | 50000 | 25 ms |
-| `scrub_throughput` | 100 | 3000 | 20000 | 40 ms |
+| `json_serialize_hash_microbench` | 100 | 3000 | 20000 | 40 ms |
+
+`json_serialize_hash_microbench` is a tighter local serialize+SHA-256 microbenchmark
+only. It does **not** measure end-to-end DLQ/audit scrub throughput or production
+capacity.
 
 Executable definitions: `engineering/rt003/load_harness.py` → `DEFAULT_BUDGETS`.
 

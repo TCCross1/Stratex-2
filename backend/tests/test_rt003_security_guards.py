@@ -15,6 +15,7 @@ if str(ENG) not in sys.path:
     sys.path.insert(0, str(ENG))
 
 from rt003.guards import (  # noqa: E402
+    analyze_dlq_scrub_source,
     guard_dlq_scrub_detection,
     guard_duplicate_writer,
     guard_false_ready,
@@ -64,7 +65,6 @@ def test_workflow_uses_pinned_harness_and_keeps_contents_read():
         if stripped.startswith("#"):
             continue
         if "python:3.12-slim" in stripped and "@sha256:" not in stripped:
-            # Allow prose in comments only — already skipped; any code line fails.
             raise AssertionError(f"floating python tag: {stripped}")
     finding = guard_floating_python_image()
     assert finding.status == "PASS", finding.as_public_dict()
@@ -80,19 +80,71 @@ def test_guard_false_ready_pass():
     assert finding.status == "PASS", finding.as_public_dict()
 
 
-def test_guard_dlq_scrub_detection_classifies_honestly():
+def test_guard_dlq_scrub_detection_accepts_recursive_implementation():
+    """Positive: accepted C-P-004 recursive scrub on main must PASS (B-N-001)."""
     finding = guard_dlq_scrub_detection()
-    # Lane 5 detects residual risk; does not silently claim PASS if scrub absent.
-    assert finding.status in {"FINDING", "PASS", "UNAVAILABLE"}
+    assert finding.status == "PASS", finding.as_public_dict()
     assert finding.remediation_owner == "LANE_1_CORE_PASSPORT"
-    worker = ROOT / "backend" / "nextgen" / "outbox_worker.py"
-    if worker.is_file():
-        body = worker.read_text(encoding="utf-8")
-        copies_raw = '"payload": event.get("payload")' in body
-        # Current tree copies raw payload in DLQ — expect FINDING.
-        if copies_raw and "_scrub(event.get(\"payload\")" not in body:
-            assert finding.status == "FINDING"
-            assert "raw" in finding.summary.lower() or "scrub" in finding.summary.lower()
+    assert "sanitize_dlq_payload" in " ".join(finding.details)
+
+
+def test_dlq_detector_rejects_raw_payload_persistence():
+    unsafe = '''
+async def _move_to_dead_letter(event, error):
+    row = {
+        "event_id": event["event_id"],
+        "payload": event.get("payload") or {},
+    }
+    await db.insert(row)
+
+async def other():
+    pass
+'''
+    finding = analyze_dlq_scrub_source(unsafe)
+    assert finding.status == "FAIL"
+    assert "raw" in finding.summary.lower()
+
+
+def test_dlq_detector_rejects_shallow_only_scrub():
+    shallow = '''
+async def _move_to_dead_letter(event, error):
+    safe = dict(event.get("payload") or {})
+    for banned in ("password", "token"):
+        safe.pop(banned, None)
+    row = {"payload": safe}
+    await db.insert(row)
+
+async def other():
+    pass
+'''
+    finding = analyze_dlq_scrub_source(shallow)
+    assert finding.status == "FAIL"
+    assert "shallow" in finding.summary.lower()
+
+
+def test_dlq_detector_rejects_sanitizer_bypass():
+    bypass = '''
+def sanitize_dlq_payload(payload):
+    return {"payload": {}}
+
+def _sanitize_value(value):
+    return value
+
+async def _move_to_dead_letter(event, error):
+    scrubbed = sanitize_dlq_payload(event.get("payload") or {})
+    row = {
+        "payload": event.get("payload") or {},
+        "payload_is_canonical_truth": False,
+        "also": scrubbed,
+    }
+    await db.insert(row)
+
+async def other():
+    pass
+'''
+    finding = analyze_dlq_scrub_source(bypass)
+    assert finding.status == "FAIL"
+    assert "bypass" in finding.summary.lower()
 
 
 def test_run_security_failure_guards_aggregate():
@@ -101,7 +153,7 @@ def test_run_security_failure_guards_aggregate():
     assert by_id["floating_python_image"].status == "PASS"
     assert by_id["duplicate_writer"].status == "PASS"
     assert by_id["false_ready"].status == "PASS"
-    assert by_id["dlq_scrub_detection"].status in {"FINDING", "PASS", "UNAVAILABLE"}
+    assert by_id["dlq_scrub_detection"].status == "PASS"
     # No guard may claim production ready.
     for f in findings:
         assert f.as_public_dict()["production_readiness"] == "NOT_READY"
@@ -110,11 +162,13 @@ def test_run_security_failure_guards_aggregate():
 def test_contract_readiness_document():
     text = CONTRACT.read_text(encoding="utf-8")
     assert "NOT READY" in text
-    assert "READY_FOR_INDEPENDENT_AUDIT" in text
+    assert "READY_FOR_INDEPENDENT_AUDIT" in text or "READY_FOR_INTEGRATION_AUDIT" in text
     assert "ATLAS_MERGE_AUTHORIZATION" in text
     assert "dlq_scrub_detection" in text
     assert "LANE_1_CORE_PASSPORT" in text
     assert "NEVER AUTHORITY" in text
+    assert "sanitize_dlq_payload" in text
+    assert "json_serialize_hash_microbench" in text
 
 
 def test_lane5_owns_rt003_paths():
@@ -128,3 +182,6 @@ def test_lane5_owns_rt003_paths():
     assert "backend/tests/test_rt003_security_guards.py" in owned
     assert lane5["authority_modules"] == []
     assert "backend/nextgen/outbox_worker.py" in lane5["prohibited_paths"]
+    # Lane 1 ownership of report publication preserved after rebase.
+    lane1 = next(l for l in lanes["lanes"] if l["id"] == "LANE_1_CORE_PASSPORT")
+    assert "backend/nextgen/report_publication.py" in lane1["owned_paths"]

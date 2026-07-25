@@ -98,3 +98,43 @@ def test_safe_metrics_invalid_name_rejected():
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+def test_safe_metrics_rejects_high_cardinality_and_secret_labels():
+    from rt003.observability import bound_exception_text
+
+    metrics = SafeMetrics()
+    sample = metrics.incr(
+        "rt003_ops_total",
+        labels={
+            "component": "observability",
+            "operation": "emit",
+            "outcome": "ok",
+            "tenant_id": "tenant-should-drop",
+            "property_id": "property-should-drop",
+            "object_url": "https://minio/x?X-Amz-Signature=abc",
+            "password": "nope",
+            "presigned_url": "https://signed",
+        },
+    )
+    assert "tenant_id" not in sample.labels
+    assert "property_id" not in sample.labels
+    assert "object_url" not in sample.labels
+    assert "password" not in sample.labels
+    assert "presigned_url" not in sample.labels
+    assert sample.labels["component"] == "observability"
+
+    scrubbed = scrub_for_log(
+        {
+            "object_url": "https://minio/bucket/o?X-Amz-Signature=deadbeef",
+            "contractor_margin": 0.33,
+            "ok": 1,
+        }
+    )
+    assert scrubbed["object_url"] == "[REDACTED]"
+    assert scrubbed["contractor_margin"] == "[REDACTED]"
+    assert scrubbed["ok"] == 1
+
+    long_exc = bound_exception_text("x" * 1000)
+    assert len(long_exc) < 300
+    assert long_exc.endswith("...[truncated]")
