@@ -1,6 +1,6 @@
 # PX-006B Reconstruction Results
 
-Statuses: successfully_executed | failed | skipped | license-blocked | not_attempted
+Statuses: successfully_executed | failed | running | skipped | license-blocked | not_attempted
 
 Do not use PASS for an unexecuted reconstruction.
 
@@ -10,53 +10,68 @@ Do not use PASS for an unexecuted reconstruction.
 - Digest: `sha256:56be7b87a5ef3abfc0bb2afe88df839862fd18c41d26ca13672bf79cd2d59dd1`
 - No silent replacement of the PX-006A-R1 accepted digest
 
-## MYGLA — successfully_executed (prior PX-006A-R1; reused)
+## MYGLA — successfully_executed (inherited PX-006A-R1)
 
-- Profile: smoke / roof-smoke compatible
-- Status: SUCCESS, promoted
+- Classification: SUCCESS
+- Profile: smoke
+- Promoted: true
 - Outputs: orthophoto, point_cloud, report, cameras
-- DSM/mesh: not produced by smoke profile (`--skip-3dmodel`, `--fast-orthophoto`)
-- Role in PX-006B: capture-quality / pipeline benchmark structure
+- DSM/mesh: not produced (`--skip-3dmodel`, `--fast-orthophoto`)
+- Role: Structure A baseline
 
-## BELLUS — successfully_executed (prior PX-006A-R1; reused)
+## BELLUS — successfully_executed (inherited PX-006A-R1)
 
+- Classification: SUCCESS
 - Profile: gcp-reduced
-- Status: SUCCESS, promoted; GCP accepted_and_used
+- Promoted: true
+- GCP: accepted_and_used
 - Outputs: orthophoto, point_cloud, report, cameras
-- Role: GCP / small-building structure benchmark
+- Role: Structure B GCP/control
 
-## CALITERRA — roof-detail attempt
+## AUKERMAN — running (inherited PX-006B job; not duplicated)
 
-- Profile: roof-detail (digest-pinned ODM 3.5.6)
-- Intent: residential roof-focused reconstruction
-- Result: recorded at completion time in local receipts under `STRATEX_DATASET_ROOT`
-- Local path only; not in Git
-
-## AUKERMAN — roof-detail attempt
-
+- Classification: RUNNING
 - Profile: roof-detail
-- Intent: useful small-building / pitched-roof complexity
-- Result: recorded at completion time in local receipts under `STRATEX_DATASET_ROOT`
-- Local path only; not in Git
+- Started: 2026-07-25T15:07Z (local)
+- Status at PX-006B-F1 audit: densify/openmvs still active; no SUCCESS receipt yet
+- No duplicate job started
+
+## CALITERRA — running (inherited PX-006B job; not duplicated)
+
+- Classification: RUNNING
+- Profile: roof-detail
+- Started: 2026-07-25T15:07Z (local)
+- Status at PX-006B-F1 audit: densify/openmvs still active; no SUCCESS receipt yet
+- No duplicate job started
 
 ## COPR — failed (honest)
 
+- Classification: FAILED
 - Profile: gcp-reduced
-- License: CC-BY-SA-4.0 (VERIFIED_RESTRICTED after `license.txt` inspection)
+- License: CC-BY-SA-4.0 (VERIFIED_RESTRICTED)
 - GCP: accepted_and_used (27 points)
-- Failure: ODM texrecon aborted with `stack smashing detected` / child return 134 during MVS texturing
+- Failure: ODM texrecon aborted (`stack smashing detected`, child return 134)
 - Promoted: false
 - Outputs: none promoted
-- Classification: failed / ODM_PROCESS_FAILED
 
 ## DJI_TERRA_SAMPLE — license-blocked
 
-- Reconstruction not attempted for geometry benchmark
+- Reconstruction not attempted
 - LICENSE_REVIEW_REQUIRED / redistribution PROHIBITED
 
 ## Environment limitations
 
-- Host Docker storage-driver: vfs (nested overlayfs remediation from PX-006A-R1)
+- Host Docker storage-driver: vfs
 - Host cgroupv2: docker `--memory` / `--cpus` unavailable (`HOST_CGROUP_MEMORY_CONTROLLER_UNAVAILABLE`)
 - Bounds: taskset CPU affinity, `--pids-limit`, wall-clock timeout
 - physical_validation: NOT_PERFORMED
+
+## Minimum coverage assessment
+
+| Requirement | Evidence |
+|-------------|----------|
+| Simple/moderate building | MYGLA SUCCESS |
+| GCP-aware structure | BELLUS SUCCESS |
+| More-complex roof if available | AUKERMAN/CALITERRA RUNNING (not yet available as completed proof) |
+
+High-detail DSM/mesh proof remains incomplete while roof-detail jobs run.
