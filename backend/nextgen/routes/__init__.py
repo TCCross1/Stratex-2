@@ -24,6 +24,7 @@ from . import (  # noqa: F401
     report_routes,
     pipeline_routes,
     deliverables_routes,
+    publish_routes,
 )
 
 # Then mount onto the shared /api router.
