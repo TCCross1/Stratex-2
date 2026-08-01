@@ -12,6 +12,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from .materials_takeoff import takeoff_from_geometry, labor_estimate_from_squares
+
 
 TRUTH = ("VERIFIED", "ESTIMATED", "PROJECTED", "UNKNOWN", "WITHHELD")
 
@@ -57,13 +59,15 @@ def compose_full_report(
             if k in scores:
                 scores[k] = v if isinstance(v, dict) else {"value": v, "truth": "PROJECTED"}
 
-    # Materials list (placeholder structure — real takeoff comes from verified geometry)
-    materials = extra.get("materials", [
-        {"item": "Architectural Shingles", "qty": None, "unit": "SQ", "truth": "UNKNOWN"},
-        {"item": "Roof Underlayment", "qty": None, "unit": "SQ", "truth": "PROJECTED"},
-        {"item": "Ridge Vent", "qty": None, "unit": "LF", "truth": "ESTIMATED"},
-        {"item": "Flashing", "qty": None, "unit": "LF", "truth": "ESTIMATED"},
-    ])
+    # Materials from geometry takeoff when available
+    if extra.get("materials"):
+        materials = extra["materials"]
+        labor = extra.get("labor", {"total_hours": None, "total_cost": None, "truth": "PROJECTED"})
+    else:
+        takeoff = takeoff_from_geometry(geometry)
+        materials = takeoff["materials"]
+        basis = takeoff.get("basis", {})
+        labor = labor_estimate_from_squares(basis.get("squares_with_waste") or 0)
 
     report = {
         "report_id": f"STRX-{str(prop_id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}",
@@ -141,12 +145,7 @@ def compose_full_report(
             },
             "14_ventilation_report": extra.get("ventilation", {}),
             "15_materials_list": materials,
-            "16_labor_report": extra.get("labor", {
-                "total_hours": None,
-                "total_cost": None,
-                "truth": "PROJECTED",
-                "note": "Planning figures only until verified takeoff.",
-            }),
+            "16_labor_report": labor,
             "17_found_damages": findings,
             "18_maintenance_priority_list": sorted(
                 findings,
