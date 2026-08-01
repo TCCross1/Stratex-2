@@ -19,10 +19,11 @@ from . import (  # noqa: F401
     intelligence,
     findings,
     habitat,
-    mission_package_routes,  # Field Test v1 — Canonical Mission Package sealing
-    atc_routes,              # Field Test v1 — ATC readiness + package assemble
-    report_routes,           # Field Test v1 — Property Intelligence Report compose
-    pipeline_routes,         # Field Test v1 — single/dual path orchestration
+    mission_package_routes,
+    atc_routes,
+    report_routes,
+    pipeline_routes,
+    deliverables_routes,
 )
 
 # Then mount onto the shared /api router.
