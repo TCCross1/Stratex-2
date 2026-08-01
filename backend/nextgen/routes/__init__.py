@@ -19,6 +19,7 @@ from . import (  # noqa: F401
     intelligence,
     findings,
     habitat,
+    mission_package_routes,  # Field Test v1 — Canonical Mission Package sealing
 )
 
 # Then mount onto the shared /api router.
