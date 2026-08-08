@@ -108,6 +108,32 @@ def build_sample_package() -> dict:
     return pkg
 
 
+def sample_pipeline_kwargs(seal_key: bytes = b"field-test-demo-key") -> dict:
+    """Kwargs for run_single_path_pipeline using the field-test sample mission."""
+    raw = build_sample_package()
+    meta = raw.get("mission_metadata") or {}
+    return {
+        "mission_id": raw["mission_id"],
+        "tenant_id": raw["tenant_id"],
+        "property_id": raw["property_id"],
+        "mission_type": "DAYTIME_PRECISION_MAPPING",
+        "aircraft_profile": "Matrice_4E",
+        "media_items": list((raw.get("evidence_manifest") or {}).get("items") or []),
+        "geometry_candidate": raw.get("geometry_candidate"),
+        "awe_candidate": raw.get("awe_candidate"),
+        "pilot": meta.get("pilot"),
+        "weather": meta.get("weather"),
+        "rtk_status": meta.get("rtk_status", "FIXED"),
+        "seal_key": seal_key,
+        "readiness_kwargs": {
+            "battery_pct": 90.0,
+            "pilot_authorized": True,
+            "rtk_ready": True,
+            "weather_ok": True,
+        },
+    }
+
+
 def run_demo():
     """Seal → prepare → compose report → register Passport property + claim_code."""
     from backend.nextgen.passport_property_registry import register_sealed_mission
