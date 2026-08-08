@@ -16,7 +16,7 @@
 
 **Rule:** For anything that represents a real field-test mission (seal → Passport → projection), **must** go through `field_test_pipeline` or an API route that uses it (`/field-test/deliverables`, `/field-test/pipeline/*`, governed publish demo). Lab CLIs that call `seal_package` directly are for development convenience only and **do not** satisfy the ATC pre-seal checklist.
 
-See also: `docs/ATC_SEAL_READINESS_CHECKLIST.md`, `docs/FIELD_TEST_GOVERNED_PUBLISH.md`.
+See also: `docs/ATC_SEAL_READINESS_CHECKLIST.md`, `docs/FIELD_TEST_GOVERNED_PUBLISH.md`, `docs/LIVE_CAPTURE_EVIDENCE_CONTRACT.md`.
 
 ## Quick start (once backend env is up)
 
