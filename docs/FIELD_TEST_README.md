@@ -16,7 +16,7 @@
 
 **Rule:** For anything that represents a real field-test mission (seal → Passport → projection), **must** go through `field_test_pipeline` or an API route that uses it (`/field-test/deliverables`, `/field-test/pipeline/*`, governed publish demo). Lab CLIs that call `seal_package` directly are for development convenience only and **do not** satisfy the ATC pre-seal checklist.
 
-See also: `docs/ATC_SEAL_READINESS_CHECKLIST.md`, `docs/FIELD_TEST_GOVERNED_PUBLISH.md`, `docs/LIVE_CAPTURE_EVIDENCE_CONTRACT.md`, `docs/FIELD_TEST_GO_NO_GO.md`.
+See also: `docs/ATC_SEAL_READINESS_CHECKLIST.md`, `docs/FIELD_TEST_GOVERNED_PUBLISH.md`, `docs/LIVE_CAPTURE_EVIDENCE_CONTRACT.md`, `docs/FIELD_TEST_GO_NO_GO.md`, `docs/HABITAT_FIELD_TEST_HANDOFF.md`.
 
 ## Quick start (once backend env is up)
 
@@ -73,6 +73,8 @@ POST /api/nextgen/field-test/deliverables/dual
 | State machine | `mission_state_machine.py` (existing) |
 | Publish | `governed_publish_service.py` (existing) |
 | Habitat consumer | `stratex-habitat/.../habitat_field_test_projection.py` |
+
+**Habitat team:** start with `docs/HABITAT_FIELD_TEST_HANDOFF.md`.
 
 ## Invariants
 
