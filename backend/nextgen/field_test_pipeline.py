@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .atc.readiness import evaluate_readiness
+from .atc.seal_readiness import evaluate_seal_readiness
 from .evidence_ingest import assemble_package_from_capture, ingest_media_item
 from .mission_package_seal import seal_package, SealingError
 from .mission_to_passport import prepare_for_governed_publish, HandoffError
@@ -45,6 +46,7 @@ class PipelineResult:
     mission_id: str
     state: str
     readiness: Optional[Dict[str, Any]] = None
+    seal_readiness: Optional[Dict[str, Any]] = None
     sealed_package: Optional[Dict[str, Any]] = None
     publication_request: Optional[Dict[str, Any]] = None
     report: Optional[Dict[str, Any]] = None
@@ -58,6 +60,7 @@ class PipelineResult:
             "mission_id": self.mission_id,
             "state": self.state,
             "readiness": self.readiness,
+            "seal_readiness": self.seal_readiness,
             "package_id": (self.sealed_package or {}).get("package_id"),
             "content_hash_prefix": ((self.sealed_package or {}).get("content_hash") or "")[:16] or None,
             "handoff_ready": self.publication_request is not None,
@@ -104,6 +107,7 @@ def run_single_path_pipeline(
     orch = MissionOrchestration(mission_id=mission_id)
     errors: List[str] = []
     readiness_dict = None
+    seal_readiness_dict = None
     sealed = None
     publication_request = None
     report = None
@@ -158,6 +162,27 @@ def run_single_path_pipeline(
 
         _advance_capture_path(orch, bool(media_items), kind)
 
+        seal_readiness = evaluate_seal_readiness(
+            pkg,
+            aircraft_profile=aircraft_profile,
+            mission_type=mission_type,
+            mission_id=mission_id,
+        )
+        seal_readiness_dict = seal_readiness.to_dict()
+        if not seal_readiness.ready:
+            errors.append(
+                f"Pre-seal ATC checklist failed: {seal_readiness.blocking_failures}"
+            )
+            return PipelineResult(
+                success=False,
+                mission_id=mission_id,
+                state=orch.state,
+                readiness=readiness_dict,
+                seal_readiness=seal_readiness_dict,
+                errors=errors,
+                history=list(orch.history),
+            )
+
         sealed = seal_package(pkg, seal_key=seal_key)
         handoff = prepare_for_governed_publish(sealed, seal_key=seal_key)
         publication_request = handoff.get("publication_request")
@@ -168,6 +193,7 @@ def run_single_path_pipeline(
             mission_id=mission_id,
             state=orch.state,
             readiness=readiness_dict,
+            seal_readiness=seal_readiness_dict,
             sealed_package=sealed,
             publication_request=publication_request,
             report=report,
@@ -183,6 +209,7 @@ def run_single_path_pipeline(
             mission_id=mission_id,
             state=orch.state,
             readiness=readiness_dict,
+            seal_readiness=seal_readiness_dict,
             sealed_package=sealed,
             publication_request=publication_request,
             report=report,
