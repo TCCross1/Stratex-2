@@ -10,6 +10,9 @@ from backend.nextgen.mission_package_seal import create_empty_package, seal_pack
 from backend.nextgen.mission_to_passport import prepare_for_governed_publish
 from backend.nextgen.report_composer import compose_full_report
 
+SAMPLE_ADDRESS_LINE = "1234 Appalachian Way"
+SAMPLE_CITY_STATE_ZIP = "London, KY 40741"
+
 
 def build_sample_package() -> dict:
     pkg = create_empty_package(
@@ -25,6 +28,8 @@ def build_sample_package() -> dict:
         "weather": "Clear, 79°F",
         "rtk_status": "FIXED",
         "capture_date": "2026-08-01T14:30:00Z",
+        "property_address_line": SAMPLE_ADDRESS_LINE,
+        "property_city_state_zip": SAMPLE_CITY_STATE_ZIP,
     })
 
     pkg["evidence_manifest"]["items"] = [
@@ -104,11 +109,18 @@ def build_sample_package() -> dict:
 
 
 def run_demo():
-    """Seal → prepare → compose report. Prints summary."""
+    """Seal → prepare → compose report → register Passport property + claim_code."""
+    from backend.nextgen.passport_property_registry import register_sealed_mission
+
     raw = build_sample_package()
     sealed = seal_package(raw, seal_key=b"field-test-demo-key")
     handoff = prepare_for_governed_publish(sealed, seal_key=b"field-test-demo-key")
     report = compose_full_report(sealed)
+    registration = register_sealed_mission(
+        sealed,
+        address_line=SAMPLE_ADDRESS_LINE,
+        city_state_zip=SAMPLE_CITY_STATE_ZIP,
+    )
 
     summary = {
         "package_id": sealed["package_id"],
@@ -120,9 +132,12 @@ def run_demo():
         "report_id": report["report_id"],
         "sections_present": list(report["sections"].keys()),
         "status": handoff["status"],
+        "normalized_address": registration["normalized_address"]["normalized_display"],
+        "claim_code": registration["claim_code"],
+        "habitat_owner_exists": registration["habitat_owner_exists"],
     }
     print(json.dumps(summary, indent=2))
-    return sealed, handoff, report
+    return sealed, handoff, report, registration
 
 
 if __name__ == "__main__":

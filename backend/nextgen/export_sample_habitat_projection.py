@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 
-from backend.nextgen.sample_field_test_package import build_sample_package
+from backend.nextgen.sample_field_test_package import (
+    SAMPLE_ADDRESS_LINE,
+    SAMPLE_CITY_STATE_ZIP,
+    build_sample_package,
+)
 from backend.nextgen.mission_package_seal import seal_package
 from backend.nextgen.habitat_projection_export import export_habitat_projection
 
@@ -16,8 +20,8 @@ def main() -> dict:
     sealed = seal_package(raw, seal_key=DEMO_SEAL_KEY)
     projection = export_habitat_projection(
         sealed,
-        address_line="1234 Appalachian Way",
-        city_state_zip="London, KY 40741",
+        address_line=SAMPLE_ADDRESS_LINE,
+        city_state_zip=SAMPLE_CITY_STATE_ZIP,
         authoritative=False,
     )
     return projection
