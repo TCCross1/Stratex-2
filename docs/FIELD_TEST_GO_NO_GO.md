@@ -43,7 +43,7 @@ python3 -m backend.nextgen.field_test_governed_publish_demo   # no --dry-run
 - Mongo after commit: 1 passport, 1 `MISSION_EVIDENCE` entry (idempotent re-run did not duplicate)
 - Authoritative re-export: `export_habitat_projection(..., authoritative=True)` → **`authoritative: true`** when head at revision 1
 
-**Caveats on that proof:** ephemeral local `mongod` (not durable production Mongo); demo uses hardcoded `field-test-demo-key` for pipeline seal (not production `MISSION_SEAL_KEY` wiring); entry `seal_status: UNSEALED_DEV`; HTTP publish route not exercised (Python demo module only).
+**Caveats on that proof:** ephemeral local `mongod` (not durable production Mongo); that session ran **before** `MISSION_SEAL_KEY` wiring — pipeline used demo fallback key; entry `seal_status: UNSEALED_DEV`; HTTP publish route not exercised (Python demo module only). **Since then:** official path honors `MISSION_SEAL_KEY` when set (see `field_test_seal_key.py`).
 
 **Dry-run verdict:** Core software spine (seal → handoff → pipeline ATC → live publish → authoritative re-export) is **exercised and green** in tests, CLIs, and **one live Mongo commit**.
 
@@ -58,7 +58,7 @@ python3 -m backend.nextgen.field_test_governed_publish_demo   # no --dry-run
 | **Real Matrice media ingest** | **Stub only** | `evidence_ingest.py` builds manifest rows from `ingest_media_item()` calls. **No folder scanner**, no DJI export auto-import. Real flight requires manual/scripted hashes + metadata. |
 | **Mesh / 3D twin** | **Not present** | `habitat.projection.v1` export sets `twin.mesh_ref: null`. No photogrammetry pipeline in this branch. |
 | **Habitat wiring** | **Not in this repo** | Habitat is read-only consumer (`stratex-habitat`). Claim redemption documented; **no Habitat repo or live dashboard hookup verified here**. |
-| **Secrets / seal keys** | **Dev defaults** | Governed publish demo uses hardcoded `field-test-demo-key`; `MISSION_SEAL_KEY` env not wired into demo. Passport entry sealing optional unless `PASSPORT_SEAL_REQUIRED` / production. **Production seal key wiring not signed off.** |
+| **Secrets / seal keys** | **Official path wired; ops not signed off** | `field_test_pipeline` + `field_test_governed_publish_demo` honor `MISSION_SEAL_KEY` when set; otherwise **`field-test-demo-key`** with stderr warning (`seal_key_source: demo_fallback`). Live proof session predates wiring. Passport entry sealing optional unless `PASSPORT_SEAL_REQUIRED` / production. **Field ops must export `MISSION_SEAL_KEY` before real publish.** |
 | **Mongo / DB** | **Ephemeral local only** | Live proof used local `mongod` on `127.0.0.1:27017` with `DB_NAME=stratex_field_test`. **Durable Mongo** (RT001 replica set, Atlas, transactions) not signed off for field ops. |
 | **Dual 4E + 4T pair gate** | **Code + tests only** | `run_dual_path_pipeline` and pair validation exist; **not run against real paired flights**. |
 
@@ -116,7 +116,7 @@ Use the **official path** (`field_test_pipeline` or API that delegates to it). L
 
 - Unattended ingest from a real Matrice media folder
 - **Durable / production Mongo** signed off for field ops (proof used ephemeral local `mongod`)
-- **Production seal key wiring** (`MISSION_SEAL_KEY` not used by governed publish demo today)
+- **Production seal key discipline** — official path reads `MISSION_SEAL_KEY` when set; operators must export a dedicated key before field publish (live proof used demo fallback)
 - Habitat consumer integration verified in `stratex-habitat`
 - Interactive 3D mesh (`mesh_ref` remains null)
 - Closing SD card → Passport → authoritative Habitat dashboard without operator scripts and Habitat repo work
