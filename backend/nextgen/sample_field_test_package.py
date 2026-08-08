@@ -108,11 +108,15 @@ def build_sample_package() -> dict:
     return pkg
 
 
-def sample_pipeline_kwargs(seal_key: bytes = b"field-test-demo-key") -> dict:
-    """Kwargs for run_single_path_pipeline using the field-test sample mission."""
+def sample_pipeline_kwargs(seal_key: bytes | None = None) -> dict:
+    """Kwargs for run_single_path_pipeline using the field-test sample mission.
+
+    When seal_key is omitted, the pipeline resolves MISSION_SEAL_KEY from the
+    environment (or demo fallback with warning).
+    """
     raw = build_sample_package()
     meta = raw.get("mission_metadata") or {}
-    return {
+    kwargs = {
         "mission_id": raw["mission_id"],
         "tenant_id": raw["tenant_id"],
         "property_id": raw["property_id"],
@@ -124,7 +128,6 @@ def sample_pipeline_kwargs(seal_key: bytes = b"field-test-demo-key") -> dict:
         "pilot": meta.get("pilot"),
         "weather": meta.get("weather"),
         "rtk_status": meta.get("rtk_status", "FIXED"),
-        "seal_key": seal_key,
         "readiness_kwargs": {
             "battery_pct": 90.0,
             "pilot_authorized": True,
@@ -132,6 +135,9 @@ def sample_pipeline_kwargs(seal_key: bytes = b"field-test-demo-key") -> dict:
             "weather_ok": True,
         },
     }
+    if seal_key is not None:
+        kwargs["seal_key"] = seal_key
+    return kwargs
 
 
 def run_demo():

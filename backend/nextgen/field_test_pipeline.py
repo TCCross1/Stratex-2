@@ -183,8 +183,14 @@ def run_single_path_pipeline(
                 history=list(orch.history),
             )
 
-        sealed = seal_package(pkg, seal_key=seal_key)
-        handoff = prepare_for_governed_publish(sealed, seal_key=seal_key)
+        effective_seal_key = seal_key
+        if effective_seal_key is None:
+            from .field_test_seal_key import resolve_field_test_seal_key
+
+            effective_seal_key, _ = resolve_field_test_seal_key()
+
+        sealed = seal_package(pkg, seal_key=effective_seal_key)
+        handoff = prepare_for_governed_publish(sealed, seal_key=effective_seal_key)
         publication_request = handoff.get("publication_request")
         report = compose_full_report(sealed)
 

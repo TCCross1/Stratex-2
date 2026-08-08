@@ -17,7 +17,6 @@ import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-DEMO_SEAL_KEY = b"field-test-demo-key"
 DEMO_ACTOR_ID = "field-test-governed-publish-demo"
 
 PUBLICATION_REQUEST_REQUIRED = (
@@ -64,9 +63,11 @@ def validate_publication_request(publication_request: Dict[str, Any]) -> Tuple[b
 def run_pipeline_seal() -> Dict[str, Any]:
     """Run sample mission through field_test_pipeline (preflight + pre-seal ATC + seal)."""
     from backend.nextgen.field_test_pipeline import run_single_path_pipeline
+    from backend.nextgen.field_test_seal_key import resolve_field_test_seal_key
     from backend.nextgen.sample_field_test_package import sample_pipeline_kwargs
 
-    result = run_single_path_pipeline(**sample_pipeline_kwargs(seal_key=DEMO_SEAL_KEY))
+    _, seal_key_source = resolve_field_test_seal_key()
+    result = run_single_path_pipeline(**sample_pipeline_kwargs())
     return {
         "pipeline_success": result.success,
         "mission_id": result.mission_id,
@@ -77,6 +78,7 @@ def run_pipeline_seal() -> Dict[str, Any]:
         "publication_request": result.publication_request,
         "package_id": (result.sealed_package or {}).get("package_id"),
         "content_hash_prefix": ((result.sealed_package or {}).get("content_hash") or "")[:16],
+        "seal_key_source": seal_key_source,
     }
 
 
@@ -150,6 +152,7 @@ def run_dry_run() -> Dict[str, Any]:
         "package_id": pipeline.get("package_id"),
         "content_hash_prefix": pipeline.get("content_hash_prefix"),
         "seal_readiness_ready": (pipeline.get("seal_readiness") or {}).get("ready"),
+        "seal_key_source": pipeline.get("seal_key_source"),
     }
 
     if not pipeline["pipeline_success"]:
@@ -205,6 +208,7 @@ async def run_live() -> Dict[str, Any]:
         "db_name": os.environ.get("DB_NAME"),
         "pipeline_success": pipeline["pipeline_success"],
         "pipeline_errors": pipeline["errors"],
+        "seal_key_source": pipeline.get("seal_key_source"),
     }
 
     if not pipeline["pipeline_success"]:

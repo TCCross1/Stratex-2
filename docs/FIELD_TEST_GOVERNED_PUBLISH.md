@@ -20,9 +20,31 @@ export MONGO_URL="mongodb://127.0.0.1:27017"
 export DB_NAME="stratex_field_test"
 pip install motor pymongo
 export PASSPORT_TRANSACTIONS_AVAILABLE=0   # standalone Mongo (non-replica-set)
+export MISSION_SEAL_KEY="$(openssl rand -hex 32)"   # field-test mission HMAC key
 ```
 
 `motor` / `pymongo` are required for live mode but are not yet pinned in `requirements.txt`.
+
+### Mission seal key (`MISSION_SEAL_KEY`)
+
+The governed publish demo and **`field_test_pipeline`** resolve the mission package HMAC key as follows:
+
+| Priority | Source | Behavior |
+|----------|--------|----------|
+| 1 | `MISSION_SEAL_KEY` env var (non-empty) | Used for `seal_package` and `prepare_for_governed_publish` |
+| 2 | Fallback | **`field-test-demo-key`** with a **loud stderr warning** (once per process) |
+
+**Field test / live publish:** always export `MISSION_SEAL_KEY` before running without `--dry-run`. Do **not** commit real secrets to the repo.
+
+Generate a dedicated field-test key (example only — use your own value):
+
+```bash
+export MISSION_SEAL_KEY="$(openssl rand -hex 32)"
+```
+
+Demo JSON output includes `"seal_key_source": "env"` or `"demo_fallback"` so operators can confirm which key was used.
+
+**Note:** Other lab CLIs (`export_sample_habitat_projection`, `field_test_claim_code_demo`, `sample_field_test_package` direct seal) may still use hardcoded demo keys unless updated separately. The **official path** (`field_test_pipeline`, `field_test_governed_publish_demo`) honors `MISSION_SEAL_KEY` as above.
 
 ## Commands
 
@@ -126,7 +148,7 @@ Route mounts under shared NextGen router prefix: **`POST /api/nextgen/field-test
 | `MONGO_URL` | Live publish / server | Mongo connection (asserted by `nextgen/db.py`) |
 | `DB_NAME` | Live publish / server | Database name (asserted by `nextgen/db.py`) |
 | `PASSPORT_TRANSACTIONS_AVAILABLE` | Recommended field test | Set `0` for standalone Mongo; `1` only on replica-set deployments |
-| `MISSION_SEAL_KEY` | Optional | Mission package HMAC key (default dev key if unset) |
+| `MISSION_SEAL_KEY` | **Recommended for live publish** | Mission package HMAC key. **`field_test_pipeline`** and **`field_test_governed_publish_demo`** use this when set; otherwise fall back to `field-test-demo-key` with stderr warning. |
 | `PASSPORT_SEAL_KEY_VERSION` | Optional dev; required in strict/prod | Passport entry seal key version |
 | `PASSPORT_SEAL_KEY_<version>` | With seal version | Passport entry HMAC secret (e.g. `PASSPORT_SEAL_KEY_v1`) |
 | `PASSPORT_SEAL_REQUIRED` | Optional | `1` forces Passport entry sealing keys in non-prod |
