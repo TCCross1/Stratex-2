@@ -1,0 +1,795 @@
+From b9c3e0caa2f7978bae8f8282ace78d09143452c4 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 8 Aug 2026 17:43:45 +0000
+Subject: [PATCH] feat(habitat): field-test projection handoff (read-only)
+
+Load habitat.projection.v1 from HABITAT_PROJECTION_PATH for dashboard
+and openings; serve real JSON via backend URL; show Official vs Preview
+from authoritative; add read-only claim/redeem stub (no mint/ledger/Core).
+---
+ .../habitat.projection.v1.sample.json         |  92 +++++++++++
+ backend/habitat_ui/awe_twin.py                |  14 +-
+ backend/habitat_ui/projection_loader.py       |  69 ++++++++
+ backend/habitat_ui/routes.py                  | 143 +++++++++++++++--
+ .../test_field_test_projection_handoff.py     | 149 ++++++++++++++++++
+ docs/FIELD_TEST_READINESS.md                  |  15 +-
+ docs/HABITAT_PROJECTION_PUBLISH.md            |   2 +
+ frontend/components/DashboardPage.tsx         |  35 +++-
+ frontend/src/pages/HabitatHome.js             |  52 ++++--
+ 9 files changed, 541 insertions(+), 30 deletions(-)
+ create mode 100644 backend/fixtures/habitat.projection.v1.sample.json
+ create mode 100644 backend/habitat_ui/projection_loader.py
+ create mode 100644 backend/tests/test_field_test_projection_handoff.py
+
+diff --git a/backend/fixtures/habitat.projection.v1.sample.json b/backend/fixtures/habitat.projection.v1.sample.json
+new file mode 100644
+index 0000000..9993704
+--- /dev/null
++++ b/backend/fixtures/habitat.projection.v1.sample.json
+@@ -0,0 +1,92 @@
++{
++  "contract_id": "habitat.projection.v1",
++  "contract_version": "1.0.0",
++  "property_id": "prop-field-test-ky",
++  "mission_id": "mission-sample-preview",
++  "authoritative": false,
++  "property_identity": {
++    "address_line": "1234 Appalachian Way",
++    "city_state_zip": "London, KY 40741",
++    "geo": null
++  },
++  "scores": {
++    "certified_score": 87,
++    "score_scale": 1000,
++    "awe_index": 82,
++    "property_score": 87,
++    "roof_condition": 68,
++    "energy_score": 71,
++    "moisture_score": 70
++  },
++  "home_health": {
++    "overall": 72,
++    "systems": {
++      "structure": 76,
++      "roofing": 68,
++      "hvac": 74,
++      "plumbing": 71,
++      "electrical": 78,
++      "exterior": 69
++    }
++  },
++  "awe": {
++    "index": 82,
++    "brand": "AWE™",
++    "hotspots": [
++      {
++        "id": "awe-attic-heat",
++        "title": "Attic heat loss",
++        "domain": "energy",
++        "severity": "high",
++        "summary": "Elevated thermal signature at ridge / attic plane.",
++        "report_ref": "awe/energy/attic-heat",
++        "truth": "ESTIMATED"
++      }
++    ]
++  },
++  "twin": {
++    "mesh_ref": null,
++    "layers": ["finish", "thermal", "moisture", "framing", "energy", "openings", "awe"],
++    "plane_count": 4,
++    "withheld_plane_count": 1,
++    "measurements": {
++      "total_roof_area_sqft": 2015,
++      "pitch_primary": "6/12"
++    }
++  },
++  "openings": [
++    {
++      "id": "win-front-lr",
++      "kind": "window",
++      "label": "Front — Living Room Picture",
++      "elevation": "front",
++      "unit_w_in": 72,
++      "unit_h_in": 48,
++      "rough_w_in": 74,
++      "rough_h_in": 50.5,
++      "material": "vinyl",
++      "condition": "fair",
++      "truth": "ESTIMATED"
++    },
++    {
++      "id": "door-front",
++      "kind": "door",
++      "label": "Front Entry",
++      "elevation": "front",
++      "unit_w_in": 36,
++      "unit_h_in": 80,
++      "rough_w_in": 38,
++      "rough_h_in": 82.5,
++      "material": "fiberglass",
++      "condition": "good",
++      "truth": "ESTIMATED"
++    }
++  ],
++  "timeline": [],
++  "maintenance": {
++    "next_12_months_usd": 2840,
++    "actions": [{"title": "Attic heat loss", "severity": "high"}]
++  },
++  "truth_policy": "VERIFIED findings require sealed Passport evidence. ESTIMATED may display with labels. WITHHELD geometry never shown.",
++  "habitat_role": "read-only"
++}
+diff --git a/backend/habitat_ui/awe_twin.py b/backend/habitat_ui/awe_twin.py
+index a4956ce..4406557 100644
+--- a/backend/habitat_ui/awe_twin.py
++++ b/backend/habitat_ui/awe_twin.py
+@@ -171,8 +171,13 @@ def merge_passport_into_dashboard(
+         "measurements": twin.get("measurements", {}),
+         "anomaly_counts": twin.get("anomaly_counts") or dash.get("anomaly_counts"),
+     }
+-    out["authoritative"] = False  # still non-production until Core seals real missions
+-    out["passport_status"] = "OK"
++    # Official only when upstream projection says so (governed publish).
++    # File handoff uses dashboard_from_contract; adapter path defaults preview.
++    auth = dash.get("authoritative")
++    if auth is None:
++        auth = (passport_view or {}).get("authoritative")
++    out["authoritative"] = bool(auth) if auth is not None else False
++    out["passport_status"] = "OK" if out["authoritative"] else "PROJECTED"
+     out["authority"] = dash.get("authority") or {
+         "source": "passport_projection",
+         "habitat_role": "read-only",
+@@ -184,6 +189,10 @@ def build_dashboard_projection(
+     tenant_id: str = "demo",
+     property_id: str = "demo-property",
+ ) -> Dict[str, Any]:
++    """
++    Build dashboard JSON. Prefer HABITAT_PROJECTION_PATH when set
++    (see routes._dashboard_from_file_or_build); this path is adapter/stub.
++    """
+     base = habitat_dashboard_projection_stub()
+     try:
+         from habitat_field_test_projection import get_homeowner_view
+@@ -193,4 +202,5 @@ def build_dashboard_projection(
+     except Exception as e:
+         base["passport_status"] = f"ERROR:{type(e).__name__}"
+         base["passport_message"] = str(e)
++        base["authoritative"] = False
+         return base
+diff --git a/backend/habitat_ui/projection_loader.py b/backend/habitat_ui/projection_loader.py
+new file mode 100644
+index 0000000..b5cb2c0
+--- /dev/null
++++ b/backend/habitat_ui/projection_loader.py
+@@ -0,0 +1,69 @@
++"""
++Load habitat.projection.v1 JSON for field-test handoff.
++
++Core exports → Passport stores → Habitat reads only.
++Priority: HABITAT_PROJECTION_PATH file, else caller falls back to adapter/stub.
++"""
++
++from __future__ import annotations
++
++import json
++import logging
++import os
++from pathlib import Path
++from typing import Any, Dict, Optional
++
++logger = logging.getLogger("habitat.projection_loader")
++
++CONTRACT_ID = "habitat.projection.v1"
++
++
++def projection_path_from_env() -> Optional[Path]:
++    raw = (os.environ.get("HABITAT_PROJECTION_PATH") or "").strip()
++    if not raw:
++        return None
++    return Path(raw).expanduser()
++
++
++def load_projection_from_env() -> Optional[Dict[str, Any]]:
++    """
++    Read habitat.projection.v1 JSON from HABITAT_PROJECTION_PATH if set.
++    Returns None when unset / missing / invalid so callers keep demo fallback.
++    Never writes Passport or Core.
++    """
++    path = projection_path_from_env()
++    if path is None:
++        return None
++    if not path.is_file():
++        logger.warning(
++            "HABITAT_PROJECTION_PATH set but file not found: %s", path
++        )
++        return None
++    try:
++        with path.open("r", encoding="utf-8") as fh:
++            payload = json.load(fh)
++    except Exception as exc:
++        logger.exception(
++            "Failed to load habitat projection from %s: %s", path, exc
++        )
++        return None
++    if not isinstance(payload, dict):
++        logger.warning(
++            "HABITAT_PROJECTION_PATH payload is not an object: %s", path
++        )
++        return None
++    cid = payload.get("contract_id")
++    if cid and cid != CONTRACT_ID:
++        logger.warning(
++            "Unexpected contract_id=%s (expected %s) at %s — still hydrating",
++            cid,
++            CONTRACT_ID,
++            path,
++        )
++    logger.info(
++        "Loaded habitat projection from file path=%s authoritative=%s property_id=%s",
++        path,
++        payload.get("authoritative"),
++        payload.get("property_id"),
++    )
++    return payload
+diff --git a/backend/habitat_ui/routes.py b/backend/habitat_ui/routes.py
+index 46cb895..b0a53a8 100644
+--- a/backend/habitat_ui/routes.py
++++ b/backend/habitat_ui/routes.py
+@@ -1,10 +1,15 @@
+-"""API: Habitat dashboard projection, openings, AWE twin layers (mockup-locked)."""
++"""API: Habitat dashboard projection, openings, AWE twin layers (mockup-locked).
++
++Read-only field-test surface. Passport owns official ledger writes and claim codes.
++"""
+ 
+ from __future__ import annotations
+ 
+-from typing import Optional
++import logging
++from typing import Any, Dict, Optional
+ 
+ from fastapi import APIRouter, Query
++from pydantic import BaseModel, Field
+ 
+ from habitat_ui.openings import demo_openings_for_property
+ from habitat_ui.awe_twin import (
+@@ -13,10 +18,53 @@ from habitat_ui.awe_twin import (
+     twin_layer_set,
+     awe_findings_on_twin,
+ )
++from habitat_ui.projection_loader import load_projection_from_env
++from habitat_ui.hydrate_from_contract import (
++    dashboard_from_contract,
++    openings_ui_from_contract,
++)
++
++logger = logging.getLogger("habitat.ui.routes")
+ 
+ router = APIRouter(prefix="/habitat", tags=["habitat-ui"])
+ 
+ 
++def _dashboard_from_file_or_build(
++    tenant_id: str,
++    property_id: str,
++    stub_only: bool,
++) -> Dict[str, Any]:
++    """Prefer HABITAT_PROJECTION_PATH JSON; else Passport adapter / demo stub."""
++    if stub_only:
++        return habitat_dashboard_projection_stub()
++
++    file_proj = load_projection_from_env()
++    if file_proj is not None:
++        try:
++            dash = dashboard_from_contract(file_proj)
++            dash["source"] = "HABITAT_PROJECTION_PATH"
++            dash["habitat_role"] = "read-only"
++            # Preserve contract authoritative bit (official vs preview)
++            dash["authoritative"] = bool(file_proj.get("authoritative"))
++            dash["passport_status"] = (
++                "OK" if dash["authoritative"] else "PROJECTED"
++            )
++            logger.info(
++                "dashboard/projection served from HABITAT_PROJECTION_PATH "
++                "authoritative=%s property_id=%s",
++                dash["authoritative"],
++                file_proj.get("property_id"),
++            )
++            return dash
++        except Exception as exc:
++            logger.exception(
++                "Failed hydrating HABITAT_PROJECTION_PATH; falling back: %s",
++                exc,
++            )
++
++    return build_dashboard_projection(tenant_id, property_id)
++
++
+ @router.get("/dashboard/projection")
+ def dashboard_projection(
+     tenant_id: str = Query("demo"),
+@@ -24,12 +72,10 @@ def dashboard_projection(
+     stub_only: bool = Query(False),
+ ):
+     """
+-    Passport-shaped projection for Habitat dashboard.
+-    Tries Passport adapter merge; falls back to mockup demo stub.
++    Passport-shaped projection for Habitat dashboard (JSON).
++    Tries HABITAT_PROJECTION_PATH, then Passport adapter merge, else demo stub.
+     """
+-    if stub_only:
+-        return habitat_dashboard_projection_stub()
+-    return build_dashboard_projection(tenant_id, property_id)
++    return _dashboard_from_file_or_build(tenant_id, property_id, stub_only)
+ 
+ 
+ @router.get("/twin/layers")
+@@ -44,12 +90,25 @@ def awe_hotspots():
+ 
+ @router.get("/openings")
+ def list_openings():
++    file_proj = load_projection_from_env()
++    if file_proj is not None and "openings" in file_proj:
++        try:
++            return {
++                "openings": openings_ui_from_contract(file_proj.get("openings") or []),
++                "source": "HABITAT_PROJECTION_PATH",
++                "authoritative": bool(file_proj.get("authoritative")),
++            }
++        except Exception as exc:
++            logger.exception(
++                "Failed openings from HABITAT_PROJECTION_PATH; demo fallback: %s",
++                exc,
++            )
+     return {"openings": demo_openings_for_property()}
+ 
+ 
+ @router.get("/openings/{opening_id}")
+ def get_opening(opening_id: str):
+-    items = demo_openings_for_property()
++    items = list_openings().get("openings") or []
+     for o in items:
+         if o["id"] == opening_id:
+             return o
+@@ -65,6 +124,7 @@ def projection_contract():
+         CONTRACT_ID,
+         CONTRACT_VERSION,
+     )
++
+     sample = empty_field_ready_projection("example")
+     return {
+         "contract_id": CONTRACT_ID,
+@@ -81,7 +141,6 @@ def projection_from_sample_mission():
+     rules Core will use after seal (local sample geometry/AWE/openings).
+     Does not call Core; mirrors export_habitat_projection defaults.
+     """
+-    from habitat_ui.hydrate_from_contract import dashboard_from_contract, openings_ui_from_contract
+     from habitat_ui.projection_contract import empty_field_ready_projection
+ 
+     # Local mirror of Core sample export (no cross-repo import at runtime)
+@@ -176,3 +235,69 @@ def projection_from_sample_mission():
+         "contract": sample,
+     }
+ 
++
++class ClaimRedeemRequest(BaseModel):
++    """Read-only claim lookup. Habitat does not mint codes or write Passport."""
++
++    claim_code: str = Field(..., min_length=1, description="Homeowner claim code")
++    email: Optional[str] = Field(None, description="Optional claimant email for lookup")
++
++
++@router.post("/v1/claim/redeem")
++def claim_redeem(body: ClaimRedeemRequest):
++    """
++    Minimal read-only claim redeem stub for field-test handoff.
++
++    - Does NOT mint claim codes
++    - Does NOT write Passport / official ledger
++    - Does NOT call Core publish
++    - Lookup only: match against HABITAT_PROJECTION_PATH property when present
++    """
++    code = (body.claim_code or "").strip()
++    logger.info(
++        "claim/redeem read-only lookup code_len=%s email_present=%s",
++        len(code),
++        bool(body.email),
++    )
++
++    file_proj = load_projection_from_env()
++    property_identity: Optional[Dict[str, Any]] = None
++    property_id: Optional[str] = None
++    authoritative = False
++    matched = False
++
++    if file_proj is not None:
++        property_id = file_proj.get("property_id")
++        property_identity = file_proj.get("property_identity")
++        authoritative = bool(file_proj.get("authoritative"))
++        # Stub match: any non-empty code resolves to the loaded projection property
++        matched = bool(code)
++        logger.info(
++            "claim/redeem matched=%s property_id=%s authoritative=%s (file projection)",
++            matched,
++            property_id,
++            authoritative,
++        )
++    else:
++        logger.info(
++            "claim/redeem no HABITAT_PROJECTION_PATH; returning lookup-unavailable stub"
++        )
++
++    return {
++        "ok": True,
++        "mode": "lookup",
++        "habitat_role": "read-only",
++        "minted": False,
++        "ledger_write": False,
++        "core_publish": False,
++        "matched": matched,
++        "claim_code": code,
++        "email": body.email,
++        "authoritative": authoritative,
++        "property_id": property_id,
++        "property_identity": property_identity,
++        "message": (
++            "Read-only claim lookup. Passport owns official claim codes and ledger writes; "
++            "Habitat never mints codes or publishes to Core."
++        ),
++    }
+diff --git a/backend/tests/test_field_test_projection_handoff.py b/backend/tests/test_field_test_projection_handoff.py
+new file mode 100644
+index 0000000..cfe7716
+--- /dev/null
++++ b/backend/tests/test_field_test_projection_handoff.py
+@@ -0,0 +1,149 @@
++"""Field-test handoff: HABITAT_PROJECTION_PATH + claim redeem (read-only)."""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++
++import pytest
++from fastapi.testclient import TestClient
++
++ROOT = Path(__file__).resolve().parents[1]
++SAMPLE = ROOT / "fixtures" / "habitat.projection.v1.sample.json"
++
++
++@pytest.fixture()
++def sample_projection(tmp_path: Path) -> Path:
++    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
++    path = tmp_path / "habitat.projection.v1.json"
++    path.write_text(json.dumps(data), encoding="utf-8")
++    return path
++
++
++@pytest.fixture()
++def authoritative_projection(tmp_path: Path) -> Path:
++    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
++    data["authoritative"] = True
++    data["mission_id"] = "mission-sealed-official"
++    path = tmp_path / "habitat.projection.v1.official.json"
++    path.write_text(json.dumps(data), encoding="utf-8")
++    return path
++
++
++def test_load_projection_from_env(monkeypatch, sample_projection: Path):
++    from habitat_ui.projection_loader import load_projection_from_env
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    payload = load_projection_from_env()
++    assert payload is not None
++    assert payload["contract_id"] == "habitat.projection.v1"
++    assert payload["authoritative"] is False
++
++
++def test_load_projection_missing_path(monkeypatch):
++    from habitat_ui.projection_loader import load_projection_from_env
++
++    monkeypatch.delenv("HABITAT_PROJECTION_PATH", raising=False)
++    assert load_projection_from_env() is None
++
++
++def test_dashboard_from_file_preview(monkeypatch, sample_projection: Path):
++    from habitat_ui.routes import _dashboard_from_file_or_build
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    dash = _dashboard_from_file_or_build("demo", "demo-property", stub_only=False)
++    assert dash["source"] == "HABITAT_PROJECTION_PATH"
++    assert dash["authoritative"] is False
++    assert dash["passport_status"] == "PROJECTED"
++    assert dash["property"]["address_line"] == "1234 Appalachian Way"
++    assert dash["habitat_role"] == "read-only"
++
++
++def test_dashboard_from_file_official(monkeypatch, authoritative_projection: Path):
++    from habitat_ui.routes import _dashboard_from_file_or_build
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(authoritative_projection))
++    dash = _dashboard_from_file_or_build("demo", "demo-property", stub_only=False)
++    assert dash["authoritative"] is True
++    assert dash["passport_status"] == "OK"
++    assert dash["source"] == "HABITAT_PROJECTION_PATH"
++
++
++def test_stub_only_ignores_file(monkeypatch, sample_projection: Path):
++    from habitat_ui.routes import _dashboard_from_file_or_build
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    dash = _dashboard_from_file_or_build("demo", "demo-property", stub_only=True)
++    assert dash["authoritative"] is False
++    assert dash.get("source") != "HABITAT_PROJECTION_PATH"
++    assert dash["mode"] == "demo"
++
++
++def test_openings_from_file(monkeypatch, sample_projection: Path):
++    from habitat_ui import routes as habitat_routes
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    out = habitat_routes.list_openings()
++    assert out["source"] == "HABITAT_PROJECTION_PATH"
++    assert out["authoritative"] is False
++    assert len(out["openings"]) >= 2
++    assert out["openings"][0]["id"] == "win-front-lr"
++
++
++def test_claim_redeem_read_only(monkeypatch, sample_projection: Path):
++    from habitat_ui.routes import ClaimRedeemRequest, claim_redeem
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    result = claim_redeem(
++        ClaimRedeemRequest(claim_code="SH-FIELD-TEST-01", email="owner@example.com")
++    )
++    assert result["ok"] is True
++    assert result["mode"] == "lookup"
++    assert result["minted"] is False
++    assert result["ledger_write"] is False
++    assert result["core_publish"] is False
++    assert result["habitat_role"] == "read-only"
++    assert result["matched"] is True
++    assert result["property_id"] == "prop-field-test-ky"
++    assert result["authoritative"] is False
++
++
++def test_claim_redeem_without_file(monkeypatch):
++    from habitat_ui.routes import ClaimRedeemRequest, claim_redeem
++
++    monkeypatch.delenv("HABITAT_PROJECTION_PATH", raising=False)
++    result = claim_redeem(ClaimRedeemRequest(claim_code="ANY"))
++    assert result["ok"] is True
++    assert result["matched"] is False
++    assert result["minted"] is False
++    assert result["ledger_write"] is False
++
++
++def test_router_endpoints_return_json(monkeypatch, sample_projection: Path):
++    """Mount habitat_ui router alone — no Mongo / full server required."""
++    from fastapi import FastAPI
++    from habitat_ui.routes import router
++
++    monkeypatch.setenv("HABITAT_PROJECTION_PATH", str(sample_projection))
++    app = FastAPI()
++    app.include_router(router, prefix="/api")
++    client = TestClient(app)
++
++    r = client.get("/api/habitat/dashboard/projection")
++    assert r.status_code == 200
++    assert "application/json" in r.headers.get("content-type", "")
++    body = r.json()
++    assert body["authoritative"] is False
++    assert body["source"] == "HABITAT_PROJECTION_PATH"
++    assert "property" in body
++
++    r2 = client.post(
++        "/api/habitat/v1/claim/redeem",
++        json={"claim_code": "SH-4820-VH-99"},
++    )
++    assert r2.status_code == 200
++    assert "application/json" in r2.headers.get("content-type", "")
++    redeem = r2.json()
++    assert redeem["minted"] is False
++    assert redeem["ledger_write"] is False
++    assert redeem["matched"] is True
+diff --git a/docs/FIELD_TEST_READINESS.md b/docs/FIELD_TEST_READINESS.md
+index 560bf62..f612667 100644
+--- a/docs/FIELD_TEST_READINESS.md
++++ b/docs/FIELD_TEST_READINESS.md
+@@ -17,13 +17,26 @@
+ 2. **Digital Twin / Property DNA** `/twin` — existing twin experience  
+ 3. **Exterior Studio** `/exterior-studio` — add structure → side → outline → foundation metrics → roof evaluate (proposal only)  
+ 4. **APIs**  
+-   - `GET /api/habitat/dashboard/projection`  
++   - `GET /api/habitat/dashboard/projection` (JSON; prefers `HABITAT_PROJECTION_PATH`)  
+    - `GET /api/habitat/openings`  
+    - `GET /api/habitat/twin/layers` · `/twin/awe-hotspots`  
++   - `POST /api/habitat/v1/claim/redeem` (read-only lookup stub; never mints codes)  
+    - `GET /api/habitat/exterior-studio/entry`  
+    - `POST /api/habitat/exterior-studio/outline/metrics`  
+    - `POST /api/habitat/exterior-studio/roof/evaluate`  
+ 
++## Point Habitat at Core / Passport JSON (file handoff)
++
++After Core seals and Passport publishes a `habitat.projection.v1` export:
++
++```bash
++export HABITAT_PROJECTION_PATH=/absolute/path/to/habitat.projection.v1.json
++# Sample (preview, authoritative:false):
++#   backend/fixtures/habitat.projection.v1.sample.json
++```
++
++Dashboard + openings hydrate from that file. Set `"authoritative": true` only after governed Passport publish — UI shows **Official** vs **Preview**. Habitat remains read-only (no ledger writes, no claim minting, no Core publish).
++
+ ## Waiting on field data (not blocked for UI/workflow dry-run)
+ 
+ - DJI Matrice 4E daytime + 4T nighttime mission packages on real properties  
+diff --git a/docs/HABITAT_PROJECTION_PUBLISH.md b/docs/HABITAT_PROJECTION_PUBLISH.md
+index d800e77..0daad14 100644
+--- a/docs/HABITAT_PROJECTION_PUBLISH.md
++++ b/docs/HABITAT_PROJECTION_PUBLISH.md
+@@ -7,6 +7,8 @@ After Core seals a mission package into Passport, Habitat consumes a **versioned
+ - **ID:** `habitat.projection.v1`
+ - **Habitat endpoint (read):** `GET /api/habitat/projection/contract` (schema sample)
+ - **Habitat dashboard:** `GET /api/habitat/dashboard/projection`
++- **File handoff (field-test):** set `HABITAT_PROJECTION_PATH` to a `habitat.projection.v1.json` file; dashboard hydrates from disk (read-only)
++- **Claim redeem (read-only stub):** `POST /api/habitat/v1/claim/redeem` — lookup only; does not mint codes or write Passport
+ 
+ ## Minimum publish payload (Passport → Habitat)
+ 
+diff --git a/frontend/components/DashboardPage.tsx b/frontend/components/DashboardPage.tsx
+index 486427b..e7f998e 100644
+--- a/frontend/components/DashboardPage.tsx
++++ b/frontend/components/DashboardPage.tsx
+@@ -1,10 +1,25 @@
+ /**
+  * Full Habitat Dashboard page — desktop IA from approved mockup.
+  * Fetches /api/habitat/dashboard/projection and /api/habitat/openings
++ * via REACT_APP_BACKEND_URL so responses are JSON (not SPA HTML).
+  */
+ import React, { useEffect, useState } from "react";
+ import { HabitatDashboardShell, OpeningDetailPanel } from "./HabitatDashboardShell";
+ 
++const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
++
++async function fetchJson(path: string) {
++  const r = await fetch(`${API}${path}`, { credentials: "include" });
++  const ctype = r.headers.get("content-type") || "";
++  if (!r.ok) throw new Error(`HTTP ${r.status} for ${path}`);
++  if (!ctype.includes("application/json")) {
++    throw new Error(
++      `Expected JSON from ${path}, got ${ctype || "unknown"} (check REACT_APP_BACKEND_URL)`
++    );
++  }
++  return r.json();
++}
++
+ export default function DashboardPage() {
+   const [data, setData] = useState<any>(null);
+   const [openings, setOpenings] = useState<any[]>([]);
+@@ -13,8 +28,8 @@ export default function DashboardPage() {
+ 
+   useEffect(() => {
+     Promise.all([
+-      fetch("/api/habitat/dashboard/projection").then((r) => r.json()),
+-      fetch("/api/habitat/openings").then((r) => r.json()),
++      fetchJson("/habitat/dashboard/projection"),
++      fetchJson("/habitat/openings"),
+     ])
+       .then(([dash, opens]) => {
+         setData(dash);
+@@ -56,12 +71,16 @@ export default function DashboardPage() {
+         </section>
+         {selected && <OpeningDetailPanel opening={selected} />}
+       </div>
+-      {data.passport_status && (
+-        <div style={{ padding: 12, color: "#8b9bb0", fontSize: 12, textAlign: "center" }}>
+-          Passport status: {data.passport_status}
+-          {data.authoritative === false ? " · demo/non-authoritative projection" : ""}
+-        </div>
+-      )}
++      <div
++        data-testid="projection-authority-footer"
++        style={{ padding: 12, color: "#8b9bb0", fontSize: 12, textAlign: "center" }}
++      >
++        Passport status: {data.passport_status || (data.authoritative ? "OK" : "PROJECTED")}
++        {data.authoritative
++          ? " · official Passport projection"
++          : " · preview / non-authoritative projection"}
++        {data.source === "HABITAT_PROJECTION_PATH" ? " · file handoff" : ""}
++      </div>
+     </div>
+   );
+ }
+diff --git a/frontend/src/pages/HabitatHome.js b/frontend/src/pages/HabitatHome.js
+index 9bfb8d0..d1c5529 100644
+--- a/frontend/src/pages/HabitatHome.js
++++ b/frontend/src/pages/HabitatHome.js
+@@ -1,12 +1,28 @@
+ /**
+  * Habitat home dashboard — aligned to approved desktop/mobile mockups.
+  * Data: GET /api/habitat/dashboard/projection + /api/habitat/openings
++ * Uses REACT_APP_BACKEND_URL so the browser receives JSON (not SPA HTML).
+  */
+ import { useEffect, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ import { Brand } from "@/components/Brand";
+ import { useAppData } from "@/context/AppDataContext";
+ import { CENTRAL_KENTUCKY_DEMO_HOME } from "@/propertyVisualization/centralKentuckyDemoHome";
++import { API } from "@/lib/api";
++
++async function fetchJson(path) {
++  const r = await fetch(`${API}${path}`, { credentials: "include" });
++  const ctype = r.headers.get("content-type") || "";
++  if (!r.ok) {
++    throw new Error(`HTTP ${r.status} for ${path}`);
++  }
++  if (!ctype.includes("application/json")) {
++    throw new Error(
++      `Expected JSON from ${path}, got ${ctype || "unknown"} (check REACT_APP_BACKEND_URL)`
++    );
++  }
++  return r.json();
++}
+ 
+ export default function HabitatHome() {
+   const navigate = useNavigate();
+@@ -26,9 +42,9 @@ export default function HabitatHome() {
+ 
+   useEffect(() => {
+     Promise.all([
+-      fetch("/api/habitat/dashboard/projection").then((r) => r.json()),
+-      fetch("/api/habitat/openings").then((r) => r.json()),
+-      fetch("/api/habitat/twin/layers").then((r) => r.json()),
++      fetchJson("/habitat/dashboard/projection"),
++      fetchJson("/habitat/openings"),
++      fetchJson("/habitat/twin/layers"),
+     ])
+       .then(([dash, opens, lyr]) => {
+         setData(dash);
+@@ -74,7 +90,19 @@ export default function HabitatHome() {
+       <section className="m-4 p-5 rounded-xl border border-[rgba(0,229,255,0.18)] bg-[#1a222d] shadow-[0_0_24px_rgba(0,229,255,0.12)]">
+         <div className="flex flex-col lg:flex-row gap-6">
+           <div className="flex-1 min-w-0">
+-            <div className="text-[11px] tracking-widest text-teal-300/90 mb-1">PROPERTY PASSPORT</div>
++            <div className="flex flex-wrap items-center gap-2 mb-1">
++              <div className="text-[11px] tracking-widest text-teal-300/90">PROPERTY PASSPORT</div>
++              <span
++                data-testid="projection-authority-badge"
++                className={
++                  data.authoritative
++                    ? "text-[10px] px-2 py-0.5 rounded border border-[rgba(0,229,255,0.45)] text-[#00e5ff]"
++                    : "text-[10px] px-2 py-0.5 rounded border border-[rgba(245,158,11,0.45)] text-[#f59e0b]"
++                }
++              >
++                {data.authoritative ? "Official" : "Preview"}
++              </span>
++            </div>
+             <h1 className="text-2xl font-semibold text-white">{p.address_line}</h1>
+             <p className="text-sm text-[#8b9bb0]">{p.city_state_zip}</p>
+             <div className="flex items-end gap-4 mt-4">
+@@ -274,12 +302,16 @@ export default function HabitatHome() {
+       <footer className="text-center text-[10px] tracking-[0.15em] text-[#71717a] py-4 border-t border-[rgba(0,229,255,0.12)]">
+         {data.tagline}
+       </footer>
+-      {data.passport_status && (
+-        <div className="text-center text-[10px] text-[#52525b] pb-4">
+-          Passport: {data.passport_status}
+-          {data.authoritative === false ? " · non-authoritative / demo overlay" : ""}
+-        </div>
+-      )}
++      <div
++        className="text-center text-[10px] text-[#52525b] pb-4"
++        data-testid="projection-authority-footer"
++      >
++        Passport: {data.passport_status || (data.authoritative ? "OK" : "PROJECTED")}
++        {data.authoritative
++          ? " · official Passport projection"
++          : " · non-authoritative / preview overlay"}
++        {data.source === "HABITAT_PROJECTION_PATH" ? " · file handoff" : ""}
++      </div>
+     </div>
+   );
+ }
+-- 
+2.43.0
+
