@@ -46,8 +46,12 @@ def _canonical_json(obj: Any) -> str:
 
 
 def content_hash(payload: Dict[str, Any]) -> str:
-    """SHA-256 of the canonical payload (excluding the seal_record itself)."""
-    to_hash = {k: v for k, v in payload.items() if k != "seal_record"}
+    """SHA-256 of the canonical payload (excluding seal metadata fields)."""
+    to_hash = {
+        k: v
+        for k, v in payload.items()
+        if k not in ("seal_record", "content_hash")
+    }
     return hashlib.sha256(_canonical_json(to_hash).encode("utf-8")).hexdigest()
 
 

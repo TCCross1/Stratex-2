@@ -10,11 +10,9 @@ legacy code:
 
 Legacy `stratexdrone.com` production surfaces are unaffected.
 
-Importing this package is what registers the decorators on the shared
-`api` router built in `core.py`.
+Importing `nextgen.routes` (done from `server.py` at startup) registers the
+decorators on the shared `api` router built in `core.py`. Importing this
+package alone does not pull FastAPI route modules so field-test CLIs and unit
+tests can import seal/export helpers without Mongo or auth dependencies.
 """
 from __future__ import annotations
-
-# Route modules must be imported so their `@nextgen_r.get/post` decorators
-# execute BEFORE `app.include_router(api)` runs in `server.py`.
-from . import routes  # noqa: F401
