@@ -3,6 +3,24 @@
 **Branch:** `field-test/ready-v1`  
 **Scope:** Matrice 4E and 4T missions processed through `field_test_pipeline` only.
 
+## Official path vs lab CLI
+
+**Official field path (checklist enforced):**
+
+- `backend/nextgen/field_test_pipeline.py` — runs preflight ATC, then **pre-seal checklist**, then `seal_package()`
+- API routes that delegate to the pipeline: `POST /api/nextgen/field-test/deliverables`, `POST /api/nextgen/field-test/pipeline/dual`, etc.
+- Governed publish demo: `python3 -m backend.nextgen.field_test_governed_publish_demo` (uses pipeline internally; add `--dry-run` to validate shape only)
+
+**Lab / demo CLIs (checklist bypassed):**
+
+These call `seal_package()` **directly** for speed and simplicity. They are **not** the official field path:
+
+- `python3 -m backend.nextgen.sample_field_test_package`
+- `python3 -m backend.nextgen.export_sample_habitat_projection`
+- `python3 -m backend.nextgen.field_test_claim_code_demo`
+
+Use lab CLIs to inspect sample JSON or verify seal math. Use **`field_test_pipeline`** (or its API wrappers) for any mission that counts toward field test sign-off.
+
 ## Purpose
 
 Before Core seals a mission package, ATC runs a **minimum checklist** to confirm the capture path matches the aircraft and that stub/real evidence is present. If any blocking check fails, **seal does not run**.
@@ -42,7 +60,7 @@ This is separate from the preflight gate (weather, battery, pilot authorization)
 
 - No UI, no drone launch, no Passport write
 - Does not replace full ATC-001B quality gates or live DJI SDK checks
-- Does not run outside `field_test_pipeline` (sample CLIs that call `seal_package` directly are unchanged)
+- **Does not run in lab CLIs** that call `seal_package()` directly — those are convenience shortcuts only (see **Official path vs lab CLI** above)
 
 ## Code locations
 

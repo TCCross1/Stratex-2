@@ -3,6 +3,21 @@
 **Branch:** `field-test/ready-v1`  
 **Repos:** Stratex-2 (Core) · stratex-habitat (Habitat)
 
+## Official path vs lab CLI
+
+| | **Official field path** | **Lab / demo CLI** |
+|---|-------------------------|---------------------|
+| **Use when** | Field test, API flows, governed publish | Local smoke tests, docs, fast iteration |
+| **Entry** | `field_test_pipeline.run_single_path_pipeline()` / `run_dual_path_pipeline()` | `python3 -m backend.nextgen.sample_field_test_package`, `export_sample_habitat_projection`, `field_test_claim_code_demo` |
+| **Preflight ATC** | Yes (weather, battery, pilot, etc.) | No (unless you call pipeline yourself) |
+| **Pre-seal ATC checklist** (4E day RGB / 4T night thermal) | **Yes — required** | **No — bypassed** |
+| **Seal** | Only if checklist passes | Calls `seal_package()` directly |
+| **Governed publish** | Use `field_test_governed_publish_demo` (no `--dry-run`) or `POST /api/nextgen/field-test/publish` after pipeline | Not included in direct CLIs |
+
+**Rule:** For anything that represents a real field-test mission (seal → Passport → projection), **must** go through `field_test_pipeline` or an API route that uses it (`/field-test/deliverables`, `/field-test/pipeline/*`, governed publish demo). Lab CLIs that call `seal_package` directly are for development convenience only and **do not** satisfy the ATC pre-seal checklist.
+
+See also: `docs/ATC_SEAL_READINESS_CHECKLIST.md`, `docs/FIELD_TEST_GOVERNED_PUBLISH.md`.
+
 ## Quick start (once backend env is up)
 
 ```bash
